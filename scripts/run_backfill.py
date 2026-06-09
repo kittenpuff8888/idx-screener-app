@@ -27,6 +27,22 @@ def market_weekdays(end_date: datetime, days: int) -> list[str]:
     return list(reversed(dates))
 
 
+def latest_completed_market_day(now_wib: datetime) -> datetime:
+    """
+    IDX daily data is publishable only after 17:00 WIB.
+
+    GitHub scheduled jobs can start many hours late. Before the cutoff, use
+    the previous trading day so an overnight-delayed job cannot publish the
+    current calendar date before that market session is complete.
+    """
+    cursor = now_wib
+    if cursor.hour < 17:
+        cursor -= timedelta(days=1)
+    while cursor.weekday() >= 5:
+        cursor -= timedelta(days=1)
+    return cursor
+
+
 def sync_local_source_once() -> None:
     if os.environ.get("GITHUB_ACTIONS") or os.environ.get("SKIP_LOCAL_SYNC") == "1":
         return
@@ -60,7 +76,11 @@ def main() -> None:
     if args.date:
         dates = [parse_date(args.date).strftime("%Y-%m-%d")]
     else:
-        end_date = parse_date(args.end_date) if args.end_date else datetime.now(ZoneInfo("Asia/Jakarta"))
+        end_date = (
+            parse_date(args.end_date)
+            if args.end_date
+            else latest_completed_market_day(datetime.now(ZoneInfo("Asia/Jakarta")))
+        )
         dates = market_weekdays(end_date, args.days)
 
     for market_date in dates:

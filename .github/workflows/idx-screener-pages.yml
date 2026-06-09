@@ -15,7 +15,8 @@ on:
         default: "7"
         type: string
   schedule:
-    # 17:00 WIB = 10:00 UTC. Weekdays only.
+    # Requested for 17:00 WIB = 10:00 UTC. run_backfill.py also enforces
+    # the completed-market-day cutoff because GitHub may start cron jobs late.
     - cron: "0 10 * * 1-5"
 
 permissions:
