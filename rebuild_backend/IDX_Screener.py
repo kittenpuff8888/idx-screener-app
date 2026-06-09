@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import traceback
+import json
 from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple, Any
 
@@ -241,7 +242,11 @@ def weighted_std(values: pd.Series, weights: pd.Series):
     var = np.average((x - mean) ** 2, weights=w)
     return np.sqrt(var)
 
-def anchored_vwap_block(df: pd.DataFrame) -> Dict[str, float]:
+def anchored_vwap_block(
+    df: pd.DataFrame,
+    selected_close: float = np.nan,
+    previous_close: float = np.nan,
+) -> Dict[str, float]:
     empty_out = {
         "days": 0,
         "vwap": np.nan,
@@ -251,6 +256,7 @@ def anchored_vwap_block(df: pd.DataFrame) -> Dict[str, float]:
         "m1": np.nan,
         "m2": np.nan,
         "m3": np.nan,
+        "sd": np.nan,
         "sd_score": np.nan,
         "prev_sd": np.nan,
         "sd_delta": np.nan,
@@ -267,7 +273,7 @@ def anchored_vwap_block(df: pd.DataFrame) -> Dict[str, float]:
     if d.empty:
         return empty_out
 
-    def _calc_block(block: pd.DataFrame):
+    def _calc_block(block: pd.DataFrame, score_close=np.nan):
         if block is None or block.empty:
             return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
 
@@ -294,7 +300,9 @@ def anchored_vwap_block(df: pd.DataFrame) -> Dict[str, float]:
         sd_floor = max(abs(vwap) * 1e-6 if pd.notna(vwap) else 0.0, 1e-9)
         sd_valid = pd.notna(sd) and sd > sd_floor
 
-        close_last = safe_num(block["Close"].iloc[-1])
+        close_last = safe_num(score_close, np.nan)
+        if pd.isna(close_last):
+            close_last = safe_num(block["Close"].iloc[-1])
         sd_score   = safe_num((close_last - vwap) / sd) if sd_valid else 0.0
 
         m1 = vwap - sd       if sd_valid else vwap
@@ -304,12 +312,15 @@ def anchored_vwap_block(df: pd.DataFrame) -> Dict[str, float]:
         return vwap, m1, m2, m3, sd_score, sd
 
     # Current anchored block (includes latest bar)
-    vwap, m1, m2, m3, sd_score, sd = _calc_block(d)
+    vwap, m1, m2, m3, sd_score, sd = _calc_block(d, selected_close)
 
     # Prior-day anchored block (exclude latest bar)
     if len(d) >= 2:
         d_prev = d.iloc[:-1].copy()
-        prev_vwap, prev_m1, prev_m2, prev_m3, prev_sd_score, prev_sd_raw = _calc_block(d_prev)
+        if pd.notna(previous_close):
+            prev_sd_score = safe_num((float(previous_close) - vwap) / sd) if pd.notna(sd) and sd > 0 else np.nan
+        else:
+            prev_vwap, prev_m1, prev_m2, prev_m3, prev_sd_score, prev_sd_raw = _calc_block(d_prev)
         sd_delta = safe_num(sd_score - prev_sd_score) if pd.notna(sd_score) and pd.notna(prev_sd_score) else np.nan
     else:
         prev_sd_score = np.nan
@@ -330,6 +341,7 @@ def anchored_vwap_block(df: pd.DataFrame) -> Dict[str, float]:
         "m1": m1,
         "m2": m2,
         "m3": m3,
+        "sd": sd,
         "sd_score": sd_score,
         "prev_sd": prev_sd_score,
         "sd_delta": sd_delta,
@@ -532,14 +544,24 @@ def vwap_near_zone_label(close, sd_score, vwap, m1, m2, m3, p1=np.nan, p2=np.nan
     gap = min(adjacent_gaps) if adjacent_gaps else (abs(level_px) * 0.10)
     near_abs = min(gap * 0.125, abs(level_px) * 0.03)
 
-    # User requirement: VWAP Zone should only show a "near" label.
-    # If price is not within the near tolerance of the nearest plotted VWAP/SD band,
-    # output "-" instead of "Closest ...".
-    if abs(close_f - level_px) > near_abs:
-        return "-"
-    if pd.isna(pct_dist):
-        return f"Price Near {label}"
-    return f"Price Near {label} • {pct_dist:.2f}%"
+    if abs(close_f - level_px) <= near_abs:
+        if pd.isna(pct_dist):
+            return f"Near {label}"
+        return f"Near {label} ({pct_dist:.2f}%)"
+
+    ordered = sorted(
+        [(float(px), label) for label, px, _ in valid],
+        key=lambda item: item[0],
+        reverse=True,
+    )
+    if close_f > ordered[0][0]:
+        return f"Above {ordered[0][1]}"
+    if close_f < ordered[-1][0]:
+        return f"Below {ordered[-1][1]}"
+    for (upper_px, upper_label), (lower_px, lower_label) in zip(ordered, ordered[1:]):
+        if lower_px < close_f < upper_px:
+            return f"Between {upper_label} and {lower_label}"
+    return label
 
 def vwap_zone_remark(close, m1, m2, m3):
     """
@@ -3005,9 +3027,9 @@ DETAIL_SCHEMA = [
     ]),
 
     ("MACD Momentum", FILL_GROUP_MACD_MOM, [
-        ("macd_line",        "MACD Line",       12, "#,##0",  "center"),
-        ("macd_signal_line", "Signal Line",     12, "#,##0",  "center"),
-        ("macd_hist",        "Histogram (EMA3)", 14, "#,##0", "center"),
+        ("macd_line",        "MACD Line",       12, "0.0000", "center"),
+        ("macd_signal_line", "Signal Line",     12, "0.0000", "center"),
+        ("macd_hist",        "Histogram (EMA3)", 14, "0.0000", "center"),
         ("macd_position",    "Lines Position",  18, None,     "center"),
         ("macd_wave",        "Wave Pattern",    22, None,     "center"),
         ("macd_cross",       "MACD Cross",      16, None,     "center"),
@@ -3597,9 +3619,9 @@ def fetch_history_once(symbol: str, params: dict):
 def fetch_history_with_retry(ticker: str):
     symbol = f"{ticker}.JK"
     attempts = [
-        {"period": "2y", "interval": "1d"},
-        {"period": "3y", "interval": "1d"},
+        {"start": "1990-01-01", "interval": "1d"},
         {"start": "2020-01-01", "interval": "1d"},
+        {"period": "2y", "interval": "1d"},
     ]
     retry_count = 0
     last_err = None
@@ -4019,11 +4041,13 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
 
         pq_start, pq_end = prev_quarter_range(hist.index[-1])
         df_pq = hist.loc[(hist.index >= pq_start) & (hist.index <= pq_end)]
-        pq = anchored_vwap_block(df_pq)
+        _selected_close = safe_num(hist["Close"].iloc[-1], np.nan)
+        _previous_close = safe_num(hist["Close"].iloc[-2], np.nan) if len(hist) >= 2 else np.nan
+        pq = anchored_vwap_block(df_pq, _selected_close, _previous_close)
 
         prev_year = hist.index[-1].year - 1
         df_py = hist.loc[(hist.index.year == prev_year)]
-        py = anchored_vwap_block(df_py)
+        py = anchored_vwap_block(df_py, _selected_close, _previous_close)
 
         # ── Monthly VWAP (Current + Previous) ─────────────────────────────
         _last_ts = hist.index[-1]
@@ -4034,7 +4058,7 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
         _pm_end   = cm_start - pd.Timedelta(days=1)
         _pm_start = pd.Timestamp(_pm_end.year, _pm_end.month, 1)
         df_pm = hist.loc[(hist.index >= _pm_start) & (hist.index <= _pm_end)]
-        pm = anchored_vwap_block(df_pm)
+        pm = anchored_vwap_block(df_pm, _selected_close, _previous_close)
         # ───────────────────────────────────────────────────────────────────
 
         month_start = pd.Timestamp(hist.index[-1].year, hist.index[-1].month, 1)
@@ -4155,31 +4179,36 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
         row["adtr20_pct"] = ((row["daily_value"] / row["adtr20"]) - 1) * 100 if pd.notna(row["daily_value"]) and pd.notna(row["adtr20"]) and row["adtr20"] != 0 else np.nan
         row["adtr20_zone"] = ("N/A" if pd.isna(row["adtr20_pct"]) else ("Above 3%" if row["adtr20_pct"] >= 3 else ("Below 3%" if row["adtr20_pct"] <= -3 else "Within ±3%")))
 
-        row["ema10"] = safe_num(ema(hist["Close"], 10).iloc[-1])
-        row["ema20"] = safe_num(ema(hist["Close"], 20).iloc[-1])
-        row["ema25"] = safe_num(ema(hist["Close"], 25).iloc[-1])
-        row["ema50"] = safe_num(ema(hist["Close"], 50).iloc[-1])
-        row["sma200"] = safe_num(hist["Close"].rolling(200).mean().iloc[-1])
+        ma_specs = [
+            ("ema10", "ema10d", "ema10p", "EMA10", 10, "ema"),
+            ("ema20", "ema20d", "ema20p", "EMA20", 20, "ema"),
+            ("ema25", "ema25d", "ema25p", "EMA25", 25, "ema"),
+            ("ema50", "ema50d", "ema50p", "EMA50", 50, "ema"),
+            ("sma200", "sma200d", "sma200p", "SMA200", 200, "sma"),
+        ]
+        available_ma = []
+        for value_key, diff_key, pos_key, label, period, kind in ma_specs:
+            if len(hist) < period:
+                row[value_key], row[diff_key], row[pos_key] = np.nan, np.nan, "N/A"
+                continue
+            series = ema(hist["Close"], period) if kind == "ema" else hist["Close"].rolling(period).mean()
+            row[value_key] = safe_num(series.iloc[-1])
+            row[diff_key] = pct_diff(row["close"], row[value_key])
+            row[pos_key] = pos_label(row["close"], row[value_key]) or "N/A"
+            if row[pos_key] in ("Above", "Below"):
+                available_ma.append((label, row[pos_key]))
 
-        row["ema10d"], row["ema10p"] = pct_diff(row["close"], row["ema10"]), pos_label(row["close"], row["ema10"])
-        row["ema20d"], row["ema20p"] = pct_diff(row["close"], row["ema20"]), pos_label(row["close"], row["ema20"])
-        row["ema25d"], row["ema25p"] = pct_diff(row["close"], row["ema25"]), pos_label(row["close"], row["ema25"])
-        row["ema50d"], row["ema50p"] = pct_diff(row["close"], row["ema50"]), pos_label(row["close"], row["ema50"])
-        row["sma200d"], row["sma200p"] = pct_diff(row["close"], row["sma200"]), pos_label(row["close"], row["sma200"])
-
-        # Item #31: MA Zone uses only EMA25/EMA50/SMA200 (EMA10/EMA20 removed)
-        ma_positions = [row["ema25p"], row["ema50p"], row["sma200p"]]
-        available_positions = [x for x in ma_positions if x in ("Above", "Below")]
-        if len(available_positions) > 0 and all(x == "Above" for x in available_positions):
-            row["summary_ma"] = "Bullish"
-        elif len(available_positions) > 0 and all(x == "Below" for x in available_positions):
-            row["summary_ma"] = "Bearish"
+        if available_ma:
+            above = [label for label, position in available_ma if position == "Above"]
+            below = [label for label, position in available_ma if position == "Below"]
+            if not below:
+                row["summary_ma"] = "Above All Available MA"
+            elif not above:
+                row["summary_ma"] = "Below All Available MA"
+            else:
+                row["summary_ma"] = f"Above {', '.join(above)} | Below {', '.join(below)}"
         else:
-            labels = []
-            if row.get("ema25p")  == "Above": labels.append("EMA25")
-            if row.get("ema50p")  == "Above": labels.append("EMA50")
-            if row.get("sma200p") == "Above": labels.append("SMA200")
-            row["summary_ma"] = "Above " + ", ".join(labels) if labels else "-"
+            row["summary_ma"] = "N/A"
 
         rsi_series = rsi(hist["Close"], 14)
         row["rsi14"] = safe_num(rsi_series.iloc[-1])
@@ -4296,7 +4325,7 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
         row["cm_p1"], row["cm_p2"], row["cm_p3"] = cm.get("p1", np.nan), cm.get("p2", np.nan), cm.get("p3", np.nan)
         row["pm_days"], row["pm_vwap"], row["pm_m1"], row["pm_m2"], row["pm_m3"], row["pm_sd"] = pm["days"], pm["vwap"], pm["m1"], pm["m2"], pm["m3"], pm["sd_score"]
         row["pm_p1"], row["pm_p2"], row["pm_p3"] = pm.get("p1", np.nan), pm.get("p2", np.nan), pm.get("p3", np.nan)
-        row["pm_delta"] = safe_num(cm["sd_score"] - pm["sd_score"]) if pd.notna(cm["sd_score"]) and pd.notna(pm["sd_score"]) else np.nan
+        row["pm_delta"] = pm["sd_delta"]
 
         # ── QVWAP / PY field assignments ──────────────────────────────────
         row["q_days"], row["q_vwap"], row["q_m1"], row["q_m2"], row["q_m3"], row["q_sd"], row["q_delta"] = q["days"], q["vwap"], q["m1"], q["m2"], q["m3"], q["sd_score"], q["sd_delta"]
@@ -4312,8 +4341,8 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
         # - Current QVWAP: true live 1D delta within current quarter anchor
         # - Previous QVWAP: relative comparison vs prior quarter end
         # - Previous Year VWAP: relative comparison vs prior year end
-        row["pq_delta"] = safe_num(q["sd_score"] - pq["sd_score"]) if pd.notna(q["sd_score"]) and pd.notna(pq["sd_score"]) else np.nan
-        row["py_delta"] = safe_num(q["sd_score"] - py["sd_score"]) if pd.notna(q["sd_score"]) and pd.notna(py["sd_score"]) else np.nan
+        row["pq_delta"] = pq["sd_delta"]
+        row["py_delta"] = py["sd_delta"]
 
         row["cm_zone"] = vwap_zone_2pct(row["close"], [row["cm_vwap"], row["cm_m1"], row["cm_m2"], row["cm_m3"]])
         row["pm_zone"] = vwap_zone_2pct(row["close"], [row["pm_vwap"], row["pm_m1"], row["pm_m2"], row["pm_m3"]])
@@ -4330,13 +4359,6 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
         row["q_zone_days"]  = _count_consecutive_zone_days(hist, [row["q_vwap"],  row["q_m1"],  row["q_m2"],  row["q_m3"]],  row["q_remarks"])
         row["pq_zone_days"] = _count_consecutive_zone_days(hist, [row["pq_vwap"], row["pq_m1"], row["pq_m2"], row["pq_m3"]], row["pq_remarks"])
         row["py_zone_days"] = _count_consecutive_zone_days(hist, [row["py_vwap"], row["py_m1"], row["py_m2"], row["py_m3"]], row["py_remarks"])
-        # Suppress zone-days when VWAP zone is empty/'-'
-        for _rem_key, _days_key in (("cm_remarks","cm_zone_days"), ("pm_remarks","pm_zone_days"),
-                                     ("q_remarks","q_zone_days"), ("pq_remarks","pq_zone_days"), ("py_remarks","py_zone_days")):
-            _rem_val = str(row.get(_rem_key, "") or "").strip()
-            if not _rem_val or _rem_val in ("-", "N/A", "None"):
-                row[_days_key] = 0
-
         any_zone = any(str(z).strip() not in ("", "N/A", "None") for z in [row["q_zone"], row["pq_zone"], row["py_zone"]])
         above_count = sum(1 for x in [row["ema10p"], row["ema20p"], row["ema25p"], row["ema50p"], row["sma200p"]] if x == "Above")
         if any_zone and pd.notna(row["rvol5"]) and row["rvol5"] >= MIN_RVOL:
@@ -4378,12 +4400,6 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
 
         if pd.notna(row.get("ibh")) and pd.notna(row.get("ibl")) and safe_num(row.get("ibh")) == safe_num(row.get("ibl")):
             row["mp_zone"] = "NO"
-
-        ma_vals = [row.get("ema10"), row.get("ema20"), row.get("ema25"), row.get("ema50")]
-        if pd.notna(row.get("close")) and all(pd.notna(v) and safe_num(v) == safe_num(row.get("close")) for v in ma_vals):
-            for k in ["ema10d","ema10p","ema20d","ema20p","ema25d","ema25p","ema50d","ema50p","sma200d","sma200p"]:
-                row[k] = "N/A"
-            row["summary_ma"] = "N/A"
 
         if pd.isna(row.get("rsi14")):
             for k in ["rsi14","rsi_ma14","rsi_ge_50","rsi_delta","rsi_status","cross_status","divergence_summary","div_ref1_date","div_ref2_date"]:
@@ -6227,6 +6243,7 @@ DESIRED_SHEET_ORDER = [
     "IDX News",
     "Guide & Logic Reference",
     "Data Processing Results",
+    "QA Calculation Audit",
 ]
 
 
@@ -6409,9 +6426,63 @@ def _apply_audit_grade_tables(wb):
         if sn in wb.sheetnames:
             _add_excel_table_if_possible(wb[sn], tn, header_row, 2)
 
+def _build_qa_calculation_audit_sheet(wb, latest_market_day, run_dt, results):
+    name = "QA Calculation Audit"
+    if name in wb.sheetnames:
+        wb.remove(wb[name])
+    ws = wb.create_sheet(name)
+    ws.sheet_view.showGridLines = False
+    headers = [
+        "Ticker", "Market Date", "Field", "Value", "Source",
+        "Formula Version", "Missing Reason", "QA Status", "Expected Rule",
+    ]
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(1, col, header)
+        cell.fill = FILL_HEADER
+        cell.font = FONT_HEADER
+        cell.border = BORDER
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    checks = [
+        ("cm_vwap", "Yahoo OHLCV", "VWAP_TP_RUNNING_VAR_V3", "Current-month anchored VWAP"),
+        ("cm_sd", "Yahoo OHLCV", "VWAP_TP_RUNNING_VAR_V3", "(close - current MVWAP) / sigma"),
+        ("pm_delta", "Yahoo OHLCV", "VWAP_COMPLETED_ANCHOR_DELTA_V3", "Same prior-month bands for current and prior close"),
+        ("pq_delta", "Yahoo OHLCV", "VWAP_COMPLETED_ANCHOR_DELTA_V3", "Same prior-quarter bands for current and prior close"),
+        ("py_delta", "Yahoo OHLCV", "VWAP_COMPLETED_ANCHOR_DELTA_V3", "Same prior-year bands for current and prior close"),
+        ("ema25", "Yahoo Close", "EMA_ADJUST_FALSE_V1", "EMA(25), minimum 25 bars"),
+        ("ema50", "Yahoo Close", "EMA_ADJUST_FALSE_V1", "EMA(50), minimum 50 bars"),
+        ("sma200", "Yahoo Close", "SMA_V1", "SMA(200), minimum 200 bars"),
+        ("rsi14", "Yahoo Close", "WILDER_RSI_V1", "Wilder RSI(14)"),
+        ("macd_line", "Yahoo Close", "MACD_12_26_9_V1", "EMA12 - EMA26"),
+    ]
+    row_no = 2
+    for result in results or []:
+        ticker = str(result.get("ticker") or result.get("Ticker") or "")
+        for key, source, version, rule in checks:
+            value = result.get(key, np.nan)
+            missing = value is None or value == "" or (isinstance(value, float) and not np.isfinite(value))
+            status = "WARN" if missing else "PASS"
+            reason = "Unavailable or insufficient source history" if missing else ""
+            values = [ticker, latest_market_day, key, value if not missing else "N/A",
+                      source, version, reason, status, rule]
+            for col, item in enumerate(values, start=1):
+                cell = ws.cell(row_no, col, item)
+                cell.border = BORDER
+                cell.font = FONT_BODY
+                cell.alignment = Alignment(
+                    horizontal="left" if col in (3, 5, 7, 9) else "center",
+                    vertical="center",
+                    wrap_text=True,
+                )
+            row_no += 1
+    ws.freeze_panes = "A2"
+    widths = [12, 14, 18, 18, 18, 32, 38, 12, 52]
+    for index, width in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(index)].width = width
+    _add_excel_table_if_possible(ws, "QA_Calculation_Audit", 1, 1)
+
 def _add_audit_artifacts(wb, latest_market_day, run_dt, results, process_logs, ticker_universe_count):
-    # Items 36-39: Calculation Traceability, Corp Action Mismatch, Workbook Audit Metadata deleted.
-    # Only apply auto-filter to surviving sheets.
+    _build_qa_calculation_audit_sheet(wb, latest_market_day, run_dt, results)
     _apply_audit_grade_tables(wb)
 
 
@@ -6502,6 +6573,27 @@ def _set_guide_logic_widths(ws):
     ws.column_dimensions["D"].width = 50
 
 
+def _write_ohlcv_history_cache(rows_cache: dict, market_date: str) -> None:
+    target_dir = os.path.join(OUTPUT_DIR, "ohlcv", market_date)
+    os.makedirs(target_dir, exist_ok=True)
+    for ticker, hist in (rows_cache or {}).items():
+        if hist is None or hist.empty:
+            continue
+        records = []
+        for ts, row in hist.iterrows():
+            records.append({
+                "date": pd.Timestamp(ts).strftime("%Y-%m-%d"),
+                "open": safe_num(row.get("Open"), None),
+                "high": safe_num(row.get("High"), None),
+                "low": safe_num(row.get("Low"), None),
+                "close": safe_num(row.get("Close"), None),
+                "volume": safe_num(row.get("Volume"), None),
+            })
+        path = os.path.join(target_dir, f"{ticker}.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump({"ticker": ticker, "date": market_date, "rows": records}, fh, separators=(",", ":"))
+
+
 def main():
     print("\n" + "=" * 110)
     print("  IDX Screener")
@@ -6566,8 +6658,7 @@ def main():
         built = build_row(ksei_row, hist, shares)
         results.append(built)
 
-        if ticker in BACKTEST_TICKERS:
-            _hist_cache[ticker] = hist
+        _hist_cache[ticker] = hist
 
         reason = "OK" if built["data_status"] == "OK" else f"Insufficient bars ({len(hist)} < {MIN_BARS_FULL})"
         process_logs.append({"ticker": ticker, "status": built["data_status"], "bars": len(hist),
@@ -6580,6 +6671,7 @@ def main():
     results      = sorted(results, key=lambda x: x["ticker"])
     process_logs = sorted(process_logs, key=lambda x: x["ticker"])
     summary_rows = [r for r in results if r["data_status"] == "OK"]
+    _write_ohlcv_history_cache(_hist_cache, latest_market_day_global)
 
     # ── News entity validation context ───────────────────────────────────────
     _configure_news_entity_context(results)
@@ -6703,6 +6795,7 @@ def main():
         "IDX News",
         "Guide & Logic Reference",
         "Data Processing Results",
+        "QA Calculation Audit",
     ]
     _ALLOWED_SHEETS = set(desired_order)
     for _ws in list(wb.worksheets):
@@ -7472,9 +7565,9 @@ try:
         elif _grp_name == "MACD Momentum":
             _new_detail_schema_v2.append((
                 "MACD Momentum", _grp_fill, [
-                    ("macd_line",        "MACD Line",        12, "#,##0", "center"),
-                    ("macd_signal_line", "Signal Line",      12, "#,##0", "center"),
-                    ("macd_hist",        "Histogram (EMA3)", 14, "#,##0", "center"),
+                    ("macd_line",        "MACD Line",        12, "0.0000", "center"),
+                    ("macd_signal_line", "Signal Line",      12, "0.0000", "center"),
+                    ("macd_hist",        "Histogram (EMA3)", 14, "0.0000", "center"),
                     ("macd_position",    "Lines Position",   18, None,    "center"),
                     ("macd_wave",        "Wave Pattern",     22, None,    "center"),
                     ("macd_cross",       "MACD Cross",       16, None,    "center"),
@@ -8037,6 +8130,7 @@ def _compute_extended_fundamentals(sym: str, info: dict) -> dict:
         if not _is_num(tangible_book):
             goodwill = _row(qbs, ["Goodwill And Other Intangible Assets", "Goodwill", "Other Intangible Assets"], default=0)
             tangible_book = total_equity - goodwill if _is_num(total_equity) else np.nan
+        retained_earnings = _row(qbs, ["Retained Earnings"], default=_row(abs_, ["Retained Earnings"]))
 
         # Cash flow
         cfo_q = _row(qcf, ["Operating Cash Flow", "Total Cash From Operating Activities", "Cash Flow From Continuing Operating Activities"])
@@ -8059,7 +8153,10 @@ def _compute_extended_fundamentals(sym: str, info: dict) -> dict:
         # cash-flow) in USD, while market_cap / enterprise_value from info are
         # already in IDR.  Multiply every statement value by the current USD/IDR
         # rate to make them consistent with market_cap before computing ratios.
-        FX = _fetch_usd_idr_rate()   # IDR per USD
+        price_currency = str(info.get("currency") or "").upper().strip()
+        financial_currency = str(info.get("financialCurrency") or "").upper().strip()
+        should_convert_usd_to_idr = financial_currency == "USD" and price_currency == "IDR"
+        FX = _fetch_usd_idr_rate() if should_convert_usd_to_idr else 1.0
 
         def _to_idr(v):
             return v * FX if _is_num(v) else v
@@ -8094,11 +8191,13 @@ def _compute_extended_fundamentals(sym: str, info: dict) -> dict:
         capex_ttm           = _to_idr(capex_ttm)
         fcf_q               = _to_idr(fcf_q)
         fcf_ttm             = _to_idr(fcf_ttm)
-        # total_debt: recompute from converted components (info["totalDebt"] might be IDR)
+        total_debt = _to_idr(total_debt)
+        # Prefer statement components when available; they now share the
+        # traded security's currency.
         total_debt = _first_num(
-            info.get("totalDebt"),    # may be IDR from yfinance info (varies by release)
             (0 if pd.isna(short_debt) else short_debt) + (0 if pd.isna(long_debt) else long_debt)
-            if pd.notna(short_debt) or pd.notna(long_debt) else np.nan
+            if pd.notna(short_debt) or pd.notna(long_debt) else np.nan,
+            total_debt,
         )
 
         # Market cap and EV: already in IDR from info dict for .JK stocks
@@ -8156,7 +8255,6 @@ def _compute_extended_fundamentals(sym: str, info: dict) -> dict:
         interest_coverage = safe_div(ebit_ttm, interest_expense)
 
         working_capital = current_assets - current_liab if _is_num(current_assets) and _is_num(current_liab) else np.nan
-        retained_earnings = _row(qbs, ["Retained Earnings"], default=_row(abs_, ["Retained Earnings"]))
         altman_original = (
             1.2 * safe_div(working_capital, total_assets, 0) +
             1.4 * safe_div(retained_earnings, total_assets, 0) +
@@ -8275,6 +8373,10 @@ def _compute_extended_fundamentals(sym: str, info: dict) -> dict:
             "cash_from_financing_ttm": cff_ttm,
             "capital_expenditure_ttm": capex_ttm,
             "free_cash_flow_ttm": fcf_ttm,
+            "_price_currency": price_currency or "UNKNOWN",
+            "_financial_currency": financial_currency or "UNKNOWN",
+            "_fx_conversion": "USD_TO_IDR" if should_convert_usd_to_idr else "NONE",
+            "_fx_rate": FX if should_convert_usd_to_idr else np.nan,
         })
     except Exception:
         # Keep graceful failure; caller will leave missing values as N/A.
@@ -8295,13 +8397,20 @@ def _is_fund_data_empty(d: dict) -> bool:
     Used to decide whether to invoke the fallback chain.
     Critical fields: pe_ttm_current, pe_annualised, roe_ttm, revenue_ttm, net_margin_ttm, eps_ttm_current.
     """
-    CRITICAL = ["pe_ttm_current", "pe_annualised", "roe_ttm", "revenue_ttm",
-                "net_margin_ttm", "eps_ttm_current", "pbv"]
+    CRITICAL = [
+        "pe_ttm_current",
+        "pe_annualised",
+        "roe_ttm",
+        "revenue_ttm",
+        "net_margin_q",
+        "eps_ttm_current",
+        "pbv_current",
+    ]
     def _null(v):
         if v is None or v == "" or v == "N/A":
             return True
         try:
-            return not np.isfinite(float(v))
+            return not np.isfinite(float(v)) or float(v) == 0
         except Exception:
             return True
     return all(_null(d.get(k)) for k in CRITICAL)
@@ -8576,7 +8685,7 @@ def _fetch_fundamental_data(ticker: str) -> dict:
             except Exception:
                 _ipo_date = "N/A"
 
-        return {
+        result = {
             "ticker":              ticker,
             "company_name":        _gs("longName", _gs("shortName", ticker)),
             "sector":              _gs("sector"),

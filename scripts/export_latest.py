@@ -162,6 +162,7 @@ def unique_headers(ws, header_row: int, start_col: int = 2) -> list[tuple[int, s
         if counts[header] > 1:
             group = groups[offset]
             name = f"{group} · {header}" if group else f"{header} {used[header]}"
+        name = name.replace("\u00c2\u00b7", "\u00b7")
         result.append((start_col + offset, name))
     return result
 
@@ -180,6 +181,71 @@ def parse_table(ws, header_row: int | None = None) -> list[dict[str, Any]]:
         if item.get("Ticker") not in (None, "", "-"):
             rows.append(item)
     return rows
+
+
+def workbook_sheet_payload(ws) -> dict[str, Any]:
+    header_row = find_header_row(ws, {"Ticker"}, limit=max(30, ws.max_row))
+    if header_row:
+        start_col = next(
+            (col for col in range(1, ws.max_column + 1) if ws.cell(header_row, col).value not in (None, "")),
+            1,
+        )
+        headers = unique_headers(ws, header_row, start_col=start_col)
+        rows = []
+        for row_idx in range(header_row + 1, ws.max_row + 1):
+            item = {
+                header: clean_value(ws.cell(row_idx, col).value)
+                for col, header in headers
+            }
+            if any(value not in (None, "") for value in item.values()):
+                rows.append(item)
+        return {
+            "headerRow": header_row,
+            "columns": [header for _, header in headers],
+            "rows": rows,
+        }
+
+    matrix = []
+    for row in ws.iter_rows(values_only=True):
+        values = [clean_value(value) for value in row]
+        while values and values[-1] in (None, ""):
+            values.pop()
+        if values:
+            matrix.append(values)
+    width = max((len(row) for row in matrix), default=0)
+    columns = [f"Column {index}" for index in range(1, width + 1)]
+    return {
+        "headerRow": None,
+        "columns": columns,
+        "rows": [
+            {columns[index]: value for index, value in enumerate(row)}
+            for row in matrix
+        ],
+    }
+
+
+def build_field_catalog(workbook_sheets: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    catalog = []
+    for sheet_name, table in workbook_sheets.items():
+        for column in table.get("columns", []):
+            group, separator, label = column.partition(" · ")
+            catalog.append({
+                "sheet": sheet_name,
+                "group": group if separator else "",
+                "field": label if separator else column,
+                "key": column,
+            })
+    return catalog
+
+
+def build_ticker_details(workbook_sheets: dict[str, dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    details: dict[str, dict[str, Any]] = defaultdict(dict)
+    for sheet_name, table in workbook_sheets.items():
+        for row in table.get("rows", []):
+            ticker = str(row.get("Ticker") or "").strip().upper()
+            if ticker:
+                details[ticker][sheet_name] = row
+    return dict(sorted(details.items()))
 
 
 def section_filter(text: str) -> tuple[str, str]:
@@ -359,7 +425,8 @@ def update_manifest(entry: dict[str, Any]) -> None:
     dates.append(entry)
     dates.sort(key=lambda item: item["date"], reverse=True)
     manifest["dates"] = dates
-    manifest["latest"] = dates[0]["date"] if dates else None
+    trading_dates = [item for item in dates if item.get("isTradingDate", True)]
+    manifest["latest"] = trading_dates[0]["date"] if trading_dates else (dates[0]["date"] if dates else None)
     manifest["history"] = "data/history.json"
     manifest_path.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False),
@@ -388,10 +455,17 @@ def export_workbook(workbook_path: Path) -> Path:
     fundamental = parse_table(wb["IDX Fundamental Detail"])
     processing = parse_table(processing_sheet)
     news = parse_table(wb["IDX News"]) if "IDX News" in wb.sheetnames else []
+    workbook_sheets = {
+        sheet_name: workbook_sheet_payload(wb[sheet_name])
+        for sheet_name in wb.sheetnames
+    }
+    field_catalog = build_field_catalog(workbook_sheets)
+    ticker_details = build_ticker_details(workbook_sheets)
+    qa_rows = workbook_sheets.get("QA Calculation Audit", {}).get("rows", [])
 
     overview = market_overview(screener, technical, processing)
     payload = {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "date": market_date,
         "runTime": run_time,
         "workbook": f"downloads/{market_date}.xlsx",
@@ -416,6 +490,15 @@ def export_workbook(workbook_path: Path) -> Path:
         "fundamental": fundamental,
         "news": news,
         "processing": processing,
+        "workbookSheets": workbook_sheets,
+        "fieldCatalog": field_catalog,
+        "tickerDetails": ticker_details,
+        "qa": {
+            "rows": qa_rows,
+            "pass": sum(1 for row in qa_rows if str(row.get("QA Status") or "").upper() == "PASS"),
+            "warn": sum(1 for row in qa_rows if str(row.get("QA Status") or "").upper() == "WARN"),
+            "fail": sum(1 for row in qa_rows if str(row.get("QA Status") or "").upper() == "FAIL"),
+        },
     }
 
     data_path = DATA_DIR / f"{market_date}.json"
@@ -427,6 +510,20 @@ def export_workbook(workbook_path: Path) -> Path:
     if workbook_path.resolve() != download_path.resolve():
         shutil.copy2(workbook_path, download_path)
 
+    qa_dir = DATA_DIR / "qa"
+    qa_dir.mkdir(parents=True, exist_ok=True)
+    (qa_dir / f"{market_date}.qa.json").write_text(
+        json.dumps(payload["qa"], separators=(",", ":"), ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    source_ohlcv = OUTPUT_DIR / "ohlcv" / market_date
+    target_ohlcv = DATA_DIR / "ohlcv" / market_date
+    if source_ohlcv.exists():
+        if target_ohlcv.exists():
+            shutil.rmtree(target_ohlcv)
+        shutil.copytree(source_ohlcv, target_ohlcv)
+
     update_manifest(
         {
             "date": market_date,
@@ -435,6 +532,9 @@ def export_workbook(workbook_path: Path) -> Path:
             "tickers": payload["summary"]["signalTickers"],
             "file": f"data/{market_date}.json",
             "workbook": f"downloads/{market_date}.xlsx",
+            "qa": f"data/qa/{market_date}.qa.json",
+            "ohlcv": f"data/ohlcv/{market_date}",
+            "isTradingDate": datetime.strptime(market_date, "%Y-%m-%d").weekday() < 5,
         }
     )
     rebuild_history()

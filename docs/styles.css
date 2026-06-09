@@ -1352,6 +1352,78 @@ select option {
   max-height: calc(100vh - 300px);
 }
 
+.candle line {
+  stroke-width: 1;
+}
+
+.candle.up line,
+.candle.up rect {
+  fill: var(--green);
+  stroke: var(--green);
+}
+
+.candle.down line,
+.candle.down rect {
+  fill: var(--red);
+  stroke: var(--red);
+}
+
+.candle .volume-bar {
+  opacity: 0.24;
+  stroke: none;
+}
+
+.analysis-sections {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+}
+
+.analysis-group {
+  background: var(--panel);
+}
+
+.analysis-group summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.analysis-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.analysis-group summary span {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.analysis-group summary small {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.analysis-field-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  border-top: 1px solid var(--line);
+  background: var(--line);
+}
+
+.explorer-controls {
+  grid-template-columns: minmax(210px, 0.45fr) minmax(280px, 1fr);
+}
+
+.explorer-table-shell {
+  max-height: calc(100vh - 265px);
+}
+
 @media (max-width: 1180px) {
   .sector-heatmap {
     grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -1412,6 +1484,10 @@ select option {
   .overview-grid,
   .ticker-grid {
     grid-template-columns: 1fr;
+  }
+
+  .analysis-field-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .sector-heatmap {
@@ -1511,6 +1587,10 @@ select option {
   }
 
   .screener-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .analysis-field-grid {
     grid-template-columns: 1fr;
   }
 

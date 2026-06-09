@@ -9,7 +9,7 @@
       content="IDX stock screener dashboard powered by the existing VWAP Screener logic."
     />
     <title>IDX Flow Screener</title>
-    <link rel="stylesheet" href="styles.css?v=20260609-rebuild" />
+    <link rel="stylesheet" href="styles.css?v=20260609-audit-v3" />
   </head>
   <body>
     <div id="loadBar" class="load-bar"></div>
@@ -39,6 +39,10 @@
           <button class="nav-item" type="button" data-view="data">
             <span class="nav-icon">04</span>
             <span>Data quality</span>
+          </button>
+          <button class="nav-item" type="button" data-view="explorer">
+            <span class="nav-icon">05</span>
+            <span>Workbook explorer</span>
           </button>
         </nav>
 
@@ -207,8 +211,8 @@
               <article class="panel price-chart-panel">
                 <div class="panel-head">
                   <div>
-                    <span class="panel-kicker">PUBLISHED HISTORY</span>
-                    <h3>Closing price across available runs</h3>
+                    <span class="panel-kicker">OHLCV HISTORY</span>
+                    <h3>Daily price and volume</h3>
                   </div>
                   <span id="historyMeta" class="panel-note"></span>
                 </div>
@@ -260,6 +264,17 @@
             <article class="panel">
               <div class="panel-head">
                 <div>
+                  <span class="panel-kicker">COMPLETE WORKBOOK RECORD</span>
+                  <h3>All available fields by calculation group</h3>
+                </div>
+                <span class="panel-note">Source workbook columns</span>
+              </div>
+              <div id="analysisSections" class="analysis-sections"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
                   <span class="panel-kicker">NEWS & EVENTS</span>
                   <h3>Workbook intelligence</h3>
                 </div>
@@ -294,9 +309,39 @@
             </div>
           </article>
         </section>
+
+        <section id="explorerView" class="view" data-view-panel="explorer">
+          <div class="view-intro">
+            <div>
+              <span class="section-kicker">WORKBOOK EXPLORER</span>
+              <h2>Inspect every published sheet and field.</h2>
+              <p>This view mirrors the generated workbook without inventing unsupported datasets.</p>
+            </div>
+            <div id="explorerCount" class="result-count">-</div>
+          </div>
+          <article class="panel">
+            <div class="screener-controls explorer-controls">
+              <label>
+                <span>Sheet</span>
+                <select id="explorerSheet"></select>
+              </label>
+              <label class="search-field">
+                <span>Search rows</span>
+                <input id="explorerSearch" type="search" placeholder="Ticker, field, status, value..." />
+              </label>
+            </div>
+            <div class="table-shell explorer-table-shell">
+              <table class="data-table">
+                <thead id="explorerHead"></thead>
+                <tbody id="explorerBody"></tbody>
+              </table>
+              <div id="explorerEmpty" class="empty-state" hidden>No matching workbook rows.</div>
+            </div>
+          </article>
+        </section>
       </main>
     </div>
 
-    <script src="app.js?v=20260609-rebuild"></script>
+    <script src="app.js?v=20260609-audit-v3"></script>
   </body>
 </html>

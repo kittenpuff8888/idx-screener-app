@@ -8,7 +8,11 @@ const state = {
   search: "",
   sort: "default",
   dataSearch: "",
+  explorerSearch: "",
+  explorerSheet: "",
   selectedTicker: "",
+  currentManifestEntry: null,
+  ohlcvCache: new Map(),
   technicalByTicker: new Map(),
   fundamentalByTicker: new Map(),
   newsByTicker: new Map(),
@@ -20,6 +24,7 @@ const viewTitles = {
   screener: ["SIGNAL DISCOVERY", "Signal Screener"],
   ticker: ["SECURITY RESEARCH", "Ticker Analysis"],
   data: ["RUN INTEGRITY", "Data Quality"],
+  explorer: ["SOURCE WORKBOOK", "Workbook Explorer"],
 };
 
 const screenerColumns = [
@@ -87,11 +92,18 @@ const els = {
   technicalGrid: document.querySelector("#technicalGrid"),
   fundamentalGrid: document.querySelector("#fundamentalGrid"),
   newsPanel: document.querySelector("#newsPanel"),
+  analysisSections: document.querySelector("#analysisSections"),
   qualityMetrics: document.querySelector("#qualityMetrics"),
   dataSearch: document.querySelector("#dataSearch"),
   dataCount: document.querySelector("#dataCount"),
   dataHead: document.querySelector("#dataHead"),
   dataBody: document.querySelector("#dataBody"),
+  explorerSheet: document.querySelector("#explorerSheet"),
+  explorerSearch: document.querySelector("#explorerSearch"),
+  explorerCount: document.querySelector("#explorerCount"),
+  explorerHead: document.querySelector("#explorerHead"),
+  explorerBody: document.querySelector("#explorerBody"),
+  explorerEmpty: document.querySelector("#explorerEmpty"),
 };
 
 function escapeHtml(value) {
@@ -518,10 +530,83 @@ function renderTicker() {
   renderTickerSignals(signals, technical);
   renderTechnical(technical);
   renderFundamental(fundamental);
+  renderAnalysisSections(ticker, technical, fundamental);
   renderNews(ticker, signals, technical);
 }
 
-function renderPriceChart(ticker) {
+async function renderPriceChart(ticker) {
+  const base = state.currentManifestEntry?.ohlcv;
+  if (!base) {
+    renderPublishedLineChart(ticker);
+    return;
+  }
+  try {
+    if (!state.ohlcvCache.has(ticker)) {
+      state.ohlcvCache.set(ticker, await fetchJson(`${base}/${encodeURIComponent(ticker)}.json`));
+    }
+    if (state.selectedTicker !== ticker) return;
+    const rows = (state.ohlcvCache.get(ticker)?.rows || []).slice(-120);
+    if (rows.length < 2) {
+      renderPublishedLineChart(ticker);
+      return;
+    }
+    renderCandlestickChart(ticker, rows);
+  } catch {
+    renderPublishedLineChart(ticker);
+  }
+}
+
+function renderCandlestickChart(ticker, rows) {
+  const width = 760;
+  const height = 310;
+  const pad = { top: 16, right: 58, bottom: 48, left: 12 };
+  const priceHeight = 210;
+  const lows = rows.map((row) => asNumber(row.low)).filter((value) => value !== null);
+  const highs = rows.map((row) => asNumber(row.high)).filter((value) => value !== null);
+  const volumes = rows.map((row) => asNumber(row.volume) || 0);
+  let min = Math.min(...lows);
+  let max = Math.max(...highs);
+  const spread = Math.max(1, max - min);
+  min -= spread * 0.05;
+  max += spread * 0.05;
+  const step = (width - pad.left - pad.right) / rows.length;
+  const bodyWidth = Math.max(1.2, Math.min(6, step * 0.68));
+  const x = (index) => pad.left + step * index + step / 2;
+  const y = (price) => pad.top + ((max - price) / (max - min)) * priceHeight;
+  const maxVolume = Math.max(...volumes, 1);
+  const volumeTop = pad.top + priceHeight + 17;
+  const candles = rows.map((row, index) => {
+    const open = asNumber(row.open);
+    const high = asNumber(row.high);
+    const low = asNumber(row.low);
+    const close = asNumber(row.close);
+    if ([open, high, low, close].some((value) => value === null)) return "";
+    const up = close >= open;
+    const top = Math.min(y(open), y(close));
+    const bodyHeight = Math.max(1, Math.abs(y(open) - y(close)));
+    const volumeHeight = ((asNumber(row.volume) || 0) / maxVolume) * 48;
+    return `
+      <g class="candle ${up ? "up" : "down"}">
+        <line x1="${x(index)}" y1="${y(high)}" x2="${x(index)}" y2="${y(low)}"></line>
+        <rect x="${x(index) - bodyWidth / 2}" y="${top}" width="${bodyWidth}" height="${bodyHeight}"></rect>
+        <rect class="volume-bar" x="${x(index) - bodyWidth / 2}" y="${volumeTop + 48 - volumeHeight}" width="${bodyWidth}" height="${volumeHeight}"></rect>
+        <title>${escapeHtml(row.date)} O ${formatPrice(open)} H ${formatPrice(high)} L ${formatPrice(low)} C ${formatPrice(close)}</title>
+      </g>`;
+  }).join("");
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+    const gridY = pad.top + ratio * priceHeight;
+    const label = max - ratio * (max - min);
+    return `<line class="chart-grid" x1="${pad.left}" y1="${gridY}" x2="${width - pad.right}" y2="${gridY}"></line>
+      <text class="chart-label" x="${width - pad.right + 7}" y="${gridY + 3}">${formatPrice(label)}</text>`;
+  }).join("");
+  const labels = [0, Math.floor(rows.length / 2), rows.length - 1].map((index) =>
+    `<text class="chart-label" x="${x(index)}" y="${height - 8}" text-anchor="${index === 0 ? "start" : index === rows.length - 1 ? "end" : "middle"}">${escapeHtml(rows[index].date.slice(5))}</text>`
+  ).join("");
+  els.historyMeta.textContent = `${rows.length} daily bars · latest ${rows.at(-1).date}`;
+  els.priceChart.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(ticker)} candlestick and volume chart">${grid}${candles}${labels}</svg>`;
+}
+
+function renderPublishedLineChart(ticker) {
   const points = (state.history.tickers?.[ticker] || []).filter((point) => asNumber(point.price) !== null);
   els.historyMeta.textContent = `${points.length} published market dates`;
   if (points.length < 2) {
@@ -674,6 +759,38 @@ function renderFundamental(row) {
     || detailItem("Status", "No fundamental detail available for this ticker.", true);
 }
 
+function renderAnalysisSections(ticker, technical, fundamental) {
+  const source = state.payload.tickerDetails?.[ticker] || {
+    "IDX Technical Detail": technical,
+    "IDX Fundamental Detail": fundamental,
+  };
+  const sections = [];
+  for (const [sheet, row] of Object.entries(source)) {
+    if (!row || typeof row !== "object") continue;
+    const groups = new Map();
+    for (const [rawKey, value] of Object.entries(row)) {
+      if (rawKey === "Ticker" || value === null || value === undefined || value === "") continue;
+      const normalized = cleanText(rawKey).replace(" Â· ", " · ");
+      const parts = normalized.split(" · ");
+      const group = parts.length > 1 ? parts[0] : sheet.replace("IDX ", "");
+      const label = parts.length > 1 ? parts.slice(1).join(" · ") : normalized;
+      if (!groups.has(group)) groups.set(group, []);
+      groups.get(group).push([label, value]);
+    }
+    for (const [group, fields] of groups) {
+      sections.push(`
+        <details class="analysis-group">
+          <summary><span>${escapeHtml(group)}</span><small>${escapeHtml(sheet)} · ${fields.length} fields</small></summary>
+          <div class="analysis-field-grid">
+            ${fields.map(([label, value]) => detailItem(label, value)).join("")}
+          </div>
+        </details>`);
+    }
+  }
+  els.analysisSections.innerHTML = sections.join("")
+    || `<div class="no-chart">Complete grouped fields will appear after a schema version 3 export.</div>`;
+}
+
 function safeLink(value) {
   try {
     const url = new URL(String(value));
@@ -751,6 +868,36 @@ function renderDataQuality() {
   `).join("");
 }
 
+function renderWorkbookExplorer() {
+  const sheets = state.payload.workbookSheets || {};
+  const names = Object.keys(sheets);
+  if (!names.length) {
+    els.explorerHead.innerHTML = "";
+    els.explorerBody.innerHTML = "";
+    els.explorerEmpty.hidden = false;
+    els.explorerCount.textContent = "Schema v3 required";
+    return;
+  }
+  if (!state.explorerSheet || !sheets[state.explorerSheet]) state.explorerSheet = names[0];
+  els.explorerSheet.innerHTML = names.map((name) =>
+    `<option value="${escapeHtml(name)}" ${name === state.explorerSheet ? "selected" : ""}>${escapeHtml(name)}</option>`
+  ).join("");
+  const table = sheets[state.explorerSheet] || { columns: [], rows: [] };
+  const needle = state.explorerSearch.trim().toLowerCase();
+  const rows = (table.rows || []).filter((row) =>
+    !needle || Object.values(row).some((value) => String(value ?? "").toLowerCase().includes(needle))
+  );
+  const columns = (table.columns || []).slice(0, 140);
+  const visible = rows.slice(0, 500);
+  els.explorerCount.textContent = `${visible.length}${rows.length > visible.length ? ` of ${rows.length}` : ""} rows · ${columns.length} fields`;
+  els.explorerHead.innerHTML = `<tr>${columns.map((column) => `<th>${escapeHtml(cleanText(column))}</th>`).join("")}</tr>`;
+  els.explorerBody.innerHTML = visible.map((row) => `
+    <tr ${row.Ticker ? `data-ticker="${escapeHtml(row.Ticker)}"` : ""}>
+      ${columns.map((column) => `<td>${escapeHtml(cleanText(row[column]))}</td>`).join("")}
+    </tr>`).join("");
+  els.explorerEmpty.hidden = rows.length > 0;
+}
+
 function renderAll() {
   if (!state.payload) return;
   els.sidebarDate.textContent = state.payload.date;
@@ -759,6 +906,7 @@ function renderAll() {
   renderOverview();
   renderScreener();
   renderDataQuality();
+  renderWorkbookExplorer();
   if (state.selectedTicker) renderTicker();
 }
 
@@ -767,6 +915,8 @@ async function loadDate(marketDate) {
   if (!item) return;
   loading(30);
   state.payload = await fetchJson(item.file);
+  state.currentManifestEntry = item;
+  state.ohlcvCache.clear();
   loading(72);
   rebuildIndexes();
   if (state.selectedTicker && !state.technicalByTicker.has(state.selectedTicker) && !state.signalsByTicker.has(state.selectedTicker)) {
@@ -781,7 +931,12 @@ async function init() {
   state.manifest = await fetchJson("data/manifest.json");
   if (!state.manifest.dates?.length) throw new Error("No screener datasets have been published.");
   loading(25);
-  els.dateSelect.innerHTML = state.manifest.dates
+  const visibleDates = state.manifest.dates.filter((entry) => {
+    if (entry.isTradingDate === false) return false;
+    const day = new Date(`${entry.date}T00:00:00Z`).getUTCDay();
+    return day !== 0 && day !== 6;
+  });
+  els.dateSelect.innerHTML = visibleDates
     .map((entry) => `<option value="${escapeHtml(entry.date)}">${escapeHtml(entry.date)}</option>`)
     .join("");
   els.dateSelect.value = state.manifest.latest;
@@ -794,6 +949,7 @@ async function init() {
     historyPromise,
   ]);
   state.payload = payload;
+  state.currentManifestEntry = state.manifest.dates.find((entry) => entry.date === state.manifest.latest) || null;
   state.history = historyData;
   loading(75);
   rebuildIndexes();
@@ -854,6 +1010,16 @@ els.sortSelect.addEventListener("change", (event) => {
 els.dataSearch.addEventListener("input", (event) => {
   state.dataSearch = event.target.value;
   renderDataQuality();
+});
+
+els.explorerSheet.addEventListener("change", (event) => {
+  state.explorerSheet = event.target.value;
+  renderWorkbookExplorer();
+});
+
+els.explorerSearch.addEventListener("input", (event) => {
+  state.explorerSearch = event.target.value;
+  renderWorkbookExplorer();
 });
 
 els.tickerCommand.addEventListener("keydown", (event) => {

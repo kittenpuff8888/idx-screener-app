@@ -6,16 +6,20 @@ Static GitHub Pages website for the IDX VWAP screener.
 
 ```text
 rebuild_backend/
-  IDX_Screener.py          # Website automation copy; calculations remain from the source script
+  IDX_Screener.py          # Audited website backend copy; original OneDrive file remains untouched
 scripts/
-  sync_local_source.py     # Copies the OneDrive source without overwriting it
+  sync_local_source.py     # Stages a new OneDrive source for review and merge
   run_backfill.py          # Runs one or more market dates
-  export_latest.py         # Converts workbook sheets into the versioned web data contract
+  export_latest.py         # Exports schema v3, all workbook sheets, QA, and ticker details
+  add_qa_audit.py          # Adds QA traceability to an existing workbook copy
+  fetch_site_ohlcv.py      # Seeds static daily OHLCV files when needed
+tests/
+  test_calculation_logic.py
 docs/
   index.html               # Dashboard structure
   styles.css               # Responsive Flow-inspired interface
-  app.js                   # Overview, screener, ticker analysis, and data-quality interactions
-  data/                    # Published JSON snapshots plus lightweight ticker history
+  app.js                   # Overview, screener, candlesticks, QA, and workbook explorer
+  data/                    # Published snapshots, QA reports, OHLCV, and field catalog
   downloads/               # Downloadable source workbooks
 Raw/                       # Existing screener inputs
 Output/                    # Generated workbooks
@@ -25,8 +29,8 @@ Cache/                     # Existing runtime cache
 ## How It Works
 
 - `rebuild_backend/IDX_Screener.py` is the website's automation copy of the existing screener and creates an Excel workbook in `Output/`.
-- `scripts/export_latest.py` converts the latest workbook into `docs/data/YYYY-MM-DD.json`.
-- `docs/index.html` reads `docs/data/manifest.json` and provides the market overview, screener, and ticker research workspace.
+- `scripts/export_latest.py` converts every workbook sheet into the schema v3 web contract.
+- `docs/index.html` provides market overview, screener, ticker research, data QA, and Workbook Explorer.
 - `.github/workflows/idx-screener-pages.yml` runs every weekday at 17:00 WIB and deploys `docs/` to GitHub Pages.
 
 The interface uses only workbook fields produced by the screener. It does not add broker-flow, Wyckoff, transaction-flow, or other unsupported analysis.
@@ -47,16 +51,23 @@ When you change this file:
 
 `C:\Users\azhar\OneDrive\Documents\VWAP Screener\IDX_Screener.py`
 
-run:
+stage it first:
 
 ```powershell
 python scripts/sync_local_source.py
-git add rebuild_backend/IDX_Screener.py Raw
+```
+
+The staged file is written to `rebuild_backend/incoming/IDX_Screener.py`. Compare and merge it into the audited backend copy, then run:
+
+```powershell
+python -m unittest tests/test_calculation_logic.py -v
+python scripts/run_daily.py
+git add rebuild_backend scripts tests docs Raw
 git commit -m "Sync latest IDX screener script"
 git push
 ```
 
-The sync copies the source into `rebuild_backend/` and makes only two integration adjustments: `MARKET_DATE` can come from the automation environment, and the existing `Raw/`, `Cache/`, and `Output/` folders remain rooted at the project level. It never edits the OneDrive source or changes screener calculations. GitHub Actions cannot read your OneDrive folder directly, so the updated copy must be pushed to GitHub.
+This staging workflow prevents a new local script from silently removing the audited TradingView-alignment and website integration fixes. The OneDrive source is never edited.
 
 ## Backfill And Daily Data
 

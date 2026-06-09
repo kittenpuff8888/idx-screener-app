@@ -3,11 +3,14 @@
   "dates": [
     {
       "date": "2026-06-09",
-      "runTime": "2026-06-08 19:11:33",
-      "rows": 628,
-      "tickers": 517,
+      "runTime": "2026-06-09 22:53:51.100000",
+      "rows": 29,
+      "tickers": 14,
       "file": "data/2026-06-09.json",
-      "workbook": "downloads/2026-06-09.xlsx"
+      "workbook": "downloads/2026-06-09.xlsx",
+      "qa": "data/qa/2026-06-09.qa.json",
+      "ohlcv": "data/ohlcv/2026-06-09",
+      "isTradingDate": true
     },
     {
       "date": "2026-06-05",
