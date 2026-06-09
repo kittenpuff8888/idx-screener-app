@@ -2,12 +2,34 @@
 
 Static GitHub Pages website for the IDX VWAP screener.
 
+## Project Structure
+
+```text
+rebuild_backend/
+  IDX_Screener.py          # Website automation copy; calculations remain from the source script
+scripts/
+  sync_local_source.py     # Copies the OneDrive source without overwriting it
+  run_backfill.py          # Runs one or more market dates
+  export_latest.py         # Converts workbook sheets into the versioned web data contract
+docs/
+  index.html               # Dashboard structure
+  styles.css               # Responsive Flow-inspired interface
+  app.js                   # Overview, screener, ticker analysis, and data-quality interactions
+  data/                    # Published JSON snapshots plus lightweight ticker history
+  downloads/               # Downloadable source workbooks
+Raw/                       # Existing screener inputs
+Output/                    # Generated workbooks
+Cache/                     # Existing runtime cache
+```
+
 ## How It Works
 
-- `IDX_Screener.py` runs the existing screener and creates an Excel workbook in `Output/`.
+- `rebuild_backend/IDX_Screener.py` is the website's automation copy of the existing screener and creates an Excel workbook in `Output/`.
 - `scripts/export_latest.py` converts the latest workbook into `docs/data/YYYY-MM-DD.json`.
-- `docs/index.html` reads `docs/data/manifest.json` and lets you choose which market date to display.
+- `docs/index.html` reads `docs/data/manifest.json` and provides the market overview, screener, and ticker research workspace.
 - `.github/workflows/idx-screener-pages.yml` runs every weekday at 17:00 WIB and deploys `docs/` to GitHub Pages.
+
+The interface uses only workbook fields produced by the screener. It does not add broker-flow, Wyckoff, transaction-flow, or other unsupported analysis.
 
 ## GitHub Setup
 
@@ -29,12 +51,12 @@ run:
 
 ```powershell
 python scripts/sync_local_source.py
-git add IDX_Screener.py Raw
+git add rebuild_backend/IDX_Screener.py Raw
 git commit -m "Sync latest IDX screener script"
 git push
 ```
 
-The sync keeps the website copy automation-friendly by preserving the `MARKET_DATE` environment setting. GitHub Actions cannot read your OneDrive folder directly, so the updated copy must be pushed to GitHub.
+The sync copies the source into `rebuild_backend/` and makes only two integration adjustments: `MARKET_DATE` can come from the automation environment, and the existing `Raw/`, `Cache/`, and `Output/` folders remain rooted at the project level. It never edits the OneDrive source or changes screener calculations. GitHub Actions cannot read your OneDrive folder directly, so the updated copy must be pushed to GitHub.
 
 ## Backfill And Daily Data
 

@@ -8,9 +8,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL_VWAP_DIR = Path.home() / "OneDrive" / "Documents" / "VWAP Screener"
 SCRIPT_SOURCE = LOCAL_VWAP_DIR / "IDX_Screener.py"
+SCRIPT_TARGET = ROOT / "rebuild_backend" / "IDX_Screener.py"
 RAW_SOURCE_DIR = LOCAL_VWAP_DIR / "Raw"
 
 MARKET_DATE_LINE = 'MARKET_DATE = os.environ.get("MARKET_DATE", datetime.now().strftime("%Y-%m-%d"))'
+PROJECT_BASE_LINE = "BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))"
 
 
 def patch_market_date(script_path: Path) -> None:
@@ -36,16 +38,23 @@ def patch_market_date(script_path: Path) -> None:
         count=1,
         flags=re.MULTILINE,
     )
+    text = re.sub(
+        r"^BASE_DIR\s*=\s*os\.path\.dirname\(os\.path\.abspath\(__file__\)\)\s*$",
+        PROJECT_BASE_LINE,
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
     script_path.write_text(text, encoding="utf-8")
 
 
 def sync_script() -> None:
     if not SCRIPT_SOURCE.exists():
         raise FileNotFoundError(f"Cannot find {SCRIPT_SOURCE}")
-    target = ROOT / "IDX_Screener.py"
-    shutil.copy2(SCRIPT_SOURCE, target)
-    patch_market_date(target)
-    print(f"Synced script: {SCRIPT_SOURCE} -> {target}")
+    SCRIPT_TARGET.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(SCRIPT_SOURCE, SCRIPT_TARGET)
+    patch_market_date(SCRIPT_TARGET)
+    print(f"Synced script: {SCRIPT_SOURCE} -> {SCRIPT_TARGET}")
 
 
 def sync_raw() -> None:

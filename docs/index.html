@@ -3,92 +3,300 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>IDX Screener</title>
-    <link rel="stylesheet" href="styles.css?v=20260527-dashboard" />
+    <meta name="theme-color" content="#07110f" />
+    <meta
+      name="description"
+      content="IDX stock screener dashboard powered by the existing VWAP Screener logic."
+    />
+    <title>IDX Flow Screener</title>
+    <link rel="stylesheet" href="styles.css?v=20260609-rebuild" />
   </head>
   <body>
-    <div class="app">
-      <aside class="sidebar" aria-label="Dashboard navigation">
-        <div class="brand">
-          <span class="brandmark">ID</span>
-          <div>
+    <div id="loadBar" class="load-bar"></div>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <a class="brand" href="#overview" aria-label="IDX Flow home">
+          <span class="brand-mark">IX</span>
+          <span>
             <strong>IDX Flow</strong>
-            <small>VWAP Screener</small>
-          </div>
-        </div>
-        <nav class="nav" role="tablist" aria-label="Dataset">
-          <button class="tab active" data-tab="dashboard" type="button">Dashboard</button>
-          <button class="tab" data-tab="screener" type="button">Screener Table</button>
-          <button class="tab" data-tab="technical" type="button">Technical Detail</button>
-          <button class="tab" data-tab="fundamental" type="button">Fundamental Detail</button>
-          <button class="tab" data-tab="processing" type="button">Processing</button>
+            <small>Research workstation</small>
+          </span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Primary navigation">
+          <button class="nav-item active" type="button" data-view="overview">
+            <span class="nav-icon">01</span>
+            <span>Market overview</span>
+          </button>
+          <button class="nav-item" type="button" data-view="screener">
+            <span class="nav-icon">02</span>
+            <span>Signal screener</span>
+          </button>
+          <button class="nav-item" type="button" data-view="ticker">
+            <span class="nav-icon">03</span>
+            <span>Ticker analysis</span>
+          </button>
+          <button class="nav-item" type="button" data-view="data">
+            <span class="nav-icon">04</span>
+            <span>Data quality</span>
+          </button>
         </nav>
+
+        <div class="sidebar-foot">
+          <div class="system-state">
+            <span class="status-dot"></span>
+            <div>
+              <strong>Source connected</strong>
+              <small id="sidebarDate">Loading dataset</small>
+            </div>
+          </div>
+          <p>Built only from the VWAP Screener workbook. No broker-flow or unsupported datasets.</p>
+        </div>
       </aside>
 
-      <main class="shell">
+      <main class="workspace">
         <header class="topbar">
-          <div>
-            <h1>Dashboard</h1>
-            <p id="runMeta">Loading market data...</p>
+          <button id="menuButton" class="icon-button menu-button" type="button" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="topbar-title">
+            <span id="eyebrow">IDX RESEARCH</span>
+            <h1 id="pageTitle">Market Overview</h1>
           </div>
-          <div class="actions">
-            <label>
-              <span>Date</span>
-              <select id="dateSelect"></select>
+          <div class="topbar-actions">
+            <label class="ticker-command">
+              <span class="sr-only">Open ticker</span>
+              <span class="command-prefix">IDX</span>
+              <input id="tickerCommand" list="tickerList" placeholder="Search ticker" autocomplete="off" />
+              <datalist id="tickerList"></datalist>
             </label>
-            <a id="downloadLink" class="button" href="#" aria-disabled="true">Workbook</a>
+            <label class="date-control">
+              <span>Market date</span>
+              <select id="dateSelect" aria-label="Market date"></select>
+            </label>
+            <a id="downloadLink" class="download-button" href="#" aria-disabled="true">XLSX</a>
           </div>
         </header>
 
-        <section class="metrics" aria-label="Run summary">
-          <div><span>Total Tickers</span><strong id="metricTotal">-</strong></div>
-          <div><span>Full Data</span><strong id="metricOk">-</strong></div>
-          <div><span>Partial</span><strong id="metricPartial">-</strong></div>
-          <div><span>No Data</span><strong id="metricNoData">-</strong></div>
-        </section>
+        <div id="errorBanner" class="error-banner" hidden></div>
 
-        <section class="panel">
-          <div class="toolbar" aria-label="Table controls">
+        <section id="overviewView" class="view active" data-view-panel="overview">
+          <div class="pulse-header">
             <div>
-              <h2 id="viewTitle">Screener</h2>
-              <p id="viewMeta">-</p>
+              <span class="section-kicker">DAILY MARKET PULSE</span>
+              <h2>Signals before stories.</h2>
+              <p id="runMeta">Loading the latest published screener run...</p>
             </div>
-            <input id="searchInput" type="search" placeholder="Search ticker, sector, setup..." />
+            <div class="pulse-badge">
+              <span>Coverage</span>
+              <strong id="coverageBadge">-</strong>
+              <small>IDX tickers scanned</small>
+            </div>
           </div>
 
-          <section id="filterBar" class="filterbar" aria-label="Screener filters"></section>
+          <section id="metricGrid" class="metric-grid" aria-label="Market summary"></section>
 
-          <section id="dashboardView" class="dashboard-view" aria-label="Dashboard insight cards">
-            <div id="signalCards" class="signal-cards"></div>
-            <div class="dashboard-grid">
-              <section class="insight-panel">
-                <div class="panel-heading">
-                  <h3>Top Setups</h3>
-                  <span>By upside potential</span>
+          <div class="overview-grid">
+            <article class="panel breadth-panel">
+              <div class="panel-head">
+                <div>
+                  <span class="panel-kicker">MARKET BREADTH</span>
+                  <h3>Participation</h3>
                 </div>
-                <div id="spotlightCards" class="spotlight-cards"></div>
-              </section>
-              <section class="insight-panel">
-                <div class="panel-heading">
-                  <h3>Sector Flow</h3>
-                  <span>Current signal mix</span>
+                <span id="breadthTone" class="tone-badge">-</span>
+              </div>
+              <div id="breadthChart" class="breadth-chart"></div>
+            </article>
+
+            <article class="panel signal-panel">
+              <div class="panel-head">
+                <div>
+                  <span class="panel-kicker">NATIVE SCREENERS</span>
+                  <h3>Signal map</h3>
                 </div>
-                <div id="sectorBars" class="sector-bars"></div>
-              </section>
+                <button class="text-button" type="button" data-go="screener">Open screener</button>
+              </div>
+              <div id="signalMap" class="signal-map"></div>
+            </article>
+          </div>
+
+          <article class="panel">
+            <div class="panel-head">
+              <div>
+                <span class="panel-kicker">SECTOR TAPE</span>
+                <h3>Average daily change and signal coverage</h3>
+              </div>
+              <span class="panel-note">Select a sector to filter the screener</span>
             </div>
-          </section>
+            <div id="sectorHeatmap" class="sector-heatmap"></div>
+          </article>
 
-          <section class="tablewrap" aria-live="polite">
-            <table>
-              <thead id="tableHead"></thead>
-              <tbody id="tableBody"></tbody>
-            </table>
-            <div id="emptyState" class="empty" hidden>No rows for this view.</div>
-          </section>
+          <div class="overview-grid movers-grid">
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="panel-kicker">LEADERS</span>
+                  <h3>Top gainers</h3>
+                </div>
+              </div>
+              <div id="gainersList" class="mover-list"></div>
+            </article>
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="panel-kicker">LAGGARDS</span>
+                  <h3>Top decliners</h3>
+                </div>
+              </div>
+              <div id="declinersList" class="mover-list"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="screenerView" class="view" data-view-panel="screener">
+          <div class="view-intro">
+            <div>
+              <span class="section-kicker">SIGNAL DISCOVERY</span>
+              <h2>Screen the output, not a recreated formula.</h2>
+              <p>Every row below comes directly from a filter in your Python-generated workbook.</p>
+            </div>
+            <div id="screenerCount" class="result-count">-</div>
+          </div>
+
+          <article class="panel screener-panel">
+            <div class="screener-controls">
+              <label class="search-field">
+                <span>Search</span>
+                <input id="screenerSearch" type="search" placeholder="Ticker, sector, setup, explanation..." />
+              </label>
+              <label>
+                <span>Sector</span>
+                <select id="sectorSelect"><option value="ALL">All sectors</option></select>
+              </label>
+              <label>
+                <span>Sort by</span>
+                <select id="sortSelect">
+                  <option value="default">Source order</option>
+                  <option value="change-desc">Change: high to low</option>
+                  <option value="rvol-desc">RVOL: high to low</option>
+                  <option value="upside-desc">Target upside: high to low</option>
+                  <option value="rs-desc">RS rating: high to low</option>
+                </select>
+              </label>
+            </div>
+            <div id="strategyFilters" class="strategy-filters"></div>
+            <div class="table-shell">
+              <table class="data-table screener-table">
+                <thead id="screenerHead"></thead>
+                <tbody id="screenerBody"></tbody>
+              </table>
+              <div id="screenerEmpty" class="empty-state" hidden>No signals match these filters.</div>
+            </div>
+          </article>
+        </section>
+
+        <section id="tickerView" class="view" data-view-panel="ticker">
+          <div id="tickerEmpty" class="ticker-empty">
+            <span class="section-kicker">TICKER ANALYSIS</span>
+            <h2>Choose a ticker from the screener or search bar.</h2>
+            <p>The analysis workspace joins technical, fundamental, news, and signal output by ticker.</p>
+          </div>
+          <div id="tickerContent" hidden>
+            <div id="tickerHero" class="ticker-hero"></div>
+            <div class="ticker-grid">
+              <article class="panel price-chart-panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">PUBLISHED HISTORY</span>
+                    <h3>Closing price across available runs</h3>
+                  </div>
+                  <span id="historyMeta" class="panel-note"></span>
+                </div>
+                <div id="priceChart" class="price-chart"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">TRADE PLAN</span>
+                    <h3>Level map</h3>
+                  </div>
+                  <span class="panel-note">Workbook values</span>
+                </div>
+                <div id="tradePlan" class="trade-plan"></div>
+              </article>
+            </div>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="panel-kicker">WHY IT MATCHED</span>
+                  <h3>Signal explanation</h3>
+                </div>
+              </div>
+              <div id="tickerSignals" class="ticker-signals"></div>
+            </article>
+
+            <div class="ticker-grid detail-grid">
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">TECHNICAL SNAPSHOT</span>
+                    <h3>Structure and momentum</h3>
+                  </div>
+                </div>
+                <div id="technicalGrid" class="detail-list"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head">
+                  <div>
+                    <span class="panel-kicker">FUNDAMENTAL SNAPSHOT</span>
+                    <h3>Available company metrics</h3>
+                  </div>
+                </div>
+                <div id="fundamentalGrid" class="detail-list"></div>
+              </article>
+            </div>
+
+            <article class="panel">
+              <div class="panel-head">
+                <div>
+                  <span class="panel-kicker">NEWS & EVENTS</span>
+                  <h3>Workbook intelligence</h3>
+                </div>
+              </div>
+              <div id="newsPanel" class="news-panel"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="dataView" class="view" data-view-panel="data">
+          <div class="view-intro">
+            <div>
+              <span class="section-kicker">RUN INTEGRITY</span>
+              <h2>Know what made it into the dataset.</h2>
+              <p>Processing status is exported from the same workbook, ticker by ticker.</p>
+            </div>
+          </div>
+          <section id="qualityMetrics" class="metric-grid quality-grid"></section>
+          <article class="panel">
+            <div class="screener-controls data-controls">
+              <label class="search-field">
+                <span>Find ticker or reason</span>
+                <input id="dataSearch" type="search" placeholder="Search processing results..." />
+              </label>
+              <span id="dataCount" class="panel-note"></span>
+            </div>
+            <div class="table-shell quality-table-shell">
+              <table class="data-table">
+                <thead id="dataHead"></thead>
+                <tbody id="dataBody"></tbody>
+              </table>
+            </div>
+          </article>
         </section>
       </main>
     </div>
 
-    <script src="app.js?v=20260527-dashboard"></script>
+    <script src="app.js?v=20260609-rebuild"></script>
   </body>
 </html>

@@ -5,13 +5,15 @@
       "date": "2026-06-09",
       "runTime": "2026-06-08 19:11:33",
       "rows": 628,
+      "tickers": 517,
       "file": "data/2026-06-09.json",
       "workbook": "downloads/2026-06-09.xlsx"
     },
     {
       "date": "2026-06-05",
-      "runTime": "2026-06-05 17:59:40",
-      "rows": 766,
+      "runTime": "2026-06-06 09:57:37.005000",
+      "rows": 15,
+      "tickers": 10,
       "file": "data/2026-06-05.json",
       "workbook": "downloads/2026-06-05.xlsx"
     },
@@ -19,6 +21,7 @@
       "date": "2026-06-04",
       "runTime": "2026-06-03 22:03:28",
       "rows": 764,
+      "tickers": 586,
       "file": "data/2026-06-04.json",
       "workbook": "downloads/2026-06-04.xlsx"
     },
@@ -26,6 +29,7 @@
       "date": "2026-06-03",
       "runTime": "2026-06-02 21:06:33",
       "rows": 896,
+      "tickers": 636,
       "file": "data/2026-06-03.json",
       "workbook": "downloads/2026-06-03.xlsx"
     },
@@ -33,6 +37,7 @@
       "date": "2026-06-02",
       "runTime": "2026-06-01 22:36:52",
       "rows": 931,
+      "tickers": 633,
       "file": "data/2026-06-02.json",
       "workbook": "downloads/2026-06-02.xlsx"
     },
@@ -40,6 +45,7 @@
       "date": "2026-05-29",
       "runTime": "2026-05-29 20:03:24",
       "rows": 932,
+      "tickers": 631,
       "file": "data/2026-05-29.json",
       "workbook": "downloads/2026-05-29.xlsx"
     },
@@ -47,6 +53,7 @@
       "date": "2026-05-28",
       "runTime": "2026-05-27 19:03:27",
       "rows": 860,
+      "tickers": 631,
       "file": "data/2026-05-28.json",
       "workbook": "downloads/2026-05-28.xlsx"
     },
@@ -54,6 +61,7 @@
       "date": "2026-05-27",
       "runTime": "2026-05-27 16:08:23",
       "rows": 860,
+      "tickers": 631,
       "file": "data/2026-05-27.json",
       "workbook": "downloads/2026-05-27.xlsx"
     },
@@ -61,6 +69,7 @@
       "date": "2026-05-26",
       "runTime": "2026-05-27 15:44:26",
       "rows": 860,
+      "tickers": 631,
       "file": "data/2026-05-26.json",
       "workbook": "downloads/2026-05-26.xlsx"
     },
@@ -68,6 +77,7 @@
       "date": "2026-05-25",
       "runTime": "2026-05-27 15:19:47",
       "rows": 963,
+      "tickers": 661,
       "file": "data/2026-05-25.json",
       "workbook": "downloads/2026-05-25.xlsx"
     },
@@ -75,6 +85,7 @@
       "date": "2026-05-24",
       "runTime": "2026-05-24 12:37:15",
       "rows": 934,
+      "tickers": 650,
       "file": "data/2026-05-24.json",
       "workbook": "downloads/2026-05-24.xlsx"
     },
@@ -82,6 +93,7 @@
       "date": "2026-05-22",
       "runTime": "2026-05-27 14:53:27",
       "rows": 932,
+      "tickers": 650,
       "file": "data/2026-05-22.json",
       "workbook": "downloads/2026-05-22.xlsx"
     },
@@ -89,6 +101,7 @@
       "date": "2026-05-21",
       "runTime": "2026-05-27 14:27:06",
       "rows": 726,
+      "tickers": 589,
       "file": "data/2026-05-21.json",
       "workbook": "downloads/2026-05-21.xlsx"
     },
@@ -96,6 +109,7 @@
       "date": "2026-05-20",
       "runTime": "2026-05-27 13:59:59",
       "rows": 887,
+      "tickers": 636,
       "file": "data/2026-05-20.json",
       "workbook": "downloads/2026-05-20.xlsx"
     },
@@ -103,6 +117,7 @@
       "date": "2026-05-19",
       "runTime": "2026-05-27 13:32:24",
       "rows": 835,
+      "tickers": 609,
       "file": "data/2026-05-19.json",
       "workbook": "downloads/2026-05-19.xlsx"
     },
@@ -110,8 +125,10 @@
       "date": "2026-05-13",
       "runTime": "2026-05-24 08:57:36",
       "rows": 51,
+      "tickers": 40,
       "file": "data/2026-05-13.json",
       "workbook": "downloads/2026-05-13.xlsx"
     }
-  ]
+  ],
+  "history": "data/history.json"
 }
