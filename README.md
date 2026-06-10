@@ -30,8 +30,9 @@ Cache/                     # Existing runtime cache
 
 - `rebuild_backend/IDX_Screener.py` is the website's automation copy of the existing screener and creates an Excel workbook in `Output/`.
 - `scripts/export_latest.py` converts every workbook sheet into the schema v3 web contract.
-- `docs/index.html` provides market overview, screener, ticker research, data QA, and Workbook Explorer.
-- `.github/workflows/idx-screener-pages.yml` runs after the market cutoff and deploys `docs/` to GitHub Pages.
+- `docs/index.html` provides market overview, screener, and TradingView-style ticker research.
+- `.github/workflows/idx-screener-pages.yml` runs after the market cutoff and publishes generated data to the `main` branch.
+- GitHub Pages serves the committed `docs/` directory directly from `main`.
 
 The interface uses only workbook fields produced by the screener. It does not add broker-flow, Wyckoff, transaction-flow, or other unsupported analysis.
 
@@ -40,8 +41,11 @@ The interface uses only workbook fields produced by the screener. It does not ad
 1. Create a new GitHub repository.
 2. Push these files to the `main` branch.
 3. Open the repository on GitHub, then go to `Settings` -> `Pages`.
-4. Set `Source` to `GitHub Actions`.
+4. Set `Source` to `Deploy from a branch`, branch `main`, folder `/docs`.
 5. Open the `Actions` tab and run `IDX Screener Pages` manually once.
+
+Scheduled data commits use the repository-scoped `IDX_PAGES_DEPLOY_KEY` Actions
+secret. Its matching public key must be registered as a write-enabled deploy key.
 
 The scheduled workflow tries at `10:00`, `12:00`, and `14:00 UTC`, which is
 `17:00`, `19:00`, and `21:00 WIB`. Retry runs skip a market date once it is

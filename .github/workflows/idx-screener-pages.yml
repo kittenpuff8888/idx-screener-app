@@ -20,9 +20,7 @@ on:
     - cron: "0 10,12,14 * * 1-5"
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: pages
@@ -31,9 +29,6 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Checkout
@@ -89,24 +84,27 @@ jobs:
         if: steps.screener-args.outputs.run == 'true'
         run: python scripts/run_backfill.py ${{ steps.screener-args.outputs.args }}
 
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: docs
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
       - name: Commit generated data
         if: steps.screener-args.outputs.run == 'true'
         shell: bash
+        env:
+          DEPLOY_KEY: ${{ secrets.IDX_PAGES_DEPLOY_KEY }}
         run: |
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "IDX_PAGES_DEPLOY_KEY is not configured"
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/data docs/downloads
-          git diff --cached --quiet || git commit -m "Update IDX screener data"
-          git push
+          if git diff --cached --quiet; then
+            echo "No generated data changes to publish"
+            exit 0
+          fi
+          git commit -m "Update IDX screener data"
+          git remote set-url origin "git@github.com:${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:main
