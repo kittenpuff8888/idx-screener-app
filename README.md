@@ -31,7 +31,7 @@ Cache/                     # Existing runtime cache
 - `rebuild_backend/IDX_Screener.py` is the website's automation copy of the existing screener and creates an Excel workbook in `Output/`.
 - `scripts/export_latest.py` converts every workbook sheet into the schema v3 web contract.
 - `docs/index.html` provides market overview, screener, ticker research, data QA, and Workbook Explorer.
-- `.github/workflows/idx-screener-pages.yml` runs every weekday at 17:00 WIB and deploys `docs/` to GitHub Pages.
+- `.github/workflows/idx-screener-pages.yml` runs after the market cutoff and deploys `docs/` to GitHub Pages.
 
 The interface uses only workbook fields produced by the screener. It does not add broker-flow, Wyckoff, transaction-flow, or other unsupported analysis.
 
@@ -43,7 +43,9 @@ The interface uses only workbook fields produced by the screener. It does not ad
 4. Set `Source` to `GitHub Actions`.
 5. Open the `Actions` tab and run `IDX Screener Pages` manually once.
 
-The scheduled run uses `10:00 UTC`, which is `17:00 WIB`.
+The scheduled workflow tries at `10:00`, `12:00`, and `14:00 UTC`, which is
+`17:00`, `19:00`, and `21:00 WIB`. Retry runs skip a market date once it is
+already present in the published manifest.
 
 ## Updating From Your Local VWAP Screener Folder
 
@@ -71,7 +73,8 @@ This staging workflow prevents a new local script from silently removing the aud
 
 ## Backfill And Daily Data
 
-- The scheduled workflow runs one market date each weekday, using the run date in WIB.
+- The scheduled workflow runs one completed market date each weekday, using
+  the 17:00 WIB publication cutoff and guarded retry windows.
 - Manual `Run workflow` can backfill the last 7 market weekdays by leaving `market_date` empty.
 - To run only one date manually, fill `market_date` with `YYYY-MM-DD`.
 - The sync script forces `BACKTEST_MODE = False` and `USE_CUSTOM_TICKERS_ONLY = False`, so the GitHub run uses the full KSEI ticker universe.

@@ -98,12 +98,22 @@ const els = {
   dataCount: document.querySelector("#dataCount"),
   dataHead: document.querySelector("#dataHead"),
   dataBody: document.querySelector("#dataBody"),
+  dataEmpty: document.querySelector("#dataEmpty"),
   explorerSheet: document.querySelector("#explorerSheet"),
   explorerSearch: document.querySelector("#explorerSearch"),
   explorerCount: document.querySelector("#explorerCount"),
   explorerHead: document.querySelector("#explorerHead"),
   explorerBody: document.querySelector("#explorerBody"),
   explorerEmpty: document.querySelector("#explorerEmpty"),
+  themeToggle: document.querySelector("#themeToggle"),
+  datasetState: document.querySelector("#datasetState"),
+  datasetTitle: document.querySelector("#datasetTitle"),
+  datasetMeta: document.querySelector("#datasetMeta"),
+  datasetTickers: document.querySelector("#datasetTickers"),
+  datasetSignals: document.querySelector("#datasetSignals"),
+  datasetPublished: document.querySelector("#datasetPublished"),
+  refreshData: document.querySelector("#refreshData"),
+  resetFilters: document.querySelector("#resetFilters"),
 };
 
 function escapeHtml(value) {
@@ -178,6 +188,7 @@ function formatPrice(value) {
 }
 
 function loading(progress) {
+  document.body.classList.toggle("app-loading", progress < 100);
   els.loadBar.style.opacity = "1";
   els.loadBar.style.width = `${progress}%`;
   if (progress >= 100) {
@@ -186,6 +197,26 @@ function loading(progress) {
       els.loadBar.style.width = "0";
     }, 260);
   }
+}
+
+function applyTheme(theme) {
+  const normalized = theme === "light" ? "light" : "dark";
+  document.documentElement.dataset.theme = normalized;
+  localStorage.setItem("idx-flow-theme", normalized);
+  const nextTheme = normalized === "dark" ? "light" : "dark";
+  els.themeToggle?.setAttribute("aria-label", `Switch to ${nextTheme} theme`);
+  const icon = els.themeToggle?.querySelector(".theme-icon");
+  if (icon) icon.textContent = normalized === "dark" ? "SUN" : "MOON";
+  document.querySelector('meta[name="theme-color"]')?.setAttribute(
+    "content",
+    normalized === "dark" ? "#081426" : "#f3f7fc",
+  );
+}
+
+function initTheme() {
+  const saved = localStorage.getItem("idx-flow-theme");
+  const preferred = window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  applyTheme(saved || preferred);
 }
 
 async function fetchJson(path) {
@@ -326,6 +357,27 @@ function renderOverview() {
   renderMovers(els.declinersList, overview.topDecliners || []);
 }
 
+function renderDataStatus() {
+  const summary = state.payload.summary || {};
+  const workbook = String(state.payload.workbook || state.currentManifestEntry?.workbook || "")
+    .split("/")
+    .pop() || "Workbook unavailable";
+  const total = Number(summary.totalScanned ?? state.payload.processing?.length ?? 0);
+  const signalRows = Number(summary.signalRows ?? state.payload.screener?.length ?? 0);
+  const partial = Number(summary.partial || 0);
+  const noData = Number(summary.noData || 0);
+  const stateLabel = noData > 0 ? "Partially loaded" : partial > 0 ? "Loaded with warnings" : "Loaded";
+  const stateTone = noData > 0 ? "negative" : partial > 0 ? "warning" : "positive";
+
+  els.datasetState.className = `status-badge ${stateTone}`;
+  els.datasetState.textContent = stateLabel;
+  els.datasetTitle.textContent = workbook;
+  els.datasetMeta.textContent = `Market date ${state.payload.date} · ${formatNumber(summary.ok || 0, 0)} complete · ${formatNumber(partial, 0)} partial · ${formatNumber(noData, 0)} unavailable`;
+  els.datasetTickers.textContent = formatNumber(total, 0);
+  els.datasetSignals.textContent = formatNumber(signalRows, 0);
+  els.datasetPublished.textContent = cleanText(state.payload.runTime).replace(/\.\d+$/, "");
+}
+
 function renderBreadth(breadth) {
   const advances = Number(breadth.advances || 0);
   const declines = Number(breadth.declines || 0);
@@ -347,7 +399,7 @@ function renderBreadth(breadth) {
     <div class="breadth-legend">
       <div class="legend-row" style="--legend:var(--green)"><i></i><span>Advancing</span><strong>${advances}</strong></div>
       <div class="legend-row" style="--legend:var(--red)"><i></i><span>Declining</span><strong>${declines}</strong></div>
-      <div class="legend-row" style="--legend:#52635d"><i></i><span>Unchanged</span><strong>${unchanged}</strong></div>
+      <div class="legend-row" style="--legend:var(--faint)"><i></i><span>Unchanged</span><strong>${unchanged}</strong></div>
       <div class="breadth-bar">
         <span style="width:${advancePct}%"></span>
         <span style="width:${Math.max(0, declineEnd - advancePct)}%"></span>
@@ -378,7 +430,7 @@ function renderSectorHeatmap(sectors) {
     const change = percentNumber(sector.avgChange) || 0;
     const strength = Math.min(0.24, 0.06 + Math.abs(change) / 35);
     const positive = change >= 0;
-    const rgb = positive ? "82,229,164" : "255,119,130";
+    const rgb = positive ? "59,130,246" : "248,113,113";
     return `
       <button
         class="sector-cell"
@@ -476,6 +528,16 @@ function renderScreener() {
   els.screenerEmpty.hidden = rows.length > 0;
 }
 
+function resetScreenerFilters() {
+  state.strategy = "ALL";
+  state.sector = "ALL";
+  state.search = "";
+  state.sort = "default";
+  els.screenerSearch.value = "";
+  els.sortSelect.value = "default";
+  renderScreener();
+}
+
 function selectTicker(ticker, updateHash = true) {
   const normalized = String(ticker || "").trim().toUpperCase().replace(".JK", "");
   if (!normalized) return;
@@ -515,7 +577,10 @@ function renderTicker() {
     <div class="ticker-identity">
       <span class="ticker-avatar">${escapeHtml(ticker.slice(0, 3))}</span>
       <div>
-        <h2>${escapeHtml(ticker)}</h2>
+        <div class="ticker-title-row">
+          <h2>${escapeHtml(ticker)}</h2>
+          <span class="status-badge info">${signals.length ? `${signals.length} signal${signals.length === 1 ? "" : "s"}` : "Technical only"}</span>
+        </div>
         <p>${escapeHtml(cleanText(company))} \u00b7 ${escapeHtml(cleanText(sector))}</p>
       </div>
     </div>
@@ -641,8 +706,8 @@ function renderPublishedLineChart(ticker) {
     <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(ticker)} published closing price history">
       <defs>
         <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stop-color="#52e5a4" stop-opacity="0.2"></stop>
-          <stop offset="100%" stop-color="#52e5a4" stop-opacity="0"></stop>
+          <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.24"></stop>
+          <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"></stop>
         </linearGradient>
       </defs>
       ${grid}
@@ -860,12 +925,13 @@ function renderDataQuality() {
       ${dataColumns.map((column) => {
         const value = row[column];
         const statusClass = column === "Status"
-          ? String(value).toLowerCase().includes("ok") ? "positive" : String(value).toLowerCase().includes("partial") ? "neutral" : "negative"
+          ? String(value).toLowerCase().includes("ok") ? "positive" : String(value).toLowerCase().includes("partial") ? "warning" : "negative"
           : "";
         return `<td class="${statusClass}">${escapeHtml(cleanText(value))}</td>`;
       }).join("")}
     </tr>
   `).join("");
+  els.dataEmpty.hidden = rows.length > 0;
 }
 
 function renderWorkbookExplorer() {
@@ -903,6 +969,7 @@ function renderAll() {
   els.sidebarDate.textContent = state.payload.date;
   els.downloadLink.href = state.payload.workbook || "#";
   els.downloadLink.setAttribute("aria-disabled", state.payload.workbook ? "false" : "true");
+  renderDataStatus();
   renderOverview();
   renderScreener();
   renderDataQuality();
@@ -963,6 +1030,22 @@ document.querySelectorAll(".nav-item").forEach((button) => {
 });
 
 document.addEventListener("click", (event) => {
+  if (event.target.closest("[data-reset-filters]")) {
+    resetScreenerFilters();
+    return;
+  }
+  if (event.target.closest("[data-clear-explorer]")) {
+    state.explorerSearch = "";
+    els.explorerSearch.value = "";
+    renderWorkbookExplorer();
+    return;
+  }
+  if (event.target.closest("[data-clear-data]")) {
+    state.dataSearch = "";
+    els.dataSearch.value = "";
+    renderDataQuality();
+    return;
+  }
   const tickerTarget = event.target.closest("[data-ticker]");
   if (tickerTarget?.dataset.ticker) {
     selectTicker(tickerTarget.dataset.ticker);
@@ -1039,8 +1122,19 @@ document.querySelector(".ticker-command").addEventListener("click", (event) => {
 });
 
 els.menuButton.addEventListener("click", () => document.body.classList.toggle("nav-open"));
+els.themeToggle.addEventListener("click", () => {
+  applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+});
+els.resetFilters.addEventListener("click", resetScreenerFilters);
+els.refreshData.addEventListener("click", () => {
+  const selectedDate = els.dateSelect.value || state.manifest?.latest;
+  els.datasetState.className = "status-badge info";
+  els.datasetState.textContent = "Loading";
+  loadDate(selectedDate).catch((error) => showError(error.message));
+});
 window.addEventListener("hashchange", routeFromHash);
 
+initTheme();
 init().catch((error) => {
   loading(100);
   showError(error.message);

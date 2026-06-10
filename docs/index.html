@@ -3,15 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#07110f" />
+    <meta name="theme-color" content="#081426" />
     <meta
       name="description"
       content="IDX stock screener dashboard powered by the existing VWAP Screener logic."
     />
     <title>IDX Flow Screener</title>
-    <link rel="stylesheet" href="styles.css?v=20260609-audit-v3" />
+    <link rel="stylesheet" href="styles.css?v=20260610-premium-v4" />
   </head>
-  <body>
+  <body class="app-loading">
     <div id="loadBar" class="load-bar"></div>
     <div class="app-shell">
       <aside class="sidebar">
@@ -78,11 +78,29 @@
               <span>Market date</span>
               <select id="dateSelect" aria-label="Market date"></select>
             </label>
+            <button id="themeToggle" class="icon-button theme-toggle" type="button" aria-label="Switch color theme">
+              <span class="theme-icon" aria-hidden="true">MOON</span>
+            </button>
             <a id="downloadLink" class="download-button" href="#" aria-disabled="true">XLSX</a>
           </div>
         </header>
 
         <div id="errorBanner" class="error-banner" hidden></div>
+        <section id="dataStatusBanner" class="data-status-banner" aria-live="polite">
+          <div class="status-summary">
+            <span id="datasetState" class="status-badge info">Loading</span>
+            <div>
+              <strong id="datasetTitle">Loading the published IDX dataset</strong>
+              <p id="datasetMeta">Checking workbook, market date, and processing status.</p>
+            </div>
+          </div>
+          <div class="status-facts">
+            <span><small>Tickers</small><strong id="datasetTickers">-</strong></span>
+            <span><small>Signals</small><strong id="datasetSignals">-</strong></span>
+            <span><small>Published</small><strong id="datasetPublished">-</strong></span>
+          </div>
+          <button id="refreshData" class="secondary-button" type="button">Reload data</button>
+        </section>
 
         <section id="overviewView" class="view active" data-view-panel="overview">
           <div class="pulse-header">
@@ -98,7 +116,12 @@
             </div>
           </div>
 
-          <section id="metricGrid" class="metric-grid" aria-label="Market summary"></section>
+          <section id="metricGrid" class="metric-grid" aria-label="Market summary">
+            <article class="metric-card skeleton-card"></article>
+            <article class="metric-card skeleton-card"></article>
+            <article class="metric-card skeleton-card"></article>
+            <article class="metric-card skeleton-card"></article>
+          </section>
 
           <div class="overview-grid">
             <article class="panel breadth-panel">
@@ -187,6 +210,7 @@
                   <option value="rs-desc">RS rating: high to low</option>
                 </select>
               </label>
+              <button id="resetFilters" class="secondary-button reset-button" type="button">Reset filters</button>
             </div>
             <div id="strategyFilters" class="strategy-filters"></div>
             <div class="table-shell">
@@ -194,7 +218,14 @@
                 <thead id="screenerHead"></thead>
                 <tbody id="screenerBody"></tbody>
               </table>
-              <div id="screenerEmpty" class="empty-state" hidden>No signals match these filters.</div>
+              <div id="screenerEmpty" class="empty-state" hidden>
+                <div class="empty-card">
+                  <span class="empty-icon" aria-hidden="true">0</span>
+                  <h3>No signals found</h3>
+                  <p>Try another sector, clear the search, or reset all active filters.</p>
+                  <button class="secondary-button" type="button" data-reset-filters>Reset filters</button>
+                </div>
+              </div>
             </div>
           </article>
         </section>
@@ -306,6 +337,14 @@
                 <thead id="dataHead"></thead>
                 <tbody id="dataBody"></tbody>
               </table>
+              <div id="dataEmpty" class="empty-state" hidden>
+                <div class="empty-card">
+                  <span class="empty-icon" aria-hidden="true">0</span>
+                  <h3>No processing rows found</h3>
+                  <p>Clear the search to inspect the complete processing report.</p>
+                  <button class="secondary-button" type="button" data-clear-data>Clear search</button>
+                </div>
+              </div>
             </div>
           </article>
         </section>
@@ -335,13 +374,20 @@
                 <thead id="explorerHead"></thead>
                 <tbody id="explorerBody"></tbody>
               </table>
-              <div id="explorerEmpty" class="empty-state" hidden>No matching workbook rows.</div>
+              <div id="explorerEmpty" class="empty-state" hidden>
+                <div class="empty-card">
+                  <span class="empty-icon" aria-hidden="true">0</span>
+                  <h3>No workbook rows found</h3>
+                  <p>Clear the search or choose another workbook sheet.</p>
+                  <button class="secondary-button" type="button" data-clear-explorer>Clear search</button>
+                </div>
+              </div>
             </div>
           </article>
         </section>
       </main>
     </div>
 
-    <script src="app.js?v=20260609-audit-v3"></script>
+    <script src="app.js?v=20260610-premium-v4"></script>
   </body>
 </html>

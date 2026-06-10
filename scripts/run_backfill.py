@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -43,6 +44,19 @@ def latest_completed_market_day(now_wib: datetime) -> datetime:
     return cursor
 
 
+def manifest_has_date(market_date: str, manifest_path: Path | None = None) -> bool:
+    path = manifest_path or ROOT / "docs" / "data" / "manifest.json"
+    if not path.exists():
+        return False
+
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+
+    return any(item.get("date") == market_date for item in manifest.get("dates", []))
+
+
 def sync_local_source_once() -> None:
     if os.environ.get("GITHUB_ACTIONS") or os.environ.get("SKIP_LOCAL_SYNC") == "1":
         return
@@ -66,6 +80,11 @@ def main() -> None:
     parser.add_argument("--date", help="Run one date, format YYYY-MM-DD")
     parser.add_argument("--end-date", help="Last date for backfill, default today in WIB")
     parser.add_argument("--days", type=int, default=1, help="Number of market weekdays to run")
+    parser.add_argument(
+        "--skip-existing",
+        action="store_true",
+        help="Skip dates already listed in the published site manifest",
+    )
     args = parser.parse_args()
 
     if args.days < 1:
@@ -82,6 +101,11 @@ def main() -> None:
             else latest_completed_market_day(datetime.now(ZoneInfo("Asia/Jakarta")))
         )
         dates = market_weekdays(end_date, args.days)
+
+    if args.skip_existing:
+        dates = [market_date for market_date in dates if not manifest_has_date(market_date)]
+        if not dates:
+            print("All requested market dates are already published; nothing to run.")
 
     for market_date in dates:
         run_for_date(market_date)

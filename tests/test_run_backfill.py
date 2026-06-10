@@ -1,8 +1,10 @@
 import unittest
 from datetime import datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
-from scripts.run_backfill import latest_completed_market_day
+from scripts.run_backfill import latest_completed_market_day, manifest_has_date
 
 
 WIB = ZoneInfo("Asia/Jakarta")
@@ -24,6 +26,23 @@ class CompletedMarketDayTests(unittest.TestCase):
     def test_weekend_uses_friday(self):
         now = datetime(2026, 6, 13, 18, 0, tzinfo=WIB)
         self.assertEqual(latest_completed_market_day(now).strftime("%Y-%m-%d"), "2026-06-12")
+
+    def test_manifest_has_date(self):
+        with TemporaryDirectory() as temp_dir:
+            manifest_path = Path(temp_dir) / "manifest.json"
+            manifest_path.write_text(
+                '{"latest":"2026-06-10","dates":[{"date":"2026-06-10"}]}',
+                encoding="utf-8",
+            )
+            self.assertTrue(manifest_has_date("2026-06-10", manifest_path))
+            self.assertFalse(manifest_has_date("2026-06-09", manifest_path))
+
+    def test_manifest_has_date_handles_missing_or_invalid_file(self):
+        with TemporaryDirectory() as temp_dir:
+            manifest_path = Path(temp_dir) / "manifest.json"
+            self.assertFalse(manifest_has_date("2026-06-10", manifest_path))
+            manifest_path.write_text("not-json", encoding="utf-8")
+            self.assertFalse(manifest_has_date("2026-06-10", manifest_path))
 
 
 if __name__ == "__main__":

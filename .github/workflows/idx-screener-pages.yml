@@ -15,9 +15,9 @@ on:
         default: "7"
         type: string
   schedule:
-    # Requested for 17:00 WIB = 10:00 UTC. run_backfill.py also enforces
-    # the completed-market-day cutoff because GitHub may start cron jobs late.
-    - cron: "0 10 * * 1-5"
+    # Retry at 17:00, 19:00, and 21:00 WIB because GitHub cron can start late
+    # or occasionally miss a scheduled event. Existing dates are skipped.
+    - cron: "0 10,12,14 * * 1-5"
 
 permissions:
   contents: write
@@ -26,7 +26,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
@@ -60,7 +60,7 @@ jobs:
             fi
             echo "args=--date ${{ inputs.market_date }}" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "args=--days 1" >> "$GITHUB_OUTPUT"
+            echo "args=--days 1 --skip-existing" >> "$GITHUB_OUTPUT"
           else
             days="${{ inputs.backfill_days }}"
             if [ -z "$days" ]; then
