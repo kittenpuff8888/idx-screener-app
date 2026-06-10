@@ -71,6 +71,10 @@ git push
 
 This staging workflow prevents a new local script from silently removing the audited TradingView-alignment and website integration fixes. The OneDrive source is never edited.
 
+When a committed change touches `rebuild_backend/IDX_Screener.py`, GitHub Actions
+automatically reruns every market date already listed in `docs/data/manifest.json`.
+This keeps historical snapshots aligned with the current calculation logic.
+
 ## Backfill And Daily Data
 
 - The scheduled workflow runs one completed market date each weekday, using

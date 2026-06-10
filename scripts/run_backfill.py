@@ -57,6 +57,22 @@ def manifest_has_date(market_date: str, manifest_path: Path | None = None) -> bo
     return any(item.get("date") == market_date for item in manifest.get("dates", []))
 
 
+def published_market_dates(manifest_path: Path | None = None) -> list[str]:
+    path = manifest_path or ROOT / "docs" / "data" / "manifest.json"
+    if not path.exists():
+        return []
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    dates = {
+        str(item.get("date") or "")
+        for item in manifest.get("dates", [])
+        if item.get("date")
+    }
+    return sorted(dates)
+
+
 def sync_local_source_once() -> None:
     if os.environ.get("GITHUB_ACTIONS") or os.environ.get("SKIP_LOCAL_SYNC") == "1":
         return
@@ -85,6 +101,11 @@ def main() -> None:
         action="store_true",
         help="Skip dates already listed in the published site manifest",
     )
+    parser.add_argument(
+        "--rebuild-published",
+        action="store_true",
+        help="Rerun every market date already listed in the site manifest",
+    )
     args = parser.parse_args()
 
     if args.days < 1:
@@ -92,7 +113,11 @@ def main() -> None:
 
     sync_local_source_once()
 
-    if args.date:
+    if args.rebuild_published:
+        dates = published_market_dates()
+        if not dates:
+            raise ValueError("No published market dates are available to rebuild")
+    elif args.date:
         dates = [parse_date(args.date).strftime("%Y-%m-%d")]
     else:
         end_date = (

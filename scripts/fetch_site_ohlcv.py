@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import pandas as pd
@@ -45,7 +44,7 @@ def fetch_ticker(ticker: str, market_date: str) -> tuple[str, list[dict]]:
             "close": clean_number(row.get("Close")),
             "volume": clean_number(row.get("Volume")),
         })
-    return ticker, rows
+    return ticker, rows[-700:]
 
 
 def main() -> None:
@@ -61,25 +60,28 @@ def main() -> None:
     if args.signals_only:
         tickers = {str(row.get("Ticker") or "").upper() for row in payload.get("screener", [])}
     else:
-        tickers = set(payload.get("tickerDetails", {}).keys())
+        tickers = {
+            str(row.get("Ticker") or "").upper()
+            for row in payload.get("technical", [])
+        }
+        tickers.update(payload.get("stocks", {}).keys())
     tickers.update(str(ticker).upper().replace(".JK", "") for ticker in args.include)
     tickers.discard("")
 
     target = DATA_DIR / "ohlcv" / args.date
     target.mkdir(parents=True, exist_ok=True)
-    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as executor:
-        futures = {executor.submit(fetch_ticker, ticker, args.date): ticker for ticker in sorted(tickers)}
-        for future in as_completed(futures):
-            ticker = futures[future]
-            try:
-                _, rows = future.result()
-                (target / f"{ticker}.json").write_text(
-                    json.dumps({"ticker": ticker, "date": args.date, "rows": rows}, separators=(",", ":")),
-                    encoding="utf-8",
-                )
-                print(f"{ticker}: {len(rows)} rows")
-            except Exception as exc:
-                print(f"{ticker}: ERROR {exc}")
+    # yfinance download state is not reliably thread-safe across many tickers.
+    # Sequential writes prevent one ticker's columns from contaminating another.
+    for ticker in sorted(tickers):
+        try:
+            _, rows = fetch_ticker(ticker, args.date)
+            (target / f"{ticker}.json").write_text(
+                json.dumps({"ticker": ticker, "date": args.date, "rows": rows}, separators=(",", ":")),
+                encoding="utf-8",
+            )
+            print(f"{ticker}: {len(rows)} rows")
+        except Exception as exc:
+            print(f"{ticker}: ERROR {exc}")
 
 
 if __name__ == "__main__":

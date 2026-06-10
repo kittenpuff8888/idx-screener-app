@@ -36,14 +36,6 @@
             <span class="nav-icon">03</span>
             <span>Ticker analysis</span>
           </button>
-          <button class="nav-item" type="button" data-view="data">
-            <span class="nav-icon">04</span>
-            <span>Data quality</span>
-          </button>
-          <button class="nav-item" type="button" data-view="explorer">
-            <span class="nav-icon">05</span>
-            <span>Workbook explorer</span>
-          </button>
         </nav>
 
         <div class="sidebar-foot">
@@ -238,16 +230,43 @@
           </div>
           <div id="tickerContent" hidden>
             <div id="tickerHero" class="ticker-hero"></div>
-            <div class="ticker-grid">
-              <article class="panel price-chart-panel">
+            <article class="panel market-chart-panel">
+              <div class="chart-toolbar">
+                <div>
+                  <span class="panel-kicker">MARKET WORKSPACE</span>
+                  <h3>Daily price, volume, and levels</h3>
+                </div>
+                <div class="chart-toolbar-actions">
+                  <span id="historyStatus" class="status-badge info">Loading history</span>
+                  <div class="range-switcher" aria-label="Chart range">
+                    <button type="button" data-chart-range="3M">3M</button>
+                    <button type="button" data-chart-range="6M">6M</button>
+                    <button type="button" data-chart-range="1Y" class="active">1Y</button>
+                    <button type="button" data-chart-range="ALL">All</button>
+                  </div>
+                </div>
+              </div>
+              <div id="chartLegend" class="chart-legend" aria-live="polite">
+                <strong>Move across the chart to inspect OHLC and volume.</strong>
+              </div>
+              <div id="priceChart" class="price-chart trading-chart"></div>
+              <div class="chart-footer">
+                <span id="historyMeta"></span>
+                <a href="https://www.tradingview.com/" target="_blank" rel="noopener">Charts by TradingView</a>
+              </div>
+            </article>
+
+            <div class="ticker-grid research-grid">
+              <article class="panel signal-summary-panel">
                 <div class="panel-head">
                   <div>
-                    <span class="panel-kicker">OHLCV HISTORY</span>
-                    <h3>Daily price and volume</h3>
+                    <span class="panel-kicker">SIGNAL SUMMARY</span>
+                    <h3>Why this ticker is on the radar</h3>
                   </div>
-                  <span id="historyMeta" class="panel-note"></span>
+                  <span class="panel-note">Workbook-derived analysis</span>
                 </div>
-                <div id="priceChart" class="price-chart"></div>
+                <div id="tickerKeyMetrics" class="key-metric-grid"></div>
+                <div id="tickerSignals" class="ticker-signals"></div>
               </article>
               <article class="panel">
                 <div class="panel-head">
@@ -260,16 +279,6 @@
                 <div id="tradePlan" class="trade-plan"></div>
               </article>
             </div>
-
-            <article class="panel">
-              <div class="panel-head">
-                <div>
-                  <span class="panel-kicker">WHY IT MATCHED</span>
-                  <h3>Signal explanation</h3>
-                </div>
-              </div>
-              <div id="tickerSignals" class="ticker-signals"></div>
-            </article>
 
             <div class="ticker-grid detail-grid">
               <article class="panel">
@@ -295,17 +304,6 @@
             <article class="panel">
               <div class="panel-head">
                 <div>
-                  <span class="panel-kicker">COMPLETE WORKBOOK RECORD</span>
-                  <h3>All available fields by calculation group</h3>
-                </div>
-                <span class="panel-note">Source workbook columns</span>
-              </div>
-              <div id="analysisSections" class="analysis-sections"></div>
-            </article>
-
-            <article class="panel">
-              <div class="panel-head">
-                <div>
                   <span class="panel-kicker">NEWS & EVENTS</span>
                   <h3>Workbook intelligence</h3>
                 </div>
@@ -314,80 +312,10 @@
             </article>
           </div>
         </section>
-
-        <section id="dataView" class="view" data-view-panel="data">
-          <div class="view-intro">
-            <div>
-              <span class="section-kicker">RUN INTEGRITY</span>
-              <h2>Know what made it into the dataset.</h2>
-              <p>Processing status is exported from the same workbook, ticker by ticker.</p>
-            </div>
-          </div>
-          <section id="qualityMetrics" class="metric-grid quality-grid"></section>
-          <article class="panel">
-            <div class="screener-controls data-controls">
-              <label class="search-field">
-                <span>Find ticker or reason</span>
-                <input id="dataSearch" type="search" placeholder="Search processing results..." />
-              </label>
-              <span id="dataCount" class="panel-note"></span>
-            </div>
-            <div class="table-shell quality-table-shell">
-              <table class="data-table">
-                <thead id="dataHead"></thead>
-                <tbody id="dataBody"></tbody>
-              </table>
-              <div id="dataEmpty" class="empty-state" hidden>
-                <div class="empty-card">
-                  <span class="empty-icon" aria-hidden="true">0</span>
-                  <h3>No processing rows found</h3>
-                  <p>Clear the search to inspect the complete processing report.</p>
-                  <button class="secondary-button" type="button" data-clear-data>Clear search</button>
-                </div>
-              </div>
-            </div>
-          </article>
-        </section>
-
-        <section id="explorerView" class="view" data-view-panel="explorer">
-          <div class="view-intro">
-            <div>
-              <span class="section-kicker">WORKBOOK EXPLORER</span>
-              <h2>Inspect every published sheet and field.</h2>
-              <p>This view mirrors the generated workbook without inventing unsupported datasets.</p>
-            </div>
-            <div id="explorerCount" class="result-count">-</div>
-          </div>
-          <article class="panel">
-            <div class="screener-controls explorer-controls">
-              <label>
-                <span>Sheet</span>
-                <select id="explorerSheet"></select>
-              </label>
-              <label class="search-field">
-                <span>Search rows</span>
-                <input id="explorerSearch" type="search" placeholder="Ticker, field, status, value..." />
-              </label>
-            </div>
-            <div class="table-shell explorer-table-shell">
-              <table class="data-table">
-                <thead id="explorerHead"></thead>
-                <tbody id="explorerBody"></tbody>
-              </table>
-              <div id="explorerEmpty" class="empty-state" hidden>
-                <div class="empty-card">
-                  <span class="empty-icon" aria-hidden="true">0</span>
-                  <h3>No workbook rows found</h3>
-                  <p>Clear the search or choose another workbook sheet.</p>
-                  <button class="secondary-button" type="button" data-clear-explorer>Clear search</button>
-                </div>
-              </div>
-            </div>
-          </article>
-        </section>
       </main>
     </div>
 
+    <script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
     <script src="app.js?v=20260610-premium-v4"></script>
   </body>
 </html>

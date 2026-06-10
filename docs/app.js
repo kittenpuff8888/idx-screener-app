@@ -7,12 +7,13 @@ const state = {
   sector: "ALL",
   search: "",
   sort: "default",
-  dataSearch: "",
-  explorerSearch: "",
-  explorerSheet: "",
   selectedTicker: "",
   currentManifestEntry: null,
   ohlcvCache: new Map(),
+  chart: null,
+  chartResizeObserver: null,
+  chartRows: [],
+  chartRange: "1Y",
   technicalByTicker: new Map(),
   fundamentalByTicker: new Map(),
   newsByTicker: new Map(),
@@ -23,8 +24,6 @@ const viewTitles = {
   overview: ["IDX RESEARCH", "Market Overview"],
   screener: ["SIGNAL DISCOVERY", "Signal Screener"],
   ticker: ["SECURITY RESEARCH", "Ticker Analysis"],
-  data: ["RUN INTEGRITY", "Data Quality"],
-  explorer: ["SOURCE WORKBOOK", "Workbook Explorer"],
 };
 
 const screenerColumns = [
@@ -42,16 +41,6 @@ const screenerColumns = [
   { label: "Invalidation", key: "invalidation", className: "numeric" },
   { label: "R/R", key: "rr", className: "numeric" },
   { label: "Signal explanation", key: "summary", className: "explanation" },
-];
-
-const dataColumns = [
-  "Ticker",
-  "Status",
-  "Bars",
-  "Retry Count",
-  "Source Used",
-  "Latest Market Day",
-  "Reason",
 ];
 
 const els = {
@@ -85,26 +74,16 @@ const els = {
   tickerEmpty: document.querySelector("#tickerEmpty"),
   tickerContent: document.querySelector("#tickerContent"),
   tickerHero: document.querySelector("#tickerHero"),
+  tickerKeyMetrics: document.querySelector("#tickerKeyMetrics"),
   historyMeta: document.querySelector("#historyMeta"),
+  historyStatus: document.querySelector("#historyStatus"),
+  chartLegend: document.querySelector("#chartLegend"),
   priceChart: document.querySelector("#priceChart"),
   tradePlan: document.querySelector("#tradePlan"),
   tickerSignals: document.querySelector("#tickerSignals"),
   technicalGrid: document.querySelector("#technicalGrid"),
   fundamentalGrid: document.querySelector("#fundamentalGrid"),
   newsPanel: document.querySelector("#newsPanel"),
-  analysisSections: document.querySelector("#analysisSections"),
-  qualityMetrics: document.querySelector("#qualityMetrics"),
-  dataSearch: document.querySelector("#dataSearch"),
-  dataCount: document.querySelector("#dataCount"),
-  dataHead: document.querySelector("#dataHead"),
-  dataBody: document.querySelector("#dataBody"),
-  dataEmpty: document.querySelector("#dataEmpty"),
-  explorerSheet: document.querySelector("#explorerSheet"),
-  explorerSearch: document.querySelector("#explorerSearch"),
-  explorerCount: document.querySelector("#explorerCount"),
-  explorerHead: document.querySelector("#explorerHead"),
-  explorerBody: document.querySelector("#explorerBody"),
-  explorerEmpty: document.querySelector("#explorerEmpty"),
   themeToggle: document.querySelector("#themeToggle"),
   datasetState: document.querySelector("#datasetState"),
   datasetTitle: document.querySelector("#datasetTitle"),
@@ -211,6 +190,7 @@ function applyTheme(theme) {
     "content",
     normalized === "dark" ? "#081426" : "#f3f7fc",
   );
+  applyChartTheme();
 }
 
 function initTheme() {
@@ -299,6 +279,7 @@ function signalsOverview() {
 
 function showView(view, updateHash = true) {
   if (!viewTitles[view]) view = "overview";
+  if (state.view === "ticker" && view !== "ticker") destroyChart();
   state.view = view;
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.viewPanel === view);
@@ -579,9 +560,9 @@ function renderTicker() {
       <div>
         <div class="ticker-title-row">
           <h2>${escapeHtml(ticker)}</h2>
-          <span class="status-badge info">${signals.length ? `${signals.length} signal${signals.length === 1 ? "" : "s"}` : "Technical only"}</span>
+          <span class="status-badge ${signals.length ? "positive" : "info"}">${signals.length ? `${signals.length} signal${signals.length === 1 ? "" : "s"}` : "Technical snapshot"}</span>
         </div>
-        <p>${escapeHtml(cleanText(company))} \u00b7 ${escapeHtml(cleanText(sector))}</p>
+        <p>${escapeHtml(cleanText(company))} \u00b7 ${escapeHtml(cleanText(sector))} \u00b7 Market date ${escapeHtml(state.payload.date)}</p>
       </div>
     </div>
     <div class="ticker-quote">
@@ -591,34 +572,307 @@ function renderTicker() {
   `;
 
   renderPriceChart(ticker);
-  renderTradePlan(primarySignal, price);
+  renderTickerKeyMetrics(technical, primarySignal);
+  renderTradePlan(primarySignal, technical, price);
   renderTickerSignals(signals, technical);
   renderTechnical(technical);
   renderFundamental(fundamental);
-  renderAnalysisSections(ticker, technical, fundamental);
   renderNews(ticker, signals, technical);
+}
+
+function renderTickerKeyMetrics(technical, signal) {
+  const metrics = [
+    ["Trend", valueFrom(technical, ["Internal Trend", "Swing Trend"]), trendTone(valueFrom(technical, ["Internal Trend"]))],
+    ["Structure", valueFrom(technical, ["Latest Internal Struct", "Latest Swing Struct"]), ""],
+    ["RVOL", formatNumber(valueFrom(technical, ["RVOL 20 D", "RVOL"])), ""],
+    ["RS rating", formatNumber(valueFrom(technical, ["RS Rating"]), 0), ""],
+    ["VWAP position", valueFrom(technical, ["Current QVWAP (Q2 2026) · VWAP Zone", "Current MVWAP (June 2026) · VWAP Zone", "VWAP Zone"]), ""],
+    ["Momentum", valueFrom(technical, ["RSI Status", "Wave Pattern"]), trendTone(valueFrom(technical, ["RSI Status"]))],
+    ["Setup quality", valueFrom(signal, ["Filter Label"]) || "No active screener match", signal.Filter ? "positive" : "neutral"],
+    ["Risk / reward", valueFrom(signal, ["R/R"]) || "-", ""],
+  ];
+  els.tickerKeyMetrics.innerHTML = metrics.map(([label, value, tone]) => `
+    <div class="key-metric">
+      <span>${escapeHtml(label)}</span>
+      <strong class="${tone}">${escapeHtml(cleanText(value))}</strong>
+    </div>
+  `).join("");
+}
+
+function trendTone(value) {
+  const text = String(value || "").toLowerCase();
+  if (text.includes("bull") || text.includes("strong") || text.includes("positive")) return "positive";
+  if (text.includes("bear") || text.includes("weak") || text.includes("negative")) return "negative";
+  if (text.includes("overbought") || text.includes("oversold")) return "warning";
+  return "neutral";
 }
 
 async function renderPriceChart(ticker) {
   const base = state.currentManifestEntry?.ohlcv;
   if (!base) {
-    renderPublishedLineChart(ticker);
+    renderChartEmpty(ticker, "Missing history source");
     return;
   }
+  destroyChart();
+  els.historyStatus.className = "status-badge info";
+  els.historyStatus.textContent = "Loading history";
+  els.chartLegend.innerHTML = "<strong>Loading daily OHLCV history...</strong>";
+  els.priceChart.innerHTML = `<div class="chart-loading" aria-label="Loading price chart"><span></span><span></span><span></span></div>`;
   try {
     if (!state.ohlcvCache.has(ticker)) {
       state.ohlcvCache.set(ticker, await fetchJson(`${base}/${encodeURIComponent(ticker)}.json`));
     }
     if (state.selectedTicker !== ticker) return;
-    const rows = (state.ohlcvCache.get(ticker)?.rows || []).slice(-120);
+    const rows = (state.ohlcvCache.get(ticker)?.rows || [])
+      .filter((row) => row.date && [row.open, row.high, row.low, row.close].every((value) => asNumber(value) !== null))
+      .slice(-700);
     if (rows.length < 2) {
-      renderPublishedLineChart(ticker);
+      renderChartEmpty(ticker, "Insufficient OHLCV records");
       return;
     }
-    renderCandlestickChart(ticker, rows);
+    renderInteractiveMarketChart(ticker, rows);
   } catch {
-    renderPublishedLineChart(ticker);
+    renderChartEmpty(ticker, "Price history has not been published for this ticker");
   }
+}
+
+function destroyChart() {
+  state.chartResizeObserver?.disconnect();
+  state.chartResizeObserver = null;
+  state.chart?.remove();
+  state.chart = null;
+  state.chartRows = [];
+}
+
+function chartColors() {
+  const light = document.documentElement.dataset.theme === "light";
+  return {
+    background: light ? "#ffffff" : "#0e1b2e",
+    text: light ? "#526781" : "#9bacc3",
+    grid: light ? "rgba(50,78,116,0.10)" : "rgba(148,173,207,0.10)",
+    border: light ? "rgba(50,78,116,0.18)" : "rgba(148,173,207,0.18)",
+  };
+}
+
+function applyChartTheme() {
+  if (!state.chart) return;
+  const colors = chartColors();
+  state.chart.applyOptions({
+    layout: {
+      background: { type: "solid", color: colors.background },
+      textColor: colors.text,
+    },
+    grid: {
+      vertLines: { color: colors.grid },
+      horzLines: { color: colors.grid },
+    },
+    rightPriceScale: { borderColor: colors.border },
+    timeScale: { borderColor: colors.border },
+  });
+}
+
+function emaSeries(rows, period) {
+  const multiplier = 2 / (period + 1);
+  let current = null;
+  return rows.map((row) => {
+    const close = asNumber(row.close);
+    current = current === null ? close : (close * multiplier) + (current * (1 - multiplier));
+    return { time: row.date, value: current };
+  });
+}
+
+function firstNumericMatch(row, includes, excludes = []) {
+  for (const [key, value] of Object.entries(row || {})) {
+    const normalized = key.toLowerCase();
+    if (includes.every((part) => normalized.includes(part.toLowerCase()))
+      && excludes.every((part) => !normalized.includes(part.toLowerCase()))) {
+      const parsed = asNumber(value);
+      if (parsed !== null) return parsed;
+    }
+  }
+  return null;
+}
+
+function renderInteractiveMarketChart(ticker, rows) {
+  if (!window.LightweightCharts) {
+    renderChartEmpty(ticker, "The interactive chart library could not load");
+    return;
+  }
+
+  destroyChart();
+  els.priceChart.innerHTML = "";
+  state.chartRows = rows;
+  const colors = chartColors();
+  const chart = LightweightCharts.createChart(els.priceChart, {
+    autoSize: true,
+    height: 520,
+    layout: {
+      background: { type: "solid", color: colors.background },
+      textColor: colors.text,
+      fontFamily: getComputedStyle(document.body).fontFamily,
+    },
+    grid: {
+      vertLines: { color: colors.grid },
+      horzLines: { color: colors.grid },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+      vertLine: { color: "rgba(96,165,250,0.45)", labelBackgroundColor: "#2563eb" },
+      horzLine: { color: "rgba(96,165,250,0.45)", labelBackgroundColor: "#2563eb" },
+    },
+    rightPriceScale: {
+      borderColor: colors.border,
+      scaleMargins: { top: 0.08, bottom: 0.25 },
+    },
+    timeScale: {
+      borderColor: colors.border,
+      rightOffset: 8,
+      barSpacing: 8,
+      minBarSpacing: 2,
+    },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+    handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+  });
+  state.chart = chart;
+
+  const candleSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+    upColor: "#3b82f6",
+    downColor: "#f87171",
+    borderUpColor: "#3b82f6",
+    borderDownColor: "#f87171",
+    wickUpColor: "#60a5fa",
+    wickDownColor: "#fca5a5",
+    priceLineColor: "#60a5fa",
+  });
+  candleSeries.setData(rows.map((row) => ({
+    time: row.date,
+    open: asNumber(row.open),
+    high: asNumber(row.high),
+    low: asNumber(row.low),
+    close: asNumber(row.close),
+  })));
+
+  const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+    priceFormat: { type: "volume" },
+    priceScaleId: "volume",
+    lastValueVisible: false,
+    priceLineVisible: false,
+  });
+  volumeSeries.setData(rows.map((row) => ({
+    time: row.date,
+    value: asNumber(row.volume) || 0,
+    color: asNumber(row.close) >= asNumber(row.open) ? "rgba(59,130,246,0.42)" : "rgba(248,113,113,0.38)",
+  })));
+  chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+
+  const ema25 = chart.addSeries(LightweightCharts.LineSeries, {
+    color: "#f6bd60",
+    lineWidth: 1,
+    title: "EMA 25",
+    priceLineVisible: false,
+    lastValueVisible: false,
+  });
+  ema25.setData(emaSeries(rows, 25));
+  const ema50 = chart.addSeries(LightweightCharts.LineSeries, {
+    color: "#a78bfa",
+    lineWidth: 1,
+    title: "EMA 50",
+    priceLineVisible: false,
+    lastValueVisible: false,
+  });
+  ema50.setData(emaSeries(rows, 50));
+
+  const technical = state.technicalByTicker.get(ticker) || {};
+  const signal = (state.signalsByTicker.get(ticker) || [])[0] || {};
+  const vwap = firstNumericMatch(technical, ["current", "vwap"], ["zone", "sigma", "running", "days"]);
+  const lines = [
+    ["VWAP", vwap, "#22d3ee"],
+    ["Entry", asNumber(valueFrom(signal, ["Entry"])), "#3b82f6"],
+    ["Target", asNumber(valueFrom(signal, ["Target"])), "#60a5fa"],
+    ["Invalidation", asNumber(valueFrom(signal, ["Invalidation"])), "#f87171"],
+    ["Support", asNumber(valueFrom(technical, ["Strong Low", "Weak Low", "IBL", "PWL", "MDL"])), "#64748b"],
+    ["Resistance", asNumber(valueFrom(technical, ["Strong High", "Weak High", "IBH", "PWH", "MDH"])), "#94a3b8"],
+  ].filter(([, price]) => price !== null);
+  lines.forEach(([title, price, color]) => candleSeries.createPriceLine({
+    price,
+    color,
+    lineWidth: title === "Invalidation" ? 2 : 1,
+    lineStyle: LightweightCharts.LineStyle.Dashed,
+    axisLabelVisible: true,
+    title,
+  }));
+
+  const rowByDate = new Map(rows.map((row, index) => [row.date, { row, index }]));
+  const updateLegend = (row, index) => {
+    const previous = index > 0 ? asNumber(rows[index - 1].close) : null;
+    const change = previous ? ((asNumber(row.close) / previous) - 1) * 100 : 0;
+    els.chartLegend.innerHTML = `
+      <strong>${escapeHtml(ticker)} · ${escapeHtml(row.date)}</strong>
+      <span>O ${formatPrice(row.open)}</span>
+      <span>H ${formatPrice(row.high)}</span>
+      <span>L ${formatPrice(row.low)}</span>
+      <span>C ${formatPrice(row.close)}</span>
+      <span class="${change >= 0 ? "positive" : "negative"}">${change >= 0 ? "+" : ""}${change.toFixed(2)}%</span>
+      <span>Vol ${formatNumber(row.volume, 0)}</span>
+    `;
+  };
+  updateLegend(rows.at(-1), rows.length - 1);
+  chart.subscribeCrosshairMove((param) => {
+    if (!param.time) {
+      updateLegend(rows.at(-1), rows.length - 1);
+      return;
+    }
+    const key = typeof param.time === "string"
+      ? param.time
+      : `${param.time.year}-${String(param.time.month).padStart(2, "0")}-${String(param.time.day).padStart(2, "0")}`;
+    const point = rowByDate.get(key);
+    if (point) updateLegend(point.row, point.index);
+  });
+
+  state.chartResizeObserver = new ResizeObserver(() => chart.timeScale().applyOptions({}));
+  state.chartResizeObserver.observe(els.priceChart);
+  setChartRange(state.chartRange);
+
+  const partial = rows.length < 60;
+  els.historyStatus.className = `status-badge ${partial ? "warning" : "positive"}`;
+  els.historyStatus.textContent = partial ? "Partial price history" : "History loaded";
+  els.historyMeta.textContent = `${formatNumber(rows.length, 0)} daily bars · ${rows[0].date} to ${rows.at(-1).date}`;
+}
+
+function setChartRange(range) {
+  state.chartRange = range;
+  document.querySelectorAll("[data-chart-range]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.chartRange === range);
+  });
+  if (!state.chart || state.chartRows.length < 2) return;
+  const counts = { "3M": 66, "6M": 132, "1Y": 264 };
+  if (range === "ALL") {
+    state.chart.timeScale().fitContent();
+    return;
+  }
+  const rows = state.chartRows;
+  const start = Math.max(0, rows.length - counts[range]);
+  state.chart.timeScale().setVisibleRange({ from: rows[start].date, to: rows.at(-1).date });
+}
+
+function renderChartEmpty(ticker, detail) {
+  destroyChart();
+  els.historyStatus.className = "status-badge warning";
+  els.historyStatus.textContent = "Missing history";
+  els.historyMeta.textContent = detail;
+  els.chartLegend.innerHTML = `<strong>${escapeHtml(ticker)} · OHLCV history unavailable</strong>`;
+  els.priceChart.innerHTML = `
+    <div class="chart-empty-state">
+      <span class="empty-icon" aria-hidden="true">OHLC</span>
+      <h3>Not enough price history available</h3>
+      <p>This ticker needs at least two published OHLCV records to render a candlestick chart. Upload more historical workbook runs or connect a historical OHLCV source.</p>
+      <div class="chart-empty-actions">
+        <button class="secondary-button" type="button" data-chart-action="reload">Reload data</button>
+        <button class="secondary-button" type="button" data-chart-action="change">Change ticker</button>
+        <button class="secondary-button" type="button" data-chart-action="technical">View technical snapshot</button>
+      </div>
+    </div>
+  `;
 }
 
 function renderCandlestickChart(ticker, rows) {
@@ -719,14 +973,16 @@ function renderPublishedLineChart(ticker) {
   `;
 }
 
-function renderTradePlan(signal, currentPrice) {
+function renderTradePlan(signal, technical, currentPrice) {
   const entry = asNumber(valueFrom(signal, ["Entry"]));
   const target = asNumber(valueFrom(signal, ["Target"]));
   const invalidation = asNumber(valueFrom(signal, ["Invalidation"]));
+  const support = asNumber(valueFrom(technical, ["Strong Low", "Weak Low", "IBL", "PWL", "MDL"]));
+  const resistance = asNumber(valueFrom(technical, ["Strong High", "Weak High", "IBH", "PWH", "MDH"]));
   const current = asNumber(currentPrice);
-  const levels = [entry, target, invalidation, current].filter((value) => value !== null);
+  const levels = [entry, target, invalidation, support, resistance, current].filter((value) => value !== null);
   if (levels.length < 2) {
-    els.tradePlan.innerHTML = `<div class="no-chart">No complete entry, target, and invalidation plan is available for this ticker.</div>`;
+    els.tradePlan.innerHTML = `<div class="no-chart">Trade levels are not available for this ticker on the selected market date.</div>`;
     return;
   }
   const low = Math.min(...levels);
@@ -735,9 +991,11 @@ function renderTradePlan(signal, currentPrice) {
   const position = (value) => Math.max(4, Math.min(96, ((value - low) / range) * 100));
   const markers = [
     ["Invalidation", invalidation, ""],
+    ["Support", support, "support"],
     ["Entry", entry, ""],
     ["Current", current, "current"],
     ["Target", target, ""],
+    ["Resistance", resistance, "resistance"],
   ].filter(([, value]) => value !== null);
   const upside = valueFrom(signal, ["Target Upside %", "Upside %"]);
   const risk = valueFrom(signal, ["Invalidation Down %"]);
@@ -750,6 +1008,11 @@ function renderTradePlan(signal, currentPrice) {
       `).join("")}
     </div>
     <div class="level-cards">
+      <div class="level-card"><span>Entry</span><strong>${formatPrice(entry)}</strong></div>
+      <div class="level-card"><span>Target</span><strong class="positive">${formatPrice(target)}</strong></div>
+      <div class="level-card"><span>Invalidation</span><strong class="negative">${formatPrice(invalidation)}</strong></div>
+      <div class="level-card"><span>Support</span><strong>${formatPrice(support)}</strong></div>
+      <div class="level-card"><span>Resistance</span><strong>${formatPrice(resistance)}</strong></div>
       <div class="level-card"><span>Target upside</span><strong class="${percentClass(upside)}">${formatPercent(upside)}</strong></div>
       <div class="level-card"><span>Invalidation distance</span><strong>${risk === null ? "-" : formatPercent(risk)}</strong></div>
       <div class="level-card"><span>Risk / reward</span><strong>${escapeHtml(cleanText(rr))}</strong></div>
@@ -760,7 +1023,18 @@ function renderTradePlan(signal, currentPrice) {
 function renderTickerSignals(signals, technical) {
   const rs = valueFrom(technical, ["RS Rating"]);
   if (!signals.length) {
-    els.tickerSignals.innerHTML = `<div class="no-chart">This ticker has technical data but did not match a published screener filter on this date.</div>`;
+    const trend = valueFrom(technical, ["Internal Trend", "Swing Trend"]);
+    const structure = valueFrom(technical, ["Latest Internal Struct", "Latest Swing Struct"]);
+    const momentum = valueFrom(technical, ["RSI Status", "Wave Pattern"]);
+    els.tickerSignals.innerHTML = `
+      <article class="ticker-signal neutral-signal">
+        <span class="signal-code">IDX</span>
+        <div>
+          <h4>No active screener match</h4>
+          <p>${escapeHtml(cleanText(trend))} trend · ${escapeHtml(cleanText(structure))} · ${escapeHtml(cleanText(momentum))} momentum. The technical snapshot remains available even though this ticker did not pass a published filter.</p>
+        </div>
+        <span class="signal-quality">RS ${escapeHtml(formatNumber(rs))}</span>
+      </article>`;
     return;
   }
   els.tickerSignals.innerHTML = signals.map((signal) => {
@@ -972,8 +1246,6 @@ function renderAll() {
   renderDataStatus();
   renderOverview();
   renderScreener();
-  renderDataQuality();
-  renderWorkbookExplorer();
   if (state.selectedTicker) renderTicker();
 }
 
@@ -1030,20 +1302,25 @@ document.querySelectorAll(".nav-item").forEach((button) => {
 });
 
 document.addEventListener("click", (event) => {
+  const rangeTarget = event.target.closest("[data-chart-range]");
+  if (rangeTarget) {
+    setChartRange(rangeTarget.dataset.chartRange);
+    return;
+  }
+  const chartAction = event.target.closest("[data-chart-action]");
+  if (chartAction) {
+    if (chartAction.dataset.chartAction === "reload") renderPriceChart(state.selectedTicker);
+    if (chartAction.dataset.chartAction === "change") {
+      els.tickerCommand.value = "";
+      els.tickerCommand.focus();
+    }
+    if (chartAction.dataset.chartAction === "technical") {
+      document.querySelector("#technicalGrid")?.closest(".panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    return;
+  }
   if (event.target.closest("[data-reset-filters]")) {
     resetScreenerFilters();
-    return;
-  }
-  if (event.target.closest("[data-clear-explorer]")) {
-    state.explorerSearch = "";
-    els.explorerSearch.value = "";
-    renderWorkbookExplorer();
-    return;
-  }
-  if (event.target.closest("[data-clear-data]")) {
-    state.dataSearch = "";
-    els.dataSearch.value = "";
-    renderDataQuality();
     return;
   }
   const tickerTarget = event.target.closest("[data-ticker]");
@@ -1088,21 +1365,6 @@ els.sectorSelect.addEventListener("change", (event) => {
 els.sortSelect.addEventListener("change", (event) => {
   state.sort = event.target.value;
   renderScreener();
-});
-
-els.dataSearch.addEventListener("input", (event) => {
-  state.dataSearch = event.target.value;
-  renderDataQuality();
-});
-
-els.explorerSheet.addEventListener("change", (event) => {
-  state.explorerSheet = event.target.value;
-  renderWorkbookExplorer();
-});
-
-els.explorerSearch.addEventListener("input", (event) => {
-  state.explorerSearch = event.target.value;
-  renderWorkbookExplorer();
 });
 
 els.tickerCommand.addEventListener("keydown", (event) => {

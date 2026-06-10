@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zoneinfo import ZoneInfo
 
-from scripts.run_backfill import latest_completed_market_day, manifest_has_date
+from scripts.run_backfill import latest_completed_market_day, manifest_has_date, published_market_dates
 
 
 WIB = ZoneInfo("Asia/Jakarta")
@@ -43,6 +43,18 @@ class CompletedMarketDayTests(unittest.TestCase):
             self.assertFalse(manifest_has_date("2026-06-10", manifest_path))
             manifest_path.write_text("not-json", encoding="utf-8")
             self.assertFalse(manifest_has_date("2026-06-10", manifest_path))
+
+    def test_published_market_dates_are_sorted_and_unique(self):
+        with TemporaryDirectory() as temp_dir:
+            manifest_path = Path(temp_dir) / "manifest.json"
+            manifest_path.write_text(
+                '{"dates":[{"date":"2026-06-10"},{"date":"2026-06-09"},{"date":"2026-06-10"}]}',
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                published_market_dates(manifest_path),
+                ["2026-06-09", "2026-06-10"],
+            )
 
 
 if __name__ == "__main__":

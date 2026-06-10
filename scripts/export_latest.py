@@ -248,6 +248,106 @@ def build_ticker_details(workbook_sheets: dict[str, dict[str, Any]]) -> dict[str
     return dict(sorted(details.items()))
 
 
+def normalized_stocks(
+    technical: list[dict[str, Any]],
+    fundamental: list[dict[str, Any]],
+    news: list[dict[str, Any]],
+    screener: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    fundamentals = {str(row.get("Ticker") or "").upper(): row for row in fundamental}
+    signals: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    news_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in screener:
+        signals[str(row.get("Ticker") or "").upper()].append(row)
+    for row in news:
+        news_rows[str(row.get("Ticker") or "").upper()].append(row)
+
+    stocks: dict[str, dict[str, Any]] = {}
+    for row in technical:
+        ticker = str(row.get("Ticker") or "").upper()
+        if not ticker:
+            continue
+        fund = fundamentals.get(ticker, {})
+        stock_signals = signals.get(ticker, [])
+        primary = stock_signals[0] if stock_signals else {}
+        stocks[ticker] = {
+            "ticker": ticker,
+            "companyName": first_value(row, ["Emiten", "Company"]) or first_value(fund, ["Company", "Emiten"]),
+            "sector": first_value(row, ["IDX Sector", "Sector"]) or first_value(fund, ["IDX Sector", "Sector"]),
+            "industry": first_value(row, ["Industry"]) or first_value(fund, ["Industry"]),
+            "lastPrice": first_value(row, ["Closing Price", "Price"]),
+            "changePercent": first_value(row, ["Price Change %", "Chg %"]),
+            "volume": first_value(row, ["Volume"]),
+            "rvol": first_value(row, ["RVOL 20 D", "RVOL"]),
+            "rsRating": first_value(row, ["RS Rating"]),
+            "trend": {
+                "internal": first_value(row, ["Internal Trend"]),
+                "swing": first_value(row, ["Swing Trend"]),
+            },
+            "structure": {
+                "internal": first_value(row, ["Latest Internal Struct"]),
+                "swing": first_value(row, ["Latest Swing Struct"]),
+            },
+            "movingAverages": {
+                "ema25": first_value(row, ["EMA 25"]),
+                "ema50": first_value(row, ["EMA 50"]),
+                "sma200": first_value(row, ["SMA 200"]),
+                "zone": first_value(row, ["MA Zone"]),
+            },
+            "supportLevels": [
+                first_value(row, ["Strong Low"]),
+                first_value(row, ["Weak Low"]),
+                first_value(row, ["IBL"]),
+                first_value(row, ["PWL"]),
+                first_value(row, ["MDL"]),
+            ],
+            "resistanceLevels": [
+                first_value(row, ["Strong High"]),
+                first_value(row, ["Weak High"]),
+                first_value(row, ["IBH"]),
+                first_value(row, ["PWH"]),
+                first_value(row, ["MDH"]),
+            ],
+            "entry": first_value(primary, ["Entry"]),
+            "target": first_value(primary, ["Target"]),
+            "invalidation": first_value(primary, ["Invalidation"]),
+            "riskReward": first_value(primary, ["R/R"]),
+            "upsidePercent": first_value(primary, ["Target Upside %", "Upside %"]),
+            "downsidePercent": first_value(primary, ["Invalidation Down %"]),
+            "signalExplanation": first_value(primary, ["Summary Screener", "Section"]),
+            "signalCount": len(stock_signals),
+            "technical": {
+                "rsiStatus": first_value(row, ["RSI Status"]),
+                "rsi14": first_value(row, ["RSI 14"]),
+                "macdPosition": first_value(row, ["Lines Position"]),
+                "wavePattern": first_value(row, ["Wave Pattern"]),
+                "betaZone": first_value(row, ["Beta (vs IHSG) Zone"]),
+                "priceLocation": first_value(row, ["Summary"]),
+                "vwapPosition": next(
+                    (
+                        value
+                        for key, value in row.items()
+                        if "VWAP Zone" in key and value not in (None, "", "-")
+                    ),
+                    None,
+                ),
+            },
+            "fundamentals": {
+                "marketCap": first_value(fund, ["Market Cap"]),
+                "marketCapClass": first_value(fund, ["Market Cap Categories"]),
+                "peRatio": first_value(fund, ["Current PE Ratio (TTM)", "P/E Ratio"]),
+                "priceToBook": first_value(fund, ["Current Price to Book Value", "P/B Ratio", "Current PBV"]),
+                "roe": first_value(fund, ["Return on Equity (TTM)", "ROE"]),
+                "debtToEquity": first_value(fund, ["Debt to Equity Ratio (Quarter)", "Debt to Equity"]),
+                "dividendYield": first_value(fund, ["Dividend Yield (%)", "Dividend Yield"]),
+                "freeFloat": first_value(fund, ["Free Float (%)", "Free Float %", "Free Float"]),
+                "businessSummary": first_value(fund, ["Business Summary"]),
+            },
+            "news": news_rows.get(ticker, [])[:8],
+        }
+    return dict(sorted(stocks.items()))
+
+
 def section_filter(text: str) -> tuple[str, str]:
     match = re.search(r"\bFilter\s+([A-G])\b", text, flags=re.IGNORECASE)
     if match:
@@ -434,6 +534,22 @@ def update_manifest(entry: dict[str, Any]) -> None:
     )
 
 
+def publish_ohlcv_cache(source: Path, target: Path, max_rows: int = 700) -> None:
+    if target.exists():
+        shutil.rmtree(target)
+    target.mkdir(parents=True, exist_ok=True)
+    for source_file in source.glob("*.json"):
+        try:
+            payload = json.loads(source_file.read_text(encoding="utf-8"))
+            payload["rows"] = list(payload.get("rows") or [])[-max_rows:]
+            (target / source_file.name).write_text(
+                json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except (OSError, json.JSONDecodeError, TypeError):
+            continue
+
+
 def export_workbook(workbook_path: Path) -> Path:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
@@ -461,6 +577,7 @@ def export_workbook(workbook_path: Path) -> Path:
     }
     field_catalog = build_field_catalog(workbook_sheets)
     ticker_details = build_ticker_details(workbook_sheets)
+    stocks = normalized_stocks(technical, fundamental, news, screener)
     qa_rows = workbook_sheets.get("QA Calculation Audit", {}).get("rows", [])
 
     overview = market_overview(screener, technical, processing)
@@ -490,6 +607,7 @@ def export_workbook(workbook_path: Path) -> Path:
         "fundamental": fundamental,
         "news": news,
         "processing": processing,
+        "stocks": stocks,
         "workbookSheets": workbook_sheets,
         "fieldCatalog": field_catalog,
         "tickerDetails": ticker_details,
@@ -520,9 +638,7 @@ def export_workbook(workbook_path: Path) -> Path:
     source_ohlcv = OUTPUT_DIR / "ohlcv" / market_date
     target_ohlcv = DATA_DIR / "ohlcv" / market_date
     if source_ohlcv.exists():
-        if target_ohlcv.exists():
-            shutil.rmtree(target_ohlcv)
-        shutil.copytree(source_ohlcv, target_ohlcv)
+        publish_ohlcv_cache(source_ohlcv, target_ohlcv)
 
     update_manifest(
         {
