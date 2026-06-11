@@ -1,6 +1,17 @@
 {
-  "latest": "2026-06-10",
+  "latest": "2026-06-11",
   "dates": [
+    {
+      "date": "2026-06-11",
+      "runTime": "2026-06-11 20:47:54.731000",
+      "rows": 31,
+      "tickers": 18,
+      "file": "data/2026-06-11.json",
+      "workbook": "downloads/2026-06-11.xlsx",
+      "qa": "data/qa/2026-06-11.qa.json",
+      "ohlcv": "data/ohlcv/2026-06-11",
+      "isTradingDate": true
+    },
     {
       "date": "2026-06-10",
       "runTime": "2026-06-11 15:07:38.906000",
