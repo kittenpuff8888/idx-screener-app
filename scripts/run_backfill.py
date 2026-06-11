@@ -57,7 +57,11 @@ def manifest_has_date(market_date: str, manifest_path: Path | None = None) -> bo
     return any(item.get("date") == market_date for item in manifest.get("dates", []))
 
 
-def published_market_dates(manifest_path: Path | None = None) -> list[str]:
+def published_market_dates(
+    manifest_path: Path | None = None,
+    *,
+    workbook_only: bool = False,
+) -> list[str]:
     path = manifest_path or ROOT / "docs" / "data" / "manifest.json"
     if not path.exists():
         return []
@@ -68,7 +72,7 @@ def published_market_dates(manifest_path: Path | None = None) -> list[str]:
     dates = {
         str(item.get("date") or "")
         for item in manifest.get("dates", [])
-        if item.get("date")
+        if item.get("date") and (not workbook_only or item.get("workbook"))
     }
     return sorted(dates)
 
@@ -114,7 +118,7 @@ def main() -> None:
     sync_local_source_once()
 
     if args.rebuild_published:
-        dates = published_market_dates()
+        dates = published_market_dates(workbook_only=True)
         if not dates:
             raise ValueError("No published market dates are available to rebuild")
     elif args.date:

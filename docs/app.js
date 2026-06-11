@@ -1,6 +1,7 @@
 const state = {
   manifest: null,
   payload: null,
+  reference: null,
   history: { dates: [], tickers: {} },
   view: "overview",
   strategy: "ALL",
@@ -14,6 +15,13 @@ const state = {
   chartResizeObserver: null,
   chartRows: [],
   chartRange: "1Y",
+  chartCandleSeries: null,
+  chartDrawings: [],
+  chartTool: "cursor",
+  indicatorSettings: null,
+  indicatorRenderTimer: null,
+  calendarMonth: null,
+  loadToken: 0,
   technicalByTicker: new Map(),
   fundamentalByTicker: new Map(),
   newsByTicker: new Map(),
@@ -49,7 +57,14 @@ const els = {
   pageTitle: document.querySelector("#pageTitle"),
   eyebrow: document.querySelector("#eyebrow"),
   sidebarDate: document.querySelector("#sidebarDate"),
-  dateSelect: document.querySelector("#dateSelect"),
+  datePickerButton: document.querySelector("#datePickerButton"),
+  selectedDateLabel: document.querySelector("#selectedDateLabel"),
+  datePickerModal: document.querySelector("#datePickerModal"),
+  calendarMonthLabel: document.querySelector("#calendarMonthLabel"),
+  calendarGrid: document.querySelector("#calendarGrid"),
+  calendarPrevious: document.querySelector("#calendarPrevious"),
+  calendarNext: document.querySelector("#calendarNext"),
+  calendarLatest: document.querySelector("#calendarLatest"),
   downloadLink: document.querySelector("#downloadLink"),
   tickerCommand: document.querySelector("#tickerCommand"),
   tickerList: document.querySelector("#tickerList"),
@@ -79,6 +94,13 @@ const els = {
   historyStatus: document.querySelector("#historyStatus"),
   chartLegend: document.querySelector("#chartLegend"),
   priceChart: document.querySelector("#priceChart"),
+  chartToolRail: document.querySelector("#chartToolRail"),
+  activeIndicatorStrip: document.querySelector("#activeIndicatorStrip"),
+  indicatorSettingsButton: document.querySelector("#indicatorSettingsButton"),
+  indicatorSettingsModal: document.querySelector("#indicatorSettingsModal"),
+  indicatorSettingsForm: document.querySelector("#indicatorSettingsForm"),
+  resetIndicatorSettings: document.querySelector("#resetIndicatorSettings"),
+  settingsSavedState: document.querySelector("#settingsSavedState"),
   tradePlan: document.querySelector("#tradePlan"),
   tickerSignals: document.querySelector("#tickerSignals"),
   technicalGrid: document.querySelector("#technicalGrid"),
@@ -181,7 +203,7 @@ function loading(progress) {
 function applyTheme(theme) {
   const normalized = theme === "light" ? "light" : "dark";
   document.documentElement.dataset.theme = normalized;
-  localStorage.setItem("idx-flow-theme", normalized);
+  localStorage.setItem("idx-research-theme", normalized);
   const nextTheme = normalized === "dark" ? "light" : "dark";
   els.themeToggle?.setAttribute("aria-label", `Switch to ${nextTheme} theme`);
   const icon = els.themeToggle?.querySelector(".theme-icon");
@@ -194,9 +216,83 @@ function applyTheme(theme) {
 }
 
 function initTheme() {
-  const saved = localStorage.getItem("idx-flow-theme");
-  const preferred = window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
-  applyTheme(saved || preferred);
+  const saved = localStorage.getItem("idx-research-theme") || localStorage.getItem("idx-flow-theme");
+  applyTheme(saved || "dark");
+}
+
+const INDICATOR_SETTINGS_KEY = "idx-research-indicators-v1";
+
+function loadIndicatorSettings() {
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(INDICATOR_SETTINGS_KEY) || "{}");
+  } catch {
+    saved = {};
+  }
+  state.indicatorSettings = IDXIndicators.deepMerge(IDXIndicators.DEFAULTS, saved);
+}
+
+function saveIndicatorSettings() {
+  localStorage.setItem(INDICATOR_SETTINGS_KEY, JSON.stringify(state.indicatorSettings));
+  if (els.settingsSavedState) {
+    els.settingsSavedState.textContent = "Saved globally for every ticker and market date.";
+  }
+}
+
+function objectPathValue(object, path, value) {
+  const parts = path.split(".");
+  const last = parts.pop();
+  let target = object;
+  parts.forEach((part) => {
+    if (!target[part]) target[part] = {};
+    target = target[part];
+  });
+  if (value !== undefined) target[last] = value;
+  return target[last];
+}
+
+function populateIndicatorSettingsForm() {
+  if (!els.indicatorSettingsForm) return;
+  els.indicatorSettingsForm.querySelectorAll("[name]").forEach((input) => {
+    const value = objectPathValue(state.indicatorSettings, input.name);
+    if (input.type === "checkbox") input.checked = Boolean(value);
+    else input.value = value;
+  });
+}
+
+function updateActiveIndicatorStrip() {
+  if (!els.activeIndicatorStrip || !state.indicatorSettings) return;
+  const settings = state.indicatorSettings;
+  const active = [];
+  if (settings.ema25.show) active.push(`EMA ${settings.ema25.period}`);
+  if (settings.ema50.show) active.push(`EMA ${settings.ema50.period}`);
+  if (settings.sma200.show) active.push(`SMA ${settings.sma200.period}`);
+  if (settings.vwap.show) active.push(`${settings.vwap.anchor.toUpperCase()} VWAP`);
+  if (settings.volume.show) active.push(settings.volume.maShow ? `VOL + MA ${settings.volume.period}` : "VOL");
+  if (settings.rsi.show) active.push(`RSI ${settings.rsi.period}/${settings.rsi.smoothingPeriod}`);
+  if (settings.macd.show) active.push(`MACD ${settings.macd.fast}/${settings.macd.slow}/${settings.macd.signal} H${settings.macd.histogramSmoothing}`);
+  if (settings.initialBalance.show) active.push(`IB ${settings.initialBalance.days}D`);
+  if (settings.smc.show) active.push("SMC");
+  els.activeIndicatorStrip.innerHTML = `
+    <strong>Global profile</strong>
+    ${active.map((label) => `<span>${escapeHtml(label)}</span>`).join("")}
+    <small>Applies to all tickers and dates</small>
+  `;
+}
+
+function openModal(element) {
+  if (!element) return;
+  element.hidden = false;
+  document.body.classList.add("modal-open");
+  element.querySelector("button, input, select")?.focus();
+}
+
+function closeModal(element) {
+  if (!element) return;
+  element.hidden = true;
+  if (els.datePickerModal.hidden && els.indicatorSettingsModal.hidden) {
+    document.body.classList.remove("modal-open");
+  }
 }
 
 async function fetchJson(path) {
@@ -214,6 +310,53 @@ function mapRows(rows) {
   return new Map((rows || []).map((row) => [String(row.Ticker || "").toUpperCase(), row]));
 }
 
+function technicalRowFromStock(stock) {
+  return {
+    Ticker: stock.ticker,
+    Emiten: stock.companyName,
+    "IDX Sector": stock.sector,
+    Sector: stock.sector,
+    Industry: stock.industry,
+    "Closing Price": stock.lastPrice,
+    "Price Change %": stock.changePercent,
+    Volume: stock.volume,
+    "Average Volume 20 D": stock.averageVolume20,
+    "RVOL 20 D": stock.rvol,
+    "RS Rating": stock.rsRating,
+    "Internal Trend": stock.trend?.internal,
+    "Swing Trend": stock.trend?.swing,
+    "Latest Internal Struct": stock.structure?.internal,
+    "Latest Swing Struct": stock.structure?.swing,
+    "Strong High": stock.resistanceLevels?.[0],
+    "Weak High": stock.resistanceLevels?.[1],
+    "Strong Low": stock.supportLevels?.[0],
+    "Weak Low": stock.supportLevels?.[1],
+    IBH: stock.levels?.ibh,
+    IBL: stock.levels?.ibl,
+    PWH: stock.levels?.pwh,
+    PWL: stock.levels?.pwl,
+    MDH: stock.levels?.mdh,
+    MDL: stock.levels?.mdl,
+    "EMA 25": stock.movingAverages?.ema25,
+    "EMA 50": stock.movingAverages?.ema50,
+    "SMA 200": stock.movingAverages?.sma200,
+    "MA Zone": stock.movingAverages?.zone,
+    "RSI 14": stock.technical?.rsi14,
+    "RSI Status": stock.technical?.rsiStatus,
+    "RSI MA 14": stock.technical?.rsiMa14,
+    "MACD Line": stock.technical?.macdLine,
+    "Signal Line": stock.technical?.macdSignal,
+    "Histogram (EMA3)": stock.technical?.macdHistogram,
+    "Lines Position": stock.technical?.macdPosition,
+    "Wave Pattern": stock.technical?.wavePattern,
+    "Current MVWAP · VWAP": stock.technical?.vwap,
+    "Current MVWAP · VWAP Zone": stock.technical?.vwapPosition,
+    "ADR %": stock.technical?.adr,
+    "ATR (14) %": stock.technical?.atr,
+    Summary: stock.technical?.priceLocation,
+  };
+}
+
 function groupRows(rows) {
   const grouped = new Map();
   for (const row of rows || []) {
@@ -226,9 +369,15 @@ function groupRows(rows) {
 }
 
 function rebuildIndexes() {
-  state.technicalByTicker = mapRows(state.payload.technical);
-  state.fundamentalByTicker = mapRows(state.payload.fundamental);
-  state.newsByTicker = groupRows(state.payload.news);
+  const compactTechnical = Object.values(state.payload.stocks || {}).map(technicalRowFromStock);
+  const technicalRows = state.payload.technical?.length ? state.payload.technical : compactTechnical;
+  const fundamentalRows = state.payload.fundamental?.length
+    ? state.payload.fundamental
+    : state.reference?.fundamental || [];
+  const newsRows = state.payload.news?.length ? state.payload.news : state.reference?.news || [];
+  state.technicalByTicker = mapRows(technicalRows);
+  state.fundamentalByTicker = mapRows(fundamentalRows);
+  state.newsByTicker = groupRows(newsRows);
   state.signalsByTicker = groupRows(state.payload.screener);
 
   const tickers = [...new Set([
@@ -319,7 +468,11 @@ function renderOverview() {
   const breadth = overview.breadth || { advances: 0, declines: 0, unchanged: 0 };
   const signalRows = summary.signalRows ?? state.payload.screener.length;
   const signalTickers = summary.signalTickers ?? state.signalsByTicker.size;
-  const total = Number(summary.totalScanned ?? state.payload.technical.length);
+  const total = Number(
+    summary.totalScanned
+    ?? state.payload.technical?.length
+    ?? Object.keys(state.payload.stocks || {}).length,
+  );
   const coverage = total ? ((Number(summary.ok || 0) / total) * 100).toFixed(1) : "0.0";
 
   els.runMeta.textContent = `Market data ${state.payload.date} \u00b7 Run ${cleanText(state.payload.runTime)}`;
@@ -340,20 +493,28 @@ function renderOverview() {
 
 function renderDataStatus() {
   const summary = state.payload.summary || {};
-  const workbook = String(state.payload.workbook || state.currentManifestEntry?.workbook || "")
-    .split("/")
-    .pop() || "Workbook unavailable";
+  const historicalSnapshot = state.payload.snapshotMode === "historical-ohlcv";
+  const workbook = historicalSnapshot
+    ? "Historical OHLCV snapshot"
+    : String(state.payload.workbook || state.currentManifestEntry?.workbook || "")
+      .split("/")
+      .pop() || "Workbook unavailable";
   const total = Number(summary.totalScanned ?? state.payload.processing?.length ?? 0);
   const signalRows = Number(summary.signalRows ?? state.payload.screener?.length ?? 0);
   const partial = Number(summary.partial || 0);
   const noData = Number(summary.noData || 0);
-  const stateLabel = noData > 0 ? "Partially loaded" : partial > 0 ? "Loaded with warnings" : "Loaded";
+  const stateLabel = historicalSnapshot
+    ? "Historical session"
+    : noData > 0 ? "Partially loaded" : partial > 0 ? "Loaded with warnings" : "Loaded";
   const stateTone = noData > 0 ? "negative" : partial > 0 ? "warning" : "positive";
 
   els.datasetState.className = `status-badge ${stateTone}`;
   els.datasetState.textContent = stateLabel;
   els.datasetTitle.textContent = workbook;
   els.datasetMeta.textContent = `Market date ${state.payload.date} · ${formatNumber(summary.ok || 0, 0)} complete · ${formatNumber(partial, 0)} partial · ${formatNumber(noData, 0)} unavailable`;
+  if (historicalSnapshot) {
+    els.datasetMeta.textContent = `Market date ${state.payload.date} · recalculated from OHLCV available on that session`;
+  }
   els.datasetTickers.textContent = formatNumber(total, 0);
   els.datasetSignals.textContent = formatNumber(signalRows, 0);
   els.datasetPublished.textContent = cleanText(state.payload.runTime).replace(/\.\d+$/, "");
@@ -619,12 +780,15 @@ async function renderPriceChart(ticker) {
   els.chartLegend.innerHTML = "<strong>Loading daily OHLCV history...</strong>";
   els.priceChart.innerHTML = `<div class="chart-loading" aria-label="Loading price chart"><span></span><span></span><span></span></div>`;
   try {
-    if (!state.ohlcvCache.has(ticker)) {
-      state.ohlcvCache.set(ticker, await fetchJson(`${base}/${encodeURIComponent(ticker)}.json`));
+    const marketDate = state.payload.date;
+    const cacheKey = `${marketDate}:${ticker}`;
+    if (!state.ohlcvCache.has(cacheKey)) {
+      state.ohlcvCache.set(cacheKey, await fetchJson(`${base}/${encodeURIComponent(ticker)}.json`));
     }
-    if (state.selectedTicker !== ticker) return;
-    const rows = (state.ohlcvCache.get(ticker)?.rows || [])
+    if (state.selectedTicker !== ticker || state.payload.date !== marketDate) return;
+    const rows = (state.ohlcvCache.get(cacheKey)?.rows || [])
       .filter((row) => row.date && [row.open, row.high, row.low, row.close].every((value) => asNumber(value) !== null))
+      .filter((row) => row.date <= marketDate)
       .slice(-700);
     if (rows.length < 2) {
       renderChartEmpty(ticker, "Insufficient OHLCV records");
@@ -641,7 +805,9 @@ function destroyChart() {
   state.chartResizeObserver = null;
   state.chart?.remove();
   state.chart = null;
+  state.chartCandleSeries = null;
   state.chartRows = [];
+  state.chartDrawings = [];
 }
 
 function chartColors() {
@@ -671,16 +837,6 @@ function applyChartTheme() {
   });
 }
 
-function emaSeries(rows, period) {
-  const multiplier = 2 / (period + 1);
-  let current = null;
-  return rows.map((row) => {
-    const close = asNumber(row.close);
-    current = current === null ? close : (close * multiplier) + (current * (1 - multiplier));
-    return { time: row.date, value: current };
-  });
-}
-
 function firstNumericMatch(row, includes, excludes = []) {
   for (const [key, value] of Object.entries(row || {})) {
     const normalized = key.toLowerCase();
@@ -702,10 +858,11 @@ function renderInteractiveMarketChart(ticker, rows) {
   destroyChart();
   els.priceChart.innerHTML = "";
   state.chartRows = rows;
+  const settings = state.indicatorSettings;
   const colors = chartColors();
   const chart = LightweightCharts.createChart(els.priceChart, {
     autoSize: true,
-    height: 520,
+    height: settings.rsi.show || settings.macd.show ? 720 : 560,
     layout: {
       background: { type: "solid", color: colors.background },
       textColor: colors.text,
@@ -751,42 +908,192 @@ function renderInteractiveMarketChart(ticker, rows) {
     low: asNumber(row.low),
     close: asNumber(row.close),
   })));
+  state.chartCandleSeries = candleSeries;
 
-  const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
-    priceFormat: { type: "volume" },
-    priceScaleId: "volume",
-    lastValueVisible: false,
-    priceLineVisible: false,
-  });
-  volumeSeries.setData(rows.map((row) => ({
-    time: row.date,
-    value: asNumber(row.volume) || 0,
-    color: asNumber(row.close) >= asNumber(row.open) ? "rgba(59,130,246,0.42)" : "rgba(248,113,113,0.38)",
-  })));
-  chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+  if (settings.volume.show) {
+    const volumeSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume",
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+    volumeSeries.setData(rows.map((row) => ({
+      time: row.date,
+      value: asNumber(row.volume) || 0,
+      color: asNumber(row.close) >= asNumber(row.open) ? "rgba(59,130,246,0.42)" : "rgba(248,113,113,0.38)",
+    })));
+    chart.priceScale("volume").applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
+    if (settings.volume.maShow) {
+      const volumeAverage = chart.addSeries(LightweightCharts.LineSeries, {
+        color: "#60a5fa",
+        lineWidth: 1,
+        title: `Vol ${settings.volume.period}`,
+        priceScaleId: "volume",
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      volumeAverage.setData(IDXIndicators.movingAverage(rows, settings.volume.period, "sma", "volume"));
+    }
+  }
 
-  const ema25 = chart.addSeries(LightweightCharts.LineSeries, {
-    color: "#f6bd60",
-    lineWidth: 1,
-    title: "EMA 25",
-    priceLineVisible: false,
-    lastValueVisible: false,
+  [
+    [settings.ema25, "ema", "#60a5fa", `EMA ${settings.ema25.period}`],
+    [settings.ema50, "ema", "#a78bfa", `EMA ${settings.ema50.period}`],
+    [settings.sma200, "sma", "#2563eb", `SMA ${settings.sma200.period}`],
+  ].forEach(([config, type, color, title]) => {
+    if (!config.show) return;
+    const series = chart.addSeries(LightweightCharts.LineSeries, {
+      color,
+      lineWidth: title.startsWith("SMA") ? 2 : 1,
+      title,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    series.setData(IDXIndicators.movingAverage(rows, config.period, type));
   });
-  ema25.setData(emaSeries(rows, 25));
-  const ema50 = chart.addSeries(LightweightCharts.LineSeries, {
-    color: "#a78bfa",
-    lineWidth: 1,
-    title: "EMA 50",
-    priceLineVisible: false,
-    lastValueVisible: false,
-  });
-  ema50.setData(emaSeries(rows, 50));
+
+  if (settings.vwap.show) {
+    const vwapData = IDXIndicators.anchoredVwap(rows, settings.vwap.anchor, settings.vwap.multiplier);
+    const vwapSeries = chart.addSeries(LightweightCharts.LineSeries, {
+      color: "#22d3ee",
+      lineWidth: 2,
+      title: `${settings.vwap.anchor.toUpperCase()} VWAP`,
+      priceLineVisible: false,
+      lastValueVisible: true,
+    });
+    vwapSeries.setData(vwapData.vwap);
+    if (settings.vwap.bands) {
+      [
+        [vwapData.upper, "rgba(34,211,238,0.48)", `VWAP +${settings.vwap.multiplier}`],
+        [vwapData.lower, "rgba(34,211,238,0.48)", `VWAP -${settings.vwap.multiplier}`],
+      ].forEach(([data, color, title]) => {
+        const band = chart.addSeries(LightweightCharts.LineSeries, {
+          color,
+          lineWidth: 1,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          title,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+        band.setData(data);
+      });
+    }
+  }
+
+  if (settings.initialBalance.show) {
+    const balance = IDXIndicators.initialBalance(rows, settings.initialBalance.days);
+    [
+      [balance.high, "#60a5fa", "IBH"],
+      [balance.low, "#f87171", "IBL"],
+    ].forEach(([data, color, title]) => {
+      const series = chart.addSeries(LightweightCharts.LineSeries, {
+        color,
+        lineWidth: 1,
+        lineStyle: LightweightCharts.LineStyle.Dashed,
+        title,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      series.setData(data);
+    });
+  }
+
+  let paneIndex = 1;
+  if (settings.rsi.show) {
+    const rsiData = IDXIndicators.rsi(
+      rows,
+      settings.rsi.period,
+      settings.rsi.smoothing,
+      settings.rsi.smoothingPeriod,
+    );
+    const rsiSeries = chart.addSeries(LightweightCharts.LineSeries, {
+      color: "#60a5fa",
+      lineWidth: 2,
+      title: `RSI ${settings.rsi.period}`,
+      priceScaleId: "rsi",
+      priceLineVisible: false,
+      lastValueVisible: true,
+    }, paneIndex);
+    rsiSeries.setData(rsiData.values);
+    if (rsiData.smooth.length) {
+      const rsiSmooth = chart.addSeries(LightweightCharts.LineSeries, {
+        color: "#94a3b8",
+        lineWidth: 1,
+        title: `RSI ${settings.rsi.smoothing.toUpperCase()}`,
+        priceScaleId: "rsi",
+        priceLineVisible: false,
+        lastValueVisible: false,
+      }, paneIndex);
+      rsiSmooth.setData(rsiData.smooth);
+    }
+    [70, 50, 30].forEach((price) => rsiSeries.createPriceLine({
+      price,
+      color: price === 70 ? "rgba(59,130,246,0.55)" : price === 30 ? "rgba(248,113,113,0.55)" : "rgba(148,163,184,0.28)",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: String(price),
+    }));
+    paneIndex += 1;
+  }
+
+  if (settings.macd.show) {
+    const macdData = IDXIndicators.macd(
+      rows,
+      settings.macd.fast,
+      settings.macd.slow,
+      settings.macd.signal,
+      settings.macd.histogramSmoothing,
+    );
+    const histogram = chart.addSeries(LightweightCharts.HistogramSeries, {
+      priceScaleId: "macd",
+      title: "MACD 4C",
+      priceLineVisible: false,
+      lastValueVisible: false,
+    }, paneIndex);
+    histogram.setData(macdData.histogram);
+    const macdLine = chart.addSeries(LightweightCharts.LineSeries, {
+      color: "#3b82f6",
+      lineWidth: 2,
+      title: "MACD",
+      priceScaleId: "macd",
+      priceLineVisible: false,
+      lastValueVisible: true,
+    }, paneIndex);
+    macdLine.setData(macdData.line);
+    const signalLine = chart.addSeries(LightweightCharts.LineSeries, {
+      color: "#f87171",
+      lineWidth: 1,
+      title: "Signal",
+      priceScaleId: "macd",
+      priceLineVisible: false,
+      lastValueVisible: true,
+    }, paneIndex);
+    signalLine.setData(macdData.signal);
+    macdLine.createPriceLine({
+      price: 0,
+      color: "rgba(148,163,184,0.35)",
+      lineWidth: 1,
+      axisLabelVisible: false,
+      title: "0",
+    });
+  }
+
+  if (settings.smc.show && LightweightCharts.createSeriesMarkers) {
+    LightweightCharts.createSeriesMarkers(
+      candleSeries,
+      IDXIndicators.structureMarkers(
+        rows,
+        settings.smc.internalLength,
+        settings.smc.swingLength,
+        settings.smc.equalTolerance,
+      ),
+    );
+  }
 
   const technical = state.technicalByTicker.get(ticker) || {};
   const signal = (state.signalsByTicker.get(ticker) || [])[0] || {};
-  const vwap = firstNumericMatch(technical, ["current", "vwap"], ["zone", "sigma", "running", "days"]);
   const lines = [
-    ["VWAP", vwap, "#22d3ee"],
     ["Entry", asNumber(valueFrom(signal, ["Entry"])), "#3b82f6"],
     ["Target", asNumber(valueFrom(signal, ["Target"])), "#60a5fa"],
     ["Invalidation", asNumber(valueFrom(signal, ["Invalidation"])), "#f87171"],
@@ -831,7 +1138,21 @@ function renderInteractiveMarketChart(ticker, rows) {
 
   state.chartResizeObserver = new ResizeObserver(() => chart.timeScale().applyOptions({}));
   state.chartResizeObserver.observe(els.priceChart);
+  chart.subscribeClick((param) => {
+    if (state.chartTool !== "horizontal" || !param.point) return;
+    const price = candleSeries.coordinateToPrice(param.point.y);
+    if (price === null) return;
+    state.chartDrawings.push(candleSeries.createPriceLine({
+      price,
+      color: "#60a5fa",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: "User level",
+    }));
+  });
   setChartRange(state.chartRange);
+  updateActiveIndicatorStrip();
 
   const partial = rows.length < 60;
   els.historyStatus.className = `status-badge ${partial ? "warning" : "positive"}`;
@@ -1241,6 +1562,11 @@ function renderWorkbookExplorer() {
 function renderAll() {
   if (!state.payload) return;
   els.sidebarDate.textContent = state.payload.date;
+  els.selectedDateLabel.textContent = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${state.payload.date}T00:00:00Z`));
   els.downloadLink.href = state.payload.workbook || "#";
   els.downloadLink.setAttribute("aria-disabled", state.payload.workbook ? "false" : "true");
   renderDataStatus();
@@ -1249,19 +1575,63 @@ function renderAll() {
   if (state.selectedTicker) renderTicker();
 }
 
+function publishedDateEntries() {
+  return (state.manifest?.dates || []).filter((entry) => entry.isTradingDate !== false);
+}
+
+function renderCalendar() {
+  if (!state.calendarMonth) return;
+  const year = state.calendarMonth.getUTCFullYear();
+  const month = state.calendarMonth.getUTCMonth();
+  const published = new Set(publishedDateEntries().map((entry) => entry.date));
+  const selected = state.payload?.date || state.manifest?.latest;
+  const firstDay = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  els.calendarMonthLabel.textContent = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(state.calendarMonth);
+  const cells = Array.from({ length: firstDay }, () => "<span class=\"calendar-blank\"></span>");
+  for (let day = 1; day <= days; day += 1) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const enabled = published.has(date);
+    cells.push(`
+      <button
+        type="button"
+        class="${date === selected ? "selected" : ""}"
+        data-market-date="${date}"
+        ${enabled ? "" : "disabled"}
+        aria-label="${escapeHtml(date)}${enabled ? "" : ", not published"}"
+      >${day}</button>
+    `);
+  }
+  els.calendarGrid.innerHTML = cells.join("");
+}
+
+function openCalendar() {
+  const selected = state.payload?.date || state.manifest?.latest;
+  state.calendarMonth = new Date(`${selected.slice(0, 7)}-01T00:00:00Z`);
+  renderCalendar();
+  openModal(els.datePickerModal);
+}
+
 async function loadDate(marketDate) {
   const item = state.manifest.dates.find((entry) => entry.date === marketDate);
   if (!item) return;
+  const token = ++state.loadToken;
   loading(30);
-  state.payload = await fetchJson(item.file);
+  const payload = await fetchJson(item.file);
+  if (token !== state.loadToken) return;
+  state.payload = payload;
   state.currentManifestEntry = item;
-  state.ohlcvCache.clear();
   loading(72);
   rebuildIndexes();
   if (state.selectedTicker && !state.technicalByTicker.has(state.selectedTicker) && !state.signalsByTicker.has(state.selectedTicker)) {
     state.selectedTicker = "";
   }
   renderAll();
+  renderCalendar();
   loading(100);
 }
 
@@ -1270,16 +1640,6 @@ async function init() {
   state.manifest = await fetchJson("data/manifest.json");
   if (!state.manifest.dates?.length) throw new Error("No screener datasets have been published.");
   loading(25);
-  const visibleDates = state.manifest.dates.filter((entry) => {
-    if (entry.isTradingDate === false) return false;
-    const day = new Date(`${entry.date}T00:00:00Z`).getUTCDay();
-    return day !== 0 && day !== 6;
-  });
-  els.dateSelect.innerHTML = visibleDates
-    .map((entry) => `<option value="${escapeHtml(entry.date)}">${escapeHtml(entry.date)}</option>`)
-    .join("");
-  els.dateSelect.value = state.manifest.latest;
-
   const historyPromise = state.manifest.history
     ? fetchJson(state.manifest.history).catch(() => ({ dates: [], tickers: {} }))
     : Promise.resolve({ dates: [], tickers: {} });
@@ -1288,6 +1648,10 @@ async function init() {
     historyPromise,
   ]);
   state.payload = payload;
+  state.reference = {
+    fundamental: payload.fundamental || [],
+    news: payload.news || [],
+  };
   state.currentManifestEntry = state.manifest.dates.find((entry) => entry.date === state.manifest.latest) || null;
   state.history = historyData;
   loading(75);
@@ -1302,6 +1666,45 @@ document.querySelectorAll(".nav-item").forEach((button) => {
 });
 
 document.addEventListener("click", (event) => {
+  const closeTarget = event.target.closest("[data-close-modal]");
+  if (closeTarget) {
+    closeModal(closeTarget.dataset.closeModal === "date" ? els.datePickerModal : els.indicatorSettingsModal);
+    return;
+  }
+  const dateTarget = event.target.closest("[data-market-date]");
+  if (dateTarget && !dateTarget.disabled) {
+    closeModal(els.datePickerModal);
+    loadDate(dateTarget.dataset.marketDate).catch((error) => showError(error.message));
+    return;
+  }
+  const toolTarget = event.target.closest("[data-chart-tool]");
+  if (toolTarget) {
+    const tool = toolTarget.dataset.chartTool;
+    if (tool === "indicators") {
+      populateIndicatorSettingsForm();
+      openModal(els.indicatorSettingsModal);
+      return;
+    }
+    if (tool === "fit") {
+      state.chart?.timeScale().fitContent();
+      return;
+    }
+    if (tool === "clear") {
+      state.chartDrawings.forEach((line) => state.chartCandleSeries?.removePriceLine(line));
+      state.chartDrawings = [];
+      return;
+    }
+    state.chartTool = tool;
+    els.chartToolRail.querySelectorAll("button").forEach((button) => {
+      button.classList.toggle("active", button.dataset.chartTool === tool);
+    });
+    state.chart?.applyOptions({
+      crosshair: {
+        mode: tool === "crosshair" ? LightweightCharts.CrosshairMode.Magnet : LightweightCharts.CrosshairMode.Normal,
+      },
+    });
+    return;
+  }
   const rangeTarget = event.target.closest("[data-chart-range]");
   if (rangeTarget) {
     setChartRange(rangeTarget.dataset.chartRange);
@@ -1348,10 +1751,6 @@ document.addEventListener("click", (event) => {
   }
 });
 
-els.dateSelect.addEventListener("change", (event) => {
-  loadDate(event.target.value).catch((error) => showError(error.message));
-});
-
 els.screenerSearch.addEventListener("input", (event) => {
   state.search = event.target.value;
   renderScreener();
@@ -1387,9 +1786,70 @@ els.menuButton.addEventListener("click", () => document.body.classList.toggle("n
 els.themeToggle.addEventListener("click", () => {
   applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 });
+els.datePickerButton.addEventListener("click", openCalendar);
+els.calendarPrevious.addEventListener("click", () => {
+  state.calendarMonth = new Date(Date.UTC(
+    state.calendarMonth.getUTCFullYear(),
+    state.calendarMonth.getUTCMonth() - 1,
+    1,
+  ));
+  renderCalendar();
+});
+els.calendarNext.addEventListener("click", () => {
+  state.calendarMonth = new Date(Date.UTC(
+    state.calendarMonth.getUTCFullYear(),
+    state.calendarMonth.getUTCMonth() + 1,
+    1,
+  ));
+  renderCalendar();
+});
+els.calendarLatest.addEventListener("click", () => {
+  closeModal(els.datePickerModal);
+  loadDate(state.manifest.latest).catch((error) => showError(error.message));
+});
+els.indicatorSettingsButton.addEventListener("click", () => {
+  populateIndicatorSettingsForm();
+  openModal(els.indicatorSettingsModal);
+});
+function handleIndicatorSettingInput(event) {
+  const input = event.target.closest("[name]");
+  if (!input) return;
+  const value = input.type === "checkbox"
+    ? input.checked
+    : input.type === "number"
+      ? Number(input.value)
+      : input.value;
+  if (input.type === "number" && (!Number.isFinite(value) || !input.validity.valid)) return;
+  objectPathValue(state.indicatorSettings, input.name, value);
+  saveIndicatorSettings();
+  updateActiveIndicatorStrip();
+  window.clearTimeout(state.indicatorRenderTimer);
+  state.indicatorRenderTimer = window.setTimeout(() => {
+    if (state.selectedTicker) renderPriceChart(state.selectedTicker);
+  }, 220);
+}
+els.indicatorSettingsForm.addEventListener("change", handleIndicatorSettingInput);
+els.indicatorSettingsForm.addEventListener("input", handleIndicatorSettingInput);
+els.resetIndicatorSettings.addEventListener("click", () => {
+  state.indicatorSettings = IDXIndicators.deepMerge(IDXIndicators.DEFAULTS, {});
+  saveIndicatorSettings();
+  populateIndicatorSettingsForm();
+  updateActiveIndicatorStrip();
+  if (state.selectedTicker) renderPriceChart(state.selectedTicker);
+});
+document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) closeModal(backdrop);
+  });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  closeModal(els.datePickerModal);
+  closeModal(els.indicatorSettingsModal);
+});
 els.resetFilters.addEventListener("click", resetScreenerFilters);
 els.refreshData.addEventListener("click", () => {
-  const selectedDate = els.dateSelect.value || state.manifest?.latest;
+  const selectedDate = state.payload?.date || state.manifest?.latest;
   els.datasetState.className = "status-badge info";
   els.datasetState.textContent = "Loading";
   loadDate(selectedDate).catch((error) => showError(error.message));
@@ -1397,6 +1857,9 @@ els.refreshData.addEventListener("click", () => {
 window.addEventListener("hashchange", routeFromHash);
 
 initTheme();
+loadIndicatorSettings();
+populateIndicatorSettingsForm();
+updateActiveIndicatorStrip();
 init().catch((error) => {
   loading(100);
   showError(error.message);

@@ -8,17 +8,17 @@
       name="description"
       content="IDX stock screener dashboard powered by the existing VWAP Screener logic."
     />
-    <title>IDX Flow Screener</title>
-    <link rel="stylesheet" href="styles.css?v=20260610-premium-v4" />
+    <title>IDX RESEARCH</title>
+    <link rel="stylesheet" href="styles.css?v=20260611-research-v6" />
   </head>
   <body class="app-loading">
     <div id="loadBar" class="load-bar"></div>
     <div class="app-shell">
       <aside class="sidebar">
-        <a class="brand" href="#overview" aria-label="IDX Flow home">
+        <a class="brand" href="#overview" aria-label="IDX RESEARCH home">
           <span class="brand-mark">IX</span>
           <span>
-            <strong>IDX Flow</strong>
+            <strong>IDX RESEARCH</strong>
             <small>Research workstation</small>
           </span>
         </a>
@@ -66,10 +66,13 @@
               <input id="tickerCommand" list="tickerList" placeholder="Search ticker" autocomplete="off" />
               <datalist id="tickerList"></datalist>
             </label>
-            <label class="date-control">
+            <div class="date-control">
               <span>Market date</span>
-              <select id="dateSelect" aria-label="Market date"></select>
-            </label>
+              <button id="datePickerButton" class="date-picker-button" type="button" aria-haspopup="dialog">
+                <strong id="selectedDateLabel">Loading</strong>
+                <span aria-hidden="true">CAL</span>
+              </button>
+            </div>
             <button id="themeToggle" class="icon-button theme-toggle" type="button" aria-label="Switch color theme">
               <span class="theme-icon" aria-hidden="true">MOON</span>
             </button>
@@ -238,6 +241,9 @@
                 </div>
                 <div class="chart-toolbar-actions">
                   <span id="historyStatus" class="status-badge info">Loading history</span>
+                  <button id="indicatorSettingsButton" class="secondary-button indicator-settings-button" type="button">
+                    Indicators
+                  </button>
                   <div class="range-switcher" aria-label="Chart range">
                     <button type="button" data-chart-range="3M">3M</button>
                     <button type="button" data-chart-range="6M">6M</button>
@@ -249,7 +255,18 @@
               <div id="chartLegend" class="chart-legend" aria-live="polite">
                 <strong>Move across the chart to inspect OHLC and volume.</strong>
               </div>
-              <div id="priceChart" class="price-chart trading-chart"></div>
+              <div class="chart-workspace">
+                <aside id="chartToolRail" class="chart-tool-rail" aria-label="Chart tools">
+                  <button class="active" type="button" data-chart-tool="cursor" title="Cursor">PTR</button>
+                  <button type="button" data-chart-tool="crosshair" title="Crosshair">XH</button>
+                  <button type="button" data-chart-tool="horizontal" title="Horizontal level">HL</button>
+                  <button type="button" data-chart-tool="fit" title="Fit chart">FIT</button>
+                  <button type="button" data-chart-tool="indicators" title="Indicator settings">IND</button>
+                  <button type="button" data-chart-tool="clear" title="Clear drawings">CLR</button>
+                </aside>
+                <div id="priceChart" class="price-chart trading-chart"></div>
+              </div>
+              <div id="activeIndicatorStrip" class="active-indicator-strip"></div>
               <div class="chart-footer">
                 <span id="historyMeta"></span>
                 <a href="https://www.tradingview.com/" target="_blank" rel="noopener">Charts by TradingView</a>
@@ -315,7 +332,101 @@
       </main>
     </div>
 
+    <div id="datePickerModal" class="modal-backdrop" hidden>
+      <section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
+        <header class="modal-header">
+          <div>
+            <span class="panel-kicker">MARKET DATE</span>
+            <h2 id="calendarTitle">Select published session</h2>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal="date" aria-label="Close calendar">X</button>
+        </header>
+        <div class="calendar-toolbar">
+          <button id="calendarPrevious" class="icon-button" type="button" aria-label="Previous month">&lt;</button>
+          <strong id="calendarMonthLabel"></strong>
+          <button id="calendarNext" class="icon-button" type="button" aria-label="Next month">&gt;</button>
+        </div>
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+        <footer class="calendar-footer">
+          <span>Only published IDX sessions are selectable.</span>
+          <button id="calendarLatest" class="secondary-button" type="button">Latest session</button>
+        </footer>
+      </section>
+    </div>
+
+    <div id="indicatorSettingsModal" class="modal-backdrop" hidden>
+      <section class="indicator-modal" role="dialog" aria-modal="true" aria-labelledby="indicatorSettingsTitle">
+        <header class="modal-header">
+          <div>
+            <span class="panel-kicker">GLOBAL CHART PROFILE</span>
+            <h2 id="indicatorSettingsTitle">Indicator settings</h2>
+            <p>Changes apply to every ticker and every market date.</p>
+          </div>
+          <button class="icon-button modal-close" type="button" data-close-modal="indicators" aria-label="Close settings">X</button>
+        </header>
+        <form id="indicatorSettingsForm" class="indicator-settings-form">
+          <fieldset>
+            <legend>Price overlays</legend>
+            <label class="setting-toggle"><input name="ema25.show" type="checkbox" /> EMA 25</label>
+            <label class="setting-toggle"><input name="ema50.show" type="checkbox" /> EMA 50</label>
+            <label class="setting-toggle"><input name="sma200.show" type="checkbox" /> SMA 200</label>
+            <label class="setting-toggle"><input name="vwap.show" type="checkbox" /> Anchored VWAP</label>
+            <label>VWAP anchor
+              <select name="vwap.anchor">
+                <option value="month">Month</option>
+                <option value="week">Week</option>
+                <option value="quarter">Quarter</option>
+                <option value="year">Year</option>
+                <option value="session">Session</option>
+              </select>
+            </label>
+            <label class="setting-toggle"><input name="vwap.bands" type="checkbox" /> VWAP bands</label>
+            <label>Band multiplier <input name="vwap.multiplier" type="number" min="0.1" max="5" step="0.1" /></label>
+          </fieldset>
+          <fieldset>
+            <legend>Volume and momentum</legend>
+            <label class="setting-toggle"><input name="volume.show" type="checkbox" /> Volume</label>
+            <label class="setting-toggle"><input name="volume.maShow" type="checkbox" /> Vol 20 average</label>
+            <label>Volume MA length <input name="volume.period" type="number" min="2" max="200" step="1" /></label>
+            <label class="setting-toggle"><input name="rsi.show" type="checkbox" /> RSI</label>
+            <label>RSI length <input name="rsi.period" type="number" min="2" max="100" step="1" /></label>
+            <label>RSI smoothing
+              <select name="rsi.smoothing">
+                <option value="sma">SMA</option>
+                <option value="ema">EMA</option>
+                <option value="smma">SMMA</option>
+                <option value="none">None</option>
+              </select>
+            </label>
+            <label>RSI smoothing length <input name="rsi.smoothingPeriod" type="number" min="2" max="100" step="1" /></label>
+            <label class="setting-toggle"><input name="macd.show" type="checkbox" /> MACD 4C</label>
+            <label>MACD fast <input name="macd.fast" type="number" min="2" max="100" step="1" /></label>
+            <label>MACD slow <input name="macd.slow" type="number" min="3" max="200" step="1" /></label>
+            <label>MACD signal <input name="macd.signal" type="number" min="2" max="100" step="1" /></label>
+            <label>Histogram smoothing <input name="macd.histogramSmoothing" type="number" min="1" max="50" step="1" /></label>
+          </fieldset>
+          <fieldset>
+            <legend>IBH / IBL and SMC</legend>
+            <label class="setting-toggle"><input name="initialBalance.show" type="checkbox" /> Monthly IBH / IBL</label>
+            <label>Initial balance days <input name="initialBalance.days" type="number" min="1" max="10" step="1" /></label>
+            <label class="setting-toggle"><input name="smc.show" type="checkbox" /> SMC structure</label>
+            <label>Internal pivot length <input name="smc.internalLength" type="number" min="2" max="20" step="1" /></label>
+            <label>Swing pivot length <input name="smc.swingLength" type="number" min="3" max="50" step="1" /></label>
+            <label>Equal high / low tolerance % <input name="smc.equalTolerance" type="number" min="0.01" max="5" step="0.01" /></label>
+          </fieldset>
+          <footer class="settings-footer">
+            <span id="settingsSavedState">Saved automatically on this browser.</span>
+            <button id="resetIndicatorSettings" class="secondary-button" type="button">Reset defaults</button>
+          </footer>
+        </form>
+      </section>
+    </div>
+
     <script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="app.js?v=20260610-premium-v4"></script>
+    <script src="indicators.js?v=20260611-research-v6"></script>
+    <script src="app.js?v=20260611-research-v6"></script>
   </body>
 </html>

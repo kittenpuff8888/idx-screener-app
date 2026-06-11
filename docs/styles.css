@@ -19,7 +19,7 @@
   --green-soft: var(--bullish-soft);
   --red: #f87171;
   --red-soft: rgba(248, 113, 113, 0.12);
-  --amber: #f6bd60;
+  --amber: #60a5fa;
   --blue: #60a5fa;
   --cyan: #22d3ee;
   --violet: #a78bfa;
@@ -51,7 +51,7 @@
   --green-soft: var(--bullish-soft);
   --red: #dc3f4f;
   --red-soft: rgba(220, 63, 79, 0.09);
-  --amber: #b66b00;
+  --amber: #2563eb;
   --blue: #2563eb;
   --cyan: #087e9b;
   --shadow: 0 18px 48px rgba(31, 58, 94, 0.1);
@@ -79,7 +79,7 @@ body {
     var(--bg);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -420,6 +420,11 @@ select option {
   font-family: var(--mono);
   font-size: 10px;
   font-weight: 800;
+}
+
+.download-button[aria-disabled="true"] {
+  opacity: 0.38;
+  pointer-events: none;
 }
 
 .menu-button {
@@ -2443,5 +2448,396 @@ select option {
   .metric-grid,
   .quality-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* IDX RESEARCH calendar, chart tools, and global indicator profile */
+.brand strong {
+  font-size: 16px;
+}
+
+.brand small,
+.sidebar-foot p,
+.system-state small {
+  font-size: 11px;
+}
+
+.nav-item {
+  font-size: 14px;
+}
+
+.date-control {
+  min-width: 174px;
+  height: 48px;
+  padding: 5px 10px;
+}
+
+.date-picker-button {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.date-picker-button strong {
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date-picker-button > span {
+  color: var(--bullish);
+  font-size: 10px;
+}
+
+.chart-workspace {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  min-height: 720px;
+  background: var(--panel);
+}
+
+.chart-tool-rail {
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 10px 7px;
+  border-right: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel-2) 82%, var(--panel));
+}
+
+.chart-tool-rail button {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.chart-tool-rail button:hover,
+.chart-tool-rail button.active {
+  color: #ffffff;
+  border-color: rgba(59, 130, 246, 0.38);
+  background: var(--bullish);
+}
+
+.trading-chart,
+.chart-loading,
+.chart-empty-state {
+  min-height: 720px;
+}
+
+.active-indicator-strip {
+  display: flex;
+  min-height: 45px;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 8px 20px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.active-indicator-strip strong {
+  color: var(--text);
+}
+
+.active-indicator-strip span {
+  padding: 4px 8px;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+  border-radius: 999px;
+  color: var(--blue);
+  background: var(--bullish-soft);
+  font-family: var(--mono);
+}
+
+.active-indicator-strip small {
+  margin-left: auto;
+  color: var(--faint);
+}
+
+.modal-open {
+  overflow: hidden;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(3, 9, 19, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.calendar-modal,
+.indicator-modal {
+  width: min(96vw, 460px);
+  max-height: min(90vh, 820px);
+  overflow: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.48);
+}
+
+.indicator-modal {
+  width: min(96vw, 940px);
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-header h2 {
+  margin: 5px 0 0;
+  font-size: 22px;
+}
+
+.modal-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.modal-close {
+  width: 40px;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.calendar-toolbar {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  padding: 18px 22px 12px;
+}
+
+.calendar-toolbar strong {
+  text-align: center;
+  font-size: 17px;
+}
+
+.calendar-toolbar .icon-button {
+  width: 40px;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  padding-inline: 22px;
+}
+
+.calendar-weekdays {
+  padding-bottom: 8px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-align: center;
+}
+
+.calendar-grid button,
+.calendar-blank {
+  aspect-ratio: 1;
+}
+
+.calendar-grid button {
+  border: 1px solid transparent;
+  border-radius: 50%;
+  color: var(--muted);
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.calendar-grid button:hover:not(:disabled) {
+  color: #ffffff;
+  border-color: rgba(59, 130, 246, 0.42);
+  background: var(--bullish-soft);
+}
+
+.calendar-grid button.selected {
+  color: #ffffff;
+  border-color: var(--bullish);
+  background: var(--bullish);
+  box-shadow: 0 0 0 4px var(--bullish-soft);
+}
+
+.calendar-grid button:disabled {
+  color: color-mix(in srgb, var(--faint) 42%, transparent);
+  cursor: not-allowed;
+}
+
+.calendar-footer,
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  padding: 16px 22px 20px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.indicator-settings-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 18px;
+}
+
+.indicator-settings-form fieldset {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-2);
+}
+
+.indicator-settings-form legend {
+  padding: 0 7px;
+  color: var(--blue);
+  font-weight: 800;
+}
+
+.indicator-settings-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.indicator-settings-form .setting-toggle {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+}
+
+.indicator-settings-form input[type="number"],
+.indicator-settings-form select {
+  width: 100%;
+  min-height: 39px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--panel);
+}
+
+.indicator-settings-form input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--bullish);
+}
+
+.indicator-settings-form .settings-footer {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-inline: 4px;
+  border-top: 0;
+}
+
+.data-table th,
+.data-table td,
+.detail-item strong,
+.detail-item span,
+.ticker-signal p,
+.news-item p {
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .indicator-settings-form {
+    grid-template-columns: 1fr;
+  }
+
+  .indicator-settings-form .settings-footer {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 680px) {
+  .date-control {
+    min-width: 118px;
+    height: 42px;
+  }
+
+  .date-picker-button strong {
+    font-size: 11px;
+  }
+
+  .indicator-settings-button {
+    min-height: 34px;
+    font-size: 12px;
+  }
+
+  .chart-workspace {
+    grid-template-columns: 42px minmax(0, 1fr);
+    min-height: 600px;
+  }
+
+  .trading-chart,
+  .chart-loading,
+  .chart-empty-state {
+    min-height: 600px;
+  }
+
+  .active-indicator-strip small {
+    display: none;
+  }
+
+  .calendar-footer,
+  .settings-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 400px) {
+  .date-control {
+    display: grid;
+    min-width: 106px;
+  }
+
+  .date-control > span {
+    display: none;
   }
 }

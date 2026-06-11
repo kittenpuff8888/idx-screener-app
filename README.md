@@ -1,4 +1,4 @@
-# IDX Screener Website
+# IDX RESEARCH
 
 Static GitHub Pages website for the IDX VWAP screener.
 
@@ -13,13 +13,15 @@ scripts/
   export_latest.py         # Exports schema v3, all workbook sheets, QA, and ticker details
   add_qa_audit.py          # Adds QA traceability to an existing workbook copy
   fetch_site_ohlcv.py      # Seeds static daily OHLCV files when needed
+  build_historical_snapshots.py # Recalculates Jan 1-Jun 10 historical sessions
 tests/
   test_calculation_logic.py
 docs/
   index.html               # Dashboard structure
   styles.css               # Responsive Flow-inspired interface
-  app.js                   # Overview, screener, candlesticks, QA, and workbook explorer
-  data/                    # Published snapshots, QA reports, OHLCV, and field catalog
+  app.js                   # Overview, screener, ticker research, calendar, and chart controls
+  indicators.js            # Pine-equivalent VWAP, RSI, MACD, IBH/IBL, MA, and SMC calculations
+  data/                    # Published snapshots, QA reports, and OHLCV
   downloads/               # Downloadable source workbooks
 Raw/                       # Existing screener inputs
 Output/                    # Generated workbooks
@@ -31,6 +33,9 @@ Cache/                     # Existing runtime cache
 - `rebuild_backend/IDX_Screener.py` is the website's automation copy of the existing screener and creates an Excel workbook in `Output/`.
 - `scripts/export_latest.py` converts every workbook sheet into the schema v3 web contract.
 - `docs/index.html` provides market overview, screener, and TradingView-style ticker research.
+- The calendar exposes 103 actual IDX sessions from January 2 through June 10, 2026. January 1 was not a market session.
+- Chart indicator settings are one browser-wide profile. A setting changed on one ticker applies to every ticker and market date.
+- `scripts/build_historical_snapshots.py` rebuilds the historical window from published OHLCV whenever the daily pipeline runs.
 - `.github/workflows/idx-screener-pages.yml` runs after the market cutoff and publishes generated data to the `main` branch.
 - GitHub Pages serves the committed `docs/` directory directly from `main`.
 
@@ -66,7 +71,7 @@ python scripts/sync_local_source.py
 The staged file is written to `rebuild_backend/incoming/IDX_Screener.py`. Compare and merge it into the audited backend copy, then run:
 
 ```powershell
-python -m unittest tests/test_calculation_logic.py -v
+python -m unittest discover -s tests -v
 python scripts/run_daily.py
 git add rebuild_backend scripts tests docs Raw
 git commit -m "Sync latest IDX screener script"
@@ -76,8 +81,8 @@ git push
 This staging workflow prevents a new local script from silently removing the audited TradingView-alignment and website integration fixes. The OneDrive source is never edited.
 
 When a committed change touches `rebuild_backend/IDX_Screener.py`, GitHub Actions
-automatically reruns every market date already listed in `docs/data/manifest.json`.
-This keeps historical snapshots aligned with the current calculation logic.
+reruns workbook-backed dates and then rebuilds all historical website snapshots.
+This keeps the published date selector aligned with the current calculation logic.
 
 ## Backfill And Daily Data
 

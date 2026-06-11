@@ -84,6 +84,10 @@ jobs:
         if: steps.screener-args.outputs.run == 'true'
         run: python scripts/run_backfill.py ${{ steps.screener-args.outputs.args }}
 
+      - name: Rebuild historical website snapshots
+        if: steps.screener-args.outputs.run == 'true'
+        run: python scripts/build_historical_snapshots.py
+
       - name: Commit generated data
         if: steps.screener-args.outputs.run == 'true'
         shell: bash

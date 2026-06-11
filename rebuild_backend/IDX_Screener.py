@@ -8405,6 +8405,7 @@ def _is_fund_data_empty(d: dict) -> bool:
         "net_margin_q",
         "eps_ttm_current",
         "pbv_current",
+        "market_cap_current",
     ]
     def _null(v):
         if v is None or v == "" or v == "N/A":

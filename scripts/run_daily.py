@@ -16,6 +16,11 @@ def main() -> None:
     else:
         args = ["--days", "1"]
     subprocess.run([sys.executable, str(ROOT / "scripts" / "run_backfill.py"), *args], cwd=ROOT, check=True)
+    subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_historical_snapshots.py")],
+        cwd=ROOT,
+        check=True,
+    )
 
 
 if __name__ == "__main__":
