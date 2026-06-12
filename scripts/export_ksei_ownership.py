@@ -155,6 +155,20 @@ def write_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
 
+def preserve_generated_at(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    if not path.exists():
+        return payload
+    try:
+        existing = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return payload
+    comparable_existing = {key: value for key, value in existing.items() if key != "generatedAt"}
+    comparable_payload = {key: value for key, value in payload.items() if key != "generatedAt"}
+    if comparable_existing == comparable_payload and existing.get("generatedAt"):
+        payload["generatedAt"] = existing["generatedAt"]
+    return payload
+
+
 def build() -> dict[str, Any]:
     generated_at = datetime.now(timezone.utc).isoformat()
     snapshots: list[dict[str, Any]] = []
@@ -181,7 +195,9 @@ def build() -> dict[str, Any]:
             "records": records,
         }
         payload["comparison"] = compare(previous, payload)
-        write_json(OUTPUT_DIR / "dates" / as_of / "ownership.json", payload)
+        dated_path = OUTPUT_DIR / "dates" / as_of / "ownership.json"
+        payload = preserve_generated_at(dated_path, payload)
+        write_json(dated_path, payload)
         snapshots.append(payload)
         previous = payload
 
@@ -203,6 +219,7 @@ def build() -> dict[str, Any]:
             for item in snapshots
         ],
     }
+    manifest = preserve_generated_at(OUTPUT_DIR / "manifest.json", manifest)
     write_json(OUTPUT_DIR / "manifest.json", manifest)
     write_json(OUTPUT_DIR / "latest.json", snapshots[-1])
     return manifest

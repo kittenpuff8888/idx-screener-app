@@ -15,11 +15,12 @@ class HistoricalSnapshotTests(unittest.TestCase):
     def test_market_date_window_contains_real_sessions(self):
         dates = [entry["marketDate"] for entry in self.manifest["dates"]]
         self.assertEqual(self.manifest["schemaVersion"], 5)
-        self.assertEqual(len(dates), 339)
+        self.assertEqual(len(dates), 340)
         self.assertEqual(len(dates), len(set(dates)))
         self.assertIn("2025-01-02", dates)
         self.assertIn("2026-01-02", dates)
         self.assertIn("2026-06-10", dates)
+        self.assertIn("2026-06-11", dates)
         self.assertNotIn("2026-01-01", dates)
 
     def test_historical_snapshots_are_date_specific(self):
