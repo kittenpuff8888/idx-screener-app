@@ -54,7 +54,10 @@ def manifest_has_date(market_date: str, manifest_path: Path | None = None) -> bo
     except (OSError, json.JSONDecodeError):
         return False
 
-    return any(item.get("date") == market_date for item in manifest.get("dates", []))
+    return any(
+        (item.get("marketDate") or item.get("date")) == market_date
+        for item in manifest.get("dates", [])
+    )
 
 
 def published_market_dates(
@@ -70,9 +73,9 @@ def published_market_dates(
     except (OSError, json.JSONDecodeError):
         return []
     dates = {
-        str(item.get("date") or "")
+        str(item.get("marketDate") or item.get("date") or "")
         for item in manifest.get("dates", [])
-        if item.get("date") and (not workbook_only or item.get("workbook"))
+        if (item.get("marketDate") or item.get("date")) and (not workbook_only or item.get("workbook"))
     }
     return sorted(dates)
 

@@ -297,9 +297,9 @@ def build_stock(
     swing = "Bullish" if close is not None and swing_reference is not None and close >= swing_reference else "Bearish"
     structure = "Range"
     if close is not None and prior_resistance is not None and close > prior_resistance:
-        structure = "Bullish BOS"
+        structure = "Upward Structure Break"
     elif close is not None and prior_support is not None and close < prior_support:
-        structure = "Bearish BOS"
+        structure = "Downward Structure Break"
     rsi_status = "Strong" if rsi_value is not None and rsi_value >= 55 else "Weak" if rsi_value is not None and rsi_value <= 45 else "Neutral"
     macd_position = "Above Zero" if macd_value is not None and macd_value >= 0 else "Below Zero"
     wave = "Mountain (Rising)" if histogram is not None and histogram >= 0 else "Valley (Recovering)"
@@ -398,7 +398,7 @@ def build_signal(stock: dict[str, Any], prepared: dict[str, Any], index: int) ->
         and current_low <= support < close
         and rvol >= 1.2
     ):
-        conditions.append(("D", "POI Reclaim", f"Price reclaimed support at {support:g} with RVOL {rvol:.2f}"))
+        conditions.append(("D", "Price Level Reclaim", f"Price reclaimed support at {support:g} with RVOL {rvol:.2f}"))
 
     rows = []
     for tag, label, explanation in conditions:
@@ -470,7 +470,7 @@ def market_overview(stocks: dict[str, dict[str, Any]], signals: list[dict[str, A
         if number(stock.get("changePercent")) is not None
     ]
     filter_counts: dict[str, int] = defaultdict(int)
-    filter_labels = {"A": "EMA Trend", "B": "Golden Cross", "D": "POI Reclaim"}
+    filter_labels = {"A": "EMA Trend", "B": "Golden Cross", "D": "Price Level Reclaim"}
     for row in signals:
         filter_counts[str(row.get("Filter") or "")] += 1
     return {
@@ -567,6 +567,9 @@ def build_snapshot(
 
 def update_manifest(market_dates: list[str]) -> None:
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    if int(manifest.get("schemaVersion") or 0) >= 5:
+        print("Schema-v5 manifest is managed by scripts/archive_v5.py; legacy manifest update skipped.")
+        return
     existing = {str(entry.get("date")): entry for entry in manifest.get("dates", [])}
     entries = []
     for market_date in market_dates:

@@ -1,0 +1,92 @@
+name: Daily IDX Data Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      market_date:
+        description: "Optional market date (YYYY-MM-DD). Empty uses latest completed session."
+        required: false
+        type: string
+      run_backfill:
+        description: "Rebuild 2025-01-01 through 2026-06-10 from stored real OHLCV sessions."
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: "30 9 * * 1-5"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-idx-data-update
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Backfill historical archive
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_backfill }}
+        run: python scripts/backfill_history.py --start 2025-01-01 --end 2026-06-10
+
+      - name: Update daily IDX data
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.run_backfill) }}
+        shell: bash
+        run: |
+          args=(--timezone Asia/Jakarta --market-close-time 16:30)
+          if [ -n "${{ inputs.market_date }}" ]; then
+            args+=(--market-date "${{ inputs.market_date }}")
+          fi
+          python scripts/update_daily.py "${args[@]}"
+
+      - name: Validate generated archive
+        run: |
+          python scripts/export_ksei_ownership.py
+          python scripts/validate_data.py
+
+      - name: Run Python tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Check JavaScript
+        run: |
+          node --check docs/app.js
+          node --check docs/indicators.js
+          node --check docs/chart/indicator-engine/math.js
+          node --check docs/chart/indicator-engine/overlays.js
+          node --check docs/chart/indicator-engine/momentum.js
+          node tests/indicator_engine.test.js
+
+      - name: Commit generated data if changed
+        shell: bash
+        run: |
+          git config user.name "idx-data-bot"
+          git config user.email "idx-data-bot@users.noreply.github.com"
+          git add docs/data docs/downloads
+          if git diff --cached --quiet; then
+            echo "No generated data changes. Last successful snapshot remains active."
+            exit 0
+          fi
+          git commit -m "Update IDX data snapshot"
+          git push

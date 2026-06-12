@@ -1,14 +1,37 @@
 (function exposeIndicators(global) {
   const DEFAULTS = Object.freeze({
-    ema25: { show: true, period: 25 },
-    ema50: { show: true, period: 50 },
-    sma200: { show: true, period: 200 },
-    vwap: { show: true, anchor: "month", bands: true, multiplier: 1 },
-    volume: { show: true, maShow: true, period: 20 },
-    rsi: { show: true, period: 14, smoothing: "sma", smoothingPeriod: 14 },
-    macd: { show: true, fast: 12, slow: 26, signal: 9, histogramSmoothing: 3 },
-    initialBalance: { show: true, days: 2 },
-    smc: { show: true, internalLength: 3, swingLength: 10, equalTolerance: 0.1 },
+    schemaVersion: 2,
+    chart: { mode: "research", interval: "1D", range: "1Y" },
+    ema25: { show: true, period: 25, color: "#1c2d62", width: 1 },
+    ema50: { show: true, period: 50, color: "#801922", width: 1 },
+    sma200: { show: true, period: 200, color: "#2962ff", width: 1 },
+    vwap: {
+      show: true, anchor: "Session", source: "hlc3", bandMode: "Standard Deviation",
+      showBand1: true, bandMult1: 1, showBand2: false, bandMult2: 2,
+      showBand3: false, bandMult3: 3, color: "#22d3ee", width: 2,
+    },
+    anchorVwap: { show: true, showCurrentQ: true, showNearest: true, color: "#f8fafc", width: 1 },
+    volume: { show: true, maShow: true, period: 20, opacity: 0.72, maColor: "#2962ff" },
+    rsi: {
+      show: true, length: 14, source: "close", smoothingType: "SMA",
+      smoothingLength: 14, bbStdDev: 2, divergence: false, color: "#2962ff", width: 2,
+    },
+    macd: {
+      show: true, fastLength: 12, slowLength: 26, signalLength: 9,
+      histogramSmoothing: 3, source: "close", lineColor: "#2962ff", signalColor: "#ef4444",
+    },
+    initialBalance: {
+      show: true, initialBalanceDays: 2, color: "#facc15", width: 2,
+      showBox: true, boxOpacity: 0.08, showConnectors: true,
+    },
+    smc: {
+      show: true, mode: "Historical", style: "Colored", showInternals: true,
+      showStructure: true, showOrderBlocks: true, orderBlockCount: 4,
+      showEqualHighLow: true, showFairValueGaps: false, showZones: true,
+      showRibbon: true, showMA200: true, internalLength: 5, swingLength: 50,
+      equalThreshold: 0.1, ema1Length: 25, ema2Length: 50, ma200Length: 200,
+      showLabels: true, opacity: 0.18,
+    },
   });
 
   const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -96,6 +119,13 @@
   }
 
   function rsi(rows, period = 14, smoothing = "sma", smoothingPeriod = 14) {
+    if (global.IDXIndicatorEngine?.rsi) {
+      return global.IDXIndicatorEngine.rsi(rows, {
+        length: period,
+        smoothingType: smoothing,
+        smoothingLength: smoothingPeriod,
+      });
+    }
     const closes = rows.map((row) => numeric(row.close));
     const gains = closes.map((close, index) => {
       if (index === 0 || close === null || closes[index - 1] === null) return null;
@@ -125,6 +155,14 @@
   }
 
   function macd(rows, fast = 12, slow = 26, signalPeriod = 9, histogramSmoothing = 3) {
+    if (global.IDXIndicatorEngine?.macd4c) {
+      return global.IDXIndicatorEngine.macd4c(rows, {
+        fastLength: fast,
+        slowLength: slow,
+        signalLength: signalPeriod,
+        histogramSmoothing,
+      });
+    }
     const closes = rows.map((row) => numeric(row.close));
     const fastLine = emaValues(closes, fast);
     const slowLine = emaValues(closes, slow);
@@ -169,6 +207,18 @@
   }
 
   function anchoredVwap(rows, anchor = "month", multiplier = 1) {
+    if (global.IDXIndicatorEngine?.vwap) {
+      const result = global.IDXIndicatorEngine.vwap(rows, {
+        anchor,
+        bandMult1: multiplier,
+      });
+      return {
+        vwap: result.vwap,
+        upper: result.bands[0].upper,
+        lower: result.bands[0].lower,
+        meta: result.meta,
+      };
+    }
     let key = "";
     let cumulativeVolume = 0;
     let cumulativePriceVolume = 0;
@@ -203,6 +253,9 @@
   }
 
   function initialBalance(rows, days = 2) {
+    if (global.IDXIndicatorEngine?.initialBalance) {
+      return global.IDXIndicatorEngine.initialBalance(rows, { initialBalanceDays: days });
+    }
     const outputHigh = [];
     const outputLow = [];
     let month = "";
@@ -269,11 +322,11 @@
       const close = numeric(row.close);
       const previousClose = index ? numeric(rows[index - 1].close) : null;
       if (lastHigh !== null && previousClose !== null && previousClose <= lastHigh && close > lastHigh) {
-        markers.push({ time: row.date, position: "belowBar", color: "#3b82f6", shape: "arrowUp", text: `${prefix}BOS` });
+        markers.push({ time: row.date, position: "belowBar", color: "#3b82f6", shape: "arrowUp", text: `${prefix}Break` });
         lastHigh = null;
       }
       if (lastLow !== null && previousClose !== null && previousClose >= lastLow && close < lastLow) {
-        markers.push({ time: row.date, position: "aboveBar", color: "#f87171", shape: "arrowDown", text: `${prefix}BOS` });
+        markers.push({ time: row.date, position: "aboveBar", color: "#f87171", shape: "arrowDown", text: `${prefix}Break` });
         lastLow = null;
       }
     });

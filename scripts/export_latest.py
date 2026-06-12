@@ -42,11 +42,11 @@ LEGACY_SCREENER_COLUMNS = [
 FILTER_LABELS = {
     "A": "EMA Trend",
     "B": "Golden Cross",
-    "C": "Swing BOS",
-    "D": "POI Reclaim",
-    "E": "EQ Breakout",
+    "C": "Structure Break",
+    "D": "Price Level Reclaim",
+    "E": "Equal-Level Breakout",
     "F": "Near VWAP",
-    "G": "SMC Location",
+    "G": "Structure Location",
 }
 
 
@@ -521,6 +521,10 @@ def rebuild_history() -> None:
 def update_manifest(entry: dict[str, Any]) -> None:
     manifest_path = DATA_DIR / "manifest.json"
     manifest = read_payload(manifest_path) or {"latest": None, "dates": []}
+    if int(manifest.get("schemaVersion") or 0) >= 5:
+        # The canonical schema-v5 archive is updated by scripts/archive_v5.py.
+        # Avoid mixing legacy `date` entries into its `marketDate` contract.
+        return
     dates = [item for item in manifest.get("dates", []) if item.get("date") != entry["date"]]
     dates.append(entry)
     dates.sort(key=lambda item: item["date"], reverse=True)
@@ -541,7 +545,18 @@ def publish_ohlcv_cache(source: Path, target: Path, max_rows: int = 700) -> None
     for source_file in source.glob("*.json"):
         try:
             payload = json.loads(source_file.read_text(encoding="utf-8"))
+            payload.setdefault("schemaVersion", 1)
+            payload.setdefault("source", "yfinance")
+            payload.setdefault("adjusted", False)
+            payload.setdefault("timezone", "Asia/Jakarta")
+            payload.setdefault("session", "IDX regular daily session")
+            payload.setdefault("formulaVersion", "ohlcv-series-v1")
             payload["rows"] = list(payload.get("rows") or [])[-max_rows:]
+            for row in payload["rows"]:
+                row.setdefault("source", payload["source"])
+                row.setdefault("adjusted", payload["adjusted"])
+                row.setdefault("timezone", payload["timezone"])
+                row.setdefault("session", payload["session"])
             (target / source_file.name).write_text(
                 json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
                 encoding="utf-8",
@@ -551,6 +566,7 @@ def publish_ohlcv_cache(source: Path, target: Path, max_rows: int = 700) -> None
 
 
 def export_workbook(workbook_path: Path) -> Path:
+    from rebuild_backend.logic_reference import export_registry
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -654,6 +670,7 @@ def export_workbook(workbook_path: Path) -> Path:
         }
     )
     rebuild_history()
+    export_registry(DATA_DIR / "logic-reference.json")
     return data_path
 
 

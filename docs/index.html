@@ -3,50 +3,46 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#081426" />
+    <meta name="theme-color" content="#07111f" />
     <meta
       name="description"
-      content="IDX stock screener dashboard powered by the existing VWAP Screener logic."
+      content="IDX RESEARCH is a source-limited Indonesian equity research dashboard."
     />
     <title>IDX RESEARCH</title>
-    <link rel="stylesheet" href="styles.css?v=20260611-research-v6" />
+    <link rel="stylesheet" href="styles.css?v=20260612-ksei-v1" />
   </head>
   <body class="app-loading">
-    <div id="loadBar" class="load-bar"></div>
+    <div id="loadBar" class="load-bar" aria-hidden="true"></div>
     <div class="app-shell">
-      <aside class="sidebar">
-        <a class="brand" href="#overview" aria-label="IDX RESEARCH home">
+      <aside class="sidebar" id="sidebar">
+        <a class="brand" href="#market" aria-label="IDX RESEARCH home">
           <span class="brand-mark">IX</span>
           <span>
             <strong>IDX RESEARCH</strong>
-            <small>Research workstation</small>
+            <small>Source-limited workstation</small>
           </span>
         </a>
 
         <nav class="primary-nav" aria-label="Primary navigation">
-          <button class="nav-item active" type="button" data-view="overview">
-            <span class="nav-icon">01</span>
-            <span>Market overview</span>
-          </button>
-          <button class="nav-item" type="button" data-view="screener">
-            <span class="nav-icon">02</span>
-            <span>Signal screener</span>
-          </button>
-          <button class="nav-item" type="button" data-view="ticker">
-            <span class="nav-icon">03</span>
-            <span>Ticker analysis</span>
-          </button>
+          <button class="nav-item active" type="button" data-view="market"><span>01</span>Market Map</button>
+          <button class="nav-item" type="button" data-view="screener"><span>02</span>Screener</button>
+          <button class="nav-item" type="button" data-view="watchlist"><span>03</span>Watchlist</button>
+          <button class="nav-item" type="button" data-view="ticker"><span>04</span>Ticker Intelligence</button>
+          <button class="nav-item" type="button" data-view="ownership"><span>05</span>KSEI Ownership</button>
+          <button class="nav-item" type="button" data-view="quality"><span>06</span>Data Quality</button>
+          <button class="nav-item" type="button" data-view="explorer"><span>07</span>Workbook Explorer</button>
+          <button class="nav-item" type="button" data-view="guide"><span>08</span>Guide</button>
         </nav>
 
         <div class="sidebar-foot">
           <div class="system-state">
             <span class="status-dot"></span>
             <div>
-              <strong>Source connected</strong>
-              <small id="sidebarDate">Loading dataset</small>
+              <strong id="sidebarStatus">Dataset loading</strong>
+              <small id="sidebarDate">Market date pending</small>
             </div>
           </div>
-          <p>Built only from the VWAP Screener workbook. No broker-flow or unsupported datasets.</p>
+          <p>Workbook, yfinance, public Investing.com fields, and TradingView chart display only.</p>
         </div>
       </aside>
 
@@ -56,377 +52,446 @@
             <span></span><span></span><span></span>
           </button>
           <div class="topbar-title">
-            <span id="eyebrow">IDX RESEARCH</span>
-            <h1 id="pageTitle">Market Overview</h1>
+            <span id="eyebrow">MARKET MAP</span>
+            <h1 id="pageTitle">IDX Market Map</h1>
           </div>
           <div class="topbar-actions">
             <label class="ticker-command">
-              <span class="sr-only">Open ticker</span>
               <span class="command-prefix">IDX</span>
               <input id="tickerCommand" list="tickerList" placeholder="Search ticker" autocomplete="off" />
               <datalist id="tickerList"></datalist>
             </label>
-            <div class="date-control">
+            <button id="datePickerButton" class="date-picker-button" type="button" aria-haspopup="dialog">
               <span>Market date</span>
-              <button id="datePickerButton" class="date-picker-button" type="button" aria-haspopup="dialog">
-                <strong id="selectedDateLabel">Loading</strong>
-                <span aria-hidden="true">CAL</span>
-              </button>
-            </div>
-            <button id="themeToggle" class="icon-button theme-toggle" type="button" aria-label="Switch color theme">
-              <span class="theme-icon" aria-hidden="true">MOON</span>
+              <strong id="selectedDateLabel">Loading</strong>
             </button>
-            <a id="downloadLink" class="download-button" href="#" aria-disabled="true">XLSX</a>
+            <button id="themeToggle" class="icon-button" type="button" aria-label="Switch theme">Theme</button>
           </div>
         </header>
 
         <div id="errorBanner" class="error-banner" hidden></div>
-        <section id="dataStatusBanner" class="data-status-banner" aria-live="polite">
-          <div class="status-summary">
+
+        <section class="dataset-strip" aria-live="polite">
+          <div class="dataset-lead">
             <span id="datasetState" class="status-badge info">Loading</span>
             <div>
-              <strong id="datasetTitle">Loading the published IDX dataset</strong>
-              <p id="datasetMeta">Checking workbook, market date, and processing status.</p>
+              <strong id="datasetTitle">Loading published data</strong>
+              <small id="datasetMeta">Validating schema and selected market date.</small>
             </div>
           </div>
-          <div class="status-facts">
-            <span><small>Tickers</small><strong id="datasetTickers">-</strong></span>
-            <span><small>Signals</small><strong id="datasetSignals">-</strong></span>
-            <span><small>Published</small><strong id="datasetPublished">-</strong></span>
+          <div class="dataset-facts">
+            <span><small>Scanned</small><strong id="datasetScanned">—</strong></span>
+            <span><small>OK</small><strong id="datasetOk">—</strong></span>
+            <span><small>Partial</small><strong id="datasetPartial">—</strong></span>
+            <span><small>Signal rows</small><strong id="datasetSignals">—</strong></span>
+            <span><small>Signal tickers</small><strong id="datasetSignalTickers">—</strong></span>
           </div>
           <button id="refreshData" class="secondary-button" type="button">Reload data</button>
         </section>
 
-        <section id="overviewView" class="view active" data-view-panel="overview">
-          <div class="pulse-header">
+        <section class="view active" data-view-panel="market">
+          <div class="view-intro">
             <div>
-              <span class="section-kicker">DAILY MARKET PULSE</span>
-              <h2>Signals before stories.</h2>
-              <p id="runMeta">Loading the latest published screener run...</p>
+              <span class="section-kicker">MARKET COMMAND CENTER</span>
+              <h2>IDX Market Map</h2>
+              <p>Sector-grouped price activity, signal coverage, participation, and source status for the selected date.</p>
             </div>
-            <div class="pulse-badge">
-              <span>Coverage</span>
-              <strong id="coverageBadge">-</strong>
-              <small>IDX tickers scanned</small>
-            </div>
+            <span id="marketCoverageBadge" class="hero-stat">— tickers</span>
           </div>
 
-          <section id="metricGrid" class="metric-grid" aria-label="Market summary">
-            <article class="metric-card skeleton-card"></article>
-            <article class="metric-card skeleton-card"></article>
-            <article class="metric-card skeleton-card"></article>
-            <article class="metric-card skeleton-card"></article>
-          </section>
+          <section id="marketMetricGrid" class="metric-grid"></section>
 
-          <div class="overview-grid">
-            <article class="panel breadth-panel">
+          <article class="panel market-map-panel">
+            <div class="panel-head">
+              <div><span class="panel-kicker">MARKET MAP</span><h3>Sector and ticker activity</h3></div>
+              <div class="legend"><span class="blue-dot"></span>Positive <span class="red-dot"></span>Negative <span class="gray-dot"></span>Neutral</div>
+            </div>
+            <div id="marketMap" class="market-map"></div>
+          </article>
+
+          <div class="two-column-grid">
+            <article class="panel">
               <div class="panel-head">
-                <div>
-                  <span class="panel-kicker">MARKET BREADTH</span>
-                  <h3>Participation</h3>
-                </div>
-                <span id="breadthTone" class="tone-badge">-</span>
+                <div><span class="panel-kicker">SECTOR × SIGNAL</span><h3>Signal concentration</h3></div>
+                <button id="heatmapMode" class="text-button" type="button">Unique tickers</button>
               </div>
-              <div id="breadthChart" class="breadth-chart"></div>
+              <div id="sectorSignalHeatmap" class="heatmap-shell"></div>
             </article>
-
-            <article class="panel signal-panel">
+            <article class="panel">
               <div class="panel-head">
-                <div>
-                  <span class="panel-kicker">NATIVE SCREENERS</span>
-                  <h3>Signal map</h3>
-                </div>
-                <button class="text-button" type="button" data-go="screener">Open screener</button>
+                <div><span class="panel-kicker">QUALITY FUNNEL</span><h3>Dataset progression</h3></div>
               </div>
-              <div id="signalMap" class="signal-map"></div>
+              <div id="qualityFunnel" class="funnel"></div>
             </article>
           </div>
 
           <article class="panel">
             <div class="panel-head">
-              <div>
-                <span class="panel-kicker">SECTOR TAPE</span>
-                <h3>Average daily change and signal coverage</h3>
-              </div>
-              <span class="panel-note">Select a sector to filter the screener</span>
+              <div><span class="panel-kicker">IDX ACTIVITY MAP</span><h3>Daily change × relative volume</h3></div>
+              <span class="panel-note">Bubble size uses market cap when available</span>
             </div>
-            <div id="sectorHeatmap" class="sector-heatmap"></div>
+            <div id="activityMap" class="activity-map"></div>
           </article>
-
-          <div class="overview-grid movers-grid">
-            <article class="panel">
-              <div class="panel-head">
-                <div>
-                  <span class="panel-kicker">LEADERS</span>
-                  <h3>Top gainers</h3>
-                </div>
-              </div>
-              <div id="gainersList" class="mover-list"></div>
-            </article>
-            <article class="panel">
-              <div class="panel-head">
-                <div>
-                  <span class="panel-kicker">LAGGARDS</span>
-                  <h3>Top decliners</h3>
-                </div>
-              </div>
-              <div id="declinersList" class="mover-list"></div>
-            </article>
-          </div>
         </section>
 
-        <section id="screenerView" class="view" data-view-panel="screener">
+        <section class="view" data-view-panel="screener">
           <div class="view-intro">
             <div>
               <span class="section-kicker">SIGNAL DISCOVERY</span>
-              <h2>Screen the output, not a recreated formula.</h2>
-              <p>Every row below comes directly from a filter in your Python-generated workbook.</p>
+              <h2>Workbook signal rows</h2>
+              <p>Meaningful signal categories replace legacy filter codes while the original code remains available for audit.</p>
             </div>
-            <div id="screenerCount" class="result-count">-</div>
+            <span id="screenerCount" class="hero-stat">— rows</span>
           </div>
-
+          <div class="research-disclaimer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</div>
           <article class="panel screener-panel">
             <div class="screener-controls">
-              <label class="search-field">
-                <span>Search</span>
-                <input id="screenerSearch" type="search" placeholder="Ticker, sector, setup, explanation..." />
-              </label>
-              <label>
-                <span>Sector</span>
-                <select id="sectorSelect"><option value="ALL">All sectors</option></select>
-              </label>
-              <label>
-                <span>Sort by</span>
-                <select id="sortSelect">
-                  <option value="default">Source order</option>
-                  <option value="change-desc">Change: high to low</option>
-                  <option value="rvol-desc">RVOL: high to low</option>
-                  <option value="upside-desc">Target upside: high to low</option>
-                  <option value="rs-desc">RS rating: high to low</option>
-                </select>
-              </label>
-              <button id="resetFilters" class="secondary-button reset-button" type="button">Reset filters</button>
+              <label><span>Search</span><input id="screenerSearch" type="search" placeholder="Ticker, sector, signal, explanation" /></label>
+              <label><span>Sector</span><select id="sectorSelect"><option value="ALL">All sectors</option></select></label>
+              <label><span>Signal</span><select id="signalSelect"><option value="ALL">All signal categories</option></select></label>
+              <label><span>Min RVOL</span><input id="rvolMinimum" type="number" min="0" step="0.1" placeholder="Any" /></label>
+              <label><span>Min RS</span><input id="rsMinimum" type="number" min="0" max="100" step="1" placeholder="Any" /></label>
+              <label><span>Data status</span><select id="qualitySelect"><option value="ALL">All statuses</option><option>OK</option><option>PARTIAL</option><option>NO_DATA</option></select></label>
+              <label><span>Sort</span><select id="sortSelect"><option value="source">Source order</option><option value="change">Change %</option><option value="rvol">RVOL</option><option value="rs">RS rating</option><option value="rr">R/R</option></select></label>
+              <button id="resetFilters" class="secondary-button" type="button">Reset</button>
+              <button id="densityToggle" class="secondary-button" type="button">Comfortable</button>
+              <button id="exportScreener" class="secondary-button" type="button">Export CSV</button>
             </div>
-            <div id="strategyFilters" class="strategy-filters"></div>
+            <div id="signalLenses" class="signal-lenses"></div>
             <div class="table-shell">
-              <table class="data-table screener-table">
+              <table id="screenerTable" class="data-table screener-table">
                 <thead id="screenerHead"></thead>
                 <tbody id="screenerBody"></tbody>
               </table>
-              <div id="screenerEmpty" class="empty-state" hidden>
-                <div class="empty-card">
-                  <span class="empty-icon" aria-hidden="true">0</span>
-                  <h3>No signals found</h3>
-                  <p>Try another sector, clear the search, or reset all active filters.</p>
-                  <button class="secondary-button" type="button" data-reset-filters>Reset filters</button>
-                </div>
-              </div>
+              <div id="screenerEmpty" class="empty-state" hidden></div>
             </div>
           </article>
         </section>
 
-        <section id="tickerView" class="view" data-view-panel="ticker">
+        <section class="view" data-view-panel="watchlist">
+          <div class="view-intro">
+            <div>
+              <span class="section-kicker">LOCAL RESEARCH LIST</span>
+              <h2>Watchlist</h2>
+              <p>Stored locally in this browser only. Values always follow the selected market date.</p>
+            </div>
+            <button id="exportWatchlist" class="secondary-button" type="button">Export CSV</button>
+          </div>
+          <article class="panel">
+            <div id="watchlistContent"></div>
+          </article>
+        </section>
+
+        <section class="view" data-view-panel="ticker">
           <div id="tickerEmpty" class="ticker-empty">
-            <span class="section-kicker">TICKER ANALYSIS</span>
-            <h2>Choose a ticker from the screener or search bar.</h2>
-            <p>The analysis workspace joins technical, fundamental, news, and signal output by ticker.</p>
+            <span class="section-kicker">TICKER INTELLIGENCE</span>
+            <h2>Select a ticker from search, the market map, screener, or watchlist.</h2>
           </div>
           <div id="tickerContent" hidden>
             <div id="tickerHero" class="ticker-hero"></div>
-            <article class="panel market-chart-panel">
-              <div class="chart-toolbar">
-                <div>
-                  <span class="panel-kicker">MARKET WORKSPACE</span>
-                  <h3>Daily price, volume, and levels</h3>
+            <div class="research-disclaimer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</div>
+
+            <div class="ticker-main-grid chart-first-grid">
+              <article id="chartWorkspace" class="panel chart-panel">
+                <div class="chart-toolbar">
+                  <div><span class="panel-kicker">CHART WORKSPACE</span><h3>Price, volume, and technical overlays</h3></div>
+                  <div class="toolbar-actions">
+                    <span id="historyStatus" class="status-badge info">Loading history</span>
+                    <span id="chartSourceBadge" class="status-badge info">Website Calculated</span>
+                  </div>
                 </div>
-                <div class="chart-toolbar-actions">
-                  <span id="historyStatus" class="status-badge info">Loading history</span>
-                  <button id="indicatorSettingsButton" class="secondary-button indicator-settings-button" type="button">
-                    Indicators
-                  </button>
-                  <div class="range-switcher" aria-label="Chart range">
+                <div class="chart-mode-tabs" role="tablist">
+                  <button class="chart-mode active" type="button" data-chart-mode="research">Research Overlay View</button>
+                  <button class="chart-mode" type="button" data-chart-mode="tradingview">TradingView View</button>
+                </div>
+                <div class="terminal-toolbar">
+                  <label class="chart-symbol-control"><span>Symbol</span><input id="chartTickerSearch" type="text" maxlength="12" aria-label="Chart ticker" /></label>
+                  <div class="segmented-control" aria-label="Interval">
+                    <button type="button" data-chart-interval="1D" class="active">1D</button>
+                    <button type="button" data-chart-interval="1W">1W</button>
+                    <button type="button" data-chart-interval="1M">1M</button>
+                  </div>
+                  <div class="segmented-control chart-ranges" aria-label="Range">
                     <button type="button" data-chart-range="3M">3M</button>
                     <button type="button" data-chart-range="6M">6M</button>
                     <button type="button" data-chart-range="1Y" class="active">1Y</button>
+                    <button type="button" data-chart-range="YTD">YTD</button>
                     <button type="button" data-chart-range="ALL">All</button>
                   </div>
+                  <button id="indicatorSettingsButton" class="terminal-button" type="button">Indicators</button>
+                  <button id="resetChartLayout" class="terminal-button" type="button">Reset</button>
+                  <button id="fullscreenChart" class="terminal-button" type="button">Fullscreen</button>
                 </div>
-              </div>
-              <div id="chartLegend" class="chart-legend" aria-live="polite">
-                <strong>Move across the chart to inspect OHLC and volume.</strong>
-              </div>
-              <div class="chart-workspace">
-                <aside id="chartToolRail" class="chart-tool-rail" aria-label="Chart tools">
-                  <button class="active" type="button" data-chart-tool="cursor" title="Cursor">PTR</button>
-                  <button type="button" data-chart-tool="crosshair" title="Crosshair">XH</button>
-                  <button type="button" data-chart-tool="horizontal" title="Horizontal level">HL</button>
-                  <button type="button" data-chart-tool="fit" title="Fit chart">FIT</button>
-                  <button type="button" data-chart-tool="indicators" title="Indicator settings">IND</button>
-                  <button type="button" data-chart-tool="clear" title="Clear drawings">CLR</button>
-                </aside>
-                <div id="priceChart" class="price-chart trading-chart"></div>
-              </div>
-              <div id="activeIndicatorStrip" class="active-indicator-strip"></div>
-              <div class="chart-footer">
-                <span id="historyMeta"></span>
-                <a href="https://www.tradingview.com/" target="_blank" rel="noopener">Charts by TradingView</a>
-              </div>
-            </article>
-
-            <div class="ticker-grid research-grid">
-              <article class="panel signal-summary-panel">
-                <div class="panel-head">
-                  <div>
-                    <span class="panel-kicker">SIGNAL SUMMARY</span>
-                    <h3>Why this ticker is on the radar</h3>
+                <div id="researchChartView" class="chart-mode-view active">
+                  <div id="chartLegend" class="chart-legend"></div>
+                  <div class="research-chart-shell">
+                    <div class="drawing-toolbar" aria-label="Research drawing tools">
+                      <button type="button" data-drawing-tool="crosshair" class="active" title="Crosshair">+</button>
+                      <button type="button" data-drawing-tool="horizontal" title="Horizontal observed level">H</button>
+                      <button type="button" data-drawing-tool="clear" title="Delete saved drawings">X</button>
+                    </div>
+                    <div id="priceChart" class="price-chart"></div>
+                    <div id="chartOverlayLayer" class="chart-overlay-layer" aria-hidden="true"></div>
                   </div>
-                  <span class="panel-note">Workbook-derived analysis</span>
+                  <div id="activeIndicatorStrip" class="active-indicator-strip"></div>
+                </div>
+                <div id="tradingViewChartView" class="chart-mode-view" hidden>
+                  <div id="tradingViewWidget" class="tradingview-widget-shell">
+                    <div class="chart-empty"><h3>TradingView display is ready to load.</h3><p>The public widget uses TradingView data and settings.</p></div>
+                  </div>
+                </div>
+                <div class="chart-footer">
+                  <span id="historyMeta"></span>
+                  <a id="tradingViewLink" href="https://www.tradingview.com/" target="_blank" rel="noopener">Open TradingView display</a>
+                </div>
+                <p id="chartDiscrepancyNote" class="provider-note">TradingView display may differ from website-calculated overlays because TradingView uses its own data/session handling.</p>
+              </article>
+
+              <article class="panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">SIGNAL SUMMARY</span><h3>Matched technical conditions</h3></div>
                 </div>
                 <div id="tickerKeyMetrics" class="key-metric-grid"></div>
                 <div id="tickerSignals" class="ticker-signals"></div>
               </article>
+            </div>
+
+            <div class="two-column-grid">
               <article class="panel">
                 <div class="panel-head">
-                  <div>
-                    <span class="panel-kicker">TRADE PLAN</span>
-                    <h3>Level map</h3>
-                  </div>
-                  <span class="panel-note">Workbook values</span>
+                  <div><span class="panel-kicker">WORKBOOK LEVEL MAP</span><h3>Observed price levels</h3></div>
+                  <span class="panel-note">Informational workbook values</span>
                 </div>
-                <div id="tradePlan" class="trade-plan"></div>
+                <div id="levelMap" class="level-map"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">SOURCE STATUS</span><h3>Coverage and provenance</h3></div>
+                </div>
+                <div id="tickerSourceStatus" class="source-status-grid"></div>
               </article>
             </div>
 
-            <div class="ticker-grid detail-grid">
-              <article class="panel">
-                <div class="panel-head">
-                  <div>
-                    <span class="panel-kicker">TECHNICAL SNAPSHOT</span>
-                    <h3>Structure and momentum</h3>
-                  </div>
-                </div>
-                <div id="technicalGrid" class="detail-list"></div>
-              </article>
-              <article class="panel">
-                <div class="panel-head">
-                  <div>
-                    <span class="panel-kicker">FUNDAMENTAL SNAPSHOT</span>
-                    <h3>Available company metrics</h3>
-                  </div>
-                </div>
-                <div id="fundamentalGrid" class="detail-list"></div>
-              </article>
+            <div class="two-column-grid">
+              <article class="panel"><div class="panel-head"><div><span class="panel-kicker">TECHNICAL SNAPSHOT</span><h3>Trend, momentum, and structure</h3></div></div><div id="technicalGrid" class="detail-grid"></div></article>
+              <article class="panel"><div class="panel-head"><div><span class="panel-kicker">FUNDAMENTAL SNAPSHOT</span><h3>Available company metrics</h3></div><span id="fundamentalModeBadge" class="status-badge"></span></div><div id="fundamentalGrid" class="detail-grid"></div></article>
             </div>
-
-            <article class="panel">
-              <div class="panel-head">
-                <div>
-                  <span class="panel-kicker">NEWS & EVENTS</span>
-                  <h3>Workbook intelligence</h3>
-                </div>
-              </div>
-              <div id="newsPanel" class="news-panel"></div>
-            </article>
+            <article class="panel"><div class="panel-head"><div><span class="panel-kicker">NEWS & EVENTS</span><h3>Published workbook intelligence</h3></div><span id="newsModeBadge" class="status-badge"></span></div><div id="newsPanel" class="news-panel"></div></article>
           </div>
         </section>
+
+        <section class="view ownership-view" data-view-panel="ownership">
+          <div class="ownership-hero">
+            <div>
+              <span class="section-kicker">KSEI OWNERSHIP</span>
+              <h2>Shareholding concentration dashboard</h2>
+              <p>Explore published holders, free float, concentration ratios, HHI, and CCS from the selected point-in-time KSEI workbook.</p>
+            </div>
+            <div class="ownership-hero-actions">
+              <span id="kseiAsOfBadge" class="ownership-date-badge">Loading KSEI data</span>
+              <button id="kseiUpdateButton" class="ownership-primary-button" type="button">View data update</button>
+            </div>
+          </div>
+
+          <div id="kseiUnavailable" class="ownership-empty" hidden>
+            <h3>KSEI ownership data is not available for this market date</h3>
+            <p>The first published ownership snapshot is May 14, 2026. A later snapshot is never inserted into an earlier historical view.</p>
+          </div>
+
+          <div id="kseiContent">
+            <section id="kseiMetricGrid" class="ownership-metric-grid"></section>
+            <div class="ownership-grid">
+              <article class="ownership-card ownership-span-2">
+                <div class="ownership-card-head"><div><span>OWNERSHIP STRUCTURE</span><h3>Issuer distribution</h3></div><small>Number of listed issuers</small></div>
+                <div id="kseiOwnershipTypes" class="ownership-bars"></div>
+              </article>
+              <article class="ownership-card">
+                <div class="ownership-card-head"><div><span>CONCENTRATION</span><h3>CCS category</h3></div></div>
+                <div id="kseiCcsDonut" class="ownership-donut-shell"></div>
+              </article>
+            </div>
+            <div class="ownership-grid">
+              <article class="ownership-card">
+                <div class="ownership-card-head"><div><span>SECTOR VIEW</span><h3>Average concentration</h3></div><small>HHI by sector</small></div>
+                <div id="kseiSectorConcentration" class="ownership-sector-list"></div>
+              </article>
+              <article class="ownership-card ownership-span-2">
+                <div class="ownership-card-head"><div><span>ISSUER EXPLORER</span><h3>Ownership records</h3></div><span id="kseiResultCount"></span></div>
+                <div class="ownership-controls">
+                  <label><span>Search</span><input id="kseiSearch" type="search" placeholder="Ticker, company, sector, holder" /></label>
+                  <label><span>Sector</span><select id="kseiSectorFilter"><option value="ALL">All sectors</option></select></label>
+                  <label><span>Ownership type</span><select id="kseiTypeFilter"><option value="ALL">All types</option></select></label>
+                  <label><span>Sort</span><select id="kseiSort"><option value="hhi">Highest HHI</option><option value="freeFloat">Highest free float</option><option value="cr1">Highest CR1</option><option value="ticker">Ticker A-Z</option></select></label>
+                </div>
+                <div class="table-shell ownership-table-shell">
+                  <table class="data-table ownership-table">
+                    <thead><tr><th>Ticker</th><th>Company</th><th>Sector</th><th data-guide-concept="ksei-free-float">Free Float</th><th data-guide-concept="ksei-hhi">HHI</th><th data-guide-concept="ksei-cr1-cr3">CR1</th><th data-guide-concept="ksei-cr1-cr3">CR3</th><th>Holders &gt;1%</th><th data-guide-concept="ksei-ccs">CCS</th><th data-guide-concept="ksei-ownership-type">Ownership</th><th></th></tr></thead>
+                    <tbody id="kseiTableBody"></tbody>
+                  </table>
+                </div>
+              </article>
+            </div>
+            <div class="ownership-source-note">
+              <strong>Source: KSEI workbook</strong>
+              <span id="kseiSourceNote">Point-in-time ownership data. Concentration metrics describe the published register; they do not represent transaction flow.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" data-view-panel="quality">
+          <div class="view-intro">
+            <div><span class="section-kicker">DATA QUALITY</span><h2>Coverage, sources, and calculation checks</h2><p>Provider failures and missing values remain visible with status and reason.</p></div>
+            <span id="lastSuccessfulLoad" class="hero-stat">—</span>
+          </div>
+          <section id="qualityMetricGrid" class="metric-grid"></section>
+          <div class="two-column-grid">
+            <article class="panel"><div class="panel-head"><div><span class="panel-kicker">SOURCE COVERAGE</span><h3>Observed field provenance</h3></div></div><div id="sourceCoverage" class="bar-list"></div></article>
+            <article class="panel"><div class="panel-head"><div><span class="panel-kicker">QA SUMMARY</span><h3>Release checks</h3></div></div><div id="qaSummary" class="bar-list"></div></article>
+          </div>
+          <article class="panel"><div class="panel-head"><div><span class="panel-kicker">EXCEPTIONS</span><h3>Partial and unavailable records</h3></div></div><div id="qualityExceptions" class="table-shell"></div></article>
+        </section>
+
+        <section class="view" data-view-panel="explorer">
+          <div class="view-intro">
+            <div><span class="section-kicker">ADVANCED</span><h2>Workbook Explorer</h2><p>Inspect published, normalized sheets without treating raw rows as the primary product experience.</p></div>
+            <span id="explorerCount" class="hero-stat">—</span>
+          </div>
+          <article class="panel">
+            <div class="explorer-controls">
+              <label><span>Published sheet</span><select id="explorerSheet"></select></label>
+              <label><span>Search rows</span><input id="explorerSearch" type="search" placeholder="Ticker or field value" /></label>
+              <button id="exportExplorer" class="secondary-button" type="button">Export CSV</button>
+            </div>
+            <div id="explorerReferenceBadge" class="reference-banner" hidden></div>
+            <div class="table-shell">
+              <table class="data-table"><thead id="explorerHead"></thead><tbody id="explorerBody"></tbody></table>
+              <div id="explorerEmpty" class="empty-state" hidden></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="view" data-view-panel="guide">
+          <div class="view-intro">
+            <div><span class="section-kicker">METHODOLOGY</span><h2>Guide & Logic Reference</h2><p>Search the same definitions used to generate the workbook guide, product tooltips, and QA labels.</p></div>
+            <span id="guideCount" class="hero-stat">Loading guide</span>
+          </div>
+          <article class="guide-quick-start panel">
+            <span class="panel-kicker">QUICK START</span>
+            <h3>How to use IDX RESEARCH</h3>
+            <p>This dashboard organises published IDX workbook data, date-capped OHLCV calculations, and clearly labelled reference fields. Signal rows describe matched research conditions; one ticker may match several categories. AlphaFlow and TradingView are visual references only.</p>
+            <div class="source-chip-row"><span class="source-chip">Workbook</span><span class="source-chip">yfinance</span><span class="source-chip">Investing.com public fields</span><span class="source-chip">TradingView display</span></div>
+          </article>
+          <div class="guide-controls panel">
+            <label><span>Search logic, indicator, field, or formula</span><input id="guideSearch" type="search" placeholder="VWAP, RVOL, R/R, PBV, missing data..." /></label>
+            <button id="guideClear" class="secondary-button" type="button">Clear search</button>
+          </div>
+          <div class="guide-browser">
+            <aside id="guideCategories" class="guide-categories" aria-label="Guide categories"></aside>
+            <div>
+              <div id="guideGlossary" class="guide-glossary panel"></div>
+              <div id="guideResults" class="guide-results"></div>
+              <div id="guideEmpty" class="empty-state" hidden><h3>No guide entries match.</h3><p>Clear the search or choose another category.</p></div>
+            </div>
+          </div>
+          <div class="research-disclaimer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</div>
+        </section>
+
+        <footer class="app-footer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</footer>
       </main>
     </div>
 
     <div id="datePickerModal" class="modal-backdrop" hidden>
-      <section class="calendar-modal" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
+      <section class="modal-card calendar-modal" role="dialog" aria-modal="true" aria-labelledby="calendarTitle">
         <header class="modal-header">
-          <div>
-            <span class="panel-kicker">MARKET DATE</span>
-            <h2 id="calendarTitle">Select published session</h2>
-          </div>
-          <button class="icon-button modal-close" type="button" data-close-modal="date" aria-label="Close calendar">X</button>
+          <div><span class="panel-kicker">MARKET DATE</span><h2 id="calendarTitle">Select published session</h2></div>
+          <button class="icon-button" type="button" data-close-modal="date" aria-label="Close">Close</button>
         </header>
-        <div class="calendar-toolbar">
-          <button id="calendarPrevious" class="icon-button" type="button" aria-label="Previous month">&lt;</button>
-          <strong id="calendarMonthLabel"></strong>
-          <button id="calendarNext" class="icon-button" type="button" aria-label="Next month">&gt;</button>
-        </div>
-        <div class="calendar-weekdays" aria-hidden="true">
-          <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-        </div>
+        <div class="calendar-toolbar"><button id="calendarPrevious" class="icon-button" type="button">&lt;</button><strong id="calendarMonthLabel"></strong><button id="calendarNext" class="icon-button" type="button">&gt;</button></div>
+        <div class="calendar-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
         <div id="calendarGrid" class="calendar-grid"></div>
-        <footer class="calendar-footer">
-          <span>Only published IDX sessions are selectable.</span>
-          <button id="calendarLatest" class="secondary-button" type="button">Latest session</button>
-        </footer>
+        <footer class="modal-footer"><span>Only archived market sessions are selectable.</span><button id="calendarLatest" class="secondary-button" type="button">Latest session</button></footer>
       </section>
     </div>
 
     <div id="indicatorSettingsModal" class="modal-backdrop" hidden>
-      <section class="indicator-modal" role="dialog" aria-modal="true" aria-labelledby="indicatorSettingsTitle">
+      <section class="modal-card indicator-modal" role="dialog" aria-modal="true" aria-labelledby="indicatorTitle">
         <header class="modal-header">
-          <div>
-            <span class="panel-kicker">GLOBAL CHART PROFILE</span>
-            <h2 id="indicatorSettingsTitle">Indicator settings</h2>
-            <p>Changes apply to every ticker and every market date.</p>
-          </div>
-          <button class="icon-button modal-close" type="button" data-close-modal="indicators" aria-label="Close settings">X</button>
+          <div><span class="panel-kicker">GLOBAL CHART PROFILE</span><h2 id="indicatorTitle">Indicator settings</h2><p>Changes apply to all tickers and market dates in this browser.</p></div>
+          <button class="icon-button" type="button" data-close-modal="indicators" aria-label="Close">Close</button>
         </header>
         <form id="indicatorSettingsForm" class="indicator-settings-form">
-          <fieldset>
-            <legend>Price overlays</legend>
-            <label class="setting-toggle"><input name="ema25.show" type="checkbox" /> EMA 25</label>
-            <label class="setting-toggle"><input name="ema50.show" type="checkbox" /> EMA 50</label>
-            <label class="setting-toggle"><input name="sma200.show" type="checkbox" /> SMA 200</label>
-            <label class="setting-toggle"><input name="vwap.show" type="checkbox" /> Anchored VWAP</label>
-            <label>VWAP anchor
-              <select name="vwap.anchor">
-                <option value="month">Month</option>
-                <option value="week">Week</option>
-                <option value="quarter">Quarter</option>
-                <option value="year">Year</option>
-                <option value="session">Session</option>
-              </select>
-            </label>
-            <label class="setting-toggle"><input name="vwap.bands" type="checkbox" /> VWAP bands</label>
-            <label>Band multiplier <input name="vwap.multiplier" type="number" min="0.1" max="5" step="0.1" /></label>
+          <fieldset><legend data-guide-concept="smc-overlay">SMC-style technical overlay</legend>
+            <label data-guide-concept="smc-overlay"><input name="smc.show" type="checkbox" /> Enable overlay</label>
+            <label data-guide-concept="bos"><input name="smc.showInternals" type="checkbox" /> Internal BOS / CHoCH</label>
+            <label data-guide-concept="choch"><input name="smc.showStructure" type="checkbox" /> Swing BOS / CHoCH</label>
+            <label data-guide-concept="order-block"><input name="smc.showOrderBlocks" type="checkbox" /> OHLCV pivot boxes</label>
+            <label data-guide-concept="equal-high-low"><input name="smc.showEqualHighLow" type="checkbox" /> EQH / EQL</label>
+            <label data-guide-concept="fvg"><input name="smc.showFairValueGaps" type="checkbox" /> Fair value gaps</label>
+            <label data-guide-concept="premium-zone"><input name="smc.showZones" type="checkbox" /> Premium / equilibrium / discount</label>
+            <label>Swing length<input name="smc.swingLength" type="number" min="10" max="200" /></label>
+            <label>Overlay opacity<input name="smc.opacity" type="number" min="0.05" max="0.8" step="0.05" /></label>
           </fieldset>
-          <fieldset>
-            <legend>Volume and momentum</legend>
-            <label class="setting-toggle"><input name="volume.show" type="checkbox" /> Volume</label>
-            <label class="setting-toggle"><input name="volume.maShow" type="checkbox" /> Vol 20 average</label>
-            <label>Volume MA length <input name="volume.period" type="number" min="2" max="200" step="1" /></label>
-            <label class="setting-toggle"><input name="rsi.show" type="checkbox" /> RSI</label>
-            <label>RSI length <input name="rsi.period" type="number" min="2" max="100" step="1" /></label>
-            <label>RSI smoothing
-              <select name="rsi.smoothing">
-                <option value="sma">SMA</option>
-                <option value="ema">EMA</option>
-                <option value="smma">SMMA</option>
-                <option value="none">None</option>
-              </select>
-            </label>
-            <label>RSI smoothing length <input name="rsi.smoothingPeriod" type="number" min="2" max="100" step="1" /></label>
-            <label class="setting-toggle"><input name="macd.show" type="checkbox" /> MACD 4C</label>
-            <label>MACD fast <input name="macd.fast" type="number" min="2" max="100" step="1" /></label>
-            <label>MACD slow <input name="macd.slow" type="number" min="3" max="200" step="1" /></label>
-            <label>MACD signal <input name="macd.signal" type="number" min="2" max="100" step="1" /></label>
-            <label>Histogram smoothing <input name="macd.histogramSmoothing" type="number" min="1" max="50" step="1" /></label>
+          <fieldset><legend>Price overlays</legend>
+            <label data-guide-concept="ema"><input name="ema25.show" type="checkbox" /> EMA ribbon 1</label>
+            <label>EMA 1 color<input name="ema25.color" type="color" /></label>
+            <label data-guide-concept="ema"><input name="ema50.show" type="checkbox" /> EMA ribbon 2</label>
+            <label>EMA 2 color<input name="ema50.color" type="color" /></label>
+            <label data-guide-concept="ma200"><input name="sma200.show" type="checkbox" /> MA 200</label>
+            <label>MA 200 color<input name="sma200.color" type="color" /></label>
+            <label data-guide-concept="tradingview-default-vwap"><input name="vwap.show" type="checkbox" /> Default VWAP</label>
+            <label>VWAP anchor<select name="vwap.anchor"><option>Session</option><option>Week</option><option>Month</option><option>Quarter</option><option>Year</option><option>Decade</option><option>Century</option></select></label>
+            <label>VWAP color<input name="vwap.color" type="color" /></label>
+            <label><input name="vwap.showBand1" type="checkbox" /> VWAP band 1</label>
+            <label data-guide-concept="current-quarter-vwap"><input name="anchorVwap.show" type="checkbox" /> Q / PQ / PY VWAP levels</label>
+            <label data-guide-concept="ibh"><input name="initialBalance.show" type="checkbox" /> Monthly IBH / IBL</label>
+            <label>IB color<input name="initialBalance.color" type="color" /></label>
           </fieldset>
-          <fieldset>
-            <legend>IBH / IBL and SMC</legend>
-            <label class="setting-toggle"><input name="initialBalance.show" type="checkbox" /> Monthly IBH / IBL</label>
-            <label>Initial balance days <input name="initialBalance.days" type="number" min="1" max="10" step="1" /></label>
-            <label class="setting-toggle"><input name="smc.show" type="checkbox" /> SMC structure</label>
-            <label>Internal pivot length <input name="smc.internalLength" type="number" min="2" max="20" step="1" /></label>
-            <label>Swing pivot length <input name="smc.swingLength" type="number" min="3" max="50" step="1" /></label>
-            <label>Equal high / low tolerance % <input name="smc.equalTolerance" type="number" min="0.01" max="5" step="0.01" /></label>
+          <fieldset><legend>Volume and momentum</legend>
+            <label><input name="volume.show" type="checkbox" /> Volume</label>
+            <label data-guide-concept="volume-ma"><input name="volume.maShow" type="checkbox" /> Volume MA</label>
+            <label>Volume MA length<input name="volume.period" type="number" min="2" max="200" /></label>
+            <label data-guide-concept="rsi"><input name="rsi.show" type="checkbox" /> RSI</label>
+            <label>RSI length<input name="rsi.length" type="number" min="2" max="100" /></label>
+            <label>RSI smoothing<select name="rsi.smoothingType"><option>None</option><option>SMA</option><option>SMA + Bollinger Bands</option><option>EMA</option><option>SMMA (RMA)</option><option>WMA</option><option>VWMA</option></select></label>
+            <label data-guide-concept="macd-4c"><input name="macd.show" type="checkbox" /> MACD 4C Smooth</label>
+            <label>MACD fast<input name="macd.fastLength" type="number" min="2" max="100" /></label>
+            <label>MACD slow<input name="macd.slowLength" type="number" min="3" max="200" /></label>
+            <label>MACD signal<input name="macd.signalLength" type="number" min="2" max="100" /></label>
+            <label>Histogram smoothing<input name="macd.histogramSmoothing" type="number" min="1" max="50" /></label>
           </fieldset>
-          <footer class="settings-footer">
-            <span id="settingsSavedState">Saved automatically on this browser.</span>
-            <button id="resetIndicatorSettings" class="secondary-button" type="button">Reset defaults</button>
-          </footer>
+          <footer class="modal-footer"><span id="settingsSavedState">Saved automatically.</span><button id="resetIndicatorSettings" class="secondary-button" type="button">Reset defaults</button></footer>
         </form>
       </section>
     </div>
 
+    <div id="kseiUpdateModal" class="modal-backdrop" hidden>
+      <section class="modal-card ksei-update-modal" role="dialog" aria-modal="true" aria-labelledby="kseiUpdateTitle">
+        <header class="ksei-modal-header">
+          <div class="ksei-modal-icon">D</div>
+          <div><h2 id="kseiUpdateTitle">Data Update</h2><p id="kseiUpdateDates"></p></div>
+          <button class="icon-button" type="button" data-close-modal="ksei-update" aria-label="Close">Close</button>
+        </header>
+        <div id="kseiUpdateSummary" class="ksei-update-summary"></div>
+        <div id="kseiUpdateDetails" class="ksei-update-details"></div>
+        <footer class="modal-footer"><span>Changes are calculated between published KSEI snapshots.</span><button class="ownership-primary-button" type="button" data-close-modal="ksei-update">Close</button></footer>
+      </section>
+    </div>
+
+    <div id="kseiDetailModal" class="modal-backdrop" hidden>
+      <section class="modal-card ksei-detail-modal" role="dialog" aria-modal="true" aria-labelledby="kseiDetailTitle">
+        <header class="modal-header">
+          <div><span class="panel-kicker">KSEI ISSUER DETAIL</span><h2 id="kseiDetailTitle">Ownership detail</h2><p id="kseiDetailSubtitle"></p></div>
+          <button class="icon-button" type="button" data-close-modal="ksei-detail" aria-label="Close">Close</button>
+        </header>
+        <div id="kseiDetailBody"></div>
+      </section>
+    </div>
+
     <script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="indicators.js?v=20260611-research-v6"></script>
-    <script src="app.js?v=20260611-research-v6"></script>
+    <script src="chart/indicator-engine/math.js?v=20260611-chart-v4"></script>
+    <script src="chart/indicator-engine/overlays.js?v=20260612-chart-v4"></script>
+    <script src="chart/indicator-engine/momentum.js?v=20260611-chart-v4"></script>
+    <script src="indicators.js?v=20260611-chart-v4"></script>
+    <script src="app.js?v=20260612-ksei-v1"></script>
   </body>
 </html>

@@ -63,6 +63,7 @@ FILL_HEADER = PatternFill("solid", fgColor="2A4A66")  # post-import themed init
 
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import ScatterChart, Reference, Series
+from rebuild_backend.logic_reference import workbook_rows
 
 # =========================
 # CONFIG
@@ -1418,63 +1419,19 @@ def compute_max_position_size(adtr20: float, close: float, capital: float = 1_00
 # UPGRADE 7 — IHSG SEASONAL BIAS CALENDAR
 # =============================================================================
 def _finalize_flow_position_fields(row: dict, hist: "pd.DataFrame | None" = None) -> dict:
-    """
-    Fill IDX Screener liquidity/flow fields even when live IDX broker/foreign endpoints return empty.
-    True IDX values are preserved when available; otherwise a clearly labelled OHLCV proxy is used.
-    """
+    """Finalize liquidity fields without inventing participant or transaction data."""
     try:
-        # Recompute max position after ADTR20 is available.
         ps = compute_max_position_size(safe_num(row.get("adtr20"), np.nan), safe_num(row.get("close"), np.nan))
         row["max_shares"]             = ps.get("max_shares", np.nan)
         row["max_lots"]               = ps.get("max_lots", np.nan)
         row["max_position_idr"]       = ps.get("max_position_idr", np.nan)
         row["position_size_pct_adtv"] = ps.get("position_size_pct_adtv", np.nan)
-
-        # Foreign flow fallback proxy from money-flow/CMF when IDX API is not available.
-        fval = safe_num(row.get("foreign_net_val"), np.nan)
-        if pd.isna(fval) and hist is not None and not hist.empty and all(c in hist.columns for c in ["High","Low","Close","Volume"]):
-            h = hist.copy()
-            high, low, close, vol = h["High"].astype(float), h["Low"].astype(float), h["Close"].astype(float), h["Volume"].astype(float)
-            rng = (high - low).replace(0, np.nan)
-            clv = (((close - low) - (high - close)) / rng).replace([np.inf, -np.inf], np.nan).fillna(0)
-            value = (close * vol).tail(20)
-            signed_value = (clv * close * vol).tail(20)
-            proxy_net = safe_num(signed_value.sum(), np.nan)
-            # Cap proxy to 35% of ADTR20*20 to avoid wild one-bar distortions.
-            adtr20 = safe_num(row.get("adtr20"), np.nan)
-            if pd.notna(proxy_net) and pd.notna(adtr20) and adtr20 > 0:
-                cap = adtr20 * 20 * 0.35
-                proxy_net = max(min(proxy_net, cap), -cap)
-            row["foreign_net_val"] = round(proxy_net) if pd.notna(proxy_net) else np.nan
-            row["foreign_net_lot"] = np.nan
-            if pd.notna(proxy_net):
-                row["foreign_activity"] = "Proxy Net Buy" if proxy_net > 0 else ("Proxy Net Sell" if proxy_net < 0 else "Proxy Neutral")
-
-        # Broker fallback proxy labels from institutional metrics when real broker summary is unavailable.
-        if str(row.get("top_broker_buy", "-")) in ("-", "", "N/A"):
-            bias = str(row.get("smart_money_bias", "") or "")
-            flow = str(row.get("flow_conviction", "") or "")
-            if "Bullish" in bias or "Positive" in flow:
-                row["top_broker_buy"] = "Proxy Accum."
-            elif "Bearish" in bias or "Negative" in flow:
-                row["top_broker_buy"] = "-"
-            else:
-                row["top_broker_buy"] = "Proxy Neutral"
-        if str(row.get("top_broker_sell", "-")) in ("-", "", "N/A"):
-            bias = str(row.get("smart_money_bias", "") or "")
-            flow = str(row.get("flow_conviction", "") or "")
-            if "Bearish" in bias or "Negative" in flow:
-                row["top_broker_sell"] = "Proxy Distrib."
-            elif "Bullish" in bias or "Positive" in flow:
-                row["top_broker_sell"] = "-"
-            else:
-                row["top_broker_sell"] = "Proxy Neutral"
-        if str(row.get("broker_net_signal", "-")) in ("-", "", "N/A"):
-            fval = safe_num(row.get("foreign_net_val"), np.nan)
-            if pd.notna(fval):
-                row["broker_net_signal"] = "Accumulation Proxy" if fval > 0 else ("Distribution Proxy" if fval < 0 else "Neutral Proxy")
-            else:
-                row["broker_net_signal"] = "Neutral Proxy"
+        row["foreign_net_val"] = np.nan
+        row["foreign_net_lot"] = np.nan
+        row["foreign_activity"] = "-"
+        row["top_broker_buy"] = "-"
+        row["top_broker_sell"] = "-"
+        row["broker_net_signal"] = "-"
     except Exception:
         pass
     return row
@@ -3966,26 +3923,27 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
     row["rvol20_chg_flag"] = _rvol_chg_flag
 
     # ── Upgrade 1: ARA/ARB ────────────────────────────────────────────────────
-    board = fetch_board_classification(_ticker)
+    # Source-limited mode does not call IDX participant/transaction endpoints.
+    board = "N/A"
     row["board"] = board
     ara = compute_ara_arb(hist, board)
     row["ara_arb"]  = ara["ara_arb"]
     row["at_limit"] = ara["at_limit"]
 
     # ── Upgrade 2: Foreign flow ───────────────────────────────────────────────
-    ff = fetch_foreign_flow(_ticker)
+    ff = {"foreign_net_lot": np.nan, "foreign_net_val": np.nan, "foreign_activity": "-"}
     row["foreign_net_lot"]  = ff["foreign_net_lot"]
     row["foreign_net_val"]  = ff["foreign_net_val"]
     row["foreign_activity"] = ff["foreign_activity"]
 
     # ── Upgrade 4: Broker flow ────────────────────────────────────────────────
-    bf = fetch_broker_flow(_ticker)
+    bf = {"top_broker_buy": "-", "top_broker_sell": "-", "broker_net_signal": "-"}
     row["top_broker_buy"]    = bf["top_broker_buy"]
     row["top_broker_sell"]   = bf["top_broker_sell"]
     row["broker_net_signal"] = bf["broker_net_signal"]
 
     # ── Upgrade 5: Suspension flag ────────────────────────────────────────────
-    susp = fetch_suspension_flag(_ticker)
+    susp = {"suspended": False, "suspension_label": "-", "corp_action_active": "-"}
     row["suspended"]          = susp["suspended"]
     row["suspension_label"]   = susp["suspension_label"]
     row["corp_action_active"] = susp["corp_action_active"]
@@ -4367,12 +4325,11 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
             elif above_count >= 3:
                 row["tier"] = "B"
 
-        row.update(compute_institutional_metrics(hist, row))
+        # Legacy participant-inference metrics are disabled in source-limited mode.
         if row.get("div_signal") in ("Bullish", "Bearish"):
             row["divergence_summary"] = f'{row["div_signal"]} - {row.get("div_strength", "")}'.strip(" -")
         else:
             row["divergence_summary"] = "None"
-        row.update(compute_alphaflow_proxy_max(hist, row))
         row = _finalize_flow_position_fields(row, hist)
         # Wyckoff proxy removed (v2.0)
         row = apply_dashboard_presets(row)
@@ -4532,12 +4489,11 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
         pbv_fields = [row["pbv_curr"], row["pbv_mean"], row["pbv_m1"], row["pbv_m2"]]
         row["pbv_band_source"] = "Source" if all(pd.notna(x) for x in pbv_fields) else ("Partial Source" if any(pd.notna(x) for x in pbv_fields) else "N/A")
 
-        row.update(compute_institutional_metrics(hist, row))
+        # Legacy participant-inference metrics are disabled in source-limited mode.
         if row.get("div_signal") in ("Bullish", "Bearish"):
             row["divergence_summary"] = f'{row["div_signal"]} - {row.get("div_strength", "")}'.strip(" -")
         else:
             row["divergence_summary"] = "None"
-        row.update(compute_alphaflow_proxy_max(hist, row))
         row = _finalize_flow_position_fields(row, hist)
         # Wyckoff proxy removed (v2.0)
         row = apply_dashboard_presets(row)
@@ -6588,10 +6544,24 @@ def _write_ohlcv_history_cache(rows_cache: dict, market_date: str) -> None:
                 "low": safe_num(row.get("Low"), None),
                 "close": safe_num(row.get("Close"), None),
                 "volume": safe_num(row.get("Volume"), None),
+                "source": "yfinance",
+                "adjusted": False,
+                "timezone": "Asia/Jakarta",
+                "session": "IDX regular daily session",
             })
         path = os.path.join(target_dir, f"{ticker}.json")
         with open(path, "w", encoding="utf-8") as fh:
-            json.dump({"ticker": ticker, "date": market_date, "rows": records}, fh, separators=(",", ":"))
+            json.dump({
+                "schemaVersion": 1,
+                "ticker": ticker,
+                "date": market_date,
+                "source": "yfinance",
+                "adjusted": False,
+                "timezone": "Asia/Jakarta",
+                "session": "IDX regular daily session",
+                "formulaVersion": "ohlcv-series-v1",
+                "rows": records,
+            }, fh, separators=(",", ":"))
 
 
 def main():
@@ -6772,7 +6742,7 @@ def main():
     # Sheet: Guide & Logic Reference
     ws_guide = wb.create_sheet("Guide & Logic Reference")
     ws_guide.sheet_view.showGridLines = False
-    build_guide_sheet(ws_guide)
+    build_source_limited_guide_sheet(ws_guide)
 
     # Sheet: Data Processing Results
     ws_proc = wb.create_sheet("Data Processing Results")
@@ -6786,6 +6756,9 @@ def main():
     except Exception as _ae:
         print(f"[WARN] Audit artifacts skipped: {_ae}")
 
+    print("[INFO] Building Data Source Audit sheet ...")
+    build_data_source_audit_sheet(wb, latest_market_day_global, results)
+
     # ── Sheet ordering & cleanup ─────────────────────────────────────────────
     desired_order = [
         "IDX Overview",
@@ -6796,6 +6769,7 @@ def main():
         "Guide & Logic Reference",
         "Data Processing Results",
         "QA Calculation Audit",
+        "Data Source Audit",
     ]
     _ALLOWED_SHEETS = set(desired_order)
     for _ws in list(wb.worksheets):
@@ -11720,7 +11694,7 @@ def build_idx_screener_sheet(wb, latest_market_day: str, rows: list):
         "S": ("STOCK INFO",       FILL_GRP_STK),
         "P": ("SIGNAL & PRICE",   FILL_GRP_SIG),
         "N": ("NEWS INTELLIGENCE",PatternFill("solid", fgColor="6B2737")),
-        "T": ("TRADE PLAN",       FILL_GRP_TRD),
+        "T": ("WORKBOOK LEVEL MAP", FILL_GRP_TRD),
         "Q": ("QUALITY METRICS",  PatternFill("solid", fgColor="374151")),
     }
     for grp_id, (grp_label, grp_fill) in GRP_META.items():
@@ -13301,6 +13275,139 @@ def build_guide_sheet(ws):
     for i, row_data in enumerate(rows_s10):
         _data_row(*row_data, odd=(i % 2 == 0))
     _spacer()
+
+
+def build_source_limited_guide_sheet(ws):
+    """Build the workbook guide from the shared logic registry."""
+    ws.delete_rows(1, ws.max_row)
+    ws.sheet_view.showGridLines = False
+    ws.merge_cells("A1:N1")
+    ws["A1"] = "IDX RESEARCH - Guide & Logic Reference"
+    ws["A1"].font = Font(name="Calibri", size=16, bold=True, color="FFFFFF")
+    ws["A1"].fill = PatternFill("solid", fgColor="0D1B2A")
+    ws["A1"].alignment = Alignment(horizontal="left", vertical="center")
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells("A2:N2")
+    ws["A2"] = (
+        "Generated from rebuild_backend/logic_reference.py. "
+        "Definitions are educational and use the project's approved sources and formulas."
+    )
+    ws["A2"].font = Font(name="Calibri", size=10, italic=True, color="334155")
+    ws["A2"].alignment = Alignment(wrap_text=True, vertical="center")
+
+    headers = [
+        "Category", "Concept / Field", "Simple Definition", "Why It Matters",
+        "How It Is Calculated", "Required Inputs", "Source",
+        "Sheet / Column Output", "Interpretation", "Threshold / Rule",
+        "Missing Data Behavior", "Limitations", "Example", "Formula Version",
+    ]
+    for col_idx, label in enumerate(headers, start=1):
+        cell = ws.cell(3, col_idx, label)
+        cell.font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="1C3253")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    rows = workbook_rows()
+    for row_idx, row in enumerate(rows, start=4):
+        for col_idx, value in enumerate(row, start=1):
+            cell = ws.cell(row_idx, col_idx, value)
+            cell.font = Font(name="Calibri", size=10, color="1F2937")
+            cell.fill = PatternFill("solid", fgColor="F8FAFC" if row_idx % 2 == 0 else "EEF3F8")
+            cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+            cell.border = Border(
+                left=Side(style="thin", color="D1D5DB"),
+                right=Side(style="thin", color="D1D5DB"),
+                top=Side(style="thin", color="D1D5DB"),
+                bottom=Side(style="thin", color="D1D5DB"),
+            )
+        ws.row_dimensions[row_idx].height = 56
+    widths = [25, 26, 45, 42, 44, 31, 25, 38, 40, 34, 39, 41, 39, 23]
+    for col_idx, width in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+    ws.freeze_panes = "A4"
+    ws.auto_filter.ref = f"A3:N{3 + len(rows)}"
+
+
+def build_data_source_audit_sheet(wb, latest_market_day, rows):
+    """Add field-level source and missing-reason records for key published metrics."""
+    name = "Data Source Audit"
+    if name in wb.sheetnames:
+        del wb[name]
+    ws = wb.create_sheet(name)
+    ws.sheet_view.showGridLines = False
+    headers = [
+        "Market Date", "Ticker", "Field", "Value", "Display Value", "Source",
+        "Source URL", "Source Mode", "As Of Date", "Provider Status",
+        "Missing Reason", "Formula", "Formula Version", "Input Fields",
+        "Input Sources", "Calculation Status", "Warning",
+    ]
+    field_specs = [
+        ("close", "Closing Price", "yfinance", "OHLCV.Close", "OHLCV"),
+        ("volume", "Volume", "yfinance", "OHLCV.Volume", "OHLCV"),
+        ("rvol20", "RVOL 20 D", "derived", "Volume / SMA(Volume, 20)", "Volume"),
+        ("ema25", "EMA 25", "derived", "EMA(Close, 25, adjust=False)", "Close"),
+        ("ema50", "EMA 50", "derived", "EMA(Close, 50, adjust=False)", "Close"),
+        ("sma200", "SMA 200", "derived", "SMA(Close, 200)", "Close"),
+        ("rsi14", "RSI 14", "derived", "Wilder RSI(14)", "Close"),
+        ("macd_line", "MACD Line", "derived", "EMA(Close,12) - EMA(Close,26)", "Close"),
+        ("q_vwap", "Current Quarter VWAP", "derived", "Anchored typical-price VWAP", "High, Low, Close, Volume"),
+        ("pe_ttm", "Current PE Ratio (TTM)", "workbook", "Market Cap / Net Income TTM", "Market Cap, Net Income TTM"),
+        ("pbv", "Current Price to Book Value", "workbook", "Market Cap / Total Equity", "Market Cap, Total Equity"),
+        ("roe_ttm", "Return on Equity (TTM)", "workbook", "Net Income TTM / Average Equity", "Net Income TTM, Equity"),
+    ]
+    for col_idx, label in enumerate(headers, start=1):
+        cell = ws.cell(1, col_idx, label)
+        cell.font = Font(name="Calibri", size=9, bold=True, color="FFFFFF")
+        cell.fill = PatternFill("solid", fgColor="1C3253")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    row_idx = 2
+    for row in rows:
+        ticker = str(row.get("ticker") or "").upper()
+        provider_status = str(row.get("data_status") or "UNKNOWN").upper()
+        source_url = f"https://finance.yahoo.com/quote/{ticker}.JK" if ticker else ""
+        for key, label, source, formula, inputs in field_specs:
+            value = row.get(key)
+            missing_value = value is None or value in ("", "-", "N/A") or (
+                isinstance(value, float) and pd.isna(value)
+            )
+            missing_reason = ""
+            if missing_value:
+                missing_reason = (
+                    "insufficient_history"
+                    if key in {"rvol20", "ema25", "ema50", "sma200", "rsi14", "macd_line", "q_vwap"}
+                    else "field_not_found"
+                )
+            values = [
+                latest_market_day,
+                ticker,
+                label,
+                None if missing_value else value,
+                "—" if missing_value else value,
+                source,
+                source_url if source == "yfinance" else "",
+                "point_in_time",
+                latest_market_day,
+                provider_status,
+                missing_reason,
+                formula,
+                "source-limited-v3",
+                inputs,
+                "yfinance" if source in {"yfinance", "derived"} else "workbook",
+                "MISSING" if missing_value else "OK",
+                "Provider values can differ from TradingView chart display." if source == "yfinance" else "",
+            ]
+            for col_idx, item in enumerate(values, start=1):
+                cell = ws.cell(row_idx, col_idx, item)
+                cell.font = Font(name="Calibri", size=9, color="1F2937")
+                cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+                if row_idx % 2 == 0:
+                    cell.fill = PatternFill("solid", fgColor="F8FAFC")
+            row_idx += 1
+    widths = [13, 10, 28, 16, 16, 14, 40, 18, 13, 16, 24, 42, 20, 34, 20, 18, 46]
+    for col_idx, width in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = width
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = f"A1:Q{max(1, row_idx - 1)}"
 
 
 

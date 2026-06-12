@@ -13,26 +13,35 @@ class HistoricalSnapshotTests(unittest.TestCase):
         cls.manifest = json.loads((DATA / "manifest.json").read_text(encoding="utf-8"))
 
     def test_market_date_window_contains_real_sessions(self):
-        dates = [entry["date"] for entry in self.manifest["dates"]]
-        self.assertEqual(len(dates), 103)
+        dates = [entry["marketDate"] for entry in self.manifest["dates"]]
+        self.assertEqual(self.manifest["schemaVersion"], 5)
+        self.assertEqual(len(dates), 339)
         self.assertEqual(len(dates), len(set(dates)))
+        self.assertIn("2025-01-02", dates)
         self.assertIn("2026-01-02", dates)
         self.assertIn("2026-06-10", dates)
         self.assertNotIn("2026-01-01", dates)
 
     def test_historical_snapshots_are_date_specific(self):
         january = json.loads(
-            (DATA / "snapshots" / "2026-01-02.json").read_text(encoding="utf-8")
+            (DATA / "dates" / "2025-01-02" / "technical.json").read_text(encoding="utf-8")
         )
         june = json.loads(
-            (DATA / "snapshots" / "2026-06-08.json").read_text(encoding="utf-8")
+            (DATA / "dates" / "2026-06-08" / "technical.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(january["stocks"]["BBCA"]["lastPrice"], 8025.0)
-        self.assertEqual(june["stocks"]["BBCA"]["lastPrice"], 4850.0)
+        self.assertEqual(january["records"]["BBCA"]["lastPrice"], 9900.0)
+        self.assertEqual(june["records"]["BBCA"]["lastPrice"], 4850.0)
         self.assertNotEqual(
-            january["stocks"]["BBCA"]["changePercent"],
-            june["stocks"]["BBCA"]["changePercent"],
+            january["records"]["BBCA"]["changePercent"],
+            june["records"]["BBCA"]["changePercent"],
         )
+
+    def test_reference_domains_are_explicit(self):
+        fundamental = json.loads(
+            (DATA / "dates" / "2025-01-02" / "fundamental.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(fundamental["dataMode"], "latest_reference_not_point_in_time")
+        self.assertEqual(fundamental["referenceMarketDate"], "2026-06-10")
 
     def test_shared_history_is_capped_by_frontend_market_date(self):
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")

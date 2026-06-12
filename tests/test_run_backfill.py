@@ -37,6 +37,15 @@ class CompletedMarketDayTests(unittest.TestCase):
             self.assertTrue(manifest_has_date("2026-06-10", manifest_path))
             self.assertFalse(manifest_has_date("2026-06-09", manifest_path))
 
+    def test_manifest_has_date_supports_schema_v5(self):
+        with TemporaryDirectory() as temp_dir:
+            manifest_path = Path(temp_dir) / "manifest.json"
+            manifest_path.write_text(
+                '{"schemaVersion":5,"dates":[{"marketDate":"2026-06-10"}]}',
+                encoding="utf-8",
+            )
+            self.assertTrue(manifest_has_date("2026-06-10", manifest_path))
+
     def test_manifest_has_date_handles_missing_or_invalid_file(self):
         with TemporaryDirectory() as temp_dir:
             manifest_path = Path(temp_dir) / "manifest.json"
@@ -49,6 +58,18 @@ class CompletedMarketDayTests(unittest.TestCase):
             manifest_path = Path(temp_dir) / "manifest.json"
             manifest_path.write_text(
                 '{"dates":[{"date":"2026-06-10"},{"date":"2026-06-09"},{"date":"2026-06-10"}]}',
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                published_market_dates(manifest_path),
+                ["2026-06-09", "2026-06-10"],
+            )
+
+    def test_published_market_dates_support_schema_v5(self):
+        with TemporaryDirectory() as temp_dir:
+            manifest_path = Path(temp_dir) / "manifest.json"
+            manifest_path.write_text(
+                '{"schemaVersion":5,"dates":[{"marketDate":"2026-06-10"},{"marketDate":"2026-06-09"}]}',
                 encoding="utf-8",
             )
             self.assertEqual(

@@ -1,0 +1,32 @@
+{
+  "routes": [
+    {
+      "hash": "#overview",
+      "purpose": "Market breadth, signals, sectors, movers"
+    },
+    {
+      "hash": "#screener",
+      "purpose": "Filter and sort published screener signals"
+    },
+    {
+      "hash": "#ticker/{TICKER}",
+      "purpose": "Ticker analysis and interactive chart"
+    }
+  ],
+  "modals": [
+    {
+      "id": "datePickerModal",
+      "purpose": "Published market-date selection"
+    },
+    {
+      "id": "indicatorSettingsModal",
+      "purpose": "Global chart indicator profile"
+    }
+  ],
+  "frontendFiles": {
+    "structure": "docs/index.html",
+    "styles": "docs/styles.css",
+    "application": "docs/app.js",
+    "indicators": "docs/indicators.js"
+  }
+}
