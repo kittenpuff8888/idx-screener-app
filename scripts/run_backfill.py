@@ -11,7 +11,7 @@ from zoneinfo import ZoneInfo
 
 
 ROOT = Path(__file__).resolve().parents[1]
-BACKEND_SCRIPT = ROOT / "rebuild_backend" / "IDX_Screener.py"
+BACKEND_MODULE = "rebuild_backend.IDX_Screener"
 
 
 def parse_date(value: str) -> datetime:
@@ -94,7 +94,12 @@ def run_for_date(market_date: str) -> None:
     env = os.environ.copy()
     env["MARKET_DATE"] = market_date
     print(f"\n=== Running IDX screener for {market_date} ===")
-    subprocess.run([sys.executable, str(BACKEND_SCRIPT)], cwd=ROOT, env=env, check=True)
+    subprocess.run(
+        [sys.executable, "-m", BACKEND_MODULE],
+        cwd=ROOT,
+        env=env,
+        check=True,
+    )
     subprocess.run([sys.executable, str(ROOT / "scripts" / "export_latest.py")], cwd=ROOT, check=True)
 
 

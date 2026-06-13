@@ -63,11 +63,11 @@ docs/data/dates/YYYY-MM-DD/processing-results.json
 docs/data/dates/YYYY-MM-DD/qa-audit.json
 ```
 
-The current backfill contains 340 real sessions from January 2, 2025 through
-June 11, 2026. Dates are discovered from stored OHLCV sessions, so weekends,
+The current backfill contains 341 real sessions from January 2, 2025 through
+June 12, 2026. Dates are discovered from stored OHLCV sessions, so weekends,
 exchange holidays, and absent sessions are not fabricated.
 
-June 9, June 10, and June 11 use full workbook data. Earlier sessions reconstruct
+June 9 through June 12 use full workbook data. Earlier sessions reconstruct
 price/technical fields from real OHLCV. Fundamentals and news that were not
 captured point-in-time are marked `latest_reference_not_point_in_time`.
 
@@ -76,7 +76,7 @@ captured point-in-time are marked `latest_reference_not_point_in_time`.
 Historical backfill:
 
 ```powershell
-python scripts/backfill_history.py --start 2025-01-01 --end 2026-06-11 --source-date 2026-06-11
+python scripts/backfill_history.py --start 2025-01-01 --end 2026-06-12 --source-date 2026-06-12
 ```
 
 Daily update:

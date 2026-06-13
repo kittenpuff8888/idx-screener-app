@@ -5,6 +5,7 @@ import json
 import math
 import re
 import shutil
+import sys
 from collections import Counter, defaultdict
 from datetime import date, datetime, time
 from pathlib import Path
@@ -14,6 +15,9 @@ from openpyxl import load_workbook
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 OUTPUT_DIR = ROOT / "Output"
 DOCS_DIR = ROOT / "docs"
 DATA_DIR = DOCS_DIR / "data"

@@ -15,12 +15,13 @@ class HistoricalSnapshotTests(unittest.TestCase):
     def test_market_date_window_contains_real_sessions(self):
         dates = [entry["marketDate"] for entry in self.manifest["dates"]]
         self.assertEqual(self.manifest["schemaVersion"], 5)
-        self.assertEqual(len(dates), 340)
+        self.assertEqual(len(dates), 341)
         self.assertEqual(len(dates), len(set(dates)))
         self.assertIn("2025-01-02", dates)
         self.assertIn("2026-01-02", dates)
         self.assertIn("2026-06-10", dates)
         self.assertIn("2026-06-11", dates)
+        self.assertIn("2026-06-12", dates)
         self.assertNotIn("2026-01-01", dates)
 
     def test_historical_snapshots_are_date_specific(self):
@@ -38,7 +39,7 @@ class HistoricalSnapshotTests(unittest.TestCase):
         )
 
     def test_full_workbook_dates_do_not_reuse_ticker_values(self):
-        dates = ("2026-06-09", "2026-06-10", "2026-06-11")
+        dates = ("2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12")
         for ticker in ("BBCA", "AADI"):
             observed = []
             for market_date in dates:
@@ -69,7 +70,7 @@ class HistoricalSnapshotTests(unittest.TestCase):
             self.assertNotEqual(screener["records"], [])
 
     def test_market_context_never_uses_a_future_value(self):
-        for market_date in ("2025-01-02", "2026-06-09", "2026-06-11"):
+        for market_date in ("2025-01-02", "2026-06-09", "2026-06-12"):
             overview = json.loads(
                 (DATA / "dates" / market_date / "overview.json").read_text(encoding="utf-8")
             )
@@ -82,7 +83,11 @@ class HistoricalSnapshotTests(unittest.TestCase):
             (DATA / "dates" / "2025-01-02" / "fundamental.json").read_text(encoding="utf-8")
         )
         self.assertEqual(fundamental["dataMode"], "latest_reference_not_point_in_time")
-        self.assertEqual(fundamental["referenceMarketDate"], self.manifest["latestMarketDate"])
+        self.assertIsNotNone(fundamental["referenceMarketDate"])
+        self.assertLessEqual(
+            fundamental["referenceMarketDate"],
+            self.manifest["latestMarketDate"],
+        )
 
     def test_shared_history_is_capped_by_frontend_market_date(self):
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")

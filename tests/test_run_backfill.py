@@ -2,15 +2,33 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
-from scripts.run_backfill import latest_completed_market_day, manifest_has_date, published_market_dates
+from scripts.run_backfill import (
+    BACKEND_MODULE,
+    ROOT,
+    latest_completed_market_day,
+    manifest_has_date,
+    published_market_dates,
+    run_for_date,
+)
 
 
 WIB = ZoneInfo("Asia/Jakarta")
 
 
 class CompletedMarketDayTests(unittest.TestCase):
+    @patch("scripts.run_backfill.subprocess.run")
+    def test_backend_runs_as_importable_module(self, run_mock):
+        run_for_date("2026-06-12")
+
+        backend_call = run_mock.call_args_list[0]
+        self.assertEqual(backend_call.args[0][1:], ["-m", BACKEND_MODULE])
+        self.assertEqual(backend_call.kwargs["cwd"], ROOT)
+        self.assertEqual(backend_call.kwargs["env"]["MARKET_DATE"], "2026-06-12")
+        self.assertTrue(backend_call.kwargs["check"])
+
     def test_weekday_before_cutoff_uses_previous_day(self):
         now = datetime(2026, 6, 10, 7, 0, tzinfo=WIB)
         self.assertEqual(latest_completed_market_day(now).strftime("%Y-%m-%d"), "2026-06-09")

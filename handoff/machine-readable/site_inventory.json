@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-06-13T17:25:40.053307+07:00",
+  "generatedAt": "2026-06-13T18:29:09.541345+07:00",
   "website": "https://kittenpuff8888.github.io/IDXScreener/",
   "repository": "https://github.com/kittenpuff8888/IDXScreener",
-  "latestDate": "2026-06-11",
+  "latestDate": "2026-06-12",
   "firstDate": "2025-01-02",
-  "marketDateCount": 340,
-  "fullWorkbookDates": 3,
+  "marketDateCount": 341,
+  "fullWorkbookDates": 4,
   "historicalCompactDates": 337,
   "latestSchemaVersion": 3,
   "historicalSchemaVersion": 5,
@@ -14,12 +14,12 @@
     "ok": 952,
     "partial": 4,
     "noData": 0,
-    "signalRows": 31,
-    "signalTickers": 18
+    "signalRows": 49,
+    "signalTickers": 35
   },
   "sectionSummary": {
     "screener": {
-      "rows": 31,
+      "rows": 49,
       "fields": 29,
       "fieldsWithMissing": 3,
       "fieldsAlwaysMissing": 2
@@ -33,7 +33,7 @@
     "fundamental": {
       "rows": 952,
       "fields": 91,
-      "fieldsWithMissing": 81,
+      "fieldsWithMissing": 88,
       "fieldsAlwaysMissing": 11
     },
     "news": {
@@ -60,9 +60,9 @@
     "rows": 9560
   },
   "sizesBytes": {
-    "latestPayload": 36721127,
+    "latestPayload": 40801318,
     "previousPayload": 36729991,
-    "canonicalDateArchiveTotal": 401648163,
-    "sharedOhlcvTotal": 125289037
+    "canonicalDateArchiveTotal": 408029315,
+    "sharedOhlcvTotal": 125307819
   }
 }
