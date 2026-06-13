@@ -13,28 +13,34 @@ IDX RESEARCH should help an Indonesian equity user move through this sequence:
 
 ## Current Information Architecture
 
-- Market Overview
+- Market Map
 - Signal Screener
-- Ticker Analysis
+- Watchlist
+- Ticker Intelligence
+- KSEI Ownership
+- Guide
 - Market-date calendar modal
 - Global indicator-settings modal
 
-Removed from normal navigation:
+Internal tools, reachable from the footer but removed from primary navigation:
 
 - Workbook Explorer
 - Data Quality
-- Raw workbook record
 
-This is directionally correct. Internal data-quality tooling should remain available to maintainers, not dominate the investor workflow.
+Raw workbook records are not presented in the main product experience.
 
 ## Current Strengths
 
-- Clear three-step navigation.
+- Focused six-page primary navigation.
 - Prominent ticker chart.
 - Bullish blue and bearish red are consistent.
 - Market date is visible and selectable from a calendar.
+- Header reload and point-in-time workbook download are easy to reach.
+- Market context is date-capped and separate from issuer data.
+- Sector groups are collapsed by default to reduce scanning load.
 - Chart handles missing history with a proper empty state.
 - Indicator settings are global and persist across dates and tickers.
+- Research drawings persist per ticker in the local browser.
 - Desktop and mobile layouts avoid horizontal page overflow.
 - Raw workbook rows are not shown in the main product experience.
 
@@ -44,10 +50,12 @@ This is directionally correct. Internal data-quality tooling should remain avail
 
 The strongest risk is conceptual, not visual. A user can select a historical date and see latest-reference fundamentals or news without a prominent point-in-time disclaimer.
 
-Design response:
+Current response:
 
-- Add domain badges: `Point-in-time`, `Latest reference`, `Reconstructed`, `Missing`.
-- Put the badge beside each section title, not only in a global status banner.
+- Use one compact source footnote at the bottom of Ticker Intelligence.
+- State when fundamentals or news are latest-reference fields.
+- Keep price, technical values, and signals explicitly capped to the selected date.
+- Use inline missing-value metadata for unavailable fields.
 
 ### Signal Density
 
@@ -61,11 +69,11 @@ Design response:
 
 ### Chart Tool Expectations
 
-The custom tool rail resembles TradingView but supports a smaller set of interactions. Labels such as `PTR`, `XH`, and `HL` are efficient for experts but opaque to new users.
+The custom tool rail resembles TradingView but supports a smaller set of interactions.
 
 Design response:
 
-- Use familiar icons plus tooltips.
+- Keep the compact T/R/F/A controls with descriptive tooltips and accessible names.
 - Clearly label unsupported drawing functions.
 - Avoid implying full TradingView feature parity.
 
@@ -73,13 +81,12 @@ Design response:
 
 The current default SMC markers can place many `SH`, `SL`, `EQH`, `EQL`, and `BOS` labels on the same viewport. On BBCA’s one-year view this substantially obscures candles and other indicators.
 
-Design response:
+Current response:
 
-- Default SMC to swing-only or off.
-- Add separate internal/swing visibility controls.
-- Enforce label collision reduction and a marker-density limit.
-- Show structure details on hover or in an event rail rather than printing every label.
-- Test chart comprehension with and without overlays.
+- Internal structure, order blocks, and equal-high/low markers default off.
+- Swing structure remains available.
+- Structure labels are capped at 15 and the chart reports hidden older labels.
+- Separate indicator settings remain available for advanced users.
 
 ### Analysis Explanation
 

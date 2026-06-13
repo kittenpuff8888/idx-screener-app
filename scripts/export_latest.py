@@ -18,6 +18,7 @@ OUTPUT_DIR = ROOT / "Output"
 DOCS_DIR = ROOT / "docs"
 DATA_DIR = DOCS_DIR / "data"
 DOWNLOADS_DIR = DOCS_DIR / "downloads"
+SOURCE_PAYLOAD_DIR = ROOT / "data_sources" / "full-workbook"
 
 LEGACY_SCREENER_COLUMNS = [
     "Filter",
@@ -494,7 +495,7 @@ def read_payload(path: Path) -> dict[str, Any] | None:
 def rebuild_history() -> None:
     history: dict[str, list[dict[str, Any]]] = defaultdict(list)
     dates: list[str] = []
-    for path in sorted(DATA_DIR.glob("20??-??-??.json")):
+    for path in sorted(SOURCE_PAYLOAD_DIR.glob("20??-??-??.json")):
         payload = read_payload(path)
         if not payload:
             continue
@@ -512,7 +513,7 @@ def rebuild_history() -> None:
         "dates": sorted(set(dates)),
         "tickers": {ticker: points for ticker, points in sorted(history.items())},
     }
-    (DATA_DIR / "history.json").write_text(
+    (SOURCE_PAYLOAD_DIR / "history.json").write_text(
         json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
         encoding="utf-8",
     )
@@ -569,6 +570,7 @@ def export_workbook(workbook_path: Path) -> Path:
     from rebuild_backend.logic_reference import export_registry
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    SOURCE_PAYLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
     wb = load_workbook(workbook_path, read_only=False, data_only=True)
     if "Data Processing Results" not in wb.sheetnames:
@@ -635,7 +637,7 @@ def export_workbook(workbook_path: Path) -> Path:
         },
     }
 
-    data_path = DATA_DIR / f"{market_date}.json"
+    data_path = SOURCE_PAYLOAD_DIR / f"{market_date}.json"
     data_path.write_text(
         json.dumps(payload, separators=(",", ":"), ensure_ascii=False),
         encoding="utf-8",
@@ -644,7 +646,7 @@ def export_workbook(workbook_path: Path) -> Path:
     if workbook_path.resolve() != download_path.resolve():
         shutil.copy2(workbook_path, download_path)
 
-    qa_dir = DATA_DIR / "qa"
+    qa_dir = SOURCE_PAYLOAD_DIR / "qa"
     qa_dir.mkdir(parents=True, exist_ok=True)
     (qa_dir / f"{market_date}.qa.json").write_text(
         json.dumps(payload["qa"], separators=(",", ":"), ensure_ascii=False),
@@ -662,9 +664,9 @@ def export_workbook(workbook_path: Path) -> Path:
             "runTime": run_time,
             "rows": len(screener),
             "tickers": payload["summary"]["signalTickers"],
-            "file": f"data/{market_date}.json",
+            "file": f"data_sources/full-workbook/{market_date}.json",
             "workbook": f"downloads/{market_date}.xlsx",
-            "qa": f"data/qa/{market_date}.qa.json",
+            "qa": f"data_sources/full-workbook/qa/{market_date}.qa.json",
             "ohlcv": f"data/ohlcv/{market_date}",
             "isTradingDate": datetime.strptime(market_date, "%Y-%m-%d").weekday() < 5,
         }

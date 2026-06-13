@@ -10,8 +10,8 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "docs" / "data"
+SOURCE_DATA = ROOT / "data_sources" / "full-workbook"
 OUTPUT = ROOT / "handoff" / "machine-readable"
-LATEST_DATE = "2026-06-10"
 SECTIONS = ("screener", "technical", "fundamental", "news", "processing")
 MISSING_VALUES = (None, "", "-", "N/A")
 
@@ -103,8 +103,14 @@ def representative_sample(latest: dict[str, Any], historical: dict[str, Any]) ->
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     manifest = json_load(DATA / "manifest.json")
-    latest = json_load(DATA / f"{LATEST_DATE}.json")
-    historical = json_load(DATA / "snapshots" / "2026-06-08.json")
+    latest_date = manifest["latestMarketDate"]
+    latest = json_load(SOURCE_DATA / f"{latest_date}.json")
+    historical_technical = json_load(DATA / "dates" / "2026-06-08" / "technical.json")
+    historical = {
+        "schemaVersion": historical_technical["schemaVersion"],
+        "date": historical_technical["marketDate"],
+        "stocks": historical_technical["records"],
+    }
 
     profiles = []
     for section in SECTIONS:
@@ -126,16 +132,16 @@ def main() -> None:
         )
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()
-        for entry in sorted(manifest["dates"], key=lambda item: item["date"]):
+        for entry in sorted(manifest["dates"], key=lambda item: item["marketDate"]):
             writer.writerow({
-                "date": entry["date"],
-                "schema_mode": entry.get("snapshotMode") or "workbook-v3",
-                "file": entry.get("file"),
+                "date": entry["marketDate"],
+                "schema_mode": entry.get("snapshotMode"),
+                "file": entry.get("path"),
                 "workbook": entry.get("workbook"),
                 "ohlcv": entry.get("ohlcv"),
-                "signal_rows": entry.get("rows"),
-                "signal_tickers": entry.get("tickers"),
-                "run_time": entry.get("runTime"),
+                "signal_rows": entry.get("signalRows"),
+                "signal_tickers": entry.get("uniqueSignalTickers"),
+                "run_time": manifest.get("generatedAt"),
             })
 
     section_summary = {}
@@ -153,12 +159,12 @@ def main() -> None:
         "generatedAt": datetime.now().astimezone().isoformat(),
         "website": "https://kittenpuff8888.github.io/IDXScreener/",
         "repository": "https://github.com/kittenpuff8888/IDXScreener",
-        "latestDate": manifest["latest"],
-        "firstDate": min(entry["date"] for entry in manifest["dates"]),
+        "latestDate": latest_date,
+        "firstDate": min(entry["marketDate"] for entry in manifest["dates"]),
         "marketDateCount": len(manifest["dates"]),
         "fullWorkbookDates": sum(bool(entry.get("workbook")) for entry in manifest["dates"]),
         "historicalCompactDates": sum(
-            entry.get("snapshotMode") == "historical-ohlcv"
+            entry.get("snapshotMode") == "historical_ohlcv_reconstruction"
             for entry in manifest["dates"]
         ),
         "latestSchemaVersion": latest.get("schemaVersion"),
@@ -175,14 +181,14 @@ def main() -> None:
             "rows": len(latest.get("qa", {}).get("rows", [])),
         },
         "sizesBytes": {
-            "latestPayload": (DATA / f"{LATEST_DATE}.json").stat().st_size,
-            "previousPayload": (DATA / "2026-06-09.json").stat().st_size,
-            "historicalSnapshotsTotal": sum(
-                path.stat().st_size for path in (DATA / "snapshots").glob("*.json")
+            "latestPayload": (SOURCE_DATA / f"{latest_date}.json").stat().st_size,
+            "previousPayload": (SOURCE_DATA / "2026-06-10.json").stat().st_size,
+            "canonicalDateArchiveTotal": sum(
+                path.stat().st_size for path in (DATA / "dates").rglob("*.json")
             ),
             "sharedOhlcvTotal": sum(
                 path.stat().st_size
-                for path in (DATA / "ohlcv" / LATEST_DATE).glob("*.json")
+                for path in (DATA / "ohlcv" / latest_date).glob("*.json")
             ),
         },
     }
@@ -198,9 +204,14 @@ def main() -> None:
 
     route_map = {
         "routes": [
-            {"hash": "#overview", "purpose": "Market breadth, signals, sectors, movers"},
+            {"hash": "#market", "purpose": "Market context, breadth, sectors, and signals"},
             {"hash": "#screener", "purpose": "Filter and sort published screener signals"},
+            {"hash": "#watchlist", "purpose": "Browser-local watchlist"},
             {"hash": "#ticker/{TICKER}", "purpose": "Ticker analysis and interactive chart"},
+            {"hash": "#ownership", "purpose": "KSEI ownership visualisation"},
+            {"hash": "#guide", "purpose": "Methodology and formulas"},
+            {"hash": "#quality", "purpose": "Internal QA route linked from footer"},
+            {"hash": "#explorer", "purpose": "Internal workbook route linked from footer"},
         ],
         "modals": [
             {"id": "datePickerModal", "purpose": "Published market-date selection"},

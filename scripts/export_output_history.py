@@ -8,7 +8,13 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from export_latest import DATA_DIR, DOWNLOADS_DIR, export_workbook, find_stat
+from export_latest import (
+    DATA_DIR,
+    DOWNLOADS_DIR,
+    SOURCE_PAYLOAD_DIR,
+    export_workbook,
+    find_stat,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,7 +77,7 @@ def main() -> None:
     selected = sorted(latest_by_date.items(), key=lambda item: item[0], reverse=True)[: args.days]
     for market_date, workbook in reversed(selected):
         print(f"Exporting {market_date}: {workbook.name}")
-        data_path = DATA_DIR / f"{market_date}.json"
+        data_path = SOURCE_PAYLOAD_DIR / f"{market_date}.json"
         manifest_path = DATA_DIR / "manifest.json"
         workbook_path = DOWNLOADS_DIR / f"{market_date}.xlsx"
         previous_manifest = manifest_path.read_bytes() if manifest_path.exists() else None

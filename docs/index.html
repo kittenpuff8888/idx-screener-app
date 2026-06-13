@@ -9,7 +9,7 @@
       content="IDX RESEARCH is a source-limited Indonesian equity research dashboard."
     />
     <title>IDX RESEARCH</title>
-    <link rel="stylesheet" href="styles.css?v=20260612-ksei-v1" />
+    <link rel="stylesheet" href="styles.css?v=20260613-merged-qa" />
   </head>
   <body class="app-loading">
     <div id="loadBar" class="load-bar" aria-hidden="true"></div>
@@ -29,9 +29,7 @@
           <button class="nav-item" type="button" data-view="watchlist"><span>03</span>Watchlist</button>
           <button class="nav-item" type="button" data-view="ticker"><span>04</span>Ticker Intelligence</button>
           <button class="nav-item" type="button" data-view="ownership"><span>05</span>KSEI Ownership</button>
-          <button class="nav-item" type="button" data-view="quality"><span>06</span>Data Quality</button>
-          <button class="nav-item" type="button" data-view="explorer"><span>07</span>Workbook Explorer</button>
-          <button class="nav-item" type="button" data-view="guide"><span>08</span>Guide</button>
+          <button class="nav-item" type="button" data-view="guide"><span>06</span>Guide</button>
         </nav>
 
         <div class="sidebar-foot">
@@ -65,6 +63,8 @@
               <span>Market date</span>
               <strong id="selectedDateLabel">Loading</strong>
             </button>
+            <a id="workbookDownload" class="icon-button header-download" href="#" download aria-disabled="true">Workbook</a>
+            <button id="refreshData" class="icon-button" type="button">Reload</button>
             <button id="themeToggle" class="icon-button" type="button" aria-label="Switch theme">Theme</button>
           </div>
         </header>
@@ -72,12 +72,10 @@
         <div id="errorBanner" class="error-banner" hidden></div>
 
         <section class="dataset-strip" aria-live="polite">
+          <span id="datasetState" class="status-badge info">Loading</span>
           <div class="dataset-lead">
-            <span id="datasetState" class="status-badge info">Loading</span>
-            <div>
-              <strong id="datasetTitle">Loading published data</strong>
-              <small id="datasetMeta">Validating schema and selected market date.</small>
-            </div>
+            <strong id="datasetTitle">Loading published data</strong>
+            <small id="datasetMeta">Validating schema and selected market date.</small>
           </div>
           <div class="dataset-facts">
             <span><small>Scanned</small><strong id="datasetScanned">—</strong></span>
@@ -86,7 +84,6 @@
             <span><small>Signal rows</small><strong id="datasetSignals">—</strong></span>
             <span><small>Signal tickers</small><strong id="datasetSignalTickers">—</strong></span>
           </div>
-          <button id="refreshData" class="secondary-button" type="button">Reload data</button>
         </section>
 
         <section class="view active" data-view-panel="market">
@@ -99,6 +96,7 @@
             <span id="marketCoverageBadge" class="hero-stat">— tickers</span>
           </div>
 
+          <section id="marketContextGrid" class="market-context-grid" aria-label="Market context"></section>
           <section id="marketMetricGrid" class="metric-grid"></section>
 
           <article class="panel market-map-panel">
@@ -125,13 +123,10 @@
             </article>
           </div>
 
-          <article class="panel">
-            <div class="panel-head">
-              <div><span class="panel-kicker">IDX ACTIVITY MAP</span><h3>Daily change × relative volume</h3></div>
-              <span class="panel-note">Bubble size uses market cap when available</span>
-            </div>
+          <details class="panel secondary-analysis">
+            <summary><span><span class="panel-kicker">SECONDARY ANALYSIS</span><strong>IDX activity map</strong></span><small>Daily change × relative volume</small></summary>
             <div id="activityMap" class="activity-map"></div>
-          </article>
+          </details>
         </section>
 
         <section class="view" data-view-panel="screener">
@@ -227,11 +222,15 @@
                   <div class="research-chart-shell">
                     <div class="drawing-toolbar" aria-label="Research drawing tools">
                       <button type="button" data-drawing-tool="crosshair" class="active" title="Crosshair">+</button>
-                      <button type="button" data-drawing-tool="horizontal" title="Horizontal observed level">H</button>
+                      <button type="button" data-drawing-tool="trendline" title="Trendline">T</button>
+                      <button type="button" data-drawing-tool="rectangle" title="Rectangle">R</button>
+                      <button type="button" data-drawing-tool="fibonacci" title="Fibonacci retracement">F</button>
+                      <button type="button" data-drawing-tool="annotation" title="Text annotation">A</button>
                       <button type="button" data-drawing-tool="clear" title="Delete saved drawings">X</button>
                     </div>
                     <div id="priceChart" class="price-chart"></div>
                     <div id="chartOverlayLayer" class="chart-overlay-layer" aria-hidden="true"></div>
+                    <svg id="chartDrawingLayer" class="chart-drawing-layer" aria-label="Saved research drawings"></svg>
                   </div>
                   <div id="activeIndicatorStrip" class="active-indicator-strip"></div>
                 </div>
@@ -259,24 +258,17 @@
             <div class="two-column-grid">
               <article class="panel">
                 <div class="panel-head">
-                  <div><span class="panel-kicker">WORKBOOK LEVEL MAP</span><h3>Observed price levels</h3></div>
-                  <span class="panel-note">Informational workbook values</span>
+                  <div><span class="panel-kicker">TRADE PLAN</span><h3>Observed price levels</h3></div>
+                  <span class="panel-note">Neutral research levels</span>
                 </div>
                 <div id="levelMap" class="level-map"></div>
               </article>
-              <article class="panel">
-                <div class="panel-head">
-                  <div><span class="panel-kicker">SOURCE STATUS</span><h3>Coverage and provenance</h3></div>
-                </div>
-                <div id="tickerSourceStatus" class="source-status-grid"></div>
-              </article>
+              <article class="panel"><div class="panel-head"><div><span class="panel-kicker">TECHNICAL SNAPSHOT</span><h3>Trend, momentum, and structure</h3></div></div><div id="technicalGrid" class="detail-grid"></div></article>
             </div>
 
-            <div class="two-column-grid">
-              <article class="panel"><div class="panel-head"><div><span class="panel-kicker">TECHNICAL SNAPSHOT</span><h3>Trend, momentum, and structure</h3></div></div><div id="technicalGrid" class="detail-grid"></div></article>
-              <article class="panel"><div class="panel-head"><div><span class="panel-kicker">FUNDAMENTAL SNAPSHOT</span><h3>Available company metrics</h3></div><span id="fundamentalModeBadge" class="status-badge"></span></div><div id="fundamentalGrid" class="detail-grid"></div></article>
-            </div>
+            <article class="panel"><div class="panel-head"><div><span class="panel-kicker">FUNDAMENTAL SNAPSHOT</span><h3>Available company metrics</h3></div><span id="fundamentalModeBadge" class="status-badge"></span></div><div id="fundamentalGrid" class="detail-grid"></div></article>
             <article class="panel"><div class="panel-head"><div><span class="panel-kicker">NEWS & EVENTS</span><h3>Published workbook intelligence</h3></div><span id="newsModeBadge" class="status-badge"></span></div><div id="newsPanel" class="news-panel"></div></article>
+            <div id="tickerSourceStatus" class="ticker-source-footnote"></div>
           </div>
         </section>
 
@@ -393,10 +385,12 @@
               <div id="guideEmpty" class="empty-state" hidden><h3>No guide entries match.</h3><p>Clear the search or choose another category.</p></div>
             </div>
           </div>
-          <div class="research-disclaimer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</div>
         </section>
 
-        <footer class="app-footer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</footer>
+        <footer class="app-footer">
+          <span>Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</span>
+          <span class="internal-links">Internal tools: <button type="button" data-go-view="quality">Data Quality</button><button type="button" data-go-view="explorer">Workbook Explorer</button></span>
+        </footer>
       </main>
     </div>
 
@@ -488,10 +482,10 @@
     </div>
 
     <script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="chart/indicator-engine/math.js?v=20260611-chart-v4"></script>
-    <script src="chart/indicator-engine/overlays.js?v=20260612-chart-v4"></script>
-    <script src="chart/indicator-engine/momentum.js?v=20260611-chart-v4"></script>
-    <script src="indicators.js?v=20260611-chart-v4"></script>
-    <script src="app.js?v=20260612-ksei-v1"></script>
+    <script src="chart/indicator-engine/math.js?v=20260613-merged-qa"></script>
+    <script src="chart/indicator-engine/overlays.js?v=20260613-merged-qa"></script>
+    <script src="chart/indicator-engine/momentum.js?v=20260613-merged-qa"></script>
+    <script src="indicators.js?v=20260613-merged-qa"></script>
+    <script src="app.js?v=20260613-merged-qa"></script>
   </body>
 </html>

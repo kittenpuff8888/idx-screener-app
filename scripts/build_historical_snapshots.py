@@ -17,8 +17,8 @@ SOURCE_DATE = "2026-06-10"
 START_DATE = "2026-01-01"
 END_DATE = "2026-06-10"
 OHLCV_DIR = DATA / "ohlcv" / SOURCE_DATE
-SNAPSHOT_DIR = DATA / "snapshots"
-LATEST_PAYLOAD = DATA / f"{SOURCE_DATE}.json"
+SNAPSHOT_DIR = ROOT / "data_sources" / "legacy-snapshots"
+LATEST_PAYLOAD = ROOT / "data_sources" / "full-workbook" / f"{SOURCE_DATE}.json"
 MANIFEST_PATH = DATA / "manifest.json"
 
 

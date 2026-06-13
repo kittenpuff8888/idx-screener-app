@@ -1,6 +1,6 @@
 (function exposeIndicators(global) {
   const DEFAULTS = Object.freeze({
-    schemaVersion: 2,
+    schemaVersion: 3,
     chart: { mode: "research", interval: "1D", range: "1Y" },
     ema25: { show: true, period: 25, color: "#1c2d62", width: 1 },
     ema50: { show: true, period: 50, color: "#801922", width: 1 },
@@ -25,9 +25,9 @@
       showBox: true, boxOpacity: 0.08, showConnectors: true,
     },
     smc: {
-      show: true, mode: "Historical", style: "Colored", showInternals: true,
-      showStructure: true, showOrderBlocks: true, orderBlockCount: 4,
-      showEqualHighLow: true, showFairValueGaps: false, showZones: true,
+      show: true, mode: "Historical", style: "Colored", showInternals: false,
+      showStructure: true, showOrderBlocks: false, orderBlockCount: 4,
+      showEqualHighLow: false, showFairValueGaps: false, showZones: true,
       showRibbon: true, showMA200: true, internalLength: 5, swingLength: 50,
       equalThreshold: 0.1, ema1Length: 25, ema2Length: 50, ma200Length: 200,
       showLabels: true, opacity: 0.18,

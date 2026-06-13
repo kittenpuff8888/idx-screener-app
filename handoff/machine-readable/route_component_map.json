@@ -1,16 +1,36 @@
 {
   "routes": [
     {
-      "hash": "#overview",
-      "purpose": "Market breadth, signals, sectors, movers"
+      "hash": "#market",
+      "purpose": "Market context, breadth, sectors, and signals"
     },
     {
       "hash": "#screener",
       "purpose": "Filter and sort published screener signals"
     },
     {
+      "hash": "#watchlist",
+      "purpose": "Browser-local watchlist"
+    },
+    {
       "hash": "#ticker/{TICKER}",
       "purpose": "Ticker analysis and interactive chart"
+    },
+    {
+      "hash": "#ownership",
+      "purpose": "KSEI ownership visualisation"
+    },
+    {
+      "hash": "#guide",
+      "purpose": "Methodology and formulas"
+    },
+    {
+      "hash": "#quality",
+      "purpose": "Internal QA route linked from footer"
+    },
+    {
+      "hash": "#explorer",
+      "purpose": "Internal workbook route linked from footer"
     }
   ],
   "modals": [

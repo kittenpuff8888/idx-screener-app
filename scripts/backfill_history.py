@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 
@@ -17,6 +18,18 @@ def main() -> None:
     parser.add_argument("--end", default=DEFAULT_END)
     parser.add_argument("--source-date", default=DEFAULT_SOURCE_DATE)
     args = parser.parse_args()
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "fetch_market_context.py"),
+            "--start",
+            args.start,
+            "--end",
+            args.end,
+        ],
+        cwd=ROOT,
+        check=True,
+    )
     manifest = build_archive(start=args.start, end=args.end, source_date=args.source_date)
     print(
         f"Published {len(manifest['dates'])} real market sessions from "

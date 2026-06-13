@@ -70,6 +70,16 @@ def main() -> None:
         return
 
     try:
+        subprocess.run(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "fetch_market_context.py"),
+                "--end",
+                market_date,
+            ],
+            cwd=ROOT,
+            check=True,
+        )
         if not args.skip_backend:
             subprocess.run(
                 [sys.executable, str(ROOT / "scripts" / "run_backfill.py"), "--date", market_date],

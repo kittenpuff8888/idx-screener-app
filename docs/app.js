@@ -2,7 +2,7 @@ const DISCLAIMER = "Educational research only. Not financial advice. Data may be
 const WATCHLIST_KEY = "idx-research-watchlist-v1";
 const THEME_KEY = "idx-research-theme";
 const INDICATOR_SETTINGS_KEY = "idx-research-indicators-v1";
-const DRAWINGS_KEY = "idx-research-drawings-v1";
+const DRAWINGS_KEY_PREFIX = "idx-research-drawings:";
 
 const state = {
   manifest: null,
@@ -34,6 +34,7 @@ const state = {
   calendarMonth: null,
   loadToken: 0,
   chart: null,
+  chartCandles: null,
   chartRows: [],
   chartResizeObserver: null,
   ohlcvCache: new Map(),
@@ -45,6 +46,9 @@ const state = {
   logicReference: { records: [] },
   guideSearch: "",
   guideCategory: "ALL",
+  activeDrawingTool: "crosshair",
+  drawingDraft: null,
+  navigationReady: false,
   kseiManifest: null,
   kseiData: null,
   kseiFilters: { search: "", sector: "ALL", type: "ALL", sort: "hhi" },
@@ -65,11 +69,11 @@ const els = Object.fromEntries(
   [
     "loadBar", "errorBanner", "pageTitle", "eyebrow", "sidebarStatus", "sidebarDate",
     "datasetState", "datasetTitle", "datasetMeta", "datasetScanned", "datasetOk",
-    "datasetPartial", "datasetSignals", "datasetSignalTickers", "refreshData",
+    "datasetPartial", "datasetSignals", "datasetSignalTickers", "refreshData", "workbookDownload",
     "menuButton", "themeToggle", "tickerCommand", "tickerList", "datePickerButton",
     "selectedDateLabel", "datePickerModal", "calendarPrevious", "calendarNext",
     "calendarMonthLabel", "calendarGrid", "calendarLatest", "marketCoverageBadge",
-    "marketMetricGrid", "marketMap", "sectorSignalHeatmap", "heatmapMode",
+    "marketContextGrid", "marketMetricGrid", "marketMap", "sectorSignalHeatmap", "heatmapMode",
     "qualityFunnel", "activityMap", "screenerCount", "screenerSearch", "sectorSelect",
     "signalSelect", "rvolMinimum", "rsMinimum", "qualitySelect", "sortSelect",
     "resetFilters", "densityToggle", "exportScreener", "signalLenses", "screenerTable",
@@ -78,7 +82,7 @@ const els = Object.fromEntries(
     "tickerSignals", "chartWorkspace", "priceChart", "chartLegend", "historyStatus", "historyMeta",
     "indicatorSettingsButton", "activeIndicatorStrip", "tradingViewLink", "levelMap",
     "chartSourceBadge", "chartTickerSearch", "resetChartLayout", "fullscreenChart",
-    "researchChartView", "tradingViewChartView", "tradingViewWidget", "chartOverlayLayer",
+    "researchChartView", "tradingViewChartView", "tradingViewWidget", "chartOverlayLayer", "chartDrawingLayer",
     "tickerSourceStatus", "technicalGrid", "fundamentalGrid", "fundamentalModeBadge",
     "newsPanel", "newsModeBadge", "lastSuccessfulLoad", "qualityMetricGrid",
     "sourceCoverage", "qaSummary", "qualityExceptions", "explorerCount",
@@ -382,7 +386,7 @@ async function loadKseiForDate(marketDate) {
   return fetchJson(entry.path.replace(/^data\//, "data/"));
 }
 
-async function loadDate(marketDate) {
+async function loadDate(marketDate, options = {}) {
   const entry = state.manifest.dates.find((item) => item.marketDate === marketDate);
   if (!entry) throw new Error(`Market date ${marketDate} is not published.`);
   const token = ++state.loadToken;
@@ -419,19 +423,37 @@ async function loadDate(marketDate) {
   if (state.selectedTicker && !state.maps.technical.has(state.selectedTicker) && !state.maps.signals.has(state.selectedTicker)) {
     state.selectedTicker = "";
   }
-  updateDateQuery(marketDate);
+  updateDateQuery(marketDate, options.historyMode || "auto");
   renderAll();
   renderCalendar();
   loading(100);
 }
 
-function updateDateQuery(marketDate) {
-  const url = new URL(window.location.href);
-  url.searchParams.set("date", marketDate);
-  history.replaceState(null, "", `${url.pathname}${url.search}${location.hash || "#market"}`);
+function rememberScrollPosition() {
+  history.replaceState(
+    { ...(history.state || {}), scrollY: window.scrollY },
+    "",
+    window.location.href,
+  );
 }
 
-function showView(view, updateHash = true) {
+function updateDateQuery(marketDate, historyMode = "auto") {
+  const url = new URL(window.location.href);
+  url.searchParams.set("date", marketDate);
+  const target = `${url.pathname}${url.search}${location.hash || "#market"}`;
+  if (historyMode === "none") return;
+  const replace = historyMode === "replace" || !state.navigationReady;
+  if (!replace && target === `${location.pathname}${location.search}${location.hash}`) return;
+  if (!replace) rememberScrollPosition();
+  history[replace ? "replaceState" : "pushState"](
+    { scrollY: 0 },
+    "",
+    target,
+  );
+  if (!replace) window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function showView(view, updateHash = true, options = {}) {
   if (!viewTitles[view]) view = "market";
   if (view !== "ticker") destroyChart();
   state.view = view;
@@ -445,18 +467,34 @@ function showView(view, updateHash = true) {
   document.body.classList.remove("nav-open");
   if (updateHash) {
     const suffix = view === "ticker" && state.selectedTicker ? `/${state.selectedTicker}` : "";
-    history.replaceState(null, "", `${location.pathname}${location.search}#${view}${suffix}`);
+    const target = `${location.pathname}${location.search}#${view}${suffix}`;
+    if (target !== `${location.pathname}${location.search}${location.hash}`) {
+      rememberScrollPosition();
+      history.pushState({ scrollY: 0 }, "", target);
+    }
   }
   if (view === "ticker" && state.selectedTicker) renderTicker();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (options.scroll !== false) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function routeFromHash() {
+function routeFromHash(options = {}) {
   const [view = "market", ticker] = location.hash.replace(/^#/, "").split("/");
   if (view === "ticker" && ticker) {
     state.selectedTicker = ticker.toUpperCase();
   }
-  showView(view, false);
+  showView(view, false, options);
+}
+
+async function restoreNavigation(event) {
+  const requestedDate = new URL(window.location.href).searchParams.get("date");
+  const marketDate = state.manifest.availableMarketDates.includes(requestedDate)
+    ? requestedDate
+    : state.manifest.latestMarketDate;
+  if (marketDate !== state.marketDate) {
+    await loadDate(marketDate, { historyMode: "none" });
+  }
+  routeFromHash({ scroll: false });
+  requestAnimationFrame(() => window.scrollTo({ top: event.state?.scrollY || 0, behavior: "auto" }));
 }
 
 function selectTicker(ticker, updateHash = true) {
@@ -502,6 +540,14 @@ function renderDatasetStatus() {
   els.datasetPartial.textContent = formatNumber(stats.partial, 0) || "0";
   els.datasetSignals.textContent = formatNumber(stats.signalRows, 0) || "0";
   els.datasetSignalTickers.textContent = formatNumber(stats.signalTickers, 0) || "0";
+  const workbook = state.entry.workbook;
+  els.workbookDownload.classList.toggle("disabled", !workbook);
+  els.workbookDownload.setAttribute("aria-disabled", String(!workbook));
+  els.workbookDownload.title = workbook
+    ? `Download source workbook for ${state.marketDate}`
+    : "A point-in-time workbook is not published for this reconstructed date.";
+  if (workbook) els.workbookDownload.href = workbook;
+  else els.workbookDownload.removeAttribute("href");
   els.sidebarStatus.textContent = "Dataset loaded";
   els.sidebarDate.textContent = state.marketDate;
   els.selectedDateLabel.textContent = new Intl.DateTimeFormat("en-US", {
@@ -518,6 +564,7 @@ function renderMarket() {
   const breadth = overview.breadth || {};
   const technicalCount = state.maps.technical.size;
   els.marketCoverageBadge.textContent = `${formatNumber(technicalCount, 0) || 0} tickers`;
+  renderMarketContext();
   els.marketMetricGrid.innerHTML = [
     metricCard("Advancing", formatNumber(breadth.advances, 0) || "0", "Positive daily change", "positive"),
     metricCard("Declining", formatNumber(breadth.declines, 0) || "0", "Negative daily change", "negative"),
@@ -530,6 +577,36 @@ function renderMarket() {
   renderActivityMap();
 }
 
+function renderMarketContext() {
+  const published = state.data.overview.overview?.marketContext || [];
+  const defaults = [
+    ["IHSG", "^JKSE"],
+    ["VIX", "^VIX"],
+    ["EIDO", "EIDO"],
+    ["KOSPI", "^KS11"],
+  ];
+  const records = defaults.map(([label, symbol]) => (
+    published.find((item) => item.symbol === symbol || item.label === label)
+    || {
+      label,
+      symbol,
+      value: null,
+      changePercent: null,
+      status: "missing",
+      reason: "market_context_not_published",
+      source: "yfinance",
+      asOf: state.marketDate,
+    }
+  ));
+  els.marketContextGrid.innerHTML = records.map((item) => {
+    const missing = !validValue(item.value);
+    const detail = missing
+      ? `${item.source || "yfinance"} · ${item.reason || "source_unavailable"}`
+      : `${item.symbol} · ${item.source || "yfinance"} · ${item.asOf || state.marketDate}`;
+    return `<article class="market-context-card ${missing ? "missing" : toneFor(item.changePercent)}"><span>${escapeHtml(item.label || item.symbol)}</span><strong>${missing ? valueHtml(null, item, formatNumber) : escapeHtml(formatNumber(item.value, 2))}</strong><small class="${toneFor(item.changePercent)}">${missing ? escapeHtml(detail) : `${escapeHtml(formatPercent(item.changePercent) || "0.00%")} · ${escapeHtml(detail)}`}</small></article>`;
+  }).join("");
+}
+
 function renderMarketMap() {
   const signals = new Map();
   (state.data.screener.records || []).forEach((row) => {
@@ -538,7 +615,7 @@ function renderMarketMap() {
   });
   const sectors = new Map();
   state.maps.technical.forEach((stock, ticker) => {
-    const sector = stock.sector || "Unclassified";
+    const sector = validValue(stock.sector) ? stock.sector : "Unclassified";
     if (!sectors.has(sector)) sectors.set(sector, []);
     sectors.get(sector).push({ ticker, stock });
   });
@@ -567,7 +644,7 @@ function renderMarketMap() {
           ].join(" | ");
           return `<button class="market-tile ${toneFor(stock.changePercent)}" type="button" data-open-ticker="${escapeHtml(ticker)}" title="${escapeHtml(title)}"><strong>${escapeHtml(ticker)}</strong><span>${escapeHtml(change || "—")}</span><small>${signalCount ? `${signalCount} signal rows` : stock.dataStatus || "No signal row"}</small></button>`;
         }).join("");
-      return `<section class="sector-group"><div class="sector-group-head"><strong>${escapeHtml(sector)}</strong><small class="${average >= 0 ? "positive" : "negative"}">${average >= 0 ? "+" : ""}${average.toFixed(2)}% · ${rows.length}</small></div><div class="ticker-tiles">${tiles}</div></section>`;
+      return `<details class="sector-group"><summary class="sector-group-head"><strong>${escapeHtml(sector)}</strong><small class="${average >= 0 ? "positive" : "negative"}">${average >= 0 ? "+" : ""}${average.toFixed(2)}% · ${rows.length} tickers</small></summary><div class="ticker-tiles">${tiles}</div></details>`;
     }).join("");
 }
 
@@ -832,7 +909,9 @@ function renderTicker() {
 function renderTickerHero(stock) {
   const ticker = state.selectedTicker;
   const inWatchlist = watchlist().includes(ticker);
-  els.tickerHero.innerHTML = `<div class="ticker-identity"><span class="section-kicker">${escapeHtml(stock.sector || "SECTOR MISSING")}</span><h2>${escapeHtml(ticker)}</h2><p>${escapeHtml(stock.companyName || ticker)}${stock.industry ? ` · ${escapeHtml(stock.industry)}` : ""}</p></div><div class="ticker-quote"><strong>${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</strong><span class="${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</span><div class="ticker-actions"><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span><button class="secondary-button" type="button" data-toggle-watch="${escapeHtml(ticker)}">${inWatchlist ? "Remove from watchlist" : "Add to watchlist"}</button></div></div>`;
+  const sector = validValue(stock.sector) ? stock.sector : "Sector unavailable";
+  const industry = validValue(stock.industry) ? ` · ${escapeHtml(stock.industry)}` : "";
+  els.tickerHero.innerHTML = `<div class="ticker-identity"><span class="section-kicker">${escapeHtml(sector)}</span><h2>${escapeHtml(ticker)}</h2><p>${escapeHtml(stock.companyName || ticker)}${industry}</p></div><div class="ticker-quote"><strong>${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</strong><span class="${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</span><div class="ticker-actions"><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span><button class="secondary-button" type="button" data-toggle-watch="${escapeHtml(ticker)}">${inWatchlist ? "Remove from watchlist" : "Add to watchlist"}</button></div></div>`;
   els.tradingViewLink.href = `https://www.tradingview.com/chart/?symbol=IDX%3A${encodeURIComponent(ticker)}`;
 }
 
@@ -888,13 +967,13 @@ function renderLevelMap(stock, signal) {
 
 function renderTickerSourceStatus(stock) {
   const provenance = state.data.technical.provenance || {};
-  const domains = [
-    ["Price & technical", provenance.priceTechnical?.source || stock.provenance?.source || "derived", provenance.priceTechnical?.pointInTime !== false ? "Point-in-time" : "Reference"],
-    ["Signals", provenance.signals?.source || "workbook", provenance.signals?.coverage || "Workbook coverage"],
-    ["Fundamentals", provenance.fundamentals?.source || "workbook", state.data.fundamental.isReference ? `Latest reference · ${state.data.fundamental.referenceMarketDate}` : "Point-in-time workbook"],
-    ["News", provenance.news?.source || "workbook", state.data.news.isReference ? `Latest reference · ${state.data.news.referenceMarketDate}` : "Point-in-time workbook"],
-  ];
-  els.tickerSourceStatus.innerHTML = domains.map(([label, source, detail]) => `<div class="source-status-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(sourceLabel(source))}</strong><small>${escapeHtml(detail)}</small></div>`).join("");
+  const referenceDate = state.data.fundamental.isReference || state.data.news.isReference
+    ? state.data.fundamental.referenceMarketDate || state.data.news.referenceMarketDate
+    : null;
+  const reference = referenceDate
+    ? ` Fundamentals and news use a clearly labelled latest-reference workbook dated ${referenceDate}; price, technical values, and signals remain capped to ${state.marketDate}.`
+    : " Fundamentals and news are from the selected point-in-time workbook.";
+  els.tickerSourceStatus.innerHTML = `<strong>Source note.</strong> Price and technical: ${escapeHtml(sourceLabel(provenance.priceTechnical?.source || stock.provenance?.source || "derived"))}. Signals: ${escapeHtml(sourceLabel(provenance.signals?.source || "workbook"))}.${escapeHtml(reference)} TradingView mode is display-only and can differ by source or timestamp.`;
 }
 
 function renderTechnical(stock) {
@@ -932,8 +1011,7 @@ function renderTechnical(stock) {
 function renderFundamental(ticker) {
   const row = state.maps.fundamental.get(ticker) || {};
   const isReference = state.data.fundamental.isReference;
-  els.fundamentalModeBadge.className = `status-badge ${isReference ? "warning" : "ok"}`;
-  els.fundamentalModeBadge.textContent = isReference ? `Latest reference · ${state.data.fundamental.referenceMarketDate}` : "Workbook date";
+  els.fundamentalModeBadge.hidden = true;
   const metrics = [
     ["Market cap", findValue(row, ["Market Cap"])],
     ["PE ratio TTM", findValue(row, ["Current PE Ratio (TTM)", "P/E Ratio"])],
@@ -956,8 +1034,7 @@ function renderFundamental(ticker) {
 function renderNews(ticker) {
   const rows = state.maps.news.get(ticker) || [];
   const isReference = state.data.news.isReference;
-  els.newsModeBadge.className = `status-badge ${isReference ? "warning" : "ok"}`;
-  els.newsModeBadge.textContent = isReference ? `Latest reference · ${state.data.news.referenceMarketDate}` : "Workbook date";
+  els.newsModeBadge.hidden = true;
   const useful = rows.filter((row) => Object.values(row).some(validValue));
   if (!useful.length) {
     els.newsPanel.innerHTML = `<div class="empty-state"><h3>Published news data is unavailable.</h3><p><span class="missing-value" title="Status: missing | Reason: source_unavailable | Source: workbook | As of: ${escapeHtml(state.data.news.referenceMarketDate || state.marketDate)}">— workbook · source unavailable</span></p></div>`;
@@ -1063,7 +1140,13 @@ function loadIndicatorSettings() {
   } catch {
     saved = {};
   }
+  if ((saved.schemaVersion || 0) < 3 && saved.smc) {
+    saved.smc.showInternals = false;
+    saved.smc.showOrderBlocks = false;
+    saved.smc.showEqualHighLow = false;
+  }
   state.indicatorSettings = IDXIndicators.deepMerge(IDXIndicators.DEFAULTS, saved);
+  state.indicatorSettings.schemaVersion = IDXIndicators.DEFAULTS.schemaVersion;
   state.chartMode = state.indicatorSettings.chart.mode || "research";
   state.chartInterval = state.indicatorSettings.chart.interval || "1D";
   state.chartRange = state.indicatorSettings.chart.range || "1Y";
@@ -1110,14 +1193,103 @@ function updateActiveIndicatorStrip() {
   els.activeIndicatorStrip.innerHTML = labels.map((label) => `<span>${escapeHtml(label)}</span>`).join("");
 }
 
+function drawingKey(ticker = state.selectedTicker) {
+  return `${DRAWINGS_KEY_PREFIX}${ticker}`;
+}
+
+function savedDrawings(ticker = state.selectedTicker) {
+  if (!ticker) return [];
+  try {
+    const value = JSON.parse(localStorage.getItem(drawingKey(ticker)) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveDrawings(drawings, ticker = state.selectedTicker) {
+  if (!ticker) return;
+  localStorage.setItem(drawingKey(ticker), JSON.stringify(drawings));
+}
+
+function chartTimeText(time) {
+  if (typeof time === "string") return time;
+  if (time && typeof time === "object" && "year" in time) {
+    return `${time.year}-${String(time.month).padStart(2, "0")}-${String(time.day).padStart(2, "0")}`;
+  }
+  return null;
+}
+
+function drawingPointFromEvent(event) {
+  if (!state.chart || !state.chartCandles) return null;
+  const time = chartTimeText(state.chart.timeScale().coordinateToTime(event.offsetX));
+  const price = state.chartCandles.coordinateToPrice(event.offsetY);
+  if (!time || !Number.isFinite(price)) return null;
+  return { time, price };
+}
+
+function renderSavedDrawings() {
+  if (!state.chart || !state.chartCandles || !els.chartDrawingLayer) return;
+  const drawings = savedDrawings();
+  const parts = [];
+  const point = (item) => ({
+    x: state.chart.timeScale().timeToCoordinate(item.time),
+    y: state.chartCandles.priceToCoordinate(item.price),
+  });
+  drawings.forEach((drawing) => {
+    const points = (drawing.points || []).map(point);
+    if (points.some(({ x, y }) => !Number.isFinite(x) || !Number.isFinite(y))) return;
+    const [a, b] = points;
+    if (drawing.type === "trendline" && b) {
+      parts.push(`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" class="drawing-line" />`);
+    } else if (drawing.type === "rectangle" && b) {
+      parts.push(`<rect x="${Math.min(a.x, b.x)}" y="${Math.min(a.y, b.y)}" width="${Math.abs(b.x - a.x)}" height="${Math.abs(b.y - a.y)}" class="drawing-rectangle" />`);
+    } else if (drawing.type === "fibonacci" && b) {
+      [0, 0.236, 0.382, 0.5, 0.618, 1].forEach((ratio) => {
+        const y = a.y + ((b.y - a.y) * ratio);
+        parts.push(`<line x1="${Math.min(a.x, b.x)}" y1="${y}" x2="${Math.max(a.x, b.x)}" y2="${y}" class="drawing-fib" /><text x="${Math.max(a.x, b.x) + 4}" y="${y - 3}" class="drawing-label">${ratio}</text>`);
+      });
+    } else if (drawing.type === "annotation") {
+      parts.push(`<circle cx="${a.x}" cy="${a.y}" r="3" class="drawing-anchor" /><text x="${a.x + 7}" y="${a.y - 7}" class="drawing-label">${escapeHtml(drawing.text || "Note")}</text>`);
+    }
+  });
+  els.chartDrawingLayer.innerHTML = parts.join("");
+}
+
+function handleDrawingClick(event) {
+  const tool = state.activeDrawingTool;
+  if (!tool || tool === "crosshair") return;
+  const selected = drawingPointFromEvent(event);
+  if (!selected) return;
+  if (tool === "annotation") {
+    const text = window.prompt("Annotation text");
+    if (!text?.trim()) return;
+    saveDrawings([...savedDrawings(), { type: tool, points: [selected], text: text.trim() }]);
+    renderSavedDrawings();
+    return;
+  }
+  if (!state.drawingDraft || state.drawingDraft.type !== tool) {
+    state.drawingDraft = { type: tool, points: [selected] };
+    els.historyMeta.textContent = `${tool} start selected. Choose the second chart point.`;
+    return;
+  }
+  const drawing = { ...state.drawingDraft, points: [...state.drawingDraft.points, selected] };
+  state.drawingDraft = null;
+  saveDrawings([...savedDrawings(), drawing]);
+  renderSavedDrawings();
+  els.historyMeta.textContent = `${tool} saved locally for ${state.selectedTicker}.`;
+}
+
 function destroyChart() {
   state.chartResizeObserver?.disconnect();
   state.chartResizeObserver = null;
   state.chart?.remove();
   state.chart = null;
+  state.chartCandles = null;
   state.chartRows = [];
   if (els.priceChart) els.priceChart.innerHTML = "";
   if (els.chartOverlayLayer) els.chartOverlayLayer.innerHTML = "";
+  if (els.chartDrawingLayer) els.chartDrawingLayer.innerHTML = "";
 }
 
 function chartColors() {
@@ -1184,7 +1356,7 @@ function rangeStart(rows) {
   return index < 0 ? 0 : index;
 }
 
-function renderStructureOverlays(chart, candles, smcResult) {
+function renderStructureOverlays(chart, candles, smcResult, hiddenLabels = 0) {
   if (!smcResult) {
     els.chartOverlayLayer.innerHTML = "";
     return;
@@ -1232,6 +1404,12 @@ function renderStructureOverlays(chart, candles, smcResult) {
       label: "FVG",
       className: box.bias > 0 ? "zone-fvg-bullish" : "zone-fvg-bearish",
     }));
+    if (hiddenLabels > 0) {
+      const badge = document.createElement("span");
+      badge.className = "overlay-density-badge";
+      badge.textContent = `${hiddenLabels} older structure labels hidden`;
+      els.chartOverlayLayer.append(badge);
+    }
   });
 }
 
@@ -1257,14 +1435,15 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
   state.chart = chart;
   const candles = chart.addSeries(LightweightCharts.CandlestickSeries, {
     upColor: "#3b82f6",
-    downColor: "#e5e7eb",
+    downColor: "#ef4444",
     borderUpColor: "#3b82f6",
-    borderDownColor: "#e5e7eb",
+    borderDownColor: "#ef4444",
     wickUpColor: "#60a5fa",
-    wickDownColor: "#cbd5e1",
+    wickDownColor: "#f87171",
     priceLineVisible: true,
     lastValueVisible: true,
   });
+  state.chartCandles = candles;
   candles.setData(rows.map((row) => ({ time: row.date, open: row.open, high: row.high, low: row.low, close: row.close })));
 
   const addLine = (data, color, title, pane = 0, priceScaleId = "right", width = 1) => {
@@ -1325,7 +1504,7 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
     volumeSeries.setData(rows.map((row) => ({
       time: row.date,
       value: row.volume || 0,
-      color: row.close >= row.open ? `rgba(41,98,255,${settings.volume.opacity})` : `rgba(226,232,240,${settings.volume.opacity})`,
+      color: row.close >= row.open ? `rgba(41,98,255,${settings.volume.opacity})` : `rgba(239,68,68,${settings.volume.opacity})`,
     })));
     if (settings.volume.maShow) addLine(IDXIndicators.movingAverage(rows, settings.volume.period, "sma", "volume"), settings.volume.maColor, `Vol MA ${settings.volume.period}`, pane, "volume", 2);
     pane += 1;
@@ -1358,6 +1537,7 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
     addLine(result.signal, settings.macd.signalColor, "Signal", pane, "macd", 2);
   }
   const smcResult = settings.smc.show ? IDXIndicatorEngine.smc(rows, settings.smc) : null;
+  state.smcHiddenLabels = 0;
   if (smcResult && LightweightCharts.createSeriesMarkers) {
     const markers = [];
     smcResult.events.forEach((event) => {
@@ -1385,10 +1565,11 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
       shape: "circle",
       text: settings.smc.showLabels ? event.label : "",
     }));
-    LightweightCharts.createSeriesMarkers(
-      candles,
-      markers.sort((a, b) => a.time.localeCompare(b.time)).slice(-220),
-    );
+    markers.sort((a, b) => a.time.localeCompare(b.time));
+    const markerLimit = 15;
+    const visibleMarkers = markers.slice(-markerLimit);
+    state.smcHiddenLabels = Math.max(0, markers.length - visibleMarkers.length);
+    LightweightCharts.createSeriesMarkers(candles, visibleMarkers);
   }
 
   const stock = state.maps.technical.get(ticker) || {};
@@ -1427,7 +1608,10 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
     from: rows[rangeStart(rows)].date,
     to: rows.at(-1).date,
   });
-  state.chartResizeObserver = new ResizeObserver(() => chart.timeScale().applyOptions({}));
+  state.chartResizeObserver = new ResizeObserver(() => {
+    chart.timeScale().applyOptions({});
+    renderSavedDrawings();
+  });
   state.chartResizeObserver.observe(els.priceChart);
   const partial = rows.length < 60;
   els.historyStatus.className = `status-badge ${partial ? "warning" : "ok"}`;
@@ -1435,8 +1619,12 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
   els.historyMeta.textContent = `${formatNumber(rows.length, 0)} ${state.chartInterval} bars · ${rows[0].date} to ${rows.at(-1).date} · ${sourceLabel(source)} · formula chart-v4`;
   els.chartSourceBadge.textContent = "Website Calculated";
   els.chartSourceBadge.className = "status-badge ok";
-  renderStructureOverlays(chart, candles, smcResult);
-  chart.timeScale().subscribeVisibleLogicalRangeChange(() => renderStructureOverlays(chart, candles, smcResult));
+  renderStructureOverlays(chart, candles, smcResult, state.smcHiddenLabels || 0);
+  renderSavedDrawings();
+  chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+    renderStructureOverlays(chart, candles, smcResult, state.smcHiddenLabels || 0);
+    renderSavedDrawings();
+  });
   updateActiveIndicatorStrip();
 }
 
@@ -1886,15 +2074,21 @@ function bindEvents() {
     }
     const drawing = event.target.closest("[data-drawing-tool]");
     if (drawing?.dataset.drawingTool === "clear") {
-      localStorage.removeItem(DRAWINGS_KEY);
+      localStorage.removeItem(drawingKey());
+      state.drawingDraft = null;
+      renderSavedDrawings();
       drawing.closest(".drawing-toolbar").querySelectorAll("button").forEach((button) => button.classList.toggle("active", button.dataset.drawingTool === "crosshair"));
+      state.activeDrawingTool = "crosshair";
+      els.historyMeta.textContent = `Saved drawings cleared for ${state.selectedTicker}.`;
       return;
     }
     if (drawing) {
+      state.activeDrawingTool = drawing.dataset.drawingTool;
+      state.drawingDraft = null;
       drawing.closest(".drawing-toolbar").querySelectorAll("button").forEach((button) => button.classList.toggle("active", button === drawing));
-      els.historyMeta.textContent = drawing.dataset.drawingTool === "horizontal"
-        ? "Horizontal drawing is stored as an observed chart tool; click parity remains available in TradingView View."
-        : "Crosshair tool active.";
+      els.historyMeta.textContent = state.activeDrawingTool === "crosshair"
+        ? "Crosshair tool active."
+        : `${state.activeDrawingTool} tool active. Select a chart point${state.activeDrawingTool === "annotation" ? "" : ", then select the endpoint"}.`;
       return;
     }
     const tickerTarget = event.target.closest("[data-open-ticker]");
@@ -1950,6 +2144,7 @@ function bindEvents() {
     if (viewTarget) return showView(viewTarget.dataset.goView);
   });
   els.menuButton.addEventListener("click", () => document.body.classList.toggle("nav-open"));
+  els.priceChart.addEventListener("click", handleDrawingClick);
   els.themeToggle.addEventListener("click", () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
   els.refreshData.addEventListener("click", () => loadDate(state.marketDate).catch((error) => showError(error.message)));
   els.datePickerButton.addEventListener("click", openCalendar);
@@ -2034,7 +2229,10 @@ function bindEvents() {
       closeModal(els.kseiDetailModal);
     }
   });
-  window.addEventListener("hashchange", routeFromHash);
+  window.addEventListener("hashchange", () => routeFromHash());
+  window.addEventListener("popstate", (event) => {
+    restoreNavigation(event).catch((error) => showError(error.message));
+  });
 }
 
 async function init() {
@@ -2065,8 +2263,10 @@ async function init() {
   const marketDate = state.manifest.availableMarketDates.includes(requestedDate)
     ? requestedDate
     : state.manifest.latestMarketDate;
-  await loadDate(marketDate);
-  routeFromHash();
+  await loadDate(marketDate, { historyMode: "replace" });
+  routeFromHash({ scroll: false });
+  state.navigationReady = true;
+  history.replaceState({ ...(history.state || {}), scrollY: window.scrollY }, "", window.location.href);
 }
 
 init().catch((error) => {

@@ -10,14 +10,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> None:
-    args = []
+    args = ["--timezone", "Asia/Jakarta", "--market-close-time", "16:30"]
     if os.environ.get("MARKET_DATE"):
-        args = ["--date", os.environ["MARKET_DATE"]]
-    else:
-        args = ["--days", "1"]
-    subprocess.run([sys.executable, str(ROOT / "scripts" / "run_backfill.py"), *args], cwd=ROOT, check=True)
+        args.extend(["--market-date", os.environ["MARKET_DATE"]])
     subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "build_historical_snapshots.py")],
+        [sys.executable, str(ROOT / "scripts" / "update_daily.py"), *args],
         cwd=ROOT,
         check=True,
     )

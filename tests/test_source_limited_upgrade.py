@@ -14,7 +14,7 @@ from rebuild_backend.providers.base import ProviderStatus
 from rebuild_backend.providers.investing_provider import InvestingComProvider
 from rebuild_backend.providers.tradingview_chart import TradingViewChartProvider
 from rebuild_backend.schema import missing
-from scripts.archive_v5 import FRIENDLY_SIGNALS, normalized_signal
+from scripts.archive_v5 import FRIENDLY_SIGNALS, normalize_stocks, normalized_signal
 from scripts.update_daily import latest_completed_market_day_at
 
 
@@ -120,6 +120,40 @@ class ArchiveAndScheduleTests(unittest.TestCase):
             self.assertEqual(row["signalType"], label)
             self.assertNotIn("Filter", row)
 
+    def test_full_workbook_stock_normalization_is_numeric(self):
+        stocks = {
+            "BBCA": {
+                "lastPrice": 6875,
+                "volume": "747.37 M",
+                "supportLevels": [None, 4820, "5525"],
+                "resistanceLevels": [8750, None],
+                "fundamentals": {"marketCap": "694,251"},
+            }
+        }
+        prepared = {
+            "BBCA": {
+                "rows": [{"date": "2026-06-10", "volume": 747_370_000}],
+                "index": {"2026-06-10": 0},
+                "average_volume": [612_000_000],
+            }
+        }
+
+        normalized, _ = normalize_stocks(
+            stocks,
+            "2026-06-10",
+            source="workbook",
+            prepared=prepared,
+        )
+        bbca = normalized["BBCA"]
+
+        self.assertEqual(bbca["volume"], 747_370_000)
+        self.assertEqual(bbca["averageVolume20"], 612_000_000)
+        self.assertEqual(bbca["supportLevels"], [4820.0, 5525.0])
+        self.assertEqual(bbca["resistanceLevels"], [8750.0])
+        self.assertEqual(bbca["fundamentals"]["marketCap"], 694_251_000_000_000)
+        self.assertEqual(bbca["fundamentals"]["marketCapUnit"], "IDR")
+        self.assertEqual(bbca["fundamentals"]["marketCapDisplay"], "Rp 694.25 T")
+
     def test_daily_cutoff_is_1630_wib(self):
         before = datetime(2026, 6, 10, 16, 29, tzinfo=WIB)
         after = datetime(2026, 6, 10, 16, 30, tzinfo=WIB)
@@ -144,6 +178,21 @@ class ArchiveAndScheduleTests(unittest.TestCase):
             "wyckoff",
         ):
             self.assertNotIn(phrase, rendered)
+
+    def test_internal_routes_are_not_primary_navigation(self):
+        html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        primary_nav = html.split('<nav class="primary-nav"', 1)[1].split("</nav>", 1)[0]
+        self.assertNotIn('data-view="quality"', primary_nav)
+        self.assertNotIn('data-view="explorer"', primary_nav)
+        self.assertIn('data-view-panel="quality"', html)
+        self.assertIn('data-view-panel="explorer"', html)
+        self.assertIn('data-go-view="quality"', html)
+        self.assertIn('data-go-view="explorer"', html)
+
+    def test_price_direction_colors_are_blue_and_red(self):
+        app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('upColor: "#3b82f6"', app)
+        self.assertIn('downColor: "#ef4444"', app)
 
     def test_workflow_schedule_and_manual_trigger(self):
         workflow = (

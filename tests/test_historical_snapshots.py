@@ -37,12 +37,52 @@ class HistoricalSnapshotTests(unittest.TestCase):
             june["records"]["BBCA"]["changePercent"],
         )
 
+    def test_full_workbook_dates_do_not_reuse_ticker_values(self):
+        dates = ("2026-06-09", "2026-06-10", "2026-06-11")
+        for ticker in ("BBCA", "AADI"):
+            observed = []
+            for market_date in dates:
+                payload = json.loads(
+                    (DATA / "dates" / market_date / "technical.json").read_text(encoding="utf-8")
+                )
+                record = payload["records"][ticker]
+                self.assertIsInstance(record["volume"], (int, float))
+                self.assertIsInstance(record["averageVolume20"], (int, float))
+                observed.append(
+                    (
+                        record["lastPrice"],
+                        record["changePercent"],
+                        record["volume"],
+                        record["technical"]["rsi14"],
+                    )
+                )
+            self.assertEqual(len(set(observed)), len(dates))
+
+    def test_signal_files_match_manifest_counts(self):
+        for entry in self.manifest["dates"]:
+            if not entry["signalRows"]:
+                continue
+            screener = json.loads(
+                (DATA / "dates" / entry["marketDate"] / "screener.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(len(screener["records"]), entry["signalRows"])
+            self.assertNotEqual(screener["records"], [])
+
+    def test_market_context_never_uses_a_future_value(self):
+        for market_date in ("2025-01-02", "2026-06-09", "2026-06-11"):
+            overview = json.loads(
+                (DATA / "dates" / market_date / "overview.json").read_text(encoding="utf-8")
+            )
+            context = overview["overview"]["marketContext"]
+            self.assertEqual({item["label"] for item in context}, {"IHSG", "VIX", "EIDO", "KOSPI"})
+            self.assertTrue(all(item["asOf"] <= market_date for item in context))
+
     def test_reference_domains_are_explicit(self):
         fundamental = json.loads(
             (DATA / "dates" / "2025-01-02" / "fundamental.json").read_text(encoding="utf-8")
         )
         self.assertEqual(fundamental["dataMode"], "latest_reference_not_point_in_time")
-        self.assertEqual(fundamental["referenceMarketDate"], "2026-06-10")
+        self.assertEqual(fundamental["referenceMarketDate"], self.manifest["latestMarketDate"])
 
     def test_shared_history_is_capped_by_frontend_market_date(self):
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
@@ -53,6 +93,11 @@ class HistoricalSnapshotTests(unittest.TestCase):
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
         self.assertIn('const INDICATOR_SETTINGS_KEY = "idx-research-indicators-v1"', app)
         self.assertNotIn("`${marketDate}:${ticker}:indicators`", app)
+
+    def test_research_drawings_are_scoped_per_ticker(self):
+        app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('const DRAWINGS_KEY_PREFIX = "idx-research-drawings:"', app)
+        self.assertIn("`${DRAWINGS_KEY_PREFIX}${ticker}`", app)
 
 
 if __name__ == "__main__":

@@ -22,6 +22,8 @@ from scripts.build_historical_snapshots import build_snapshot, prepare_ticker
 
 DATA = ROOT / "docs" / "data"
 DATES_DIR = DATA / "dates"
+MARKET_CONTEXT = ROOT / "data_sources" / "market-context.json"
+FULL_PAYLOAD_DIR = ROOT / "data_sources" / "full-workbook"
 DEFAULT_SOURCE_DATE = "2026-06-10"
 DEFAULT_START = "2025-01-01"
 DEFAULT_END = "2026-06-10"
@@ -78,6 +80,95 @@ def number(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return parsed if math.isfinite(parsed) else None
+
+
+def legacy_number(value: Any) -> float | None:
+    """Parse a workbook display number without guessing abbreviated suffixes."""
+    if isinstance(value, str):
+        value = value.strip().replace(",", "")
+    return number(value)
+
+
+def compact_idr(value: float | None) -> str | None:
+    if value is None:
+        return None
+    if abs(value) >= 1_000_000_000_000:
+        return f"Rp {value / 1_000_000_000_000:.2f} T"
+    if abs(value) >= 1_000_000_000:
+        return f"Rp {value / 1_000_000_000:.2f} B"
+    if abs(value) >= 1_000_000:
+        return f"Rp {value / 1_000_000:.2f} M"
+    return f"Rp {value:,.0f}"
+
+
+def normalize_market_cap(fundamentals: dict[str, Any]) -> None:
+    raw = fundamentals.get("marketCap")
+    parsed = legacy_number(raw)
+    if parsed is None:
+        return
+
+    # Legacy workbook values are IDR billions. Numeric provider exports may
+    # already be absolute IDR, so only scale the compact workbook form.
+    legacy_billions = isinstance(raw, str) and parsed < 10_000_000
+    absolute = parsed * 1_000_000_000 if legacy_billions else parsed
+    fundamentals["marketCap"] = absolute
+    fundamentals["marketCapUnit"] = "IDR"
+    fundamentals["marketCapScale"] = "absolute"
+    fundamentals["marketCapDisplay"] = compact_idr(absolute)
+
+
+def clean_levels(value: Any) -> list[float]:
+    if not isinstance(value, list):
+        return []
+    return [parsed for item in value if (parsed := number(item)) is not None]
+
+
+def prepared_index(
+    prepared: dict[str, dict[str, Any]] | None,
+    ticker: str,
+    market_date: str,
+) -> tuple[dict[str, Any], int] | None:
+    item = (prepared or {}).get(ticker)
+    if not item:
+        return None
+    index = item.get("index", {}).get(market_date)
+    if index is None:
+        return None
+    return item, int(index)
+
+
+def load_market_context() -> dict[str, Any]:
+    if not MARKET_CONTEXT.exists():
+        return {"instruments": []}
+    try:
+        return read_json(MARKET_CONTEXT)
+    except (OSError, json.JSONDecodeError):
+        return {"instruments": []}
+
+
+def market_context_for_date(history: dict[str, Any], market_date: str) -> list[dict[str, Any]]:
+    output = []
+    for instrument in history.get("instruments") or []:
+        available = [
+            row
+            for row in instrument.get("rows") or []
+            if str(row.get("date") or "") <= market_date
+        ]
+        latest = available[-1] if available else None
+        output.append(
+            {
+                "label": instrument.get("label"),
+                "symbol": instrument.get("symbol"),
+                "value": latest.get("value") if latest else None,
+                "changePercent": latest.get("changePercent") if latest else None,
+                "status": "ok" if latest else instrument.get("status") or "missing",
+                "reason": None if latest else instrument.get("reason") or "no_value_on_or_before_market_date",
+                "source": instrument.get("source") or "yfinance",
+                "asOf": latest.get("date") if latest else market_date,
+                "formula": instrument.get("formula"),
+            }
+        )
+    return output
 
 
 def neutral_text(value: Any) -> Any:
@@ -160,6 +251,7 @@ def normalize_stocks(
     market_date: str,
     *,
     source: str,
+    prepared: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], Counter]:
     counts: Counter = Counter()
     output: dict[str, dict[str, Any]] = {}
@@ -172,6 +264,25 @@ def normalize_stocks(
                     for key, value in stock[group_name].items()
                 }
         stock["ticker"] = ticker
+        stock["supportLevels"] = clean_levels(stock.get("supportLevels"))
+        stock["resistanceLevels"] = clean_levels(stock.get("resistanceLevels"))
+
+        point_in_time = prepared_index(prepared, ticker, market_date)
+        if point_in_time:
+            prepared_ticker, row_index = point_in_time
+            historical_row = prepared_ticker["rows"][row_index]
+            stock["volumeDisplay"] = stock.get("volume")
+            stock["volume"] = number(historical_row.get("volume"))
+            stock["averageVolume20"] = number(
+                prepared_ticker.get("average_volume", [None])[row_index]
+            )
+
+        fundamentals = stock.get("fundamentals")
+        if isinstance(fundamentals, dict):
+            fundamentals = dict(fundamentals)
+            normalize_market_cap(fundamentals)
+            stock["fundamentals"] = fundamentals
+
         status, missing_fields = ticker_quality(stock)
         counts[status] += 1
         stock["dataStatus"] = status
@@ -219,7 +330,7 @@ def discover_market_dates(
 
 
 def full_payload_for_date(market_date: str) -> dict[str, Any] | None:
-    path = DATA / f"{market_date}.json"
+    path = FULL_PAYLOAD_DIR / f"{market_date}.json"
     if not path.exists():
         return None
     payload = read_json(path)
@@ -345,7 +456,12 @@ def split_payload(
     full = bool(payload.get("technical"))
     raw_stocks = payload.get("stocks") or {}
     source = "workbook" if full else "derived"
-    stocks, quality_counts = normalize_stocks(raw_stocks, market_date, source=source)
+    stocks, quality_counts = normalize_stocks(
+        raw_stocks,
+        market_date,
+        source=source,
+        prepared=prepared,
+    )
     signals = [normalized_signal(row) for row in payload.get("screener") or []]
     universe = sorted(static_stocks)
     processing = build_processing(
@@ -482,9 +598,10 @@ def build_archive(
     source_date: str = DEFAULT_SOURCE_DATE,
     clean: bool = True,
 ) -> dict[str, Any]:
-    latest_payload = read_json(DATA / f"{source_date}.json")
+    latest_payload = read_json(FULL_PAYLOAD_DIR / f"{source_date}.json")
     static_stocks = latest_payload.get("stocks") or {}
     prepared = load_prepared(source_date)
+    market_context = load_market_context()
     market_dates = discover_market_dates(prepared, start, end)
     if not market_dates:
         raise ValueError(f"No real market sessions found from {start} through {end}")
@@ -522,6 +639,10 @@ def build_archive(
         payload = full_payload_for_date(market_date)
         if payload is None:
             payload = historical_payload(market_date, static_stocks, prepared)
+        payload.setdefault("overview", {})["marketContext"] = market_context_for_date(
+            market_context,
+            market_date,
+        )
         files, entry = split_payload(
             market_date,
             payload,
@@ -537,17 +658,6 @@ def build_archive(
             f"{entry['okTickers']} OK, {entry['signalRows']} signal rows"
         )
     latest_market_date = entries[-1]["marketDate"]
-    latest_dir = DATES_DIR / latest_market_date
-    for filename in (
-        "overview.json",
-        "screener.json",
-        "technical.json",
-        "fundamental.json",
-        "news.json",
-        "processing-results.json",
-        "qa-audit.json",
-    ):
-        shutil.copy2(latest_dir / filename, DATA / filename)
     manifest = {
         "schemaVersion": SCHEMA_VERSION,
         "latestMarketDate": latest_market_date,
