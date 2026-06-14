@@ -77,6 +77,59 @@ class HistoricalSnapshotTests(unittest.TestCase):
             context = overview["overview"]["marketContext"]
             self.assertEqual({item["label"] for item in context}, {"IHSG", "VIX", "EIDO", "KOSPI"})
             self.assertTrue(all(item["asOf"] <= market_date for item in context))
+            self.assertTrue(all(len(item["series"]) <= 20 for item in context))
+            self.assertTrue(all(item["series"][-1] == item["value"] for item in context if item["series"]))
+
+    def test_latest_root_pointer_is_not_published(self):
+        self.assertFalse((DATA / "latest.json").exists())
+
+    def test_latest_workbook_indicators_and_levels_are_normalized(self):
+        technical = json.loads(
+            (DATA / "dates" / "2026-06-12" / "technical.json").read_text(encoding="utf-8")
+        )
+        bbca = technical["records"]["BBCA"]
+        self.assertIsInstance(bbca["technical"]["macdLine"], (int, float))
+        self.assertIsInstance(bbca["technical"]["vwap"], (int, float))
+        self.assertEqual(bbca["_meta"]["macdLine"]["status"], "ok")
+        self.assertEqual(bbca["_meta"]["vwap"]["status"], "ok")
+        self.assertEqual(len(bbca["supportLevels"]), len(set(bbca["supportLevels"])))
+        self.assertEqual(len(bbca["resistanceLevels"]), len(set(bbca["resistanceLevels"])))
+
+    def test_steps_21_to_30_product_surface(self):
+        html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
+        css = (ROOT / "docs" / "styles.css").read_text(encoding="utf-8")
+        disclaimer = (
+            "Educational research only. Not financial advice. Data is source-limited, "
+            "archived, and not real-time. Verify independently before making trading decisions."
+        )
+        self.assertEqual(html.count(disclaimer), 1)
+        self.assertIn('id="datasetLine"', html)
+        self.assertNotIn('id="datasetTitle"', html)
+        self.assertNotIn('id="datasetFacts"', html)
+        self.assertIn("<h2>Active Signals</h2>", html)
+        self.assertIn('id="footerFreshness"', html)
+        self.assertIn("function sparklineSvg(item)", app)
+        self.assertIn("--accent:", css)
+        self.assertIn(".market-context-sparkline", css)
+
+    def test_follow_up_dashboard_and_research_workflow_exist(self):
+        html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
+        primary_nav = html.split('<nav class="primary-nav"', 1)[1].split("</nav>", 1)[0]
+        self.assertEqual(primary_nav.count('class="nav-item'), 6)
+        for view in ("dashboard", "market", "screener", "ticker", "watchlist", "ownership"):
+            self.assertIn(f'data-view="{view}"', primary_nav)
+        self.assertNotIn('data-view="guide"', primary_nav)
+        self.assertIn('class="advanced-nav"', html)
+        self.assertIn('data-view-panel="dashboard"', html)
+        self.assertIn("Archived · Not real-time", html)
+        self.assertIn('id="dashboardResearchRows"', html)
+        self.assertIn('id="mobileTickerCommand"', html)
+        self.assertIn('id="tickerKseiCard"', html)
+        self.assertIn("function renderDashboard()", app)
+        self.assertIn("function renderTickerKsei(ticker)", app)
+        self.assertIn('["Legacy Code Audit", "legacy"]', app)
 
     def test_reference_domains_are_explicit(self):
         fundamental = json.loads(

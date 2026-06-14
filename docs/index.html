@@ -9,13 +9,13 @@
       content="IDX RESEARCH is a source-limited Indonesian equity research dashboard."
     />
     <title>IDX RESEARCH</title>
-    <link rel="stylesheet" href="styles.css?v=20260613-merged-qa" />
+    <link rel="stylesheet" href="styles.css?v=20260614-followup2" />
   </head>
   <body class="app-loading">
     <div id="loadBar" class="load-bar" aria-hidden="true"></div>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar">
-        <a class="brand" href="#market" aria-label="IDX RESEARCH home">
+        <a class="brand" href="#dashboard" aria-label="IDX RESEARCH home">
           <span class="brand-mark">IX</span>
           <span>
             <strong>IDX RESEARCH</strong>
@@ -24,20 +24,27 @@
         </a>
 
         <nav class="primary-nav" aria-label="Primary navigation">
-          <button class="nav-item active" type="button" data-view="market"><span>01</span>Market Map</button>
-          <button class="nav-item" type="button" data-view="screener"><span>02</span>Screener</button>
-          <button class="nav-item" type="button" data-view="watchlist"><span>03</span>Watchlist</button>
-          <button class="nav-item" type="button" data-view="ticker"><span>04</span>Ticker Intelligence</button>
-          <button class="nav-item" type="button" data-view="ownership"><span>05</span>KSEI Ownership</button>
-          <button class="nav-item" type="button" data-view="guide"><span>06</span>Guide</button>
+          <button class="nav-item active" type="button" data-view="dashboard"><span>01</span>Dashboard</button>
+          <button class="nav-item" type="button" data-view="market"><span>02</span>Market Map</button>
+          <button class="nav-item" type="button" data-view="screener"><span>03</span>Screener</button>
+          <button class="nav-item" type="button" data-view="ticker"><span>04</span>Ticker Research</button>
+          <button class="nav-item" type="button" data-view="watchlist"><span>05</span>Watchlist</button>
+          <button class="nav-item" type="button" data-view="ownership"><span>06</span>KSEI Ownership</button>
         </nav>
+        <details class="advanced-nav">
+          <summary>Advanced / QA</summary>
+          <button type="button" data-go-view="quality">Data Quality</button>
+          <button type="button" data-go-view="explorer">Workbook Explorer</button>
+          <button type="button" data-go-view="guide">Guide & Methodology</button>
+          <a href="#downloads" data-download-shortcut>Downloads / Workbook</a>
+        </details>
 
         <div class="sidebar-foot">
           <div class="system-state">
             <span class="status-dot"></span>
             <div>
-              <strong id="sidebarStatus">Dataset loading</strong>
-              <small id="sidebarDate">Market date pending</small>
+              <strong id="sidebarStatus">Loading archived IDX research dataset</strong>
+              <small id="sidebarDate">Archive date will appear when ready</small>
             </div>
           </div>
           <p>Workbook, yfinance, public Investing.com fields, and TradingView chart display only.</p>
@@ -50,10 +57,11 @@
             <span></span><span></span><span></span>
           </button>
           <div class="topbar-title">
-            <span id="eyebrow">MARKET MAP</span>
-            <h1 id="pageTitle">IDX Market Map</h1>
+            <span id="eyebrow">DASHBOARD</span>
+            <h1 id="pageTitle">Research Dashboard</h1>
           </div>
           <div class="topbar-actions">
+            <span class="archive-badge" title="Values update only when a published archive is generated.">Archived · Not real-time</span>
             <label class="ticker-command">
               <span class="command-prefix">IDX</span>
               <input id="tickerCommand" list="tickerList" placeholder="Search ticker" autocomplete="off" />
@@ -73,20 +81,64 @@
 
         <section class="dataset-strip" aria-live="polite">
           <span id="datasetState" class="status-badge info">Loading</span>
-          <div class="dataset-lead">
-            <strong id="datasetTitle">Loading published data</strong>
-            <small id="datasetMeta">Validating schema and selected market date.</small>
-          </div>
-          <div class="dataset-facts">
-            <span><small>Scanned</small><strong id="datasetScanned">—</strong></span>
-            <span><small>OK</small><strong id="datasetOk">—</strong></span>
-            <span><small>Partial</small><strong id="datasetPartial">—</strong></span>
-            <span><small>Signal rows</small><strong id="datasetSignals">—</strong></span>
-            <span><small>Signal tickers</small><strong id="datasetSignalTickers">—</strong></span>
-          </div>
+          <p id="datasetLine" class="dataset-line">Loading and validating the published dataset.</p>
         </section>
 
-        <section class="view active" data-view-panel="market">
+        <section class="view active" data-view-panel="dashboard">
+          <div class="dashboard-hero">
+            <div>
+              <span class="section-kicker">IDX RESEARCH WORKSPACE</span>
+              <h2>Start with the published market picture</h2>
+              <p>Source-limited research from archived workbook releases and date-capped OHLCV. Values are not real-time.</p>
+              <label class="mobile-ticker-search"><span>Find ticker</span><input id="mobileTickerCommand" list="tickerList" placeholder="BBCA, AADI, MNCN..." autocomplete="off" /></label>
+            </div>
+            <div class="dashboard-actions">
+              <button class="primary-action" type="button" data-go-view="screener">Open Screener</button>
+              <button class="secondary-button" type="button" data-open-calendar>Select archive date</button>
+            </div>
+          </div>
+          <section class="dashboard-summary-grid">
+            <article class="dashboard-summary-card">
+              <span>MARKET DATE</span>
+              <strong id="dashboardMarketDate">Loading</strong>
+              <p id="dashboardPublished">Published archive timestamp pending.</p>
+              <span class="status-badge warning">Not real-time</span>
+            </article>
+            <article class="dashboard-summary-card">
+              <span>DATASET HEALTH</span>
+              <strong id="dashboardHealthTitle">Loading</strong>
+              <div id="dashboardHealth" class="dashboard-mini-stats"></div>
+              <button type="button" class="text-button" data-go-view="quality">Open Data Quality</button>
+            </article>
+            <article class="dashboard-summary-card">
+              <span>SIGNAL SUMMARY</span>
+              <strong id="dashboardSignalTitle">Loading</strong>
+              <div id="dashboardSignals" class="dashboard-chip-list"></div>
+              <button type="button" class="text-button" data-go-view="screener">View full Screener</button>
+            </article>
+            <article class="dashboard-summary-card">
+              <span>SECTOR MOMENTUM</span>
+              <strong id="dashboardSectorTitle">Loading</strong>
+              <div id="dashboardSectors" class="dashboard-sector-list"></div>
+              <button type="button" class="text-button" data-go-view="market">Open Market Map</button>
+            </article>
+          </section>
+          <article class="panel dashboard-research-table">
+            <div class="panel-head">
+              <div><span class="panel-kicker">PRIORITY RESEARCH ROWS</span><h3>Highest activity among published signals</h3></div>
+              <span class="source-chip">Workbook / yfinance archive</span>
+            </div>
+            <div id="dashboardResearchRows" class="table-shell"></div>
+          </article>
+          <article class="panel dashboard-source-model">
+            <div><strong>Workbook</strong><span>Signals and published research fields</span></div>
+            <div><strong>yfinance archive</strong><span>Date-capped OHLCV calculations</span></div>
+            <div><strong>TradingView</strong><span>Display-only chart mode</span></div>
+            <div><strong>KSEI workbook</strong><span>Point-in-time ownership snapshot</span></div>
+          </article>
+        </section>
+
+        <section class="view" data-view-panel="market">
           <div class="view-intro">
             <div>
               <span class="section-kicker">MARKET COMMAND CENTER</span>
@@ -133,12 +185,11 @@
           <div class="view-intro">
             <div>
               <span class="section-kicker">SIGNAL DISCOVERY</span>
-              <h2>Workbook signal rows</h2>
-              <p>Meaningful signal categories replace legacy filter codes while the original code remains available for audit.</p>
+              <h2>Active Signals</h2>
+              <p>Explore and filter all active signals for the selected market date.</p>
             </div>
             <span id="screenerCount" class="hero-stat">— rows</span>
           </div>
-          <div class="research-disclaimer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</div>
           <article class="panel screener-panel">
             <div class="screener-controls">
               <label><span>Search</span><input id="screenerSearch" type="search" placeholder="Ticker, sector, signal, explanation" /></label>
@@ -150,7 +201,7 @@
               <label><span>Sort</span><select id="sortSelect"><option value="source">Source order</option><option value="change">Change %</option><option value="rvol">RVOL</option><option value="rs">RS rating</option><option value="rr">R/R</option></select></label>
               <button id="resetFilters" class="secondary-button" type="button">Reset</button>
               <button id="densityToggle" class="secondary-button" type="button">Comfortable</button>
-              <button id="exportScreener" class="secondary-button" type="button">Export CSV</button>
+              <button id="exportScreener" class="secondary-button" type="button" title="Exports the selected archived dataset. Data is not real-time.">Export CSV</button>
             </div>
             <div id="signalLenses" class="signal-lenses"></div>
             <div class="table-shell">
@@ -170,7 +221,7 @@
               <h2>Watchlist</h2>
               <p>Stored locally in this browser only. Values always follow the selected market date.</p>
             </div>
-            <button id="exportWatchlist" class="secondary-button" type="button">Export CSV</button>
+            <button id="exportWatchlist" class="secondary-button" type="button" title="Exports watchlist values for the selected archived market date.">Export CSV</button>
           </div>
           <article class="panel">
             <div id="watchlistContent"></div>
@@ -179,12 +230,31 @@
 
         <section class="view" data-view-panel="ticker">
           <div id="tickerEmpty" class="ticker-empty">
-            <span class="section-kicker">TICKER INTELLIGENCE</span>
+            <span class="section-kicker">TICKER RESEARCH</span>
             <h2>Select a ticker from search, the market map, screener, or watchlist.</h2>
           </div>
           <div id="tickerContent" hidden>
             <div id="tickerHero" class="ticker-hero"></div>
-            <div class="research-disclaimer">Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</div>
+            <div class="ticker-workflow" aria-label="Ticker research workflow">
+              <span><b>1</b> Signal matched</span><i></i><span><b>2</b> Levels reviewed</span><i></i><span><b>3</b> Confirm with chart display</span>
+            </div>
+            <div class="ticker-overview-grid">
+              <article class="panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">SIGNAL SUMMARY</span><h3>Matched technical conditions</h3></div>
+                  <span class="source-chip">Workbook / archive</span>
+                </div>
+                <div id="tickerKeyMetrics" class="key-metric-grid"></div>
+                <div id="tickerSignals" class="ticker-signals"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">TRADE PLAN</span><h3>Observed price levels</h3></div>
+                  <span class="panel-note">Neutral research levels</span>
+                </div>
+                <div id="levelMap" class="level-map"></div>
+              </article>
+            </div>
 
             <div class="ticker-main-grid chart-first-grid">
               <article id="chartWorkspace" class="panel chart-panel">
@@ -243,27 +313,16 @@
                   <span id="historyMeta"></span>
                   <a id="tradingViewLink" href="https://www.tradingview.com/" target="_blank" rel="noopener">Open TradingView display</a>
                 </div>
-                <p id="chartDiscrepancyNote" class="provider-note">TradingView display may differ from website-calculated overlays because TradingView uses its own data/session handling.</p>
-              </article>
-
-              <article class="panel">
-                <div class="panel-head">
-                  <div><span class="panel-kicker">SIGNAL SUMMARY</span><h3>Matched technical conditions</h3></div>
-                </div>
-                <div id="tickerKeyMetrics" class="key-metric-grid"></div>
-                <div id="tickerSignals" class="ticker-signals"></div>
+                <p id="chartDiscrepancyNote" class="provider-note">TradingView chart is display-only. Website calculations come from the archived workbook and date-capped OHLCV, so values may differ from TradingView data or timestamps.</p>
               </article>
             </div>
 
             <div class="two-column-grid">
-              <article class="panel">
-                <div class="panel-head">
-                  <div><span class="panel-kicker">TRADE PLAN</span><h3>Observed price levels</h3></div>
-                  <span class="panel-note">Neutral research levels</span>
-                </div>
-                <div id="levelMap" class="level-map"></div>
-              </article>
               <article class="panel"><div class="panel-head"><div><span class="panel-kicker">TECHNICAL SNAPSHOT</span><h3>Trend, momentum, and structure</h3></div></div><div id="technicalGrid" class="detail-grid"></div></article>
+              <article class="panel ticker-ksei-card">
+                <div class="panel-head"><div><span class="panel-kicker">KSEI OWNERSHIP SNAPSHOT</span><h3>Published concentration context</h3></div><span class="source-chip">KSEI workbook</span></div>
+                <div id="tickerKseiCard"></div>
+              </article>
             </div>
 
             <article class="panel"><div class="panel-head"><div><span class="panel-kicker">FUNDAMENTAL SNAPSHOT</span><h3>Available company metrics</h3></div><span id="fundamentalModeBadge" class="status-badge"></span></div><div id="fundamentalGrid" class="detail-grid"></div></article>
@@ -388,8 +447,9 @@
         </section>
 
         <footer class="app-footer">
-          <span>Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.</span>
+          <span>Educational research only. Not financial advice. Data is source-limited, archived, and not real-time. Verify independently before making trading decisions.</span>
           <span class="internal-links">Internal tools: <button type="button" data-go-view="quality">Data Quality</button><button type="button" data-go-view="explorer">Workbook Explorer</button></span>
+          <span id="footerFreshness">Data as of loading</span>
         </footer>
       </main>
     </div>
@@ -482,10 +542,10 @@
     </div>
 
     <script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="chart/indicator-engine/math.js?v=20260613-merged-qa"></script>
-    <script src="chart/indicator-engine/overlays.js?v=20260613-merged-qa"></script>
-    <script src="chart/indicator-engine/momentum.js?v=20260613-merged-qa"></script>
-    <script src="indicators.js?v=20260613-merged-qa"></script>
-    <script src="app.js?v=20260613-merged-qa"></script>
+    <script src="chart/indicator-engine/math.js?v=20260614-followup2"></script>
+    <script src="chart/indicator-engine/overlays.js?v=20260614-followup2"></script>
+    <script src="chart/indicator-engine/momentum.js?v=20260614-followup2"></script>
+    <script src="indicators.js?v=20260614-followup2"></script>
+    <script src="app.js?v=20260614-followup2"></script>
   </body>
 </html>

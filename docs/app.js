@@ -1,4 +1,4 @@
-const DISCLAIMER = "Educational research only. Not financial advice. Data may be delayed, incomplete, or differ across providers. Do your own research.";
+const DISCLAIMER = "Educational research only. Not financial advice. Data is source-limited, archived, and not real-time. Verify independently before making trading decisions.";
 const WATCHLIST_KEY = "idx-research-watchlist-v1";
 const THEME_KEY = "idx-research-theme";
 const INDICATOR_SETTINGS_KEY = "idx-research-indicators-v1";
@@ -6,10 +6,11 @@ const DRAWINGS_KEY_PREFIX = "idx-research-drawings:";
 
 const state = {
   manifest: null,
+  updateLog: { entries: [] },
   entry: null,
   marketDate: "",
   data: null,
-  view: "market",
+  view: "dashboard",
   selectedTicker: "",
   maps: {
     technical: new Map(),
@@ -55,10 +56,11 @@ const state = {
 };
 
 const viewTitles = {
+  dashboard: ["DASHBOARD", "Research Dashboard"],
   market: ["MARKET MAP", "IDX Market Map"],
   screener: ["SCREENER", "Signal Screener"],
   watchlist: ["WATCHLIST", "Local Watchlist"],
-  ticker: ["TICKER INTELLIGENCE", "Ticker Intelligence"],
+  ticker: ["TICKER RESEARCH", "Ticker Research"],
   ownership: ["KSEI OWNERSHIP", "Ownership Dashboard"],
   quality: ["DATA QUALITY", "Data Quality"],
   explorer: ["WORKBOOK EXPLORER", "Workbook Explorer"],
@@ -68,11 +70,13 @@ const viewTitles = {
 const els = Object.fromEntries(
   [
     "loadBar", "errorBanner", "pageTitle", "eyebrow", "sidebarStatus", "sidebarDate",
-    "datasetState", "datasetTitle", "datasetMeta", "datasetScanned", "datasetOk",
-    "datasetPartial", "datasetSignals", "datasetSignalTickers", "refreshData", "workbookDownload",
-    "menuButton", "themeToggle", "tickerCommand", "tickerList", "datePickerButton",
+    "datasetState", "datasetLine", "footerFreshness", "refreshData", "workbookDownload",
+    "menuButton", "themeToggle", "tickerCommand", "mobileTickerCommand", "tickerList", "datePickerButton",
     "selectedDateLabel", "datePickerModal", "calendarPrevious", "calendarNext",
     "calendarMonthLabel", "calendarGrid", "calendarLatest", "marketCoverageBadge",
+    "dashboardMarketDate", "dashboardPublished", "dashboardHealthTitle", "dashboardHealth",
+    "dashboardSignalTitle", "dashboardSignals", "dashboardSectorTitle", "dashboardSectors",
+    "dashboardResearchRows",
     "marketContextGrid", "marketMetricGrid", "marketMap", "sectorSignalHeatmap", "heatmapMode",
     "qualityFunnel", "activityMap", "screenerCount", "screenerSearch", "sectorSelect",
     "signalSelect", "rvolMinimum", "rsMinimum", "qualitySelect", "sortSelect",
@@ -84,6 +88,7 @@ const els = Object.fromEntries(
     "chartSourceBadge", "chartTickerSearch", "resetChartLayout", "fullscreenChart",
     "researchChartView", "tradingViewChartView", "tradingViewWidget", "chartOverlayLayer", "chartDrawingLayer",
     "tickerSourceStatus", "technicalGrid", "fundamentalGrid", "fundamentalModeBadge",
+    "tickerKseiCard",
     "newsPanel", "newsModeBadge", "lastSuccessfulLoad", "qualityMetricGrid",
     "sourceCoverage", "qaSummary", "qualityExceptions", "explorerCount",
     "explorerSheet", "explorerSearch", "exportExplorer", "explorerReferenceBadge",
@@ -119,6 +124,20 @@ function asNumber(value) {
 
 function validValue(value) {
   return value !== null && value !== undefined && value !== "" && value !== "-" && value !== "N/A";
+}
+
+function formatTimestamp(value) {
+  if (!value) return "unknown";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(date)} WIB`;
 }
 
 function findValue(row, names) {
@@ -440,7 +459,7 @@ function rememberScrollPosition() {
 function updateDateQuery(marketDate, historyMode = "auto") {
   const url = new URL(window.location.href);
   url.searchParams.set("date", marketDate);
-  const target = `${url.pathname}${url.search}${location.hash || "#market"}`;
+  const target = `${url.pathname}${url.search}${location.hash || "#dashboard"}`;
   if (historyMode === "none") return;
   const replace = historyMode === "replace" || !state.navigationReady;
   if (!replace && target === `${location.pathname}${location.search}${location.hash}`) return;
@@ -478,7 +497,7 @@ function showView(view, updateHash = true, options = {}) {
 }
 
 function routeFromHash(options = {}) {
-  const [view = "market", ticker] = location.hash.replace(/^#/, "").split("/");
+  const [view = "dashboard", ticker] = location.hash.replace(/^#/, "").split("/");
   if (view === "ticker" && ticker) {
     state.selectedTicker = ticker.toUpperCase();
   }
@@ -524,22 +543,81 @@ function metricCard(label, value, detail, tone = "") {
   return `<article class="metric-card ${tone}" ${conceptId ? `title="${escapeHtml(shortTooltip(conceptId))}"` : ""}><span>${escapeHtml(label)}${conceptId ? ` ${guideLink(conceptId, "?")}` : ""}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(detail)}</small></article>`;
 }
 
+function sectorMomentumRows() {
+  const groups = new Map();
+  state.maps.technical.forEach((stock) => {
+    const sector = validValue(stock.sector) ? stock.sector : "Unclassified";
+    const change = percentNumber(stock.changePercent);
+    if (change === null) return;
+    if (!groups.has(sector)) groups.set(sector, []);
+    groups.get(sector).push(change);
+  });
+  return [...groups.entries()].map(([sector, values]) => ({
+    sector,
+    average: values.reduce((sum, value) => sum + value, 0) / values.length,
+    count: values.length,
+  })).sort((a, b) => b.average - a.average);
+}
+
+function renderDashboard() {
+  const stats = summary();
+  const qa = state.data.qa.summary || {};
+  const status = (qa.fail || 0) > 0
+    ? ["Issues found", "error"]
+    : (stats.partial || 0) > 0 || (qa.warn || 0) > 0
+      ? ["Partial", "warning"]
+      : ["OK", "ok"];
+  els.dashboardMarketDate.textContent = state.marketDate;
+  els.dashboardPublished.textContent = `Published ${formatTimestamp(state.data.overview.generatedAt || state.manifest.generatedAt)}. Archive release, not real-time.`;
+  els.dashboardHealthTitle.innerHTML = `Data Quality: <span class="status-badge ${status[1]}">${status[0]}</span>`;
+  els.dashboardHealth.innerHTML = [
+    ["Scanned", stats.totalScanned],
+    ["OK", stats.ok],
+    ["Partial", stats.partial],
+    ["No data", stats.noData],
+  ].map(([label, value]) => `<span><small>${escapeHtml(label)}</small><strong>${formatNumber(value, 0) || "0"}</strong></span>`).join("");
+
+  const signalRows = (state.data.screener.records || []).map(normalizedSignal);
+  const signalCounts = new Map();
+  signalRows.forEach((row) => signalCounts.set(row.signal, (signalCounts.get(row.signal) || 0) + 1));
+  const topSignals = [...signalCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
+  els.dashboardSignalTitle.textContent = `${formatNumber(stats.signalRows, 0) || "0"} rows · ${formatNumber(stats.signalTickers, 0) || "0"} tickers`;
+  els.dashboardSignals.innerHTML = topSignals.length
+    ? topSignals.map(([label, count]) => `<button type="button" data-dashboard-signal="${escapeHtml(label)}">${escapeHtml(label)} <b>${count}</b></button>`).join("")
+    : `<span class="missing-value">No published signal rows for this date</span>`;
+
+  const sectors = sectorMomentumRows();
+  const strongest = sectors.slice(0, 2);
+  const weakest = sectors.slice(-2).reverse();
+  els.dashboardSectorTitle.textContent = `${formatNumber(sectors.length, 0) || "0"} sectors with observed change`;
+  els.dashboardSectors.innerHTML = [
+    ...strongest.map((item) => ({ ...item, tone: item.average >= 0 ? "positive" : "negative", label: "Highest" })),
+    ...weakest.map((item) => ({ ...item, tone: item.average >= 0 ? "positive" : "negative", label: "Lowest" })),
+  ].map((item) => `<button type="button" data-filter-sector="${escapeHtml(item.sector)}"><span><small>${item.label}</small><strong>${escapeHtml(item.sector)}</strong></span><b class="${item.tone}">${item.average >= 0 ? "+" : ""}${item.average.toFixed(2)}%</b></button>`).join("");
+
+  const priorityRows = [...signalRows]
+    .sort((a, b) => ((asNumber(b.rvol) || 0) * 10 + (asNumber(b.rs) || 0)) - ((asNumber(a.rvol) || 0) * 10 + (asNumber(a.rs) || 0)))
+    .slice(0, 8);
+  els.dashboardResearchRows.innerHTML = priorityRows.length
+    ? `<table class="data-table dashboard-table"><thead><tr><th>Ticker</th><th>Company</th><th>Sector</th><th>Signal</th><th>Change</th><th>RVOL</th><th>RS</th><th>Status</th><th>Actions</th></tr></thead><tbody>${priorityRows.map((row) => `<tr data-open-ticker="${escapeHtml(row.ticker)}"><td><strong>${escapeHtml(row.ticker)}</strong></td><td>${escapeHtml(row.company || row.ticker)}</td><td>${escapeHtml(row.sector || "Unclassified")}</td><td><span class="signal-chip">${escapeHtml(row.signal)}</span></td><td class="numeric ${toneFor(row.change)}">${formatPercent(row.change) || "—"}</td><td class="numeric">${formatNumber(row.rvol, 2) || "—"}</td><td class="numeric">${formatNumber(row.rs, 0) || "—"}</td><td><span class="status-badge ${escapeHtml(String(row.dataStatus).toLowerCase())}">${escapeHtml(row.dataStatus)}</span></td><td class="row-actions"><button type="button" data-open-ticker="${escapeHtml(row.ticker)}">Open</button><button type="button" data-toggle-watch="${escapeHtml(row.ticker)}">${watchlist().includes(row.ticker) ? "Saved" : "Watch"}</button></td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty-state"><h3>No published signal rows</h3><p>The selected archive loaded successfully, but contains no active signal rows.</p></div>`;
+}
+
 function renderDatasetStatus() {
   const stats = summary();
   const historical = state.entry.snapshotMode === "historical_ohlcv_reconstruction";
   els.datasetState.className = `status-badge ${historical ? "warning" : "ok"}`;
   els.datasetState.textContent = historical ? "Reconstructed" : "Workbook";
-  els.datasetTitle.textContent = historical
-    ? `Historical technical snapshot · ${state.marketDate}`
-    : `Full workbook dataset · ${state.marketDate}`;
-  els.datasetMeta.textContent = historical
-    ? "Price and technical values are point-in-time. Reference domains are labelled."
-    : `Last successful dataset load: ${state.manifest.lastSuccessfulDatasetLoad}`;
-  els.datasetScanned.textContent = formatNumber(stats.totalScanned, 0) || "0";
-  els.datasetOk.textContent = formatNumber(stats.ok, 0) || "0";
-  els.datasetPartial.textContent = formatNumber(stats.partial, 0) || "0";
-  els.datasetSignals.textContent = formatNumber(stats.signalRows, 0) || "0";
-  els.datasetSignalTickers.textContent = formatNumber(stats.signalTickers, 0) || "0";
+  const lastUpdate = state.updateLog.entries?.at(-1);
+  const lastLoad = lastUpdate?.timestamp || state.manifest.lastSuccessfulDatasetLoad;
+  els.datasetLine.textContent = [
+    `${formatNumber(stats.totalScanned, 0) || "0"} scanned`,
+    `${formatNumber(stats.ok, 0) || "0"} OK`,
+    `${formatNumber(stats.partial, 0) || "0"} partial`,
+    `${formatNumber(stats.signalRows, 0) || "0"} signal rows from ${formatNumber(stats.signalTickers, 0) || "0"} tickers`,
+    `last load ${formatTimestamp(lastLoad)}`,
+  ].join(" · ");
+  els.footerFreshness.textContent = `Data as of ${state.marketDate} · Last successful dataset load ${formatTimestamp(state.manifest.lastSuccessfulDatasetLoad)}`;
   const workbook = state.entry.workbook;
   els.workbookDownload.classList.toggle("disabled", !workbook);
   els.workbookDownload.setAttribute("aria-disabled", String(!workbook));
@@ -577,6 +655,23 @@ function renderMarket() {
   renderActivityMap();
 }
 
+function sparklineSvg(item) {
+  const values = (item.series || []).map(asNumber).filter((value) => value !== null);
+  if (values.length < 2) return "";
+  const width = 80;
+  const height = 28;
+  const padding = 2;
+  const minimum = Math.min(...values);
+  const maximum = Math.max(...values);
+  const spread = maximum - minimum || 1;
+  const points = values.map((value, index) => {
+    const x = padding + (index / (values.length - 1)) * (width - padding * 2);
+    const y = height - padding - ((value - minimum) / spread) * (height - padding * 2);
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  }).join(" ");
+  return `<svg class="market-context-sparkline ${toneFor(item.changePercent)}" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false"><polyline points="${points}" /></svg>`;
+}
+
 function renderMarketContext() {
   const published = state.data.overview.overview?.marketContext || [];
   const defaults = [
@@ -603,7 +698,7 @@ function renderMarketContext() {
     const detail = missing
       ? `${item.source || "yfinance"} · ${item.reason || "source_unavailable"}`
       : `${item.symbol} · ${item.source || "yfinance"} · ${item.asOf || state.marketDate}`;
-    return `<article class="market-context-card ${missing ? "missing" : toneFor(item.changePercent)}"><span>${escapeHtml(item.label || item.symbol)}</span><strong>${missing ? valueHtml(null, item, formatNumber) : escapeHtml(formatNumber(item.value, 2))}</strong><small class="${toneFor(item.changePercent)}">${missing ? escapeHtml(detail) : `${escapeHtml(formatPercent(item.changePercent) || "0.00%")} · ${escapeHtml(detail)}`}</small></article>`;
+    return `<article class="market-context-card ${missing ? "missing" : toneFor(item.changePercent)}"><div class="market-context-copy"><span>${escapeHtml(item.label || item.symbol)}</span><strong>${missing ? valueHtml(null, item, formatNumber) : escapeHtml(formatNumber(item.value, 2))}</strong><small class="${toneFor(item.changePercent)}">${missing ? escapeHtml(detail) : `${escapeHtml(formatPercent(item.changePercent) || "0.00%")} · ${escapeHtml(detail)}`}</small></div>${sparklineSvg(item)}</article>`;
   }).join("");
 }
 
@@ -644,7 +739,7 @@ function renderMarketMap() {
           ].join(" | ");
           return `<button class="market-tile ${toneFor(stock.changePercent)}" type="button" data-open-ticker="${escapeHtml(ticker)}" title="${escapeHtml(title)}"><strong>${escapeHtml(ticker)}</strong><span>${escapeHtml(change || "—")}</span><small>${signalCount ? `${signalCount} signal rows` : stock.dataStatus || "No signal row"}</small></button>`;
         }).join("");
-      return `<details class="sector-group"><summary class="sector-group-head"><strong>${escapeHtml(sector)}</strong><small class="${average >= 0 ? "positive" : "negative"}">${average >= 0 ? "+" : ""}${average.toFixed(2)}% · ${rows.length} tickers</small></summary><div class="ticker-tiles">${tiles}</div></details>`;
+      return `<details class="sector-group"><summary class="sector-group-head"><strong>${escapeHtml(sector)}</strong><small class="${average >= 0 ? "positive" : "negative"}">${average >= 0 ? "+" : ""}${average.toFixed(2)}% · ${rows.length} tickers</small></summary><div class="ticker-tiles">${tiles}</div><div class="sector-group-action"><button type="button" data-filter-sector="${escapeHtml(sector)}">View all signals in this sector</button></div></details>`;
     }).join("");
 }
 
@@ -741,6 +836,7 @@ function normalizedSignal(row) {
   return {
     raw: row,
     ticker,
+    company: stock.companyName || ticker,
     sector: findValue(row, ["Sector", "IDX Sector"]) || stock.sector,
     signal: row.signalType || row["Filter Label"] || "Workbook Signal",
     legacy: row.legacyFilter || "",
@@ -766,6 +862,7 @@ function normalizedSignal(row) {
     beta: findValue(row, ["Beta Zone"]),
     rs: findValue(row, ["RS Rating"]) ?? stock.rsRating,
     dataStatus: stock.dataStatus || "UNKNOWN",
+    marketDate: state.marketDate,
     source: stock.provenance?.source || state.data.screener.provenance?.signals?.source || "workbook",
   };
 }
@@ -792,29 +889,44 @@ function filteredSignals() {
 }
 
 const screenerColumns = [
-  ["Ticker", "ticker"], ["Sector", "sector"], ["Price", "price"], ["Chg %", "change"],
-  ["RVOL", "rvol"], ["ADR %", "adr"], ["Current Q VWAP", "currentVwap"],
+  ["Ticker", "ticker"], ["Company", "company"], ["Sector", "sector"], ["Signal", "signal"],
+  ["Data Status", "dataStatus"], ["Chg %", "change"], ["RVOL", "rvol"], ["RS Rating", "rs"],
+  ["Price", "price"], ["Market Date", "marketDate"], ["Legacy Code Audit", "legacy"],
+  ["Summary Screener", "summary"], ["ADR %", "adr"], ["Current Q VWAP", "currentVwap"],
   ["Prev Q VWAP", "previousVwap"], ["Prev Y VWAP", "previousYearVwap"], ["MA", "ma"],
-  ["Signal Type", "signal"], ["Summary Screener", "summary"], ["Sentiment News", "sentiment"],
-  ["Corp. Action", "corporateAction"], ["Entry Level Basis", "entryPoi"], ["Entry", "entry"],
+  ["Sentiment News", "sentiment"], ["Corp. Action", "corporateAction"], ["Entry Level Basis", "entryPoi"], ["Entry", "entry"],
   ["Target Level Basis", "targetPoi"], ["Target", "target"], ["Target Upside %", "upside"],
   ["Invalidation Basis", "invalidationPoi"], ["Invalidation", "invalidation"], ["R/R", "rr"],
-  ["Beta Zone", "beta"], ["RS Rating", "rs"], ["Data Status", "dataStatus"], ["Source", "source"],
+  ["Beta Zone", "beta"], ["Source", "source"], ["Actions", "actions"],
 ];
 
 function screenerCell(row, key) {
   if (key === "ticker") return `<strong>${escapeHtml(row.ticker)}</strong>`;
+  if (key === "company") return `<span class="company-cell">${escapeHtml(row.company)}</span>`;
+  if (key === "signal") return `<span class="signal-chip">${escapeHtml(row.signal)}</span>`;
+  if (key === "legacy") return row.legacy ? `<code class="legacy-code">${escapeHtml(row.legacy)}</code>` : valueHtml(null, { reason: "field_not_found", source: "workbook", asOf: state.marketDate }, String);
   if (key === "change" || key === "upside") return `<span class="${toneFor(row[key])}">${valueHtml(row[key], null, (value) => formatPercent(value), { source: row.source })}</span>`;
   if (["price", "entry", "target", "invalidation"].includes(key)) return valueHtml(row[key], null, formatPrice, { source: row.source });
   if (["rvol", "adr", "rr", "rs"].includes(key)) return valueHtml(row[key], null, (value) => formatNumber(value, 2), { source: row.source });
   if (key === "source") return `<span class="source-chip">${escapeHtml(sourceLabel(row.source))}</span>`;
-  if (key === "dataStatus") return `<span class="status-badge ${escapeHtml(String(row.dataStatus).toLowerCase())}">${escapeHtml(row.dataStatus)}</span>`;
+  if (key === "dataStatus") {
+    const reason = row.dataStatus === "PARTIAL"
+      ? "Some workbook or source fields are unavailable for this ticker/date."
+      : row.dataStatus === "NO_DATA"
+        ? "No usable archived data is available for this ticker/date."
+        : "Required research fields are available.";
+    return `<span class="status-badge ${escapeHtml(String(row.dataStatus).toLowerCase())}" title="${escapeHtml(reason)}">${escapeHtml(row.dataStatus)}</span>`;
+  }
+  if (key === "actions") return `<span class="row-actions"><button type="button" data-open-ticker="${escapeHtml(row.ticker)}">Open</button><button type="button" data-toggle-watch="${escapeHtml(row.ticker)}">${watchlist().includes(row.ticker) ? "Saved" : "Watch"}</button></span>`;
   return valueHtml(row[key], null, (value) => String(value), { source: row.source });
 }
 
 function setupScreenerOptions() {
   const signals = (state.data.screener.records || []).map(normalizedSignal);
-  const sectors = [...new Set(signals.map((row) => row.sector).filter(Boolean))].sort();
+  const sectors = [...new Set([
+    ...signals.map((row) => row.sector),
+    ...[...state.maps.technical.values()].map((stock) => stock.sector),
+  ].filter(Boolean))].sort();
   const signalTypes = [...new Set(signals.map((row) => row.signal).filter(Boolean))].sort();
   els.sectorSelect.innerHTML = `<option value="ALL">All sectors</option>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)}</option>`).join("")}`;
   els.signalSelect.innerHTML = `<option value="ALL">All signal categories</option>${signalTypes.map((signal) => `<option value="${escapeHtml(signal)}">${escapeHtml(signal)}</option>`).join("")}`;
@@ -866,6 +978,10 @@ function watchlist() {
 function setWatchlist(tickers) {
   localStorage.setItem(WATCHLIST_KEY, JSON.stringify([...new Set(tickers)].sort()));
   renderWatchlist();
+  if (state.data) {
+    renderDashboard();
+    renderScreener();
+  }
   if (state.selectedTicker) renderTickerHero(state.maps.technical.get(state.selectedTicker) || {});
 }
 
@@ -877,11 +993,15 @@ function toggleWatchlist(ticker) {
 function renderWatchlist() {
   const items = watchlist();
   if (!items.length) {
-    els.watchlistContent.innerHTML = `<div class="empty-state"><h3>Your local watchlist is empty.</h3><p>Add a ticker from Ticker Intelligence. Stored locally in this browser only.</p></div>`;
+    els.watchlistContent.innerHTML = `<div class="empty-state"><h3>Your local watchlist is empty.</h3><p>Add a ticker from Screener or Ticker Research. The list is stored locally in this browser only.</p></div>`;
     return;
   }
   const rows = items.map((ticker) => ({ ticker, stock: state.maps.technical.get(ticker) || {} }));
-  els.watchlistContent.innerHTML = `<div class="table-shell"><table class="data-table"><thead><tr><th>Ticker</th><th>Sector</th><th>${guideHeading("Price")}</th><th>${guideHeading("Change")}</th><th>${guideHeading("RVOL")}</th><th>${guideHeading("RS")}</th><th>${guideHeading("Data status")}</th><th></th></tr></thead><tbody>${rows.map(({ ticker, stock }) => `<tr data-open-ticker="${escapeHtml(ticker)}"><td><strong>${escapeHtml(ticker)}</strong></td><td>${valueHtml(stock.sector, null, String, { source: stock.provenance?.source })}</td><td class="numeric">${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</td><td class="numeric ${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</td><td class="numeric">${valueHtml(stock.rvol, stock._meta?.rvol, (value) => formatNumber(value, 2))}</td><td class="numeric">${valueHtml(stock.rsRating, stock._meta?.rsRating, (value) => formatNumber(value, 0))}</td><td><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span></td><td><button class="text-button" type="button" data-remove-watch="${escapeHtml(ticker)}">Remove</button></td></tr>`).join("")}</tbody></table></div>`;
+  els.watchlistContent.innerHTML = `<div class="table-shell"><table class="data-table"><thead><tr><th>Ticker</th><th>Sector</th><th>Signal</th><th>${guideHeading("Price")}</th><th>${guideHeading("Change")}</th><th>${guideHeading("RVOL")}</th><th>${guideHeading("RS")}</th><th>${guideHeading("Data status")}</th><th>Market date</th><th>Actions</th></tr></thead><tbody>${rows.map(({ ticker, stock }) => {
+    const signal = (state.maps.signals.get(ticker) || [])[0];
+    const signalLabel = signal?.signalType || signal?.["Filter Label"];
+    return `<tr data-open-ticker="${escapeHtml(ticker)}"><td><strong>${escapeHtml(ticker)}</strong></td><td>${valueHtml(stock.sector, null, String, { source: stock.provenance?.source })}</td><td>${signalLabel ? `<span class="signal-chip">${escapeHtml(signalLabel)}</span>` : `<span class="missing-value" title="No signal row is published for this ticker/date.">No signal row</span>`}</td><td class="numeric">${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</td><td class="numeric ${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</td><td class="numeric">${valueHtml(stock.rvol, stock._meta?.rvol, (value) => formatNumber(value, 2))}</td><td class="numeric">${valueHtml(stock.rsRating, stock._meta?.rsRating, (value) => formatNumber(value, 0))}</td><td><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span></td><td>${escapeHtml(state.marketDate)}</td><td><span class="row-actions"><button type="button" data-open-ticker="${escapeHtml(ticker)}">Open</button><button type="button" data-remove-watch="${escapeHtml(ticker)}">Remove</button></span></td></tr>`;
+  }).join("")}</tbody></table></div>`;
 }
 
 function renderTicker() {
@@ -901,6 +1021,7 @@ function renderTicker() {
   renderLevelMap(stock, signals[0] || {});
   renderTickerSourceStatus(stock);
   renderTechnical(stock);
+  renderTickerKsei(ticker);
   renderFundamental(ticker);
   renderNews(ticker);
   renderPriceChart(ticker);
@@ -911,8 +1032,34 @@ function renderTickerHero(stock) {
   const inWatchlist = watchlist().includes(ticker);
   const sector = validValue(stock.sector) ? stock.sector : "Sector unavailable";
   const industry = validValue(stock.industry) ? ` · ${escapeHtml(stock.industry)}` : "";
-  els.tickerHero.innerHTML = `<div class="ticker-identity"><span class="section-kicker">${escapeHtml(sector)}</span><h2>${escapeHtml(ticker)}</h2><p>${escapeHtml(stock.companyName || ticker)}${industry}</p></div><div class="ticker-quote"><strong>${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</strong><span class="${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</span><div class="ticker-actions"><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span><button class="secondary-button" type="button" data-toggle-watch="${escapeHtml(ticker)}">${inWatchlist ? "Remove from watchlist" : "Add to watchlist"}</button></div></div>`;
+  els.tickerHero.innerHTML = `<div class="ticker-identity"><span class="section-kicker">${escapeHtml(sector)}</span><h2>${escapeHtml(ticker)}</h2><p>${escapeHtml(stock.companyName || ticker)}${industry}</p><small>${escapeHtml(state.marketDate)} · archived release · not real-time</small></div><div class="ticker-quote"><strong>${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</strong><span class="${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</span><div class="ticker-actions"><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span><button class="secondary-button persistent-watch-action" type="button" data-toggle-watch="${escapeHtml(ticker)}">${inWatchlist ? "Remove from watchlist" : "Add to watchlist"}</button></div></div>`;
   els.tradingViewLink.href = `https://www.tradingview.com/chart/?symbol=IDX%3A${encodeURIComponent(ticker)}`;
+}
+
+function concentrationLabel(hhi) {
+  const value = asNumber(hhi);
+  if (value === null) return "Unavailable";
+  if (value < 1500) return "Low concentration";
+  if (value < 2500) return "Moderate concentration";
+  if (value < 3500) return "High concentration";
+  return "Very high concentration";
+}
+
+function renderTickerKsei(ticker) {
+  const record = (state.kseiData?.records || []).find((item) => item.ticker === ticker);
+  if (!record) {
+    els.tickerKseiCard.innerHTML = `<div class="empty-state compact-empty"><h3>No KSEI snapshot for this ticker/date.</h3><p>A later ownership snapshot is never inserted into an earlier historical view.</p><button type="button" class="secondary-button" data-go-view="ownership">Open KSEI Ownership</button></div>`;
+    return;
+  }
+  const metrics = [
+    ["Free float", kseiPercent(record.freeFloat), "ksei-free-float"],
+    ["HHI", `${formatNumber(record.hhi, 0)} · ${concentrationLabel(record.hhi)}`, "ksei-hhi"],
+    ["CR1", kseiPercent(record.cr1), "ksei-cr1-cr3"],
+    ["CR3", kseiPercent(record.cr3), "ksei-cr1-cr3"],
+    ["CCS", `${formatNumber(record.ccs, 0)} · ${record.ccsCategory}`, "ksei-ccs"],
+    ["Ownership", record.ownershipType, "ksei-ownership-type"],
+  ];
+  els.tickerKseiCard.innerHTML = `<div class="ticker-ksei-metrics">${metrics.map(([label, value, concept]) => `<div title="${escapeHtml(shortTooltip(concept))}"><span>${escapeHtml(label)} ${guideLink(concept, "?")}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div><div class="ticker-ksei-actions"><small>Snapshot ${escapeHtml(state.kseiData.asOf)} · point-in-time KSEI workbook</small><span><button type="button" class="text-button" data-ksei-ticker="${escapeHtml(ticker)}">Ownership detail</button><button type="button" class="secondary-button" data-go-view="ownership">Open full KSEI Ownership</button></span></div>`;
 }
 
 function renderTickerMetrics(stock) {
@@ -953,7 +1100,7 @@ function renderLevelMap(stock, signal) {
   const min = Math.min(...values);
   const max = Math.max(...values);
   const span = max - min || 1;
-  els.levelMap.innerHTML = `<div class="level-track">${points.map(([label, value, tone]) => `<div class="level-point ${tone}" style="left:${((value - min) / span) * 100}%"><span>${escapeHtml(label)}</span><i></i><small>${escapeHtml(formatPrice(value))}</small></div>`).join("")}</div><div class="detail-grid">${[
+  els.levelMap.innerHTML = `<div class="level-track">${points.map(([label, value, tone]) => `<div class="level-point ${tone} ${label === "Current" ? "stagger" : ""}" style="left:${((value - min) / span) * 100}%"><span>${escapeHtml(label)}</span><i></i><small>${escapeHtml(formatPrice(value))}</small></div>`).join("")}</div><div class="detail-grid">${[
     ["Entry level basis", findValue(signal, ["Entry POI"])],
     ["Target level basis", findValue(signal, ["Target POI"])],
     ["Invalidation basis", findValue(signal, ["Invalidation POI"])],
@@ -1776,11 +1923,11 @@ function renderKseiOwnership() {
       <td><span class="ownership-company">${escapeHtml(item.companyName)}</span></td>
       <td>${escapeHtml(item.sector || "Unclassified")}</td>
       <td class="numeric">${kseiPercent(item.freeFloat)}</td>
-      <td class="numeric"><span class="ownership-score ${asNumber(item.hhi) >= 2500 ? "high" : "moderate"}">${formatNumber(item.hhi, 0) || "—"}</span></td>
+      <td class="numeric"><span class="ownership-score ${asNumber(item.hhi) >= 2500 ? "high" : "moderate"}" title="${escapeHtml(concentrationLabel(item.hhi))}">${formatNumber(item.hhi, 0) || "—"}</span><small class="concentration-label">${escapeHtml(concentrationLabel(item.hhi))}</small></td>
       <td class="numeric">${kseiPercent(item.cr1)}</td>
       <td class="numeric">${kseiPercent(item.cr3)}</td>
       <td class="numeric">${formatNumber(item.holderCount, 0) || "—"}</td>
-      <td class="numeric">${formatNumber(item.ccs, 0) || "—"}</td>
+      <td class="numeric">${formatNumber(item.ccs, 0) || "—"}<small class="concentration-label">${escapeHtml(item.ccsCategory || "Unavailable")}</small></td>
       <td><span class="ownership-type">${escapeHtml(item.ownershipType)}</span></td>
       <td><button class="ownership-detail-button" type="button" data-ksei-ticker="${escapeHtml(item.ticker)}">Detail</button></td>
     </tr>`).join("");
@@ -1963,6 +2110,7 @@ function renderExplorer() {
 
 function renderAll() {
   renderDatasetStatus();
+  renderDashboard();
   renderMarket();
   renderScreener();
   renderWatchlist();
@@ -2091,6 +2239,36 @@ function bindEvents() {
         : `${state.activeDrawingTool} tool active. Select a chart point${state.activeDrawingTool === "annotation" ? "" : ", then select the endpoint"}.`;
       return;
     }
+    const watchTarget = event.target.closest("[data-toggle-watch]");
+    if (watchTarget) return toggleWatchlist(watchTarget.dataset.toggleWatch);
+    const removeTarget = event.target.closest("[data-remove-watch]");
+    if (removeTarget) return toggleWatchlist(removeTarget.dataset.removeWatch);
+    const sectorTarget = event.target.closest("[data-filter-sector]");
+    if (sectorTarget) {
+      state.filters.sector = sectorTarget.dataset.filterSector;
+      state.filters.signal = "ALL";
+      showView("screener");
+      renderScreener();
+      return;
+    }
+    const dashboardSignal = event.target.closest("[data-dashboard-signal]");
+    if (dashboardSignal) {
+      state.filters.signal = dashboardSignal.dataset.dashboardSignal;
+      state.filters.sector = "ALL";
+      showView("screener");
+      renderScreener();
+      return;
+    }
+    if (event.target.closest("[data-open-calendar]")) {
+      openCalendar();
+      return;
+    }
+    const downloadShortcut = event.target.closest("[data-download-shortcut]");
+    if (downloadShortcut) {
+      event.preventDefault();
+      if (!els.workbookDownload.classList.contains("disabled")) els.workbookDownload.click();
+      return;
+    }
     const tickerTarget = event.target.closest("[data-open-ticker]");
     if (tickerTarget) return selectTicker(tickerTarget.dataset.openTicker);
     const kseiTicker = event.target.closest("[data-ksei-ticker]");
@@ -2119,10 +2297,6 @@ function bindEvents() {
       closeModal(modals[closeTarget.dataset.closeModal] || els.indicatorSettingsModal);
       return;
     }
-    const watchTarget = event.target.closest("[data-toggle-watch]");
-    if (watchTarget) return toggleWatchlist(watchTarget.dataset.toggleWatch);
-    const removeTarget = event.target.closest("[data-remove-watch]");
-    if (removeTarget) return toggleWatchlist(removeTarget.dataset.removeWatch);
     const lens = event.target.closest("[data-lens]");
     if (lens) {
       state.filters.signal = lens.dataset.lens;
@@ -2162,6 +2336,10 @@ function bindEvents() {
   });
   els.tickerCommand.addEventListener("change", (event) => selectTicker(event.target.value));
   els.tickerCommand.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") selectTicker(event.currentTarget.value);
+  });
+  els.mobileTickerCommand.addEventListener("change", (event) => selectTicker(event.target.value));
+  els.mobileTickerCommand.addEventListener("keydown", (event) => {
     if (event.key === "Enter") selectTicker(event.currentTarget.value);
   });
   els.chartTickerSearch.addEventListener("keydown", (event) => {
@@ -2247,10 +2425,11 @@ async function init() {
   updateActiveIndicatorStrip();
   bindEvents();
   loading(8);
-  [state.manifest, state.logicReference, state.kseiManifest] = await Promise.all([
+  [state.manifest, state.logicReference, state.kseiManifest, state.updateLog] = await Promise.all([
     fetchJson("data/manifest.json"),
     fetchJson("data/logic-reference.json"),
     fetchJson("data/ksei/manifest.json"),
+    fetchJson("data/update-log.json").catch(() => ({ entries: [] })),
   ]);
   if (state.logicReference.schemaVersion !== 1 || !state.logicReference.records?.length) {
     throw new Error("Logic reference registry is unavailable.");
@@ -2274,6 +2453,6 @@ init().catch((error) => {
   showError(error.message);
   els.datasetState.className = "status-badge error";
   els.datasetState.textContent = "Failed load";
-  els.datasetTitle.textContent = "The last published dataset could not be loaded.";
-  els.datasetMeta.textContent = "Check manifest, schema, and network/file status.";
+  els.datasetLine.textContent = "The last published dataset could not be loaded. Check manifest, schema, and network status.";
+  els.footerFreshness.textContent = "Dataset load failed";
 });

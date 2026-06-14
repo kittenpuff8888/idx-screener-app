@@ -37,7 +37,8 @@ docs/
   styles.css
   data/
     manifest.json
-    latest.json
+    logic-reference.json
+    update-log.json
     dates/YYYY-MM-DD/
 data_sources/
   full-workbook/YYYY-MM-DD.json
@@ -128,24 +129,25 @@ the updater writes an explicit log entry.
 
 ## Frontend
 
-The date selector affects Market Map, Screener, Watchlist values, Ticker
-Intelligence, KSEI Ownership, internal QA tools, and chart history. The selected
+The date selector affects Dashboard, Market Map, Screener, Watchlist values,
+Ticker Research, KSEI Ownership, internal QA tools, and chart history. The selected
 date remains visible in the sticky top bar.
 
 Main pages:
 
+- Dashboard
 - Market Map
 - Screener
+- Ticker Research
 - Watchlist
-- Ticker Intelligence
 - KSEI Ownership
-- Guide
 
-Data Quality and Workbook Explorer remain reachable through small footer links
-for maintainers, but they are not primary product navigation.
+Data Quality, Workbook Explorer, Guide & Methodology, and workbook downloads
+remain reachable through Advanced / QA and footer utilities without dominating
+the primary research workflow.
 
 Indicator settings use one browser-wide profile and apply to every ticker and
 market date.
 
-Educational research only. Not financial advice. Data may be delayed,
-incomplete, or differ across providers. Do your own research.
+Educational research only. Not financial advice. Data is source-limited,
+archived, and not real-time. Verify independently before making trading decisions.

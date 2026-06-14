@@ -120,7 +120,18 @@ def normalize_market_cap(fundamentals: dict[str, Any]) -> None:
 def clean_levels(value: Any) -> list[float]:
     if not isinstance(value, list):
         return []
-    return [parsed for item in value if (parsed := number(item)) is not None]
+    output: list[float] = []
+    seen: set[float] = set()
+    for item in value:
+        parsed = number(item)
+        if parsed is None:
+            continue
+        identity = round(parsed, 8)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        output.append(parsed)
+    return output
 
 
 def prepared_index(
@@ -161,6 +172,11 @@ def market_context_for_date(history: dict[str, Any], market_date: str) -> list[d
                 "symbol": instrument.get("symbol"),
                 "value": latest.get("value") if latest else None,
                 "changePercent": latest.get("changePercent") if latest else None,
+                "series": [
+                    value
+                    for row in available[-20:]
+                    if (value := number(row.get("value"))) is not None
+                ],
                 "status": "ok" if latest else instrument.get("status") or "missing",
                 "reason": None if latest else instrument.get("reason") or "no_value_on_or_before_market_date",
                 "source": instrument.get("source") or "yfinance",
@@ -197,7 +213,13 @@ def normalized_signal(row: dict[str, Any]) -> dict[str, Any]:
     return item
 
 
-def stock_metadata(stock: dict[str, Any], market_date: str, source: str) -> dict[str, Any]:
+def stock_metadata(
+    stock: dict[str, Any],
+    market_date: str,
+    source: str,
+    *,
+    derived_fields: set[str] | None = None,
+) -> dict[str, Any]:
     technical = stock.get("technical") or {}
     moving = stock.get("movingAverages") or {}
     formulas = {
@@ -234,16 +256,35 @@ def stock_metadata(stock: dict[str, Any], market_date: str, source: str) -> dict
         "vwap": "insufficient_history",
     }
     output = {}
+    derived_fields = derived_fields or set()
     for field, value in values.items():
-        if value is None or value == "" or value == "-" or value == "N/A":
+        if field in derived_fields or value is None or value == "" or value == "-" or value == "N/A":
+            metadata_source = "yfinance" if field in derived_fields else (
+                TECHNICAL_FIELD_DEFINITIONS[field]["source"] if source != "workbook" else source
+            )
             output[field] = field_metadata(
                 value,
-                source=TECHNICAL_FIELD_DEFINITIONS[field]["source"] if source != "workbook" else source,
+                source=metadata_source,
                 as_of=market_date,
                 formula=formulas[field],
                 reason=reasons.get(field, "source_unavailable"),
             )
     return output
+
+
+def prepared_value(
+    prepared_ticker: dict[str, Any],
+    field: str,
+    row_index: int,
+    *,
+    minimum_rows: int = 1,
+) -> float | None:
+    if row_index + 1 < minimum_rows:
+        return None
+    values = prepared_ticker.get(field) or []
+    if row_index >= len(values):
+        return None
+    return number(values[row_index])
 
 
 def normalize_stocks(
@@ -257,6 +298,7 @@ def normalize_stocks(
     output: dict[str, dict[str, Any]] = {}
     for ticker, raw_stock in sorted(stocks.items()):
         stock = dict(raw_stock)
+        derived_fields: set[str] = set()
         for group_name in ("trend", "structure", "movingAverages", "technical"):
             if isinstance(stock.get(group_name), dict):
                 stock[group_name] = {
@@ -276,6 +318,38 @@ def normalize_stocks(
             stock["averageVolume20"] = number(
                 prepared_ticker.get("average_volume", [None])[row_index]
             )
+            moving = dict(stock.get("movingAverages") or {})
+            technical = dict(stock.get("technical") or {})
+            prepared_fields = (
+                ("ema25", moving, "ema25", 1),
+                ("ema50", moving, "ema50", 1),
+                ("sma200", moving, "sma200", 200),
+                ("rsi14", technical, "rsi", 15),
+                ("macdLine", technical, "macd", 26),
+                ("vwap", technical, "monthly_vwap", 1),
+            )
+            for public_field, target, prepared_field, minimum_rows in prepared_fields:
+                if number(target.get(public_field)) is not None:
+                    continue
+                calculated = prepared_value(
+                    prepared_ticker,
+                    prepared_field,
+                    row_index,
+                    minimum_rows=minimum_rows,
+                )
+                if calculated is None:
+                    continue
+                target[public_field] = round(calculated, 6)
+                derived_fields.add(public_field)
+            stock["movingAverages"] = moving
+            stock["technical"] = technical
+
+            if number(stock.get("rvol")) is None:
+                average_volume = number(stock.get("averageVolume20"))
+                volume = number(stock.get("volume"))
+                if volume is not None and average_volume:
+                    stock["rvol"] = round(volume / average_volume, 6)
+                    derived_fields.add("rvol")
 
         fundamentals = stock.get("fundamentals")
         if isinstance(fundamentals, dict):
@@ -287,7 +361,12 @@ def normalize_stocks(
         counts[status] += 1
         stock["dataStatus"] = status
         stock["missingFields"] = missing_fields
-        stock["_meta"] = stock_metadata(stock, market_date, source)
+        stock["_meta"] = stock_metadata(
+            stock,
+            market_date,
+            source,
+            derived_fields=derived_fields,
+        )
         stock["provenance"] = {
             "marketDate": market_date,
             "source": source,
@@ -680,15 +759,5 @@ def build_archive(
         "dates": entries,
     }
     write_json(DATA / "manifest.json", manifest, pretty=True)
-    write_json(
-        DATA / "latest.json",
-        {
-            "schemaVersion": SCHEMA_VERSION,
-            "marketDate": latest_market_date,
-            "path": f"data/dates/{latest_market_date}/",
-            "generatedAt": manifest["generatedAt"],
-        },
-        pretty=True,
-    )
     export_registry(DATA / "logic-reference.json")
     return manifest

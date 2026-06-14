@@ -78,6 +78,7 @@ def build_payload(start: str, end: str) -> dict[str, Any]:
                 "formula": "Daily Close; change = Close / PreviousClose - 1",
                 "status": status,
                 "reason": reason,
+                "series": [row["value"] for row in rows[-20:]],
                 "rows": rows,
             }
         )

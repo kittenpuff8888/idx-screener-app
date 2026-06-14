@@ -14,7 +14,7 @@ from rebuild_backend.providers.base import ProviderStatus
 from rebuild_backend.providers.investing_provider import InvestingComProvider
 from rebuild_backend.providers.tradingview_chart import TradingViewChartProvider
 from rebuild_backend.schema import missing
-from scripts.archive_v5 import FRIENDLY_SIGNALS, normalize_stocks, normalized_signal
+from scripts.archive_v5 import FRIENDLY_SIGNALS, clean_levels, normalize_stocks, normalized_signal
 from scripts.update_daily import latest_completed_market_day_at
 
 
@@ -153,6 +153,57 @@ class ArchiveAndScheduleTests(unittest.TestCase):
         self.assertEqual(bbca["fundamentals"]["marketCap"], 694_251_000_000_000)
         self.assertEqual(bbca["fundamentals"]["marketCapUnit"], "IDR")
         self.assertEqual(bbca["fundamentals"]["marketCapDisplay"], "Rp 694.25 T")
+
+    def test_price_levels_are_deduplicated_in_source_order(self):
+        self.assertEqual(
+            clean_levels([4820, "5525", 4820.0, None, "5525.00000000", 4850]),
+            [4820.0, 5525.0, 4850.0],
+        )
+
+    def test_missing_shared_indicators_are_derived_from_prepared_ohlcv(self):
+        rows = [
+            {
+                "date": f"2026-05-{index + 1:02d}",
+                "volume": 1_000_000 + index,
+            }
+            for index in range(26)
+        ]
+        prepared = {
+            "BBCA": {
+                "rows": rows,
+                "index": {rows[-1]["date"]: 25},
+                "average_volume": [None] * 25 + [1_000_012.5],
+                "ema25": [None] * 25 + [5020],
+                "ema50": [None] * 25 + [4980],
+                "sma200": [None] * 26,
+                "rsi": [None] * 25 + [54.2],
+                "macd": [None] * 25 + [12.4],
+                "monthly_vwap": [None] * 25 + [5001.5],
+            }
+        }
+        stocks = {
+            "BBCA": {
+                "lastPrice": 5050,
+                "volume": None,
+                "rvol": None,
+                "movingAverages": {},
+                "technical": {},
+            }
+        }
+
+        normalized, _ = normalize_stocks(
+            stocks,
+            rows[-1]["date"],
+            source="workbook",
+            prepared=prepared,
+        )
+        bbca = normalized["BBCA"]
+
+        self.assertEqual(bbca["technical"]["macdLine"], 12.4)
+        self.assertEqual(bbca["technical"]["vwap"], 5001.5)
+        self.assertEqual(bbca["_meta"]["macdLine"]["status"], "ok")
+        self.assertEqual(bbca["_meta"]["macdLine"]["source"], "yfinance")
+        self.assertEqual(bbca["_meta"]["vwap"]["status"], "ok")
 
     def test_daily_cutoff_is_1630_wib(self):
         before = datetime(2026, 6, 10, 16, 29, tzinfo=WIB)
