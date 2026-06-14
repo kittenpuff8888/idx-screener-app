@@ -75,7 +75,10 @@ class HistoricalSnapshotTests(unittest.TestCase):
                 (DATA / "dates" / market_date / "overview.json").read_text(encoding="utf-8")
             )
             context = overview["overview"]["marketContext"]
-            self.assertEqual({item["label"] for item in context}, {"IHSG", "VIX", "EIDO", "KOSPI"})
+            self.assertEqual(
+                {item["label"] for item in context},
+                {"IHSG", "VIX", "EIDO", "USDIDR", "BTC", "SPX", "KOSPI"},
+            )
             self.assertTrue(all(item["asOf"] <= market_date for item in context))
             self.assertTrue(all(len(item["series"]) <= 20 for item in context))
             self.assertTrue(all(item["series"][-1] == item["value"] for item in context if item["series"]))

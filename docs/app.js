@@ -341,6 +341,7 @@ function applyTheme(theme) {
     normalized === "dark" ? "#07111f" : "#edf3f9",
   );
   if (state.selectedTicker && !els.tickerResearchModal?.hidden) renderPriceChart(state.selectedTicker);
+  if (state.customIndexes && els.indexSections?.children.length) renderIndexSections();
 }
 
 function initTheme() {
@@ -693,11 +694,90 @@ function indexCard(group) {
   </button>`;
 }
 
+const EXTERNAL_INDEX_CONTEXT = {
+  "IDX-COMPOSITE": { aliases: ["IHSG", "^JKSE"], icon: "IH", name: "IDX Composite" },
+  EIDO: { aliases: ["EIDO"], icon: "EI", name: "iShares MSCI Indonesia ETF" },
+  ID10Y: { aliases: ["ID10Y"], icon: "10Y", name: "Indonesia 10Y Yield" },
+  USDIDR: { aliases: ["USDIDR", "IDR=X"], icon: "$", name: "US Dollar / Indonesian Rupiah" },
+  VIX: { aliases: ["VIX", "^VIX"], icon: "VX", name: "CBOE Volatility Index" },
+  BTC: { aliases: ["BTC", "BTC-USD"], icon: "₿", name: "Bitcoin / US Dollar" },
+  SPX: { aliases: ["SPX", "^GSPC"], icon: "SP", name: "S&P 500" },
+  KOSPI: { aliases: ["KOSPI", "^KS11"], icon: "KS", name: "KOSPI Composite" },
+};
+
+function externalIndexContext(item) {
+  const definition = EXTERNAL_INDEX_CONTEXT[item.id] || {
+    aliases: [item.label, item.symbol],
+    icon: String(item.label || "?").slice(0, 2),
+    name: item.label,
+  };
+  const published = state.data?.overview?.overview?.marketContext || [];
+  const record = published.find((candidate) => definition.aliases.some(
+    (alias) => candidate.label === alias || candidate.symbol === alias,
+  ));
+  return { definition, record };
+}
+
 function externalIndexCard(item) {
-  return `<a class="index-card external-index-card" href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(item.symbol)}" target="_blank" rel="noopener">
-    <span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.symbol)}</strong>
-    <b>Live chart</b><small>TradingView display · opens externally</small>
-  </a>`;
+  const { definition, record } = externalIndexContext(item);
+  const hasPublishedValue = validValue(record?.value);
+  const tone = hasPublishedValue ? toneFor(record.changePercent) : "neutral";
+  const price = hasPublishedValue
+    ? formatNumber(record.value, item.id === "ID10Y" ? 3 : 2)
+    : "Live display loading";
+  const change = hasPublishedValue ? formatPercent(record.changePercent) : "Local series unavailable";
+  const publishedDetail = hasPublishedValue
+    ? `Published ${record.asOf || state.marketDate} · ${record.source || "yfinance"}`
+    : item.id === "ID10Y"
+      ? "TradingView display only · no permitted local series"
+      : `${record?.source || "yfinance"} · ${record?.reason || "source unavailable"}`;
+  return `<article class="index-card external-index-card ${tone}">
+    <div class="external-index-heading">
+      <span class="index-avatar" aria-hidden="true">${escapeHtml(definition.icon)}</span>
+      <div><span>${escapeHtml(definition.name)}</span><small>${escapeHtml(item.symbol)}</small></div>
+      <span class="live-reference-pill">LIVE REF</span>
+    </div>
+    <div class="external-index-visual">
+      <div class="external-index-fallback">
+        <div class="external-index-quote">
+          <strong>${escapeHtml(price)}</strong>
+          <b class="${tone}">${escapeHtml(change)}</b>
+          <small>${escapeHtml(publishedDetail)}</small>
+        </div>
+        ${record ? sparklineSvg(record) : ""}
+      </div>
+      <div class="tradingview-widget-container tv-mini-widget" data-tv-mini-symbol="${escapeHtml(item.symbol)}" aria-label="${escapeHtml(definition.name)} live TradingView chart">
+        <div class="tradingview-widget-container__widget"></div>
+      </div>
+    </div>
+    <div class="external-index-footer">
+      <span>TradingView live display · research data remains date-capped</span>
+      <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(item.symbol)}" target="_blank" rel="noopener">Full chart</a>
+    </div>
+  </article>`;
+}
+
+function mountTradingViewMiniWidgets() {
+  const colorTheme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
+  document.querySelectorAll("[data-tv-mini-symbol]").forEach((container) => {
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
+    script.async = true;
+    script.textContent = JSON.stringify({
+      symbol: container.dataset.tvMiniSymbol,
+      width: "100%",
+      height: "100%",
+      locale: "en",
+      dateRange: "1M",
+      colorTheme,
+      isTransparent: true,
+      autosize: true,
+      largeChartUrl: "",
+      chartOnly: false,
+      noTimeScale: false,
+    });
+    container.appendChild(script);
+  });
 }
 
 function renderIndexSections() {
@@ -717,10 +797,11 @@ function renderIndexSections() {
     ["OTHERS INDEX", (payload.externalIndexes?.["OTHERS INDEX"] || []).map(externalIndexCard)],
   ];
   els.indexSections.innerHTML = sections.map(([label, cards]) => `
-    <section class="index-section">
+    <section class="index-section ${label === "INDEX" || label === "OTHERS INDEX" ? "live-index-section" : ""}">
       <div class="index-section-head"><span>${escapeHtml(label)}</span><small>${cards.length} instruments</small></div>
       <div class="index-card-grid">${cards.join("")}</div>
     </section>`).join("");
+  mountTradingViewMiniWidgets();
 }
 
 function indexSeriesSvg(group) {

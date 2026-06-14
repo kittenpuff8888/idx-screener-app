@@ -16,6 +16,9 @@ INSTRUMENTS = (
     {"label": "IHSG", "symbol": "^JKSE"},
     {"label": "VIX", "symbol": "^VIX"},
     {"label": "EIDO", "symbol": "EIDO"},
+    {"label": "USDIDR", "symbol": "IDR=X"},
+    {"label": "BTC", "symbol": "BTC-USD"},
+    {"label": "SPX", "symbol": "^GSPC"},
     {"label": "KOSPI", "symbol": "^KS11"},
 )
 

@@ -87,6 +87,13 @@ class FullRebuildContractTests(unittest.TestCase):
         self.assertNotIn("publishedNewsFeed", self.html)
         self.assertIn("TradingView News", self.html)
 
+    def test_external_indexes_render_quotes_and_embedded_charts(self):
+        self.assertIn("function externalIndexContext(item)", self.app)
+        self.assertIn("function mountTradingViewMiniWidgets()", self.app)
+        self.assertIn("embed-widget-mini-symbol-overview.js", self.app)
+        self.assertIn("external-index-fallback", self.app)
+        self.assertNotIn("<b>Live chart</b><small>TradingView display", self.app)
+
 
 if __name__ == "__main__":
     unittest.main()

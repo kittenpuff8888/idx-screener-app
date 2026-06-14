@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-13T11:27:29.855504+00:00",
+  "generatedAt": "2026-06-14T15:37:16.386943+00:00",
   "historyRange": {
-    "start": "2024-12-01",
+    "start": "2025-01-01",
     "end": "2026-06-12"
   },
   "instruments": [
@@ -13,106 +13,33 @@
       "formula": "Daily Close; change = Close / PreviousClose - 1",
       "status": "ok",
       "reason": null,
+      "series": [
+        6905.620117,
+        6858.898926,
+        6723.319824,
+        6599.240234,
+        6370.679199,
+        6318.5,
+        6094.940918,
+        6162.044922,
+        6206.349121,
+        6130.189941,
+        6127.380859,
+        6195.426758,
+        5941.065918,
+        5839.785156,
+        5594.765137,
+        5342.137207,
+        5746.647949,
+        5902.375977,
+        5886.032227,
+        6007.655762
+      ],
       "rows": [
-        {
-          "date": "2024-12-02",
-          "value": 7046.98584,
-          "changePercent": null
-        },
-        {
-          "date": "2024-12-03",
-          "value": 7196.01709,
-          "changePercent": 0.02114823
-        },
-        {
-          "date": "2024-12-04",
-          "value": 7326.76416,
-          "changePercent": 0.01816937
-        },
-        {
-          "date": "2024-12-05",
-          "value": 7313.312988,
-          "changePercent": -0.0018359
-        },
-        {
-          "date": "2024-12-06",
-          "value": 7382.785156,
-          "changePercent": 0.00949941
-        },
-        {
-          "date": "2024-12-09",
-          "value": 7437.730957,
-          "changePercent": 0.00744242
-        },
-        {
-          "date": "2024-12-10",
-          "value": 7453.287109,
-          "changePercent": 0.00209152
-        },
-        {
-          "date": "2024-12-11",
-          "value": 7464.751953,
-          "changePercent": 0.00153823
-        },
-        {
-          "date": "2024-12-12",
-          "value": 7394.237793,
-          "changePercent": -0.00944628
-        },
-        {
-          "date": "2024-12-13",
-          "value": 7324.789062,
-          "changePercent": -0.00939228
-        },
-        {
-          "date": "2024-12-16",
-          "value": 7258.630859,
-          "changePercent": -0.0090321
-        },
-        {
-          "date": "2024-12-17",
-          "value": 7157.731934,
-          "changePercent": -0.01390055
-        },
-        {
-          "date": "2024-12-18",
-          "value": 7107.875,
-          "changePercent": -0.00696547
-        },
-        {
-          "date": "2024-12-19",
-          "value": 6977.237793,
-          "changePercent": -0.01837922
-        },
-        {
-          "date": "2024-12-20",
-          "value": 6983.865234,
-          "changePercent": 0.00094987
-        },
-        {
-          "date": "2024-12-23",
-          "value": 7096.444824,
-          "changePercent": 0.01611995
-        },
-        {
-          "date": "2024-12-24",
-          "value": 7065.746094,
-          "changePercent": -0.00432593
-        },
-        {
-          "date": "2024-12-27",
-          "value": 7036.570801,
-          "changePercent": -0.00412912
-        },
-        {
-          "date": "2024-12-30",
-          "value": 7079.904785,
-          "changePercent": 0.0061584
-        },
         {
           "date": "2025-01-02",
           "value": 7163.205078,
-          "changePercent": 0.01176574
+          "changePercent": null
         },
         {
           "date": "2025-01-03",
@@ -1803,116 +1730,33 @@
       "formula": "Daily Close; change = Close / PreviousClose - 1",
       "status": "ok",
       "reason": null,
+      "series": [
+        17.82,
+        18.059999,
+        17.440001,
+        16.76,
+        16.700001,
+        16.59,
+        17.01,
+        16.290001,
+        15.74,
+        15.32,
+        16.049999,
+        15.77,
+        16.059999,
+        15.4,
+        21.51,
+        18.92,
+        19.870001,
+        22.219999,
+        19.440001,
+        17.68
+      ],
       "rows": [
-        {
-          "date": "2024-12-02",
-          "value": 13.34,
-          "changePercent": null
-        },
-        {
-          "date": "2024-12-03",
-          "value": 13.3,
-          "changePercent": -0.0029985
-        },
-        {
-          "date": "2024-12-04",
-          "value": 13.45,
-          "changePercent": 0.01127817
-        },
-        {
-          "date": "2024-12-05",
-          "value": 13.54,
-          "changePercent": 0.00669146
-        },
-        {
-          "date": "2024-12-06",
-          "value": 12.77,
-          "changePercent": -0.0568685
-        },
-        {
-          "date": "2024-12-09",
-          "value": 14.19,
-          "changePercent": 0.11119805
-        },
-        {
-          "date": "2024-12-10",
-          "value": 14.18,
-          "changePercent": -0.00070467
-        },
-        {
-          "date": "2024-12-11",
-          "value": 13.58,
-          "changePercent": -0.04231314
-        },
-        {
-          "date": "2024-12-12",
-          "value": 13.92,
-          "changePercent": 0.02503683
-        },
-        {
-          "date": "2024-12-13",
-          "value": 13.81,
-          "changePercent": -0.00790227
-        },
-        {
-          "date": "2024-12-16",
-          "value": 14.69,
-          "changePercent": 0.06372188
-        },
-        {
-          "date": "2024-12-17",
-          "value": 15.87,
-          "changePercent": 0.08032678
-        },
-        {
-          "date": "2024-12-18",
-          "value": 27.620001,
-          "changePercent": 0.74039074
-        },
-        {
-          "date": "2024-12-19",
-          "value": 24.09,
-          "changePercent": -0.12780596
-        },
-        {
-          "date": "2024-12-20",
-          "value": 18.360001,
-          "changePercent": -0.23785801
-        },
-        {
-          "date": "2024-12-23",
-          "value": 16.780001,
-          "changePercent": -0.08605664
-        },
-        {
-          "date": "2024-12-24",
-          "value": 14.27,
-          "changePercent": -0.14958284
-        },
-        {
-          "date": "2024-12-26",
-          "value": 14.73,
-          "changePercent": 0.03223539
-        },
-        {
-          "date": "2024-12-27",
-          "value": 15.95,
-          "changePercent": 0.08282419
-        },
-        {
-          "date": "2024-12-30",
-          "value": 17.4,
-          "changePercent": 0.09090908
-        },
-        {
-          "date": "2024-12-31",
-          "value": 17.35,
-          "changePercent": -0.00287352
-        },
         {
           "date": "2025-01-02",
           "value": 17.93,
-          "changePercent": 0.03342939
+          "changePercent": null
         },
         {
           "date": "2025-01-03",
@@ -3733,116 +3577,33 @@
       "formula": "Daily Close; change = Close / PreviousClose - 1",
       "status": "ok",
       "reason": null,
+      "series": [
+        14.14,
+        13.95,
+        13.45,
+        13.49,
+        13.08,
+        13.09,
+        12.9,
+        12.93,
+        12.92,
+        12.72,
+        12.85,
+        12.82,
+        12.18,
+        11.99,
+        11.23,
+        10.8,
+        11.6,
+        12.12,
+        12.12,
+        12.34
+      ],
       "rows": [
-        {
-          "date": "2024-12-02",
-          "value": 19.620001,
-          "changePercent": null
-        },
-        {
-          "date": "2024-12-03",
-          "value": 20.0,
-          "changePercent": 0.01936795
-        },
-        {
-          "date": "2024-12-04",
-          "value": 20.35,
-          "changePercent": 0.01750002
-        },
-        {
-          "date": "2024-12-05",
-          "value": 20.389999,
-          "changePercent": 0.00196555
-        },
-        {
-          "date": "2024-12-06",
-          "value": 20.4,
-          "changePercent": 0.00049045
-        },
-        {
-          "date": "2024-12-09",
-          "value": 20.68,
-          "changePercent": 0.01372552
-        },
-        {
-          "date": "2024-12-10",
-          "value": 20.700001,
-          "changePercent": 0.00096714
-        },
-        {
-          "date": "2024-12-11",
-          "value": 20.549999,
-          "changePercent": -0.00724645
-        },
-        {
-          "date": "2024-12-12",
-          "value": 20.18,
-          "changePercent": -0.01800481
-        },
-        {
-          "date": "2024-12-13",
-          "value": 19.860001,
-          "changePercent": -0.01585727
-        },
-        {
-          "date": "2024-12-16",
-          "value": 19.77,
-          "changePercent": -0.00453173
-        },
-        {
-          "date": "2024-12-17",
-          "value": 19.120001,
-          "changePercent": -0.03287808
-        },
-        {
-          "date": "2024-12-18",
-          "value": 18.48,
-          "changePercent": -0.03347287
-        },
-        {
-          "date": "2024-12-19",
-          "value": 18.16,
-          "changePercent": -0.017316
-        },
-        {
-          "date": "2024-12-20",
-          "value": 18.440001,
-          "changePercent": 0.01541854
-        },
-        {
-          "date": "2024-12-23",
-          "value": 18.65,
-          "changePercent": 0.01138824
-        },
-        {
-          "date": "2024-12-24",
-          "value": 18.610001,
-          "changePercent": -0.00214472
-        },
-        {
-          "date": "2024-12-26",
-          "value": 18.66,
-          "changePercent": 0.00268669
-        },
-        {
-          "date": "2024-12-27",
-          "value": 18.6,
-          "changePercent": -0.00321541
-        },
-        {
-          "date": "2024-12-30",
-          "value": 18.530001,
-          "changePercent": -0.00376342
-        },
-        {
-          "date": "2024-12-31",
-          "value": 18.48,
-          "changePercent": -0.00269839
-        },
         {
           "date": "2025-01-02",
           "value": 18.77,
-          "changePercent": 0.01569269
+          "changePercent": null
         },
         {
           "date": "2025-01-03",
@@ -5652,117 +5413,6450 @@
       ]
     },
     {
+      "label": "USDIDR",
+      "symbol": "IDR=X",
+      "source": "yfinance",
+      "formula": "Daily Close; change = Close / PreviousClose - 1",
+      "status": "ok",
+      "reason": null,
+      "series": [
+        17586.0,
+        17701.0,
+        17777.0,
+        17658.400391,
+        17692.0,
+        17692.0,
+        17762.0,
+        17699.699219,
+        17804.0,
+        17840.0,
+        17817.0,
+        17864.0,
+        17858.0,
+        18004.199219,
+        17955.5,
+        18029.0,
+        18190.300781,
+        18031.0,
+        17875.900391,
+        17916.0
+      ],
+      "rows": [
+        {
+          "date": "2025-01-02",
+          "value": 16230.5,
+          "changePercent": null
+        },
+        {
+          "date": "2025-01-03",
+          "value": 16201.099609,
+          "changePercent": -0.00181143
+        },
+        {
+          "date": "2025-01-06",
+          "value": 16178.799805,
+          "changePercent": -0.00137644
+        },
+        {
+          "date": "2025-01-07",
+          "value": 16179.099609,
+          "changePercent": 1.853e-05
+        },
+        {
+          "date": "2025-01-08",
+          "value": 16157.700195,
+          "changePercent": -0.00132266
+        },
+        {
+          "date": "2025-01-09",
+          "value": 16187.599609,
+          "changePercent": 0.00185047
+        },
+        {
+          "date": "2025-01-10",
+          "value": 16237.0,
+          "changePercent": 0.00305174
+        },
+        {
+          "date": "2025-01-13",
+          "value": 16268.0,
+          "changePercent": 0.00190922
+        },
+        {
+          "date": "2025-01-14",
+          "value": 16295.200195,
+          "changePercent": 0.00167201
+        },
+        {
+          "date": "2025-01-15",
+          "value": 16320.0,
+          "changePercent": 0.00152191
+        },
+        {
+          "date": "2025-01-16",
+          "value": 16360.799805,
+          "changePercent": 0.00249999
+        },
+        {
+          "date": "2025-01-17",
+          "value": 16368.799805,
+          "changePercent": 0.00048897
+        },
+        {
+          "date": "2025-01-20",
+          "value": 16367.099609,
+          "changePercent": -0.00010387
+        },
+        {
+          "date": "2025-01-21",
+          "value": 16245.0,
+          "changePercent": -0.00746006
+        },
+        {
+          "date": "2025-01-22",
+          "value": 16330.799805,
+          "changePercent": 0.00528161
+        },
+        {
+          "date": "2025-01-23",
+          "value": 16232.799805,
+          "changePercent": -0.00600093
+        },
+        {
+          "date": "2025-01-24",
+          "value": 16230.900391,
+          "changePercent": -0.00011701
+        },
+        {
+          "date": "2025-01-27",
+          "value": 16164.900391,
+          "changePercent": -0.00406632
+        },
+        {
+          "date": "2025-01-28",
+          "value": 16155.599609,
+          "changePercent": -0.00057537
+        },
+        {
+          "date": "2025-01-29",
+          "value": 15881.200195,
+          "changePercent": -0.01698479
+        },
+        {
+          "date": "2025-01-30",
+          "value": 16238.0,
+          "changePercent": 0.0224668
+        },
+        {
+          "date": "2025-01-31",
+          "value": 16274.5,
+          "changePercent": 0.00224781
+        },
+        {
+          "date": "2025-02-03",
+          "value": 16341.299805,
+          "changePercent": 0.00410457
+        },
+        {
+          "date": "2025-02-04",
+          "value": 16320.0,
+          "changePercent": -0.00130343
+        },
+        {
+          "date": "2025-02-05",
+          "value": 16299.099609,
+          "changePercent": -0.00128066
+        },
+        {
+          "date": "2025-02-06",
+          "value": 16298.099609,
+          "changePercent": -6.135e-05
+        },
+        {
+          "date": "2025-02-07",
+          "value": 16327.0,
+          "changePercent": 0.00177324
+        },
+        {
+          "date": "2025-02-10",
+          "value": 16314.700195,
+          "changePercent": -0.00075334
+        },
+        {
+          "date": "2025-02-11",
+          "value": 16330.099609,
+          "changePercent": 0.0009439
+        },
+        {
+          "date": "2025-02-12",
+          "value": 16343.299805,
+          "changePercent": 0.00080834
+        },
+        {
+          "date": "2025-02-13",
+          "value": 16375.0,
+          "changePercent": 0.00193964
+        },
+        {
+          "date": "2025-02-14",
+          "value": 16219.0,
+          "changePercent": -0.00952672
+        },
+        {
+          "date": "2025-02-17",
+          "value": 16173.0,
+          "changePercent": -0.00283618
+        },
+        {
+          "date": "2025-02-18",
+          "value": 16220.0,
+          "changePercent": 0.00290608
+        },
+        {
+          "date": "2025-02-19",
+          "value": 16317.0,
+          "changePercent": 0.00598027
+        },
+        {
+          "date": "2025-02-20",
+          "value": 16346.400391,
+          "changePercent": 0.00180183
+        },
+        {
+          "date": "2025-02-21",
+          "value": 16245.099609,
+          "changePercent": -0.00619713
+        },
+        {
+          "date": "2025-02-24",
+          "value": 16278.0,
+          "changePercent": 0.00202525
+        },
+        {
+          "date": "2025-02-25",
+          "value": 16279.299805,
+          "changePercent": 7.985e-05
+        },
+        {
+          "date": "2025-02-26",
+          "value": 16314.0,
+          "changePercent": 0.00213155
+        },
+        {
+          "date": "2025-02-27",
+          "value": 16367.400391,
+          "changePercent": 0.00327329
+        },
+        {
+          "date": "2025-02-28",
+          "value": 16553.699219,
+          "changePercent": 0.01138231
+        },
+        {
+          "date": "2025-03-03",
+          "value": 16522.0,
+          "changePercent": -0.00191493
+        },
+        {
+          "date": "2025-03-04",
+          "value": 16451.199219,
+          "changePercent": -0.00428524
+        },
+        {
+          "date": "2025-03-05",
+          "value": 16379.0,
+          "changePercent": -0.00438869
+        },
+        {
+          "date": "2025-03-06",
+          "value": 16268.900391,
+          "changePercent": -0.006722
+        },
+        {
+          "date": "2025-03-07",
+          "value": 16322.099609,
+          "changePercent": 0.00326999
+        },
+        {
+          "date": "2025-03-10",
+          "value": 16292.599609,
+          "changePercent": -0.00180737
+        },
+        {
+          "date": "2025-03-11",
+          "value": 16324.0,
+          "changePercent": 0.00192728
+        },
+        {
+          "date": "2025-03-12",
+          "value": 16433.900391,
+          "changePercent": 0.00673244
+        },
+        {
+          "date": "2025-03-13",
+          "value": 16305.599609,
+          "changePercent": -0.00780708
+        },
+        {
+          "date": "2025-03-14",
+          "value": 16259.299805,
+          "changePercent": -0.0028395
+        },
+        {
+          "date": "2025-03-17",
+          "value": 16321.0,
+          "changePercent": 0.00379476
+        },
+        {
+          "date": "2025-03-18",
+          "value": 16370.0,
+          "changePercent": 0.00300227
+        },
+        {
+          "date": "2025-03-19",
+          "value": 16514.5,
+          "changePercent": 0.00882712
+        },
+        {
+          "date": "2025-03-20",
+          "value": 16330.299805,
+          "changePercent": -0.01115385
+        },
+        {
+          "date": "2025-03-21",
+          "value": 16428.5,
+          "changePercent": 0.00601337
+        },
+        {
+          "date": "2025-03-24",
+          "value": 16519.0,
+          "changePercent": 0.00550872
+        },
+        {
+          "date": "2025-03-25",
+          "value": 16575.800781,
+          "changePercent": 0.00343851
+        },
+        {
+          "date": "2025-03-26",
+          "value": 16621.0,
+          "changePercent": 0.00272682
+        },
+        {
+          "date": "2025-03-27",
+          "value": 16629.0,
+          "changePercent": 0.00048132
+        },
+        {
+          "date": "2025-03-28",
+          "value": 16560.900391,
+          "changePercent": -0.00409523
+        },
+        {
+          "date": "2025-03-31",
+          "value": 16575.0,
+          "changePercent": 0.00085138
+        },
+        {
+          "date": "2025-04-01",
+          "value": 16652.0,
+          "changePercent": 0.00464555
+        },
+        {
+          "date": "2025-04-02",
+          "value": 16731.400391,
+          "changePercent": 0.00476822
+        },
+        {
+          "date": "2025-04-03",
+          "value": 16739.0,
+          "changePercent": 0.00045421
+        },
+        {
+          "date": "2025-04-04",
+          "value": 16739.800781,
+          "changePercent": 4.784e-05
+        },
+        {
+          "date": "2025-04-07",
+          "value": 16738.0,
+          "changePercent": -0.00010757
+        },
+        {
+          "date": "2025-04-08",
+          "value": 16855.699219,
+          "changePercent": 0.00703186
+        },
+        {
+          "date": "2025-04-09",
+          "value": 17051.900391,
+          "changePercent": 0.01164005
+        },
+        {
+          "date": "2025-04-10",
+          "value": 16805.5,
+          "changePercent": -0.01445003
+        },
+        {
+          "date": "2025-04-11",
+          "value": 16833.800781,
+          "changePercent": 0.00168402
+        },
+        {
+          "date": "2025-04-14",
+          "value": 16788.0,
+          "changePercent": -0.00272076
+        },
+        {
+          "date": "2025-04-15",
+          "value": 16780.0,
+          "changePercent": -0.00047653
+        },
+        {
+          "date": "2025-04-16",
+          "value": 16813.5,
+          "changePercent": 0.00199642
+        },
+        {
+          "date": "2025-04-17",
+          "value": 16794.599609,
+          "changePercent": -0.00112412
+        },
+        {
+          "date": "2025-04-22",
+          "value": 16814.900391,
+          "changePercent": 0.00120877
+        },
+        {
+          "date": "2025-04-23",
+          "value": 16858.099609,
+          "changePercent": 0.0025691
+        },
+        {
+          "date": "2025-04-24",
+          "value": 16846.0,
+          "changePercent": -0.00071773
+        },
+        {
+          "date": "2025-04-25",
+          "value": 16778.5,
+          "changePercent": -0.00400689
+        },
+        {
+          "date": "2025-04-28",
+          "value": 16823.0,
+          "changePercent": 0.0026522
+        },
+        {
+          "date": "2025-04-29",
+          "value": 16795.0,
+          "changePercent": -0.00166439
+        },
+        {
+          "date": "2025-04-30",
+          "value": 16711.900391,
+          "changePercent": -0.00494788
+        },
+        {
+          "date": "2025-05-01",
+          "value": 16545.900391,
+          "changePercent": -0.00993304
+        },
+        {
+          "date": "2025-05-02",
+          "value": 16606.0,
+          "changePercent": 0.0036323
+        },
+        {
+          "date": "2025-05-05",
+          "value": 16460.0,
+          "changePercent": -0.008792
+        },
+        {
+          "date": "2025-05-06",
+          "value": 16421.5,
+          "changePercent": -0.002339
+        },
+        {
+          "date": "2025-05-07",
+          "value": 16432.0,
+          "changePercent": 0.00063941
+        },
+        {
+          "date": "2025-05-08",
+          "value": 16492.599609,
+          "changePercent": 0.0036879
+        },
+        {
+          "date": "2025-05-09",
+          "value": 16538.300781,
+          "changePercent": 0.00277101
+        },
+        {
+          "date": "2025-05-12",
+          "value": 16543.0,
+          "changePercent": 0.00028414
+        },
+        {
+          "date": "2025-05-13",
+          "value": 16688.800781,
+          "changePercent": 0.00881344
+        },
+        {
+          "date": "2025-05-14",
+          "value": 16599.400391,
+          "changePercent": -0.00535691
+        },
+        {
+          "date": "2025-05-15",
+          "value": 16558.199219,
+          "changePercent": -0.00248209
+        },
+        {
+          "date": "2025-05-16",
+          "value": 16511.800781,
+          "changePercent": -0.00280214
+        },
+        {
+          "date": "2025-05-19",
+          "value": 16487.0,
+          "changePercent": -0.001502
+        },
+        {
+          "date": "2025-05-20",
+          "value": 16428.0,
+          "changePercent": -0.00357858
+        },
+        {
+          "date": "2025-05-21",
+          "value": 16403.0,
+          "changePercent": -0.00152179
+        },
+        {
+          "date": "2025-05-22",
+          "value": 16347.599609,
+          "changePercent": -0.00337745
+        },
+        {
+          "date": "2025-05-23",
+          "value": 16356.900391,
+          "changePercent": 0.00056894
+        },
+        {
+          "date": "2025-05-26",
+          "value": 16211.0,
+          "changePercent": -0.00891981
+        },
+        {
+          "date": "2025-05-27",
+          "value": 16243.5,
+          "changePercent": 0.00200481
+        },
+        {
+          "date": "2025-05-28",
+          "value": 16279.0,
+          "changePercent": 0.00218549
+        },
+        {
+          "date": "2025-05-29",
+          "value": 16286.0,
+          "changePercent": 0.00043
+        },
+        {
+          "date": "2025-05-30",
+          "value": 16293.0,
+          "changePercent": 0.00042982
+        },
+        {
+          "date": "2025-06-02",
+          "value": 16322.0,
+          "changePercent": 0.00177991
+        },
+        {
+          "date": "2025-06-03",
+          "value": 16288.5,
+          "changePercent": -0.00205244
+        },
+        {
+          "date": "2025-06-04",
+          "value": 16332.400391,
+          "changePercent": 0.00269518
+        },
+        {
+          "date": "2025-06-05",
+          "value": 16291.5,
+          "changePercent": -0.00250425
+        },
+        {
+          "date": "2025-06-06",
+          "value": 16246.400391,
+          "changePercent": -0.00276829
+        },
+        {
+          "date": "2025-06-09",
+          "value": 16309.0,
+          "changePercent": 0.00385314
+        },
+        {
+          "date": "2025-06-10",
+          "value": 16278.799805,
+          "changePercent": -0.00185175
+        },
+        {
+          "date": "2025-06-11",
+          "value": 16247.799805,
+          "changePercent": -0.00190432
+        },
+        {
+          "date": "2025-06-12",
+          "value": 15778.0,
+          "changePercent": -0.02891467
+        },
+        {
+          "date": "2025-06-13",
+          "value": 16164.5,
+          "changePercent": 0.02449613
+        },
+        {
+          "date": "2025-06-16",
+          "value": 16282.599609,
+          "changePercent": 0.00730611
+        },
+        {
+          "date": "2025-06-17",
+          "value": 15801.0,
+          "changePercent": -0.02957756
+        },
+        {
+          "date": "2025-06-18",
+          "value": 16275.0,
+          "changePercent": 0.0299981
+        },
+        {
+          "date": "2025-06-19",
+          "value": 15598.5,
+          "changePercent": -0.04156682
+        },
+        {
+          "date": "2025-06-20",
+          "value": 16390.0,
+          "changePercent": 0.05074206
+        },
+        {
+          "date": "2025-06-23",
+          "value": 16431.0,
+          "changePercent": 0.00250153
+        },
+        {
+          "date": "2025-06-24",
+          "value": 16370.0,
+          "changePercent": -0.00371249
+        },
+        {
+          "date": "2025-06-25",
+          "value": 16290.0,
+          "changePercent": -0.00488699
+        },
+        {
+          "date": "2025-06-26",
+          "value": 16290.0,
+          "changePercent": 0.0
+        },
+        {
+          "date": "2025-06-27",
+          "value": 16222.799805,
+          "changePercent": -0.00412524
+        },
+        {
+          "date": "2025-06-30",
+          "value": 16229.0,
+          "changePercent": 0.00038219
+        },
+        {
+          "date": "2025-07-01",
+          "value": 16230.0,
+          "changePercent": 6.162e-05
+        },
+        {
+          "date": "2025-07-02",
+          "value": 16236.400391,
+          "changePercent": 0.00039436
+        },
+        {
+          "date": "2025-07-03",
+          "value": 16235.0,
+          "changePercent": -8.625e-05
+        },
+        {
+          "date": "2025-07-04",
+          "value": 16203.700195,
+          "changePercent": -0.00192792
+        },
+        {
+          "date": "2025-07-07",
+          "value": 16178.0,
+          "changePercent": -0.00158607
+        },
+        {
+          "date": "2025-07-08",
+          "value": 16318.900391,
+          "changePercent": 0.00870938
+        },
+        {
+          "date": "2025-07-09",
+          "value": 16261.0,
+          "changePercent": -0.00354806
+        },
+        {
+          "date": "2025-07-10",
+          "value": 16235.0,
+          "changePercent": -0.00159892
+        },
+        {
+          "date": "2025-07-11",
+          "value": 16209.099609,
+          "changePercent": -0.00159534
+        },
+        {
+          "date": "2025-07-14",
+          "value": 16222.0,
+          "changePercent": 0.00079587
+        },
+        {
+          "date": "2025-07-15",
+          "value": 16256.200195,
+          "changePercent": 0.00210826
+        },
+        {
+          "date": "2025-07-16",
+          "value": 16252.099609,
+          "changePercent": -0.00025225
+        },
+        {
+          "date": "2025-07-17",
+          "value": 16271.200195,
+          "changePercent": 0.00117527
+        },
+        {
+          "date": "2025-07-18",
+          "value": 16329.700195,
+          "changePercent": 0.00359531
+        },
+        {
+          "date": "2025-07-21",
+          "value": 16321.0,
+          "changePercent": -0.00053278
+        },
+        {
+          "date": "2025-07-22",
+          "value": 16329.5,
+          "changePercent": 0.0005208
+        },
+        {
+          "date": "2025-07-23",
+          "value": 16245.299805,
+          "changePercent": -0.00515632
+        },
+        {
+          "date": "2025-07-24",
+          "value": 16266.099609,
+          "changePercent": 0.00128036
+        },
+        {
+          "date": "2025-07-25",
+          "value": 16307.0,
+          "changePercent": 0.00251446
+        },
+        {
+          "date": "2025-07-28",
+          "value": 16353.0,
+          "changePercent": 0.00282087
+        },
+        {
+          "date": "2025-07-29",
+          "value": 16398.800781,
+          "changePercent": 0.00280076
+        },
+        {
+          "date": "2025-07-30",
+          "value": 16367.900391,
+          "changePercent": -0.00188431
+        },
+        {
+          "date": "2025-07-31",
+          "value": 16426.800781,
+          "changePercent": 0.00359853
+        },
+        {
+          "date": "2025-08-01",
+          "value": 16483.0,
+          "changePercent": 0.00342119
+        },
+        {
+          "date": "2025-08-04",
+          "value": 16483.0,
+          "changePercent": 0.0
+        },
+        {
+          "date": "2025-08-05",
+          "value": 16362.0,
+          "changePercent": -0.0073409
+        },
+        {
+          "date": "2025-08-06",
+          "value": 16377.5,
+          "changePercent": 0.00094732
+        },
+        {
+          "date": "2025-08-07",
+          "value": 16334.700195,
+          "changePercent": -0.00261333
+        },
+        {
+          "date": "2025-08-08",
+          "value": 16300.0,
+          "changePercent": -0.00212432
+        },
+        {
+          "date": "2025-08-11",
+          "value": 16249.0,
+          "changePercent": -0.00312883
+        },
+        {
+          "date": "2025-08-12",
+          "value": 16298.0,
+          "changePercent": 0.00301557
+        },
+        {
+          "date": "2025-08-13",
+          "value": 16248.200195,
+          "changePercent": -0.00305558
+        },
+        {
+          "date": "2025-08-14",
+          "value": 16109.0,
+          "changePercent": -0.00856711
+        },
+        {
+          "date": "2025-08-15",
+          "value": 16169.0,
+          "changePercent": 0.00372463
+        },
+        {
+          "date": "2025-08-18",
+          "value": 16196.0,
+          "changePercent": 0.00166986
+        },
+        {
+          "date": "2025-08-19",
+          "value": 16205.400391,
+          "changePercent": 0.00058041
+        },
+        {
+          "date": "2025-08-20",
+          "value": 16275.200195,
+          "changePercent": 0.00430719
+        },
+        {
+          "date": "2025-08-21",
+          "value": 16263.599609,
+          "changePercent": -0.00071278
+        },
+        {
+          "date": "2025-08-22",
+          "value": 16339.700195,
+          "changePercent": 0.0046792
+        },
+        {
+          "date": "2025-08-25",
+          "value": 16227.0,
+          "changePercent": -0.00689732
+        },
+        {
+          "date": "2025-08-26",
+          "value": 16267.0,
+          "changePercent": 0.00246503
+        },
+        {
+          "date": "2025-08-27",
+          "value": 16299.200195,
+          "changePercent": 0.00197948
+        },
+        {
+          "date": "2025-08-28",
+          "value": 16314.0,
+          "changePercent": 0.00090801
+        },
+        {
+          "date": "2025-08-29",
+          "value": 16344.299805,
+          "changePercent": 0.00185729
+        },
+        {
+          "date": "2025-09-01",
+          "value": 16409.0,
+          "changePercent": 0.00395858
+        },
+        {
+          "date": "2025-09-02",
+          "value": 16405.199219,
+          "changePercent": -0.00023163
+        },
+        {
+          "date": "2025-09-03",
+          "value": 16443.900391,
+          "changePercent": 0.00235908
+        },
+        {
+          "date": "2025-09-04",
+          "value": 16463.0,
+          "changePercent": 0.0011615
+        },
+        {
+          "date": "2025-09-05",
+          "value": 16452.099609,
+          "changePercent": -0.00066211
+        },
+        {
+          "date": "2025-09-08",
+          "value": 16392.0,
+          "changePercent": -0.00365301
+        },
+        {
+          "date": "2025-09-09",
+          "value": 16446.099609,
+          "changePercent": 0.00330037
+        },
+        {
+          "date": "2025-09-10",
+          "value": 16449.900391,
+          "changePercent": 0.00023111
+        },
+        {
+          "date": "2025-09-11",
+          "value": 16439.0,
+          "changePercent": -0.00066264
+        },
+        {
+          "date": "2025-09-12",
+          "value": 16413.599609,
+          "changePercent": -0.00154513
+        },
+        {
+          "date": "2025-09-15",
+          "value": 16401.0,
+          "changePercent": -0.00076763
+        },
+        {
+          "date": "2025-09-16",
+          "value": 16364.599609,
+          "changePercent": -0.0022194
+        },
+        {
+          "date": "2025-09-17",
+          "value": 16398.099609,
+          "changePercent": 0.0020471
+        },
+        {
+          "date": "2025-09-18",
+          "value": 16418.599609,
+          "changePercent": 0.00125014
+        },
+        {
+          "date": "2025-09-19",
+          "value": 16569.099609,
+          "changePercent": 0.00916643
+        },
+        {
+          "date": "2025-09-22",
+          "value": 16637.0,
+          "changePercent": 0.00409801
+        },
+        {
+          "date": "2025-09-23",
+          "value": 16582.0,
+          "changePercent": -0.00330588
+        },
+        {
+          "date": "2025-09-24",
+          "value": 16633.0,
+          "changePercent": 0.00307562
+        },
+        {
+          "date": "2025-09-25",
+          "value": 16695.099609,
+          "changePercent": 0.00373352
+        },
+        {
+          "date": "2025-09-26",
+          "value": 16759.099609,
+          "changePercent": 0.00383346
+        },
+        {
+          "date": "2025-09-29",
+          "value": 16723.0,
+          "changePercent": -0.00215403
+        },
+        {
+          "date": "2025-09-30",
+          "value": 16628.0,
+          "changePercent": -0.0056808
+        },
+        {
+          "date": "2025-10-01",
+          "value": 16683.0,
+          "changePercent": 0.00330767
+        },
+        {
+          "date": "2025-10-02",
+          "value": 16644.099609,
+          "changePercent": -0.00233174
+        },
+        {
+          "date": "2025-10-03",
+          "value": 16601.5,
+          "changePercent": -0.00255944
+        },
+        {
+          "date": "2025-10-06",
+          "value": 16558.0,
+          "changePercent": -0.00262025
+        },
+        {
+          "date": "2025-10-07",
+          "value": 16596.5,
+          "changePercent": 0.00232516
+        },
+        {
+          "date": "2025-10-08",
+          "value": 16587.0,
+          "changePercent": -0.00057241
+        },
+        {
+          "date": "2025-10-09",
+          "value": 16556.0,
+          "changePercent": -0.00186893
+        },
+        {
+          "date": "2025-10-10",
+          "value": 16577.699219,
+          "changePercent": 0.00131066
+        },
+        {
+          "date": "2025-10-13",
+          "value": 16598.0,
+          "changePercent": 0.00122458
+        },
+        {
+          "date": "2025-10-14",
+          "value": 16548.0,
+          "changePercent": -0.00301241
+        },
+        {
+          "date": "2025-10-15",
+          "value": 16585.900391,
+          "changePercent": 0.00229033
+        },
+        {
+          "date": "2025-10-16",
+          "value": 16575.0,
+          "changePercent": -0.00065721
+        },
+        {
+          "date": "2025-10-17",
+          "value": 16561.900391,
+          "changePercent": -0.00079032
+        },
+        {
+          "date": "2025-10-20",
+          "value": 16566.0,
+          "changePercent": 0.00024753
+        },
+        {
+          "date": "2025-10-21",
+          "value": 16542.0,
+          "changePercent": -0.00144875
+        },
+        {
+          "date": "2025-10-22",
+          "value": 16598.900391,
+          "changePercent": 0.00343975
+        },
+        {
+          "date": "2025-10-23",
+          "value": 16596.599609,
+          "changePercent": -0.00013861
+        },
+        {
+          "date": "2025-10-24",
+          "value": 16593.800781,
+          "changePercent": -0.00016864
+        },
+        {
+          "date": "2025-10-27",
+          "value": 16597.800781,
+          "changePercent": 0.00024105
+        },
+        {
+          "date": "2025-10-28",
+          "value": 16158.200195,
+          "changePercent": -0.02648547
+        },
+        {
+          "date": "2025-10-29",
+          "value": 16561.779297,
+          "changePercent": 0.02497674
+        },
+        {
+          "date": "2025-10-30",
+          "value": 16562.0,
+          "changePercent": 1.333e-05
+        },
+        {
+          "date": "2025-10-31",
+          "value": 16150.0,
+          "changePercent": -0.02487622
+        },
+        {
+          "date": "2025-11-03",
+          "value": 16630.0,
+          "changePercent": 0.02972136
+        },
+        {
+          "date": "2025-11-04",
+          "value": 16640.900391,
+          "changePercent": 0.00065547
+        },
+        {
+          "date": "2025-11-05",
+          "value": 16707.0,
+          "changePercent": 0.00397212
+        },
+        {
+          "date": "2025-11-06",
+          "value": 16669.0,
+          "changePercent": -0.0022745
+        },
+        {
+          "date": "2025-11-07",
+          "value": 16694.099609,
+          "changePercent": 0.00150577
+        },
+        {
+          "date": "2025-11-10",
+          "value": 16653.0,
+          "changePercent": -0.00246192
+        },
+        {
+          "date": "2025-11-11",
+          "value": 16690.0,
+          "changePercent": 0.00222182
+        },
+        {
+          "date": "2025-11-12",
+          "value": 16694.900391,
+          "changePercent": 0.00029361
+        },
+        {
+          "date": "2025-11-13",
+          "value": 16729.0,
+          "changePercent": 0.00204252
+        },
+        {
+          "date": "2025-11-14",
+          "value": 16719.0,
+          "changePercent": -0.00059776
+        },
+        {
+          "date": "2025-11-17",
+          "value": 16679.5,
+          "changePercent": -0.00236258
+        },
+        {
+          "date": "2025-11-18",
+          "value": 16738.900391,
+          "changePercent": 0.00356128
+        },
+        {
+          "date": "2025-11-19",
+          "value": 16727.699219,
+          "changePercent": -0.00066917
+        },
+        {
+          "date": "2025-11-20",
+          "value": 16686.699219,
+          "changePercent": -0.00245102
+        },
+        {
+          "date": "2025-11-21",
+          "value": 16731.0,
+          "changePercent": 0.00265486
+        },
+        {
+          "date": "2025-11-24",
+          "value": 16639.0,
+          "changePercent": -0.00549877
+        },
+        {
+          "date": "2025-11-25",
+          "value": 16645.0,
+          "changePercent": 0.0003606
+        },
+        {
+          "date": "2025-11-26",
+          "value": 16633.5,
+          "changePercent": -0.0006909
+        },
+        {
+          "date": "2025-11-27",
+          "value": 16614.699219,
+          "changePercent": -0.0011303
+        },
+        {
+          "date": "2025-11-28",
+          "value": 16603.900391,
+          "changePercent": -0.00064996
+        },
+        {
+          "date": "2025-12-01",
+          "value": 16635.0,
+          "changePercent": 0.00187303
+        },
+        {
+          "date": "2025-12-02",
+          "value": 16609.0,
+          "changePercent": -0.00156297
+        },
+        {
+          "date": "2025-12-03",
+          "value": 16609.900391,
+          "changePercent": 5.421e-05
+        },
+        {
+          "date": "2025-12-04",
+          "value": 16594.0,
+          "changePercent": -0.00095728
+        },
+        {
+          "date": "2025-12-05",
+          "value": 16654.400391,
+          "changePercent": 0.00363989
+        },
+        {
+          "date": "2025-12-08",
+          "value": 16683.0,
+          "changePercent": 0.00171724
+        },
+        {
+          "date": "2025-12-09",
+          "value": 16686.0,
+          "changePercent": 0.00017982
+        },
+        {
+          "date": "2025-12-10",
+          "value": 16662.0,
+          "changePercent": -0.00143833
+        },
+        {
+          "date": "2025-12-11",
+          "value": 16639.0,
+          "changePercent": -0.00138039
+        },
+        {
+          "date": "2025-12-12",
+          "value": 16649.0,
+          "changePercent": 0.000601
+        },
+        {
+          "date": "2025-12-15",
+          "value": 16623.099609,
+          "changePercent": -0.00155567
+        },
+        {
+          "date": "2025-12-16",
+          "value": 16645.800781,
+          "changePercent": 0.00136564
+        },
+        {
+          "date": "2025-12-17",
+          "value": 16644.599609,
+          "changePercent": -7.216e-05
+        },
+        {
+          "date": "2025-12-18",
+          "value": 16657.0,
+          "changePercent": 0.00074501
+        },
+        {
+          "date": "2025-12-19",
+          "value": 16685.199219,
+          "changePercent": 0.00169294
+        },
+        {
+          "date": "2025-12-22",
+          "value": 16678.5,
+          "changePercent": -0.00040151
+        },
+        {
+          "date": "2025-12-23",
+          "value": 16756.400391,
+          "changePercent": 0.00467071
+        },
+        {
+          "date": "2025-12-24",
+          "value": 16735.0,
+          "changePercent": -0.00127715
+        },
+        {
+          "date": "2025-12-26",
+          "value": 16753.099609,
+          "changePercent": 0.00108154
+        },
+        {
+          "date": "2025-12-29",
+          "value": 16741.099609,
+          "changePercent": -0.00071629
+        },
+        {
+          "date": "2025-12-30",
+          "value": 16770.0,
+          "changePercent": 0.00172631
+        },
+        {
+          "date": "2025-12-31",
+          "value": 16709.0,
+          "changePercent": -0.00363745
+        },
+        {
+          "date": "2026-01-02",
+          "value": 16668.0,
+          "changePercent": -0.00245377
+        },
+        {
+          "date": "2026-01-05",
+          "value": 16683.0,
+          "changePercent": 0.00089993
+        },
+        {
+          "date": "2026-01-06",
+          "value": 16727.199219,
+          "changePercent": 0.00264936
+        },
+        {
+          "date": "2026-01-07",
+          "value": 16742.0,
+          "changePercent": 0.00088483
+        },
+        {
+          "date": "2026-01-08",
+          "value": 16753.0,
+          "changePercent": 0.00065703
+        },
+        {
+          "date": "2026-01-09",
+          "value": 16805.699219,
+          "changePercent": 0.00314566
+        },
+        {
+          "date": "2026-01-12",
+          "value": 16826.699219,
+          "changePercent": 0.00124958
+        },
+        {
+          "date": "2026-01-13",
+          "value": 16859.400391,
+          "changePercent": 0.00194341
+        },
+        {
+          "date": "2026-01-14",
+          "value": 16840.800781,
+          "changePercent": -0.00110322
+        },
+        {
+          "date": "2026-01-15",
+          "value": 16845.099609,
+          "changePercent": 0.00025526
+        },
+        {
+          "date": "2026-01-16",
+          "value": 16878.900391,
+          "changePercent": 0.00200656
+        },
+        {
+          "date": "2026-01-19",
+          "value": 16876.599609,
+          "changePercent": -0.00013631
+        },
+        {
+          "date": "2026-01-20",
+          "value": 16939.0,
+          "changePercent": 0.00369745
+        },
+        {
+          "date": "2026-01-21",
+          "value": 16960.099609,
+          "changePercent": 0.00124562
+        },
+        {
+          "date": "2026-01-22",
+          "value": 16897.0,
+          "changePercent": -0.00372047
+        },
+        {
+          "date": "2026-01-23",
+          "value": 16820.0,
+          "changePercent": -0.00455702
+        },
+        {
+          "date": "2026-01-26",
+          "value": 16770.0,
+          "changePercent": -0.00297265
+        },
+        {
+          "date": "2026-01-27",
+          "value": 16734.0,
+          "changePercent": -0.00214669
+        },
+        {
+          "date": "2026-01-28",
+          "value": 16674.699219,
+          "changePercent": -0.00354373
+        },
+        {
+          "date": "2026-01-29",
+          "value": 16722.800781,
+          "changePercent": 0.0028847
+        },
+        {
+          "date": "2026-01-30",
+          "value": 16778.300781,
+          "changePercent": 0.00331882
+        },
+        {
+          "date": "2026-02-02",
+          "value": 16758.400391,
+          "changePercent": -0.00118608
+        },
+        {
+          "date": "2026-02-03",
+          "value": 16758.400391,
+          "changePercent": 0.0
+        },
+        {
+          "date": "2026-02-04",
+          "value": 16759.0,
+          "changePercent": 3.578e-05
+        },
+        {
+          "date": "2026-02-05",
+          "value": 16800.0,
+          "changePercent": 0.00244645
+        },
+        {
+          "date": "2026-02-06",
+          "value": 16879.900391,
+          "changePercent": 0.00475598
+        },
+        {
+          "date": "2026-02-09",
+          "value": 16843.5,
+          "changePercent": -0.00215643
+        },
+        {
+          "date": "2026-02-10",
+          "value": 16796.0,
+          "changePercent": -0.00282008
+        },
+        {
+          "date": "2026-02-11",
+          "value": 16778.0,
+          "changePercent": -0.00107168
+        },
+        {
+          "date": "2026-02-12",
+          "value": 16793.900391,
+          "changePercent": 0.00094769
+        },
+        {
+          "date": "2026-02-13",
+          "value": 16809.0,
+          "changePercent": 0.00089911
+        },
+        {
+          "date": "2026-02-16",
+          "value": 16826.099609,
+          "changePercent": 0.00101729
+        },
+        {
+          "date": "2026-02-17",
+          "value": 16806.599609,
+          "changePercent": -0.00115891
+        },
+        {
+          "date": "2026-02-18",
+          "value": 16840.0,
+          "changePercent": 0.00198734
+        },
+        {
+          "date": "2026-02-19",
+          "value": 16915.300781,
+          "changePercent": 0.00447154
+        },
+        {
+          "date": "2026-02-20",
+          "value": 16887.199219,
+          "changePercent": -0.00166131
+        },
+        {
+          "date": "2026-02-23",
+          "value": 16843.400391,
+          "changePercent": -0.00259361
+        },
+        {
+          "date": "2026-02-24",
+          "value": 16804.300781,
+          "changePercent": -0.00232136
+        },
+        {
+          "date": "2026-02-25",
+          "value": 16816.800781,
+          "changePercent": 0.00074386
+        },
+        {
+          "date": "2026-02-26",
+          "value": 16749.800781,
+          "changePercent": -0.00398411
+        },
+        {
+          "date": "2026-02-27",
+          "value": 16749.0,
+          "changePercent": -4.781e-05
+        },
+        {
+          "date": "2026-03-02",
+          "value": 16795.0,
+          "changePercent": 0.00274643
+        },
+        {
+          "date": "2026-03-03",
+          "value": 16863.0,
+          "changePercent": 0.00404882
+        },
+        {
+          "date": "2026-03-04",
+          "value": 16898.099609,
+          "changePercent": 0.00208146
+        },
+        {
+          "date": "2026-03-05",
+          "value": 16865.0,
+          "changePercent": -0.00195878
+        },
+        {
+          "date": "2026-03-06",
+          "value": 16913.099609,
+          "changePercent": 0.00285204
+        },
+        {
+          "date": "2026-03-09",
+          "value": 16923.699219,
+          "changePercent": 0.00062671
+        },
+        {
+          "date": "2026-03-10",
+          "value": 16886.0,
+          "changePercent": -0.0022276
+        },
+        {
+          "date": "2026-03-11",
+          "value": 16852.0,
+          "changePercent": -0.0020135
+        },
+        {
+          "date": "2026-03-12",
+          "value": 16884.0,
+          "changePercent": 0.00189888
+        },
+        {
+          "date": "2026-03-13",
+          "value": 16908.0,
+          "changePercent": 0.00142146
+        },
+        {
+          "date": "2026-03-16",
+          "value": 16952.099609,
+          "changePercent": 0.00260821
+        },
+        {
+          "date": "2026-03-17",
+          "value": 16953.099609,
+          "changePercent": 5.899e-05
+        },
+        {
+          "date": "2026-03-18",
+          "value": 16971.300781,
+          "changePercent": 0.00107362
+        },
+        {
+          "date": "2026-03-19",
+          "value": 17041.699219,
+          "changePercent": 0.00414809
+        },
+        {
+          "date": "2026-03-20",
+          "value": 16915.900391,
+          "changePercent": -0.00738182
+        },
+        {
+          "date": "2026-03-23",
+          "value": 16959.300781,
+          "changePercent": 0.00256566
+        },
+        {
+          "date": "2026-03-24",
+          "value": 16865.099609,
+          "changePercent": -0.00555454
+        },
+        {
+          "date": "2026-03-25",
+          "value": 16797.300781,
+          "changePercent": -0.00402007
+        },
+        {
+          "date": "2026-03-26",
+          "value": 16749.599609,
+          "changePercent": -0.00283981
+        },
+        {
+          "date": "2026-03-27",
+          "value": 16925.0,
+          "changePercent": 0.01047192
+        },
+        {
+          "date": "2026-03-30",
+          "value": 16958.0,
+          "changePercent": 0.00194978
+        },
+        {
+          "date": "2026-03-31",
+          "value": 16975.400391,
+          "changePercent": 0.00102609
+        },
+        {
+          "date": "2026-04-01",
+          "value": 16936.400391,
+          "changePercent": -0.00229744
+        },
+        {
+          "date": "2026-04-02",
+          "value": 16924.099609,
+          "changePercent": -0.00072629
+        },
+        {
+          "date": "2026-04-03",
+          "value": 16959.0,
+          "changePercent": 0.00206217
+        },
+        {
+          "date": "2026-04-06",
+          "value": 16988.0,
+          "changePercent": 0.00171001
+        },
+        {
+          "date": "2026-04-07",
+          "value": 17015.300781,
+          "changePercent": 0.00160706
+        },
+        {
+          "date": "2026-04-08",
+          "value": 17027.400391,
+          "changePercent": 0.0007111
+        },
+        {
+          "date": "2026-04-09",
+          "value": 17005.5,
+          "changePercent": -0.00128619
+        },
+        {
+          "date": "2026-04-10",
+          "value": 17059.0,
+          "changePercent": 0.00314604
+        },
+        {
+          "date": "2026-04-13",
+          "value": 17083.0,
+          "changePercent": 0.00140688
+        },
+        {
+          "date": "2026-04-14",
+          "value": 17079.199219,
+          "changePercent": -0.00022249
+        },
+        {
+          "date": "2026-04-15",
+          "value": 17129.0,
+          "changePercent": 0.00291587
+        },
+        {
+          "date": "2026-04-16",
+          "value": 17146.099609,
+          "changePercent": 0.00099828
+        },
+        {
+          "date": "2026-04-17",
+          "value": 17123.0,
+          "changePercent": -0.00134722
+        },
+        {
+          "date": "2026-04-20",
+          "value": 17133.0,
+          "changePercent": 0.00058401
+        },
+        {
+          "date": "2026-04-21",
+          "value": 17123.800781,
+          "changePercent": -0.00053693
+        },
+        {
+          "date": "2026-04-22",
+          "value": 17133.099609,
+          "changePercent": 0.00054304
+        },
+        {
+          "date": "2026-04-23",
+          "value": 17199.5,
+          "changePercent": 0.00387556
+        },
+        {
+          "date": "2026-04-24",
+          "value": 17329.0,
+          "changePercent": 0.00752929
+        },
+        {
+          "date": "2026-04-27",
+          "value": 17246.0,
+          "changePercent": -0.00478966
+        },
+        {
+          "date": "2026-04-28",
+          "value": 17216.0,
+          "changePercent": -0.00173953
+        },
+        {
+          "date": "2026-04-29",
+          "value": 17244.0,
+          "changePercent": 0.00162639
+        },
+        {
+          "date": "2026-04-30",
+          "value": 17334.199219,
+          "changePercent": 0.00523076
+        },
+        {
+          "date": "2026-05-01",
+          "value": 17311.0,
+          "changePercent": -0.00133835
+        },
+        {
+          "date": "2026-05-04",
+          "value": 17288.5,
+          "changePercent": -0.00129975
+        },
+        {
+          "date": "2026-05-05",
+          "value": 17346.199219,
+          "changePercent": 0.00333743
+        },
+        {
+          "date": "2026-05-06",
+          "value": 17389.800781,
+          "changePercent": 0.00251361
+        },
+        {
+          "date": "2026-05-07",
+          "value": 17296.900391,
+          "changePercent": -0.00534223
+        },
+        {
+          "date": "2026-05-08",
+          "value": 17294.900391,
+          "changePercent": -0.00011563
+        },
+        {
+          "date": "2026-05-11",
+          "value": 17358.0,
+          "changePercent": 0.00364845
+        },
+        {
+          "date": "2026-05-12",
+          "value": 17413.0,
+          "changePercent": 0.00316857
+        },
+        {
+          "date": "2026-05-13",
+          "value": 17549.0,
+          "changePercent": 0.00781026
+        },
+        {
+          "date": "2026-05-14",
+          "value": 17500.0,
+          "changePercent": -0.00279218
+        },
+        {
+          "date": "2026-05-15",
+          "value": 17530.599609,
+          "changePercent": 0.00174855
+        },
+        {
+          "date": "2026-05-18",
+          "value": 17586.0,
+          "changePercent": 0.00316021
+        },
+        {
+          "date": "2026-05-19",
+          "value": 17701.0,
+          "changePercent": 0.00653929
+        },
+        {
+          "date": "2026-05-20",
+          "value": 17777.0,
+          "changePercent": 0.00429354
+        },
+        {
+          "date": "2026-05-21",
+          "value": 17658.400391,
+          "changePercent": -0.00667152
+        },
+        {
+          "date": "2026-05-22",
+          "value": 17692.0,
+          "changePercent": 0.00190275
+        },
+        {
+          "date": "2026-05-25",
+          "value": 17692.0,
+          "changePercent": 0.0
+        },
+        {
+          "date": "2026-05-26",
+          "value": 17762.0,
+          "changePercent": 0.00395659
+        },
+        {
+          "date": "2026-05-27",
+          "value": 17699.699219,
+          "changePercent": -0.00350753
+        },
+        {
+          "date": "2026-05-28",
+          "value": 17804.0,
+          "changePercent": 0.0058928
+        },
+        {
+          "date": "2026-05-29",
+          "value": 17840.0,
+          "changePercent": 0.00202202
+        },
+        {
+          "date": "2026-06-01",
+          "value": 17817.0,
+          "changePercent": -0.00128924
+        },
+        {
+          "date": "2026-06-02",
+          "value": 17864.0,
+          "changePercent": 0.00263793
+        },
+        {
+          "date": "2026-06-03",
+          "value": 17858.0,
+          "changePercent": -0.00033587
+        },
+        {
+          "date": "2026-06-04",
+          "value": 18004.199219,
+          "changePercent": 0.00818676
+        },
+        {
+          "date": "2026-06-05",
+          "value": 17955.5,
+          "changePercent": -0.00270488
+        },
+        {
+          "date": "2026-06-08",
+          "value": 18029.0,
+          "changePercent": 0.00409345
+        },
+        {
+          "date": "2026-06-09",
+          "value": 18190.300781,
+          "changePercent": 0.00894674
+        },
+        {
+          "date": "2026-06-10",
+          "value": 18031.0,
+          "changePercent": -0.00875746
+        },
+        {
+          "date": "2026-06-11",
+          "value": 17875.900391,
+          "changePercent": -0.00860183
+        },
+        {
+          "date": "2026-06-12",
+          "value": 17916.0,
+          "changePercent": 0.00224322
+        }
+      ]
+    },
+    {
+      "label": "BTC",
+      "symbol": "BTC-USD",
+      "source": "yfinance",
+      "formula": "Daily Close; change = Close / PreviousClose - 1",
+      "status": "ok",
+      "reason": null,
+      "series": [
+        76981.125,
+        77279.929688,
+        75825.734375,
+        74344.703125,
+        73536.554688,
+        73372.523438,
+        73754.835938,
+        73579.6875,
+        71319.773438,
+        66703.65625,
+        64014.367188,
+        63801.574219,
+        60922.667969,
+        60867.414062,
+        63239.519531,
+        63090.589844,
+        61643.78125,
+        61449.289062,
+        63561.054688,
+        63543.199219
+      ],
+      "rows": [
+        {
+          "date": "2025-01-01",
+          "value": 94419.757812,
+          "changePercent": null
+        },
+        {
+          "date": "2025-01-02",
+          "value": 96886.875,
+          "changePercent": 0.02612925
+        },
+        {
+          "date": "2025-01-03",
+          "value": 98107.429688,
+          "changePercent": 0.01259773
+        },
+        {
+          "date": "2025-01-04",
+          "value": 98236.226562,
+          "changePercent": 0.00131281
+        },
+        {
+          "date": "2025-01-05",
+          "value": 98314.960938,
+          "changePercent": 0.00080148
+        },
+        {
+          "date": "2025-01-06",
+          "value": 102078.085938,
+          "changePercent": 0.03827622
+        },
+        {
+          "date": "2025-01-07",
+          "value": 96922.703125,
+          "changePercent": -0.05050431
+        },
+        {
+          "date": "2025-01-08",
+          "value": 95043.523438,
+          "changePercent": -0.01938844
+        },
+        {
+          "date": "2025-01-09",
+          "value": 92484.039062,
+          "changePercent": -0.0269296
+        },
+        {
+          "date": "2025-01-10",
+          "value": 94701.453125,
+          "changePercent": 0.02397618
+        },
+        {
+          "date": "2025-01-11",
+          "value": 94566.59375,
+          "changePercent": -0.00142405
+        },
+        {
+          "date": "2025-01-12",
+          "value": 94488.4375,
+          "changePercent": -0.00082647
+        },
+        {
+          "date": "2025-01-13",
+          "value": 94516.523438,
+          "changePercent": 0.00029724
+        },
+        {
+          "date": "2025-01-14",
+          "value": 96534.046875,
+          "changePercent": 0.02134572
+        },
+        {
+          "date": "2025-01-15",
+          "value": 100504.492188,
+          "changePercent": 0.04113
+        },
+        {
+          "date": "2025-01-16",
+          "value": 99756.90625,
+          "changePercent": -0.00743833
+        },
+        {
+          "date": "2025-01-17",
+          "value": 104462.039062,
+          "changePercent": 0.04716599
+        },
+        {
+          "date": "2025-01-18",
+          "value": 104408.070312,
+          "changePercent": -0.00051664
+        },
+        {
+          "date": "2025-01-19",
+          "value": 101089.609375,
+          "changePercent": -0.03178357
+        },
+        {
+          "date": "2025-01-20",
+          "value": 102016.664062,
+          "changePercent": 0.00917062
+        },
+        {
+          "date": "2025-01-21",
+          "value": 106146.265625,
+          "changePercent": 0.04047968
+        },
+        {
+          "date": "2025-01-22",
+          "value": 103653.070312,
+          "changePercent": -0.0234883
+        },
+        {
+          "date": "2025-01-23",
+          "value": 103960.171875,
+          "changePercent": 0.00296278
+        },
+        {
+          "date": "2025-01-24",
+          "value": 104819.484375,
+          "changePercent": 0.00826579
+        },
+        {
+          "date": "2025-01-25",
+          "value": 104714.648438,
+          "changePercent": -0.00100016
+        },
+        {
+          "date": "2025-01-26",
+          "value": 102682.5,
+          "changePercent": -0.01940653
+        },
+        {
+          "date": "2025-01-27",
+          "value": 102087.6875,
+          "changePercent": -0.00579273
+        },
+        {
+          "date": "2025-01-28",
+          "value": 101332.476562,
+          "changePercent": -0.00739767
+        },
+        {
+          "date": "2025-01-29",
+          "value": 103703.210938,
+          "changePercent": 0.0233956
+        },
+        {
+          "date": "2025-01-30",
+          "value": 104735.304688,
+          "changePercent": 0.00995238
+        },
+        {
+          "date": "2025-01-31",
+          "value": 102405.023438,
+          "changePercent": -0.02224924
+        },
+        {
+          "date": "2025-02-01",
+          "value": 100655.90625,
+          "changePercent": -0.01708038
+        },
+        {
+          "date": "2025-02-02",
+          "value": 97688.976562,
+          "changePercent": -0.02947596
+        },
+        {
+          "date": "2025-02-03",
+          "value": 101405.421875,
+          "changePercent": 0.03804365
+        },
+        {
+          "date": "2025-02-04",
+          "value": 97871.820312,
+          "changePercent": -0.03484628
+        },
+        {
+          "date": "2025-02-05",
+          "value": 96615.445312,
+          "changePercent": -0.01283694
+        },
+        {
+          "date": "2025-02-06",
+          "value": 96593.296875,
+          "changePercent": -0.00022924
+        },
+        {
+          "date": "2025-02-07",
+          "value": 96529.085938,
+          "changePercent": -0.00066476
+        },
+        {
+          "date": "2025-02-08",
+          "value": 96482.453125,
+          "changePercent": -0.0004831
+        },
+        {
+          "date": "2025-02-09",
+          "value": 96500.09375,
+          "changePercent": 0.00018284
+        },
+        {
+          "date": "2025-02-10",
+          "value": 97437.554688,
+          "changePercent": 0.00971461
+        },
+        {
+          "date": "2025-02-11",
+          "value": 95747.429688,
+          "changePercent": -0.01734572
+        },
+        {
+          "date": "2025-02-12",
+          "value": 97885.859375,
+          "changePercent": 0.02233407
+        },
+        {
+          "date": "2025-02-13",
+          "value": 96623.867188,
+          "changePercent": -0.01289249
+        },
+        {
+          "date": "2025-02-14",
+          "value": 97508.96875,
+          "changePercent": 0.00916028
+        },
+        {
+          "date": "2025-02-15",
+          "value": 97580.351562,
+          "changePercent": 0.00073206
+        },
+        {
+          "date": "2025-02-16",
+          "value": 96175.03125,
+          "changePercent": -0.01440167
+        },
+        {
+          "date": "2025-02-17",
+          "value": 95773.382812,
+          "changePercent": -0.00417622
+        },
+        {
+          "date": "2025-02-18",
+          "value": 95539.546875,
+          "changePercent": -0.00244155
+        },
+        {
+          "date": "2025-02-19",
+          "value": 96635.609375,
+          "changePercent": 0.01147234
+        },
+        {
+          "date": "2025-02-20",
+          "value": 98333.9375,
+          "changePercent": 0.01757456
+        },
+        {
+          "date": "2025-02-21",
+          "value": 96125.546875,
+          "changePercent": -0.02245807
+        },
+        {
+          "date": "2025-02-22",
+          "value": 96577.757812,
+          "changePercent": 0.00470438
+        },
+        {
+          "date": "2025-02-23",
+          "value": 96273.921875,
+          "changePercent": -0.00314602
+        },
+        {
+          "date": "2025-02-24",
+          "value": 91418.171875,
+          "changePercent": -0.05043682
+        },
+        {
+          "date": "2025-02-25",
+          "value": 88736.171875,
+          "changePercent": -0.02933771
+        },
+        {
+          "date": "2025-02-26",
+          "value": 84347.023438,
+          "changePercent": -0.0494629
+        },
+        {
+          "date": "2025-02-27",
+          "value": 84704.226562,
+          "changePercent": 0.00423492
+        },
+        {
+          "date": "2025-02-28",
+          "value": 84373.007812,
+          "changePercent": -0.0039103
+        },
+        {
+          "date": "2025-03-01",
+          "value": 86031.914062,
+          "changePercent": 0.01966158
+        },
+        {
+          "date": "2025-03-02",
+          "value": 94248.351562,
+          "changePercent": 0.09550453
+        },
+        {
+          "date": "2025-03-03",
+          "value": 86065.671875,
+          "changePercent": -0.0868204
+        },
+        {
+          "date": "2025-03-04",
+          "value": 87222.195312,
+          "changePercent": 0.01343769
+        },
+        {
+          "date": "2025-03-05",
+          "value": 90623.5625,
+          "changePercent": 0.03899658
+        },
+        {
+          "date": "2025-03-06",
+          "value": 89961.726562,
+          "changePercent": -0.00730313
+        },
+        {
+          "date": "2025-03-07",
+          "value": 86742.671875,
+          "changePercent": -0.03578249
+        },
+        {
+          "date": "2025-03-08",
+          "value": 86154.59375,
+          "changePercent": -0.00677957
+        },
+        {
+          "date": "2025-03-09",
+          "value": 80601.039062,
+          "changePercent": -0.06446034
+        },
+        {
+          "date": "2025-03-10",
+          "value": 78532.0,
+          "changePercent": -0.02567013
+        },
+        {
+          "date": "2025-03-11",
+          "value": 82862.210938,
+          "changePercent": 0.05513945
+        },
+        {
+          "date": "2025-03-12",
+          "value": 83722.359375,
+          "changePercent": 0.01038047
+        },
+        {
+          "date": "2025-03-13",
+          "value": 81066.703125,
+          "changePercent": -0.0317198
+        },
+        {
+          "date": "2025-03-14",
+          "value": 83969.101562,
+          "changePercent": 0.0358026
+        },
+        {
+          "date": "2025-03-15",
+          "value": 84343.109375,
+          "changePercent": 0.00445411
+        },
+        {
+          "date": "2025-03-16",
+          "value": 82579.6875,
+          "changePercent": -0.02090772
+        },
+        {
+          "date": "2025-03-17",
+          "value": 84075.6875,
+          "changePercent": 0.01811584
+        },
+        {
+          "date": "2025-03-18",
+          "value": 82718.5,
+          "changePercent": -0.01614245
+        },
+        {
+          "date": "2025-03-19",
+          "value": 86854.226562,
+          "changePercent": 0.0499976
+        },
+        {
+          "date": "2025-03-20",
+          "value": 84167.195312,
+          "changePercent": -0.03093725
+        },
+        {
+          "date": "2025-03-21",
+          "value": 84043.242188,
+          "changePercent": -0.0014727
+        },
+        {
+          "date": "2025-03-22",
+          "value": 83832.484375,
+          "changePercent": -0.00250773
+        },
+        {
+          "date": "2025-03-23",
+          "value": 86054.375,
+          "changePercent": 0.02650393
+        },
+        {
+          "date": "2025-03-24",
+          "value": 87498.914062,
+          "changePercent": 0.01678635
+        },
+        {
+          "date": "2025-03-25",
+          "value": 87471.703125,
+          "changePercent": -0.00031099
+        },
+        {
+          "date": "2025-03-26",
+          "value": 86900.882812,
+          "changePercent": -0.00652577
+        },
+        {
+          "date": "2025-03-27",
+          "value": 87177.101562,
+          "changePercent": 0.00317855
+        },
+        {
+          "date": "2025-03-28",
+          "value": 84353.148438,
+          "changePercent": -0.03239329
+        },
+        {
+          "date": "2025-03-29",
+          "value": 82597.585938,
+          "changePercent": -0.02081206
+        },
+        {
+          "date": "2025-03-30",
+          "value": 82334.523438,
+          "changePercent": -0.00318487
+        },
+        {
+          "date": "2025-03-31",
+          "value": 82548.914062,
+          "changePercent": 0.0026039
+        },
+        {
+          "date": "2025-04-01",
+          "value": 85169.171875,
+          "changePercent": 0.03174188
+        },
+        {
+          "date": "2025-04-02",
+          "value": 82485.710938,
+          "changePercent": -0.03150742
+        },
+        {
+          "date": "2025-04-03",
+          "value": 83102.828125,
+          "changePercent": 0.0074815
+        },
+        {
+          "date": "2025-04-04",
+          "value": 83843.804688,
+          "changePercent": 0.00891638
+        },
+        {
+          "date": "2025-04-05",
+          "value": 83504.796875,
+          "changePercent": -0.00404333
+        },
+        {
+          "date": "2025-04-06",
+          "value": 78214.484375,
+          "changePercent": -0.0633534
+        },
+        {
+          "date": "2025-04-07",
+          "value": 79235.335938,
+          "changePercent": 0.01305195
+        },
+        {
+          "date": "2025-04-08",
+          "value": 76271.953125,
+          "changePercent": -0.03739976
+        },
+        {
+          "date": "2025-04-09",
+          "value": 82573.953125,
+          "changePercent": 0.08262539
+        },
+        {
+          "date": "2025-04-10",
+          "value": 79626.140625,
+          "changePercent": -0.03569906
+        },
+        {
+          "date": "2025-04-11",
+          "value": 83404.835938,
+          "changePercent": 0.04745546
+        },
+        {
+          "date": "2025-04-12",
+          "value": 85287.109375,
+          "changePercent": 0.02256792
+        },
+        {
+          "date": "2025-04-13",
+          "value": 83684.976562,
+          "changePercent": -0.01878517
+        },
+        {
+          "date": "2025-04-14",
+          "value": 84542.390625,
+          "changePercent": 0.01024573
+        },
+        {
+          "date": "2025-04-15",
+          "value": 83668.992188,
+          "changePercent": -0.01033089
+        },
+        {
+          "date": "2025-04-16",
+          "value": 84033.867188,
+          "changePercent": 0.00436093
+        },
+        {
+          "date": "2025-04-17",
+          "value": 84895.75,
+          "changePercent": 0.01025637
+        },
+        {
+          "date": "2025-04-18",
+          "value": 84450.804688,
+          "changePercent": -0.00524108
+        },
+        {
+          "date": "2025-04-19",
+          "value": 85063.414062,
+          "changePercent": 0.00725404
+        },
+        {
+          "date": "2025-04-20",
+          "value": 85174.304688,
+          "changePercent": 0.00130362
+        },
+        {
+          "date": "2025-04-21",
+          "value": 87518.90625,
+          "changePercent": 0.0275271
+        },
+        {
+          "date": "2025-04-22",
+          "value": 93441.890625,
+          "changePercent": 0.06767663
+        },
+        {
+          "date": "2025-04-23",
+          "value": 93699.109375,
+          "changePercent": 0.00275271
+        },
+        {
+          "date": "2025-04-24",
+          "value": 93943.796875,
+          "changePercent": 0.00261142
+        },
+        {
+          "date": "2025-04-25",
+          "value": 94720.5,
+          "changePercent": 0.00826774
+        },
+        {
+          "date": "2025-04-26",
+          "value": 94646.929688,
+          "changePercent": -0.00077671
+        },
+        {
+          "date": "2025-04-27",
+          "value": 93754.84375,
+          "changePercent": -0.00942541
+        },
+        {
+          "date": "2025-04-28",
+          "value": 94978.75,
+          "changePercent": 0.01305433
+        },
+        {
+          "date": "2025-04-29",
+          "value": 94284.789062,
+          "changePercent": -0.00730649
+        },
+        {
+          "date": "2025-04-30",
+          "value": 94207.3125,
+          "changePercent": -0.00082173
+        },
+        {
+          "date": "2025-05-01",
+          "value": 96492.335938,
+          "changePercent": 0.02425527
+        },
+        {
+          "date": "2025-05-02",
+          "value": 96910.070312,
+          "changePercent": 0.0043292
+        },
+        {
+          "date": "2025-05-03",
+          "value": 95891.796875,
+          "changePercent": -0.01050741
+        },
+        {
+          "date": "2025-05-04",
+          "value": 94315.976562,
+          "changePercent": -0.01643332
+        },
+        {
+          "date": "2025-05-05",
+          "value": 94748.054688,
+          "changePercent": 0.00458118
+        },
+        {
+          "date": "2025-05-06",
+          "value": 96802.476562,
+          "changePercent": 0.021683
+        },
+        {
+          "date": "2025-05-07",
+          "value": 97032.320312,
+          "changePercent": 0.00237436
+        },
+        {
+          "date": "2025-05-08",
+          "value": 103241.460938,
+          "changePercent": 0.06399044
+        },
+        {
+          "date": "2025-05-09",
+          "value": 102970.851562,
+          "changePercent": -0.00262113
+        },
+        {
+          "date": "2025-05-10",
+          "value": 104696.328125,
+          "changePercent": 0.01675694
+        },
+        {
+          "date": "2025-05-11",
+          "value": 104106.359375,
+          "changePercent": -0.00563505
+        },
+        {
+          "date": "2025-05-12",
+          "value": 102812.953125,
+          "changePercent": -0.01242389
+        },
+        {
+          "date": "2025-05-13",
+          "value": 104169.8125,
+          "changePercent": 0.01319736
+        },
+        {
+          "date": "2025-05-14",
+          "value": 103539.414062,
+          "changePercent": -0.00605164
+        },
+        {
+          "date": "2025-05-15",
+          "value": 103744.640625,
+          "changePercent": 0.00198211
+        },
+        {
+          "date": "2025-05-16",
+          "value": 103489.289062,
+          "changePercent": -0.00246135
+        },
+        {
+          "date": "2025-05-17",
+          "value": 103191.085938,
+          "changePercent": -0.00288149
+        },
+        {
+          "date": "2025-05-18",
+          "value": 106446.007812,
+          "changePercent": 0.03154267
+        },
+        {
+          "date": "2025-05-19",
+          "value": 105606.179688,
+          "changePercent": -0.00788971
+        },
+        {
+          "date": "2025-05-20",
+          "value": 106791.085938,
+          "changePercent": 0.01122005
+        },
+        {
+          "date": "2025-05-21",
+          "value": 109678.078125,
+          "changePercent": 0.02703402
+        },
+        {
+          "date": "2025-05-22",
+          "value": 111673.28125,
+          "changePercent": 0.01819145
+        },
+        {
+          "date": "2025-05-23",
+          "value": 107287.796875,
+          "changePercent": -0.03927067
+        },
+        {
+          "date": "2025-05-24",
+          "value": 107791.15625,
+          "changePercent": 0.00469167
+        },
+        {
+          "date": "2025-05-25",
+          "value": 109035.390625,
+          "changePercent": 0.01154301
+        },
+        {
+          "date": "2025-05-26",
+          "value": 109440.367188,
+          "changePercent": 0.00371418
+        },
+        {
+          "date": "2025-05-27",
+          "value": 108994.640625,
+          "changePercent": -0.00407278
+        },
+        {
+          "date": "2025-05-28",
+          "value": 107802.328125,
+          "changePercent": -0.01093918
+        },
+        {
+          "date": "2025-05-29",
+          "value": 105641.757812,
+          "changePercent": -0.02004196
+        },
+        {
+          "date": "2025-05-30",
+          "value": 103998.570312,
+          "changePercent": -0.01555434
+        },
+        {
+          "date": "2025-05-31",
+          "value": 104638.09375,
+          "changePercent": 0.00614935
+        },
+        {
+          "date": "2025-06-01",
+          "value": 105652.101562,
+          "changePercent": 0.00969062
+        },
+        {
+          "date": "2025-06-02",
+          "value": 105881.53125,
+          "changePercent": 0.00217156
+        },
+        {
+          "date": "2025-06-03",
+          "value": 105432.46875,
+          "changePercent": -0.00424118
+        },
+        {
+          "date": "2025-06-04",
+          "value": 104731.984375,
+          "changePercent": -0.00664392
+        },
+        {
+          "date": "2025-06-05",
+          "value": 101575.953125,
+          "changePercent": -0.03013436
+        },
+        {
+          "date": "2025-06-06",
+          "value": 104390.34375,
+          "changePercent": 0.02770725
+        },
+        {
+          "date": "2025-06-07",
+          "value": 105615.625,
+          "changePercent": 0.0117375
+        },
+        {
+          "date": "2025-06-08",
+          "value": 105793.648438,
+          "changePercent": 0.00168558
+        },
+        {
+          "date": "2025-06-09",
+          "value": 110294.101562,
+          "changePercent": 0.04253992
+        },
+        {
+          "date": "2025-06-10",
+          "value": 110257.234375,
+          "changePercent": -0.00033426
+        },
+        {
+          "date": "2025-06-11",
+          "value": 108686.625,
+          "changePercent": -0.01424496
+        },
+        {
+          "date": "2025-06-12",
+          "value": 105929.054688,
+          "changePercent": -0.02537175
+        },
+        {
+          "date": "2025-06-13",
+          "value": 106090.96875,
+          "changePercent": 0.00152851
+        },
+        {
+          "date": "2025-06-14",
+          "value": 105472.40625,
+          "changePercent": -0.00583049
+        },
+        {
+          "date": "2025-06-15",
+          "value": 105552.023438,
+          "changePercent": 0.00075486
+        },
+        {
+          "date": "2025-06-16",
+          "value": 106796.757812,
+          "changePercent": 0.01179262
+        },
+        {
+          "date": "2025-06-17",
+          "value": 104601.117188,
+          "changePercent": -0.02055906
+        },
+        {
+          "date": "2025-06-18",
+          "value": 104883.328125,
+          "changePercent": 0.00269797
+        },
+        {
+          "date": "2025-06-19",
+          "value": 104684.289062,
+          "changePercent": -0.00189772
+        },
+        {
+          "date": "2025-06-20",
+          "value": 103309.601562,
+          "changePercent": -0.01313175
+        },
+        {
+          "date": "2025-06-21",
+          "value": 102257.40625,
+          "changePercent": -0.01018487
+        },
+        {
+          "date": "2025-06-22",
+          "value": 100987.140625,
+          "changePercent": -0.01242224
+        },
+        {
+          "date": "2025-06-23",
+          "value": 105577.773438,
+          "changePercent": 0.0454576
+        },
+        {
+          "date": "2025-06-24",
+          "value": 106045.632812,
+          "changePercent": 0.00443142
+        },
+        {
+          "date": "2025-06-25",
+          "value": 107361.257812,
+          "changePercent": 0.01240622
+        },
+        {
+          "date": "2025-06-26",
+          "value": 106960.0,
+          "changePercent": -0.00373745
+        },
+        {
+          "date": "2025-06-27",
+          "value": 107088.429688,
+          "changePercent": 0.00120073
+        },
+        {
+          "date": "2025-06-28",
+          "value": 107327.703125,
+          "changePercent": 0.00223435
+        },
+        {
+          "date": "2025-06-29",
+          "value": 108385.570312,
+          "changePercent": 0.00985642
+        },
+        {
+          "date": "2025-06-30",
+          "value": 107135.335938,
+          "changePercent": -0.01153506
+        },
+        {
+          "date": "2025-07-01",
+          "value": 105698.28125,
+          "changePercent": -0.01341345
+        },
+        {
+          "date": "2025-07-02",
+          "value": 108859.320312,
+          "changePercent": 0.02990625
+        },
+        {
+          "date": "2025-07-03",
+          "value": 109647.976562,
+          "changePercent": 0.00724473
+        },
+        {
+          "date": "2025-07-04",
+          "value": 108034.335938,
+          "changePercent": -0.01471656
+        },
+        {
+          "date": "2025-07-05",
+          "value": 108231.179688,
+          "changePercent": 0.00182205
+        },
+        {
+          "date": "2025-07-06",
+          "value": 109232.070312,
+          "changePercent": 0.00924771
+        },
+        {
+          "date": "2025-07-07",
+          "value": 108299.851562,
+          "changePercent": -0.0085343
+        },
+        {
+          "date": "2025-07-08",
+          "value": 108950.273438,
+          "changePercent": 0.00600575
+        },
+        {
+          "date": "2025-07-09",
+          "value": 111326.554688,
+          "changePercent": 0.0218107
+        },
+        {
+          "date": "2025-07-10",
+          "value": 115987.203125,
+          "changePercent": 0.04186466
+        },
+        {
+          "date": "2025-07-11",
+          "value": 117516.992188,
+          "changePercent": 0.01318929
+        },
+        {
+          "date": "2025-07-12",
+          "value": 117435.226562,
+          "changePercent": -0.00069578
+        },
+        {
+          "date": "2025-07-13",
+          "value": 119116.117188,
+          "changePercent": 0.01431334
+        },
+        {
+          "date": "2025-07-14",
+          "value": 119849.703125,
+          "changePercent": 0.00615858
+        },
+        {
+          "date": "2025-07-15",
+          "value": 117777.1875,
+          "changePercent": -0.01729262
+        },
+        {
+          "date": "2025-07-16",
+          "value": 118738.507812,
+          "changePercent": 0.00816219
+        },
+        {
+          "date": "2025-07-17",
+          "value": 119289.84375,
+          "changePercent": 0.00464328
+        },
+        {
+          "date": "2025-07-18",
+          "value": 118003.226562,
+          "changePercent": -0.01078564
+        },
+        {
+          "date": "2025-07-19",
+          "value": 117939.976562,
+          "changePercent": -0.000536
+        },
+        {
+          "date": "2025-07-20",
+          "value": 117300.789062,
+          "changePercent": -0.0054196
+        },
+        {
+          "date": "2025-07-21",
+          "value": 117439.539062,
+          "changePercent": 0.00118286
+        },
+        {
+          "date": "2025-07-22",
+          "value": 119995.414062,
+          "changePercent": 0.02176333
+        },
+        {
+          "date": "2025-07-23",
+          "value": 118754.960938,
+          "changePercent": -0.0103375
+        },
+        {
+          "date": "2025-07-24",
+          "value": 118368.0,
+          "changePercent": -0.00325848
+        },
+        {
+          "date": "2025-07-25",
+          "value": 117635.882812,
+          "changePercent": -0.00618509
+        },
+        {
+          "date": "2025-07-26",
+          "value": 117947.367188,
+          "changePercent": 0.00264787
+        },
+        {
+          "date": "2025-07-27",
+          "value": 119448.492188,
+          "changePercent": 0.01272708
+        },
+        {
+          "date": "2025-07-28",
+          "value": 117924.476562,
+          "changePercent": -0.01275877
+        },
+        {
+          "date": "2025-07-29",
+          "value": 117922.148438,
+          "changePercent": -1.974e-05
+        },
+        {
+          "date": "2025-07-30",
+          "value": 117831.1875,
+          "changePercent": -0.00077136
+        },
+        {
+          "date": "2025-07-31",
+          "value": 115758.203125,
+          "changePercent": -0.01759283
+        },
+        {
+          "date": "2025-08-01",
+          "value": 113320.085938,
+          "changePercent": -0.02106215
+        },
+        {
+          "date": "2025-08-02",
+          "value": 112526.914062,
+          "changePercent": -0.00699939
+        },
+        {
+          "date": "2025-08-03",
+          "value": 114217.671875,
+          "changePercent": 0.01502536
+        },
+        {
+          "date": "2025-08-04",
+          "value": 115071.882812,
+          "changePercent": 0.0074788
+        },
+        {
+          "date": "2025-08-05",
+          "value": 114141.445312,
+          "changePercent": -0.00808571
+        },
+        {
+          "date": "2025-08-06",
+          "value": 115028.0,
+          "changePercent": 0.00776716
+        },
+        {
+          "date": "2025-08-07",
+          "value": 117496.898438,
+          "changePercent": 0.02146346
+        },
+        {
+          "date": "2025-08-08",
+          "value": 116688.726562,
+          "changePercent": -0.00687824
+        },
+        {
+          "date": "2025-08-09",
+          "value": 116500.359375,
+          "changePercent": -0.00161427
+        },
+        {
+          "date": "2025-08-10",
+          "value": 119306.757812,
+          "changePercent": 0.02408918
+        },
+        {
+          "date": "2025-08-11",
+          "value": 118731.445312,
+          "changePercent": -0.00482213
+        },
+        {
+          "date": "2025-08-12",
+          "value": 120172.90625,
+          "changePercent": 0.01214052
+        },
+        {
+          "date": "2025-08-13",
+          "value": 123344.0625,
+          "changePercent": 0.02638828
+        },
+        {
+          "date": "2025-08-14",
+          "value": 118359.578125,
+          "changePercent": -0.04041122
+        },
+        {
+          "date": "2025-08-15",
+          "value": 117398.351562,
+          "changePercent": -0.00812124
+        },
+        {
+          "date": "2025-08-16",
+          "value": 117491.351562,
+          "changePercent": 0.00079217
+        },
+        {
+          "date": "2025-08-17",
+          "value": 117453.0625,
+          "changePercent": -0.00032589
+        },
+        {
+          "date": "2025-08-18",
+          "value": 116252.3125,
+          "changePercent": -0.01022323
+        },
+        {
+          "date": "2025-08-19",
+          "value": 112831.179688,
+          "changePercent": -0.02942851
+        },
+        {
+          "date": "2025-08-20",
+          "value": 114274.742188,
+          "changePercent": 0.012794
+        },
+        {
+          "date": "2025-08-21",
+          "value": 112419.03125,
+          "changePercent": -0.01623903
+        },
+        {
+          "date": "2025-08-22",
+          "value": 116874.085938,
+          "changePercent": 0.03962901
+        },
+        {
+          "date": "2025-08-23",
+          "value": 115374.328125,
+          "changePercent": -0.01283225
+        },
+        {
+          "date": "2025-08-24",
+          "value": 113458.429688,
+          "changePercent": -0.01660593
+        },
+        {
+          "date": "2025-08-25",
+          "value": 110124.351562,
+          "changePercent": -0.0293859
+        },
+        {
+          "date": "2025-08-26",
+          "value": 111802.65625,
+          "changePercent": 0.01524009
+        },
+        {
+          "date": "2025-08-27",
+          "value": 111222.0625,
+          "changePercent": -0.00519302
+        },
+        {
+          "date": "2025-08-28",
+          "value": 112544.804688,
+          "changePercent": 0.0118928
+        },
+        {
+          "date": "2025-08-29",
+          "value": 108410.835938,
+          "changePercent": -0.03673176
+        },
+        {
+          "date": "2025-08-30",
+          "value": 108808.070312,
+          "changePercent": 0.00366416
+        },
+        {
+          "date": "2025-08-31",
+          "value": 108236.710938,
+          "changePercent": -0.00525108
+        },
+        {
+          "date": "2025-09-01",
+          "value": 109250.59375,
+          "changePercent": 0.00936727
+        },
+        {
+          "date": "2025-09-02",
+          "value": 111200.585938,
+          "changePercent": 0.0178488
+        },
+        {
+          "date": "2025-09-03",
+          "value": 111723.210938,
+          "changePercent": 0.00469984
+        },
+        {
+          "date": "2025-09-04",
+          "value": 110723.601562,
+          "changePercent": -0.0089472
+        },
+        {
+          "date": "2025-09-05",
+          "value": 110650.984375,
+          "changePercent": -0.00065584
+        },
+        {
+          "date": "2025-09-06",
+          "value": 110224.695312,
+          "changePercent": -0.00385256
+        },
+        {
+          "date": "2025-09-07",
+          "value": 111167.617188,
+          "changePercent": 0.00855454
+        },
+        {
+          "date": "2025-09-08",
+          "value": 112071.429688,
+          "changePercent": 0.00813018
+        },
+        {
+          "date": "2025-09-09",
+          "value": 111530.546875,
+          "changePercent": -0.00482623
+        },
+        {
+          "date": "2025-09-10",
+          "value": 113955.359375,
+          "changePercent": 0.02174124
+        },
+        {
+          "date": "2025-09-11",
+          "value": 115507.539062,
+          "changePercent": 0.01362095
+        },
+        {
+          "date": "2025-09-12",
+          "value": 116101.578125,
+          "changePercent": 0.00514286
+        },
+        {
+          "date": "2025-09-13",
+          "value": 115950.507812,
+          "changePercent": -0.00130119
+        },
+        {
+          "date": "2025-09-14",
+          "value": 115407.65625,
+          "changePercent": -0.00468175
+        },
+        {
+          "date": "2025-09-15",
+          "value": 115444.875,
+          "changePercent": 0.0003225
+        },
+        {
+          "date": "2025-09-16",
+          "value": 116843.1875,
+          "changePercent": 0.01211238
+        },
+        {
+          "date": "2025-09-17",
+          "value": 116468.507812,
+          "changePercent": -0.00320669
+        },
+        {
+          "date": "2025-09-18",
+          "value": 117137.203125,
+          "changePercent": 0.00574143
+        },
+        {
+          "date": "2025-09-19",
+          "value": 115688.859375,
+          "changePercent": -0.01236451
+        },
+        {
+          "date": "2025-09-20",
+          "value": 115721.960938,
+          "changePercent": 0.00028613
+        },
+        {
+          "date": "2025-09-21",
+          "value": 115306.09375,
+          "changePercent": -0.00359368
+        },
+        {
+          "date": "2025-09-22",
+          "value": 112748.507812,
+          "changePercent": -0.02218084
+        },
+        {
+          "date": "2025-09-23",
+          "value": 112014.5,
+          "changePercent": -0.00651013
+        },
+        {
+          "date": "2025-09-24",
+          "value": 113328.632812,
+          "changePercent": 0.01173181
+        },
+        {
+          "date": "2025-09-25",
+          "value": 109049.289062,
+          "changePercent": -0.03776048
+        },
+        {
+          "date": "2025-09-26",
+          "value": 109712.828125,
+          "changePercent": 0.00608476
+        },
+        {
+          "date": "2025-09-27",
+          "value": 109681.945312,
+          "changePercent": -0.00028149
+        },
+        {
+          "date": "2025-09-28",
+          "value": 112122.640625,
+          "changePercent": 0.02225248
+        },
+        {
+          "date": "2025-09-29",
+          "value": 114400.382812,
+          "changePercent": 0.02031474
+        },
+        {
+          "date": "2025-09-30",
+          "value": 114056.085938,
+          "changePercent": -0.00300958
+        },
+        {
+          "date": "2025-10-01",
+          "value": 118648.929688,
+          "changePercent": 0.04026829
+        },
+        {
+          "date": "2025-10-02",
+          "value": 120681.257812,
+          "changePercent": 0.01712892
+        },
+        {
+          "date": "2025-10-03",
+          "value": 122266.53125,
+          "changePercent": 0.01313604
+        },
+        {
+          "date": "2025-10-04",
+          "value": 122425.429688,
+          "changePercent": 0.00129961
+        },
+        {
+          "date": "2025-10-05",
+          "value": 123513.476562,
+          "changePercent": 0.00888743
+        },
+        {
+          "date": "2025-10-06",
+          "value": 124752.53125,
+          "changePercent": 0.01003174
+        },
+        {
+          "date": "2025-10-07",
+          "value": 121451.382812,
+          "changePercent": -0.02646157
+        },
+        {
+          "date": "2025-10-08",
+          "value": 123354.867188,
+          "changePercent": 0.01567281
+        },
+        {
+          "date": "2025-10-09",
+          "value": 121705.585938,
+          "changePercent": -0.01337022
+        },
+        {
+          "date": "2025-10-10",
+          "value": 113214.367188,
+          "changePercent": -0.06976852
+        },
+        {
+          "date": "2025-10-11",
+          "value": 110807.882812,
+          "changePercent": -0.021256
+        },
+        {
+          "date": "2025-10-12",
+          "value": 115169.765625,
+          "changePercent": 0.03936437
+        },
+        {
+          "date": "2025-10-13",
+          "value": 115271.078125,
+          "changePercent": 0.00087968
+        },
+        {
+          "date": "2025-10-14",
+          "value": 113118.664062,
+          "changePercent": -0.01867263
+        },
+        {
+          "date": "2025-10-15",
+          "value": 110783.164062,
+          "changePercent": -0.02064646
+        },
+        {
+          "date": "2025-10-16",
+          "value": 108186.039062,
+          "changePercent": -0.02344332
+        },
+        {
+          "date": "2025-10-17",
+          "value": 106467.789062,
+          "changePercent": -0.01588236
+        },
+        {
+          "date": "2025-10-18",
+          "value": 107198.265625,
+          "changePercent": 0.00686101
+        },
+        {
+          "date": "2025-10-19",
+          "value": 108666.710938,
+          "changePercent": 0.01369841
+        },
+        {
+          "date": "2025-10-20",
+          "value": 110588.929688,
+          "changePercent": 0.01768912
+        },
+        {
+          "date": "2025-10-21",
+          "value": 108476.890625,
+          "changePercent": -0.01909811
+        },
+        {
+          "date": "2025-10-22",
+          "value": 107688.585938,
+          "changePercent": -0.00726703
+        },
+        {
+          "date": "2025-10-23",
+          "value": 110069.726562,
+          "changePercent": 0.02211136
+        },
+        {
+          "date": "2025-10-24",
+          "value": 111033.921875,
+          "changePercent": 0.00875986
+        },
+        {
+          "date": "2025-10-25",
+          "value": 111641.726562,
+          "changePercent": 0.00547405
+        },
+        {
+          "date": "2025-10-26",
+          "value": 114472.445312,
+          "changePercent": 0.02535538
+        },
+        {
+          "date": "2025-10-27",
+          "value": 114119.328125,
+          "changePercent": -0.00308474
+        },
+        {
+          "date": "2025-10-28",
+          "value": 112956.164062,
+          "changePercent": -0.01019252
+        },
+        {
+          "date": "2025-10-29",
+          "value": 110055.304688,
+          "changePercent": -0.02568128
+        },
+        {
+          "date": "2025-10-30",
+          "value": 108305.546875,
+          "changePercent": -0.0158989
+        },
+        {
+          "date": "2025-10-31",
+          "value": 109556.164062,
+          "changePercent": 0.01154712
+        },
+        {
+          "date": "2025-11-01",
+          "value": 110064.015625,
+          "changePercent": 0.00463554
+        },
+        {
+          "date": "2025-11-02",
+          "value": 110639.625,
+          "changePercent": 0.00522977
+        },
+        {
+          "date": "2025-11-03",
+          "value": 106547.523438,
+          "changePercent": -0.03698586
+        },
+        {
+          "date": "2025-11-04",
+          "value": 101590.523438,
+          "changePercent": -0.04652384
+        },
+        {
+          "date": "2025-11-05",
+          "value": 103891.835938,
+          "changePercent": 0.02265283
+        },
+        {
+          "date": "2025-11-06",
+          "value": 101301.289062,
+          "changePercent": -0.02493504
+        },
+        {
+          "date": "2025-11-07",
+          "value": 103372.40625,
+          "changePercent": 0.02044512
+        },
+        {
+          "date": "2025-11-08",
+          "value": 102282.117188,
+          "changePercent": -0.0105472
+        },
+        {
+          "date": "2025-11-09",
+          "value": 104719.640625,
+          "changePercent": 0.02383137
+        },
+        {
+          "date": "2025-11-10",
+          "value": 105996.59375,
+          "changePercent": 0.01219402
+        },
+        {
+          "date": "2025-11-11",
+          "value": 102997.46875,
+          "changePercent": -0.02829454
+        },
+        {
+          "date": "2025-11-12",
+          "value": 101663.1875,
+          "changePercent": -0.01295451
+        },
+        {
+          "date": "2025-11-13",
+          "value": 99697.492188,
+          "changePercent": -0.01933537
+        },
+        {
+          "date": "2025-11-14",
+          "value": 94397.789062,
+          "changePercent": -0.05315784
+        },
+        {
+          "date": "2025-11-15",
+          "value": 95549.148438,
+          "changePercent": 0.01219689
+        },
+        {
+          "date": "2025-11-16",
+          "value": 94177.078125,
+          "changePercent": -0.01435984
+        },
+        {
+          "date": "2025-11-17",
+          "value": 92093.875,
+          "changePercent": -0.02212007
+        },
+        {
+          "date": "2025-11-18",
+          "value": 92948.875,
+          "changePercent": 0.00928401
+        },
+        {
+          "date": "2025-11-19",
+          "value": 91465.992188,
+          "changePercent": -0.01595375
+        },
+        {
+          "date": "2025-11-20",
+          "value": 86631.898438,
+          "changePercent": -0.05285127
+        },
+        {
+          "date": "2025-11-21",
+          "value": 85090.6875,
+          "changePercent": -0.01779034
+        },
+        {
+          "date": "2025-11-22",
+          "value": 84648.359375,
+          "changePercent": -0.00519831
+        },
+        {
+          "date": "2025-11-23",
+          "value": 86805.007812,
+          "changePercent": 0.02547773
+        },
+        {
+          "date": "2025-11-24",
+          "value": 88270.5625,
+          "changePercent": 0.0168833
+        },
+        {
+          "date": "2025-11-25",
+          "value": 87341.890625,
+          "changePercent": -0.01052074
+        },
+        {
+          "date": "2025-11-26",
+          "value": 90518.367188,
+          "changePercent": 0.03636831
+        },
+        {
+          "date": "2025-11-27",
+          "value": 91285.375,
+          "changePercent": 0.0084735
+        },
+        {
+          "date": "2025-11-28",
+          "value": 90919.265625,
+          "changePercent": -0.0040106
+        },
+        {
+          "date": "2025-11-29",
+          "value": 90851.757812,
+          "changePercent": -0.0007425
+        },
+        {
+          "date": "2025-11-30",
+          "value": 90394.3125,
+          "changePercent": -0.00503507
+        },
+        {
+          "date": "2025-12-01",
+          "value": 86321.570312,
+          "changePercent": -0.04505529
+        },
+        {
+          "date": "2025-12-02",
+          "value": 91350.203125,
+          "changePercent": 0.05825465
+        },
+        {
+          "date": "2025-12-03",
+          "value": 93527.804688,
+          "changePercent": 0.02383795
+        },
+        {
+          "date": "2025-12-04",
+          "value": 92141.625,
+          "changePercent": -0.01482104
+        },
+        {
+          "date": "2025-12-05",
+          "value": 89387.757812,
+          "changePercent": -0.02988733
+        },
+        {
+          "date": "2025-12-06",
+          "value": 89272.375,
+          "changePercent": -0.00129081
+        },
+        {
+          "date": "2025-12-07",
+          "value": 90405.640625,
+          "changePercent": 0.01269447
+        },
+        {
+          "date": "2025-12-08",
+          "value": 90640.203125,
+          "changePercent": 0.00259456
+        },
+        {
+          "date": "2025-12-09",
+          "value": 92691.710938,
+          "changePercent": 0.02263353
+        },
+        {
+          "date": "2025-12-10",
+          "value": 92020.945312,
+          "changePercent": -0.00723652
+        },
+        {
+          "date": "2025-12-11",
+          "value": 92511.335938,
+          "changePercent": 0.00532912
+        },
+        {
+          "date": "2025-12-12",
+          "value": 90270.414062,
+          "changePercent": -0.02422321
+        },
+        {
+          "date": "2025-12-13",
+          "value": 90298.710938,
+          "changePercent": 0.00031347
+        },
+        {
+          "date": "2025-12-14",
+          "value": 88175.179688,
+          "changePercent": -0.02351674
+        },
+        {
+          "date": "2025-12-15",
+          "value": 86419.78125,
+          "changePercent": -0.01990808
+        },
+        {
+          "date": "2025-12-16",
+          "value": 87843.984375,
+          "changePercent": 0.01648006
+        },
+        {
+          "date": "2025-12-17",
+          "value": 86143.757812,
+          "changePercent": -0.01935507
+        },
+        {
+          "date": "2025-12-18",
+          "value": 85462.507812,
+          "changePercent": -0.00790829
+        },
+        {
+          "date": "2025-12-19",
+          "value": 88103.382812,
+          "changePercent": 0.03090098
+        },
+        {
+          "date": "2025-12-20",
+          "value": 88344.0,
+          "changePercent": 0.00273108
+        },
+        {
+          "date": "2025-12-21",
+          "value": 88621.75,
+          "changePercent": 0.00314396
+        },
+        {
+          "date": "2025-12-22",
+          "value": 88490.015625,
+          "changePercent": -0.00148648
+        },
+        {
+          "date": "2025-12-23",
+          "value": 87414.0,
+          "changePercent": -0.01215974
+        },
+        {
+          "date": "2025-12-24",
+          "value": 87611.960938,
+          "changePercent": 0.00226464
+        },
+        {
+          "date": "2025-12-25",
+          "value": 87234.742188,
+          "changePercent": -0.00430556
+        },
+        {
+          "date": "2025-12-26",
+          "value": 87301.429688,
+          "changePercent": 0.00076446
+        },
+        {
+          "date": "2025-12-27",
+          "value": 87802.15625,
+          "changePercent": 0.00573561
+        },
+        {
+          "date": "2025-12-28",
+          "value": 87835.835938,
+          "changePercent": 0.00038359
+        },
+        {
+          "date": "2025-12-29",
+          "value": 87138.140625,
+          "changePercent": -0.00794317
+        },
+        {
+          "date": "2025-12-30",
+          "value": 88430.132812,
+          "changePercent": 0.01482694
+        },
+        {
+          "date": "2025-12-31",
+          "value": 87508.828125,
+          "changePercent": -0.01041845
+        },
+        {
+          "date": "2026-01-01",
+          "value": 88731.984375,
+          "changePercent": 0.01397752
+        },
+        {
+          "date": "2026-01-02",
+          "value": 89944.695312,
+          "changePercent": 0.01366712
+        },
+        {
+          "date": "2026-01-03",
+          "value": 90603.1875,
+          "changePercent": 0.00732108
+        },
+        {
+          "date": "2026-01-04",
+          "value": 91413.492188,
+          "changePercent": 0.00894345
+        },
+        {
+          "date": "2026-01-05",
+          "value": 93882.554688,
+          "changePercent": 0.02700983
+        },
+        {
+          "date": "2026-01-06",
+          "value": 93729.03125,
+          "changePercent": -0.00163527
+        },
+        {
+          "date": "2026-01-07",
+          "value": 91308.054688,
+          "changePercent": -0.02582953
+        },
+        {
+          "date": "2026-01-08",
+          "value": 91027.125,
+          "changePercent": -0.00307672
+        },
+        {
+          "date": "2026-01-09",
+          "value": 90513.101562,
+          "changePercent": -0.00564693
+        },
+        {
+          "date": "2026-01-10",
+          "value": 90386.648438,
+          "changePercent": -0.00139707
+        },
+        {
+          "date": "2026-01-11",
+          "value": 90827.460938,
+          "changePercent": 0.00487696
+        },
+        {
+          "date": "2026-01-12",
+          "value": 91192.992188,
+          "changePercent": 0.00402446
+        },
+        {
+          "date": "2026-01-13",
+          "value": 95321.78125,
+          "changePercent": 0.04527529
+        },
+        {
+          "date": "2026-01-14",
+          "value": 96929.328125,
+          "changePercent": 0.01686442
+        },
+        {
+          "date": "2026-01-15",
+          "value": 95551.1875,
+          "changePercent": -0.01421799
+        },
+        {
+          "date": "2026-01-16",
+          "value": 95525.117188,
+          "changePercent": -0.00027284
+        },
+        {
+          "date": "2026-01-17",
+          "value": 95099.921875,
+          "changePercent": -0.00445114
+        },
+        {
+          "date": "2026-01-18",
+          "value": 93634.429688,
+          "changePercent": -0.01541003
+        },
+        {
+          "date": "2026-01-19",
+          "value": 92553.59375,
+          "changePercent": -0.01154315
+        },
+        {
+          "date": "2026-01-20",
+          "value": 88310.90625,
+          "changePercent": -0.04584033
+        },
+        {
+          "date": "2026-01-21",
+          "value": 89376.960938,
+          "changePercent": 0.01207161
+        },
+        {
+          "date": "2026-01-22",
+          "value": 89462.453125,
+          "changePercent": 0.00095653
+        },
+        {
+          "date": "2026-01-23",
+          "value": 89503.875,
+          "changePercent": 0.00046301
+        },
+        {
+          "date": "2026-01-24",
+          "value": 89110.734375,
+          "changePercent": -0.00439244
+        },
+        {
+          "date": "2026-01-25",
+          "value": 86572.21875,
+          "changePercent": -0.0284872
+        },
+        {
+          "date": "2026-01-26",
+          "value": 88267.140625,
+          "changePercent": 0.01957813
+        },
+        {
+          "date": "2026-01-27",
+          "value": 89102.570312,
+          "changePercent": 0.00946479
+        },
+        {
+          "date": "2026-01-28",
+          "value": 89184.570312,
+          "changePercent": 0.00092029
+        },
+        {
+          "date": "2026-01-29",
+          "value": 84561.585938,
+          "changePercent": -0.05183615
+        },
+        {
+          "date": "2026-01-30",
+          "value": 84128.65625,
+          "changePercent": -0.0051197
+        },
+        {
+          "date": "2026-01-31",
+          "value": 78621.117188,
+          "changePercent": -0.06546567
+        },
+        {
+          "date": "2026-02-01",
+          "value": 76974.445312,
+          "changePercent": -0.0209444
+        },
+        {
+          "date": "2026-02-02",
+          "value": 78688.765625,
+          "changePercent": 0.02227129
+        },
+        {
+          "date": "2026-02-03",
+          "value": 75633.546875,
+          "changePercent": -0.03882662
+        },
+        {
+          "date": "2026-02-04",
+          "value": 73019.703125,
+          "changePercent": -0.03455932
+        },
+        {
+          "date": "2026-02-05",
+          "value": 62702.097656,
+          "changePercent": -0.14129892
+        },
+        {
+          "date": "2026-02-06",
+          "value": 70555.390625,
+          "changePercent": 0.12524769
+        },
+        {
+          "date": "2026-02-07",
+          "value": 69281.96875,
+          "changePercent": -0.01804854
+        },
+        {
+          "date": "2026-02-08",
+          "value": 70264.726562,
+          "changePercent": 0.0141849
+        },
+        {
+          "date": "2026-02-09",
+          "value": 70120.78125,
+          "changePercent": -0.00204861
+        },
+        {
+          "date": "2026-02-10",
+          "value": 68793.960938,
+          "changePercent": -0.01892193
+        },
+        {
+          "date": "2026-02-11",
+          "value": 66991.96875,
+          "changePercent": -0.02619405
+        },
+        {
+          "date": "2026-02-12",
+          "value": 66221.84375,
+          "changePercent": -0.01149578
+        },
+        {
+          "date": "2026-02-13",
+          "value": 68857.84375,
+          "changePercent": 0.0398056
+        },
+        {
+          "date": "2026-02-14",
+          "value": 69767.625,
+          "changePercent": 0.01321246
+        },
+        {
+          "date": "2026-02-15",
+          "value": 68788.1875,
+          "changePercent": -0.01403857
+        },
+        {
+          "date": "2026-02-16",
+          "value": 68843.15625,
+          "changePercent": 0.0007991
+        },
+        {
+          "date": "2026-02-17",
+          "value": 67494.21875,
+          "changePercent": -0.01959436
+        },
+        {
+          "date": "2026-02-18",
+          "value": 66425.320312,
+          "changePercent": -0.01583689
+        },
+        {
+          "date": "2026-02-19",
+          "value": 66957.523438,
+          "changePercent": 0.00801205
+        },
+        {
+          "date": "2026-02-20",
+          "value": 68005.421875,
+          "changePercent": 0.0156502
+        },
+        {
+          "date": "2026-02-21",
+          "value": 68003.765625,
+          "changePercent": -2.435e-05
+        },
+        {
+          "date": "2026-02-22",
+          "value": 67659.390625,
+          "changePercent": -0.00506406
+        },
+        {
+          "date": "2026-02-23",
+          "value": 64616.738281,
+          "changePercent": -0.04497014
+        },
+        {
+          "date": "2026-02-24",
+          "value": 64080.042969,
+          "changePercent": -0.00830582
+        },
+        {
+          "date": "2026-02-25",
+          "value": 67960.125,
+          "changePercent": 0.06055055
+        },
+        {
+          "date": "2026-02-26",
+          "value": 67453.773438,
+          "changePercent": -0.00745072
+        },
+        {
+          "date": "2026-02-27",
+          "value": 65881.796875,
+          "changePercent": -0.0233045
+        },
+        {
+          "date": "2026-02-28",
+          "value": 66995.859375,
+          "changePercent": 0.01691002
+        },
+        {
+          "date": "2026-03-01",
+          "value": 65738.101562,
+          "changePercent": -0.01877366
+        },
+        {
+          "date": "2026-03-02",
+          "value": 68775.851562,
+          "changePercent": 0.04620988
+        },
+        {
+          "date": "2026-03-03",
+          "value": 68293.648438,
+          "changePercent": -0.00701123
+        },
+        {
+          "date": "2026-03-04",
+          "value": 72710.578125,
+          "changePercent": 0.06467556
+        },
+        {
+          "date": "2026-03-05",
+          "value": 70841.125,
+          "changePercent": -0.02571088
+        },
+        {
+          "date": "2026-03-06",
+          "value": 68136.492188,
+          "changePercent": -0.03817885
+        },
+        {
+          "date": "2026-03-07",
+          "value": 67272.59375,
+          "changePercent": -0.01267894
+        },
+        {
+          "date": "2026-03-08",
+          "value": 65969.78125,
+          "changePercent": -0.01936617
+        },
+        {
+          "date": "2026-03-09",
+          "value": 68402.382812,
+          "changePercent": 0.03687448
+        },
+        {
+          "date": "2026-03-10",
+          "value": 69926.921875,
+          "changePercent": 0.02228781
+        },
+        {
+          "date": "2026-03-11",
+          "value": 70204.882812,
+          "changePercent": 0.00397502
+        },
+        {
+          "date": "2026-03-12",
+          "value": 70493.460938,
+          "changePercent": 0.00411051
+        },
+        {
+          "date": "2026-03-13",
+          "value": 70968.265625,
+          "changePercent": 0.00673544
+        },
+        {
+          "date": "2026-03-14",
+          "value": 71214.625,
+          "changePercent": 0.0034714
+        },
+        {
+          "date": "2026-03-15",
+          "value": 72789.914062,
+          "changePercent": 0.0221203
+        },
+        {
+          "date": "2026-03-16",
+          "value": 74861.085938,
+          "changePercent": 0.02845411
+        },
+        {
+          "date": "2026-03-17",
+          "value": 73922.476562,
+          "changePercent": -0.01253801
+        },
+        {
+          "date": "2026-03-18",
+          "value": 71245.578125,
+          "changePercent": -0.03621224
+        },
+        {
+          "date": "2026-03-19",
+          "value": 69912.789062,
+          "changePercent": -0.01870697
+        },
+        {
+          "date": "2026-03-20",
+          "value": 70522.585938,
+          "changePercent": 0.00872225
+        },
+        {
+          "date": "2026-03-21",
+          "value": 68711.523438,
+          "changePercent": -0.0256806
+        },
+        {
+          "date": "2026-03-22",
+          "value": 67845.210938,
+          "changePercent": -0.01260797
+        },
+        {
+          "date": "2026-03-23",
+          "value": 70914.859375,
+          "changePercent": 0.04524488
+        },
+        {
+          "date": "2026-03-24",
+          "value": 70517.859375,
+          "changePercent": -0.00559826
+        },
+        {
+          "date": "2026-03-25",
+          "value": 71309.882812,
+          "changePercent": 0.01123153
+        },
+        {
+          "date": "2026-03-26",
+          "value": 68791.625,
+          "changePercent": -0.03531429
+        },
+        {
+          "date": "2026-03-27",
+          "value": 66338.375,
+          "changePercent": -0.03566204
+        },
+        {
+          "date": "2026-03-28",
+          "value": 66319.695312,
+          "changePercent": -0.00028158
+        },
+        {
+          "date": "2026-03-29",
+          "value": 65954.921875,
+          "changePercent": -0.00550023
+        },
+        {
+          "date": "2026-03-30",
+          "value": 66691.445312,
+          "changePercent": 0.01116707
+        },
+        {
+          "date": "2026-03-31",
+          "value": 68233.3125,
+          "changePercent": 0.02311941
+        },
+        {
+          "date": "2026-04-01",
+          "value": 68078.554688,
+          "changePercent": -0.00226807
+        },
+        {
+          "date": "2026-04-02",
+          "value": 66888.570312,
+          "changePercent": -0.01747958
+        },
+        {
+          "date": "2026-04-03",
+          "value": 66931.101562,
+          "changePercent": 0.00063585
+        },
+        {
+          "date": "2026-04-04",
+          "value": 67290.515625,
+          "changePercent": 0.00536991
+        },
+        {
+          "date": "2026-04-05",
+          "value": 68981.898438,
+          "changePercent": 0.02513553
+        },
+        {
+          "date": "2026-04-06",
+          "value": 68859.828125,
+          "changePercent": -0.0017696
+        },
+        {
+          "date": "2026-04-07",
+          "value": 71940.703125,
+          "changePercent": 0.04474125
+        },
+        {
+          "date": "2026-04-08",
+          "value": 71123.359375,
+          "changePercent": -0.01136135
+        },
+        {
+          "date": "2026-04-09",
+          "value": 71767.828125,
+          "changePercent": 0.00906128
+        },
+        {
+          "date": "2026-04-10",
+          "value": 72979.046875,
+          "changePercent": 0.0168769
+        },
+        {
+          "date": "2026-04-11",
+          "value": 73054.273438,
+          "changePercent": 0.0010308
+        },
+        {
+          "date": "2026-04-12",
+          "value": 70753.40625,
+          "changePercent": -0.03149531
+        },
+        {
+          "date": "2026-04-13",
+          "value": 74484.640625,
+          "changePercent": 0.05273576
+        },
+        {
+          "date": "2026-04-14",
+          "value": 74181.609375,
+          "changePercent": -0.00406837
+        },
+        {
+          "date": "2026-04-15",
+          "value": 74805.078125,
+          "changePercent": 0.00840463
+        },
+        {
+          "date": "2026-04-16",
+          "value": 75152.132812,
+          "changePercent": 0.00463945
+        },
+        {
+          "date": "2026-04-17",
+          "value": 77126.875,
+          "changePercent": 0.0262766
+        },
+        {
+          "date": "2026-04-18",
+          "value": 75726.210938,
+          "changePercent": -0.01816052
+        },
+        {
+          "date": "2026-04-19",
+          "value": 73856.351562,
+          "changePercent": -0.02469237
+        },
+        {
+          "date": "2026-04-20",
+          "value": 75872.523438,
+          "changePercent": 0.02729856
+        },
+        {
+          "date": "2026-04-21",
+          "value": 76352.773438,
+          "changePercent": 0.0063297
+        },
+        {
+          "date": "2026-04-22",
+          "value": 78203.101562,
+          "changePercent": 0.02423393
+        },
+        {
+          "date": "2026-04-23",
+          "value": 78268.953125,
+          "changePercent": 0.00084206
+        },
+        {
+          "date": "2026-04-24",
+          "value": 77455.3125,
+          "changePercent": -0.01039545
+        },
+        {
+          "date": "2026-04-25",
+          "value": 77612.015625,
+          "changePercent": 0.00202314
+        },
+        {
+          "date": "2026-04-26",
+          "value": 78657.539062,
+          "changePercent": 0.01347115
+        },
+        {
+          "date": "2026-04-27",
+          "value": 77366.625,
+          "changePercent": -0.01641183
+        },
+        {
+          "date": "2026-04-28",
+          "value": 76350.671875,
+          "changePercent": -0.01313167
+        },
+        {
+          "date": "2026-04-29",
+          "value": 75776.132812,
+          "changePercent": -0.007525
+        },
+        {
+          "date": "2026-04-30",
+          "value": 76304.320312,
+          "changePercent": 0.00697037
+        },
+        {
+          "date": "2026-05-01",
+          "value": 78179.0,
+          "changePercent": 0.02456846
+        },
+        {
+          "date": "2026-05-02",
+          "value": 78657.25,
+          "changePercent": 0.00611737
+        },
+        {
+          "date": "2026-05-03",
+          "value": 78538.226562,
+          "changePercent": -0.00151319
+        },
+        {
+          "date": "2026-05-04",
+          "value": 79827.90625,
+          "changePercent": 0.01642104
+        },
+        {
+          "date": "2026-05-05",
+          "value": 80927.054688,
+          "changePercent": 0.01376897
+        },
+        {
+          "date": "2026-05-06",
+          "value": 81427.53125,
+          "changePercent": 0.00618429
+        },
+        {
+          "date": "2026-05-07",
+          "value": 80009.992188,
+          "changePercent": -0.0174086
+        },
+        {
+          "date": "2026-05-08",
+          "value": 80186.765625,
+          "changePercent": 0.00220939
+        },
+        {
+          "date": "2026-05-09",
+          "value": 80664.367188,
+          "changePercent": 0.00595611
+        },
+        {
+          "date": "2026-05-10",
+          "value": 82138.929688,
+          "changePercent": 0.01828022
+        },
+        {
+          "date": "2026-05-11",
+          "value": 81728.296875,
+          "changePercent": -0.00499925
+        },
+        {
+          "date": "2026-05-12",
+          "value": 80477.492188,
+          "changePercent": -0.01530443
+        },
+        {
+          "date": "2026-05-13",
+          "value": 79277.117188,
+          "changePercent": -0.01491566
+        },
+        {
+          "date": "2026-05-14",
+          "value": 81051.25,
+          "changePercent": 0.02237888
+        },
+        {
+          "date": "2026-05-15",
+          "value": 79065.679688,
+          "changePercent": -0.02449771
+        },
+        {
+          "date": "2026-05-16",
+          "value": 78131.4375,
+          "changePercent": -0.01181603
+        },
+        {
+          "date": "2026-05-17",
+          "value": 77429.351562,
+          "changePercent": -0.00898596
+        },
+        {
+          "date": "2026-05-18",
+          "value": 76954.171875,
+          "changePercent": -0.00613695
+        },
+        {
+          "date": "2026-05-19",
+          "value": 76750.90625,
+          "changePercent": -0.00264139
+        },
+        {
+          "date": "2026-05-20",
+          "value": 77457.773438,
+          "changePercent": 0.00920989
+        },
+        {
+          "date": "2026-05-21",
+          "value": 77539.171875,
+          "changePercent": 0.00105087
+        },
+        {
+          "date": "2026-05-22",
+          "value": 75488.242188,
+          "changePercent": -0.02645024
+        },
+        {
+          "date": "2026-05-23",
+          "value": 76673.367188,
+          "changePercent": 0.01569946
+        },
+        {
+          "date": "2026-05-24",
+          "value": 76981.125,
+          "changePercent": 0.00401388
+        },
+        {
+          "date": "2026-05-25",
+          "value": 77279.929688,
+          "changePercent": 0.00388153
+        },
+        {
+          "date": "2026-05-26",
+          "value": 75825.734375,
+          "changePercent": -0.01881724
+        },
+        {
+          "date": "2026-05-27",
+          "value": 74344.703125,
+          "changePercent": -0.01953204
+        },
+        {
+          "date": "2026-05-28",
+          "value": 73536.554688,
+          "changePercent": -0.01087029
+        },
+        {
+          "date": "2026-05-29",
+          "value": 73372.523438,
+          "changePercent": -0.00223061
+        },
+        {
+          "date": "2026-05-30",
+          "value": 73754.835938,
+          "changePercent": 0.00521057
+        },
+        {
+          "date": "2026-05-31",
+          "value": 73579.6875,
+          "changePercent": -0.00237474
+        },
+        {
+          "date": "2026-06-01",
+          "value": 71319.773438,
+          "changePercent": -0.03071383
+        },
+        {
+          "date": "2026-06-02",
+          "value": 66703.65625,
+          "changePercent": -0.06472423
+        },
+        {
+          "date": "2026-06-03",
+          "value": 64014.367188,
+          "changePercent": -0.04031697
+        },
+        {
+          "date": "2026-06-04",
+          "value": 63801.574219,
+          "changePercent": -0.00332414
+        },
+        {
+          "date": "2026-06-05",
+          "value": 60922.667969,
+          "changePercent": -0.04512281
+        },
+        {
+          "date": "2026-06-06",
+          "value": 60867.414062,
+          "changePercent": -0.00090695
+        },
+        {
+          "date": "2026-06-07",
+          "value": 63239.519531,
+          "changePercent": 0.03897168
+        },
+        {
+          "date": "2026-06-08",
+          "value": 63090.589844,
+          "changePercent": -0.00235501
+        },
+        {
+          "date": "2026-06-09",
+          "value": 61643.78125,
+          "changePercent": -0.02293224
+        },
+        {
+          "date": "2026-06-10",
+          "value": 61449.289062,
+          "changePercent": -0.0031551
+        },
+        {
+          "date": "2026-06-11",
+          "value": 63561.054688,
+          "changePercent": 0.03436599
+        },
+        {
+          "date": "2026-06-12",
+          "value": 63543.199219,
+          "changePercent": -0.00028092
+        }
+      ]
+    },
+    {
+      "label": "SPX",
+      "symbol": "^GSPC",
+      "source": "yfinance",
+      "formula": "Daily Close; change = Close / PreviousClose - 1",
+      "status": "ok",
+      "reason": null,
+      "series": [
+        7408.5,
+        7403.049805,
+        7353.609863,
+        7432.970215,
+        7445.720215,
+        7473.470215,
+        7519.120117,
+        7520.359863,
+        7563.629883,
+        7580.060059,
+        7599.959961,
+        7609.779785,
+        7553.680176,
+        7584.310059,
+        7383.740234,
+        7405.72998,
+        7386.649902,
+        7266.990234,
+        7394.299805,
+        7431.459961
+      ],
+      "rows": [
+        {
+          "date": "2025-01-02",
+          "value": 5868.549805,
+          "changePercent": null
+        },
+        {
+          "date": "2025-01-03",
+          "value": 5942.470215,
+          "changePercent": 0.01259603
+        },
+        {
+          "date": "2025-01-06",
+          "value": 5975.379883,
+          "changePercent": 0.00553805
+        },
+        {
+          "date": "2025-01-07",
+          "value": 5909.029785,
+          "changePercent": -0.01110391
+        },
+        {
+          "date": "2025-01-08",
+          "value": 5918.25,
+          "changePercent": 0.00156036
+        },
+        {
+          "date": "2025-01-10",
+          "value": 5827.040039,
+          "changePercent": -0.01541164
+        },
+        {
+          "date": "2025-01-13",
+          "value": 5836.220215,
+          "changePercent": 0.00157544
+        },
+        {
+          "date": "2025-01-14",
+          "value": 5842.910156,
+          "changePercent": 0.00114628
+        },
+        {
+          "date": "2025-01-15",
+          "value": 5949.910156,
+          "changePercent": 0.01831279
+        },
+        {
+          "date": "2025-01-16",
+          "value": 5937.339844,
+          "changePercent": -0.00211269
+        },
+        {
+          "date": "2025-01-17",
+          "value": 5996.660156,
+          "changePercent": 0.00999106
+        },
+        {
+          "date": "2025-01-21",
+          "value": 6049.240234,
+          "changePercent": 0.00876823
+        },
+        {
+          "date": "2025-01-22",
+          "value": 6086.370117,
+          "changePercent": 0.00613794
+        },
+        {
+          "date": "2025-01-23",
+          "value": 6118.709961,
+          "changePercent": 0.00531349
+        },
+        {
+          "date": "2025-01-24",
+          "value": 6101.240234,
+          "changePercent": -0.00285513
+        },
+        {
+          "date": "2025-01-27",
+          "value": 6012.279785,
+          "changePercent": -0.01458072
+        },
+        {
+          "date": "2025-01-28",
+          "value": 6067.700195,
+          "changePercent": 0.00921787
+        },
+        {
+          "date": "2025-01-29",
+          "value": 6039.310059,
+          "changePercent": -0.0046789
+        },
+        {
+          "date": "2025-01-30",
+          "value": 6071.169922,
+          "changePercent": 0.00527541
+        },
+        {
+          "date": "2025-01-31",
+          "value": 6040.529785,
+          "changePercent": -0.00504683
+        },
+        {
+          "date": "2025-02-03",
+          "value": 5994.569824,
+          "changePercent": -0.0076086
+        },
+        {
+          "date": "2025-02-04",
+          "value": 6037.879883,
+          "changePercent": 0.00722488
+        },
+        {
+          "date": "2025-02-05",
+          "value": 6061.47998,
+          "changePercent": 0.00390867
+        },
+        {
+          "date": "2025-02-06",
+          "value": 6083.569824,
+          "changePercent": 0.0036443
+        },
+        {
+          "date": "2025-02-07",
+          "value": 6025.990234,
+          "changePercent": -0.00946477
+        },
+        {
+          "date": "2025-02-10",
+          "value": 6066.439941,
+          "changePercent": 0.00671254
+        },
+        {
+          "date": "2025-02-11",
+          "value": 6068.5,
+          "changePercent": 0.00033958
+        },
+        {
+          "date": "2025-02-12",
+          "value": 6051.970215,
+          "changePercent": -0.00272387
+        },
+        {
+          "date": "2025-02-13",
+          "value": 6115.069824,
+          "changePercent": 0.01042629
+        },
+        {
+          "date": "2025-02-14",
+          "value": 6114.629883,
+          "changePercent": -7.194e-05
+        },
+        {
+          "date": "2025-02-18",
+          "value": 6129.580078,
+          "changePercent": 0.00244499
+        },
+        {
+          "date": "2025-02-19",
+          "value": 6144.149902,
+          "changePercent": 0.00237697
+        },
+        {
+          "date": "2025-02-20",
+          "value": 6117.52002,
+          "changePercent": -0.00433419
+        },
+        {
+          "date": "2025-02-21",
+          "value": 6013.129883,
+          "changePercent": -0.01706413
+        },
+        {
+          "date": "2025-02-24",
+          "value": 5983.25,
+          "changePercent": -0.00496911
+        },
+        {
+          "date": "2025-02-25",
+          "value": 5955.25,
+          "changePercent": -0.00467973
+        },
+        {
+          "date": "2025-02-26",
+          "value": 5956.060059,
+          "changePercent": 0.00013602
+        },
+        {
+          "date": "2025-02-27",
+          "value": 5861.569824,
+          "changePercent": -0.01586455
+        },
+        {
+          "date": "2025-02-28",
+          "value": 5954.5,
+          "changePercent": 0.01585414
+        },
+        {
+          "date": "2025-03-03",
+          "value": 5849.720215,
+          "changePercent": -0.01759674
+        },
+        {
+          "date": "2025-03-04",
+          "value": 5778.149902,
+          "changePercent": -0.01223483
+        },
+        {
+          "date": "2025-03-05",
+          "value": 5842.629883,
+          "changePercent": 0.01115928
+        },
+        {
+          "date": "2025-03-06",
+          "value": 5738.52002,
+          "changePercent": -0.01781901
+        },
+        {
+          "date": "2025-03-07",
+          "value": 5770.200195,
+          "changePercent": 0.00552062
+        },
+        {
+          "date": "2025-03-10",
+          "value": 5614.560059,
+          "changePercent": -0.02697309
+        },
+        {
+          "date": "2025-03-11",
+          "value": 5572.069824,
+          "changePercent": -0.00756787
+        },
+        {
+          "date": "2025-03-12",
+          "value": 5599.299805,
+          "changePercent": 0.00488687
+        },
+        {
+          "date": "2025-03-13",
+          "value": 5521.52002,
+          "changePercent": -0.01389098
+        },
+        {
+          "date": "2025-03-14",
+          "value": 5638.939941,
+          "changePercent": 0.02126587
+        },
+        {
+          "date": "2025-03-17",
+          "value": 5675.120117,
+          "changePercent": 0.00641613
+        },
+        {
+          "date": "2025-03-18",
+          "value": 5614.660156,
+          "changePercent": -0.01065351
+        },
+        {
+          "date": "2025-03-19",
+          "value": 5675.290039,
+          "changePercent": 0.0107985
+        },
+        {
+          "date": "2025-03-20",
+          "value": 5662.890137,
+          "changePercent": -0.00218489
+        },
+        {
+          "date": "2025-03-21",
+          "value": 5667.560059,
+          "changePercent": 0.00082465
+        },
+        {
+          "date": "2025-03-24",
+          "value": 5767.569824,
+          "changePercent": 0.017646
+        },
+        {
+          "date": "2025-03-25",
+          "value": 5776.649902,
+          "changePercent": 0.00157433
+        },
+        {
+          "date": "2025-03-26",
+          "value": 5712.200195,
+          "changePercent": -0.01115693
+        },
+        {
+          "date": "2025-03-27",
+          "value": 5693.310059,
+          "changePercent": -0.00330698
+        },
+        {
+          "date": "2025-03-28",
+          "value": 5580.939941,
+          "changePercent": -0.01973722
+        },
+        {
+          "date": "2025-03-31",
+          "value": 5611.850098,
+          "changePercent": 0.00553852
+        },
+        {
+          "date": "2025-04-01",
+          "value": 5633.069824,
+          "changePercent": 0.00378124
+        },
+        {
+          "date": "2025-04-02",
+          "value": 5670.970215,
+          "changePercent": 0.00672819
+        },
+        {
+          "date": "2025-04-03",
+          "value": 5396.52002,
+          "changePercent": -0.04839563
+        },
+        {
+          "date": "2025-04-04",
+          "value": 5074.080078,
+          "changePercent": -0.05974961
+        },
+        {
+          "date": "2025-04-07",
+          "value": 5062.25,
+          "changePercent": -0.00233147
+        },
+        {
+          "date": "2025-04-08",
+          "value": 4982.77002,
+          "changePercent": -0.01570052
+        },
+        {
+          "date": "2025-04-09",
+          "value": 5456.899902,
+          "changePercent": 0.09515388
+        },
+        {
+          "date": "2025-04-10",
+          "value": 5268.049805,
+          "changePercent": -0.03460758
+        },
+        {
+          "date": "2025-04-11",
+          "value": 5363.359863,
+          "changePercent": 0.0180921
+        },
+        {
+          "date": "2025-04-14",
+          "value": 5405.970215,
+          "changePercent": 0.00794471
+        },
+        {
+          "date": "2025-04-15",
+          "value": 5396.629883,
+          "changePercent": -0.00172778
+        },
+        {
+          "date": "2025-04-16",
+          "value": 5275.700195,
+          "changePercent": -0.02240837
+        },
+        {
+          "date": "2025-04-17",
+          "value": 5282.700195,
+          "changePercent": 0.00132684
+        },
+        {
+          "date": "2025-04-21",
+          "value": 5158.200195,
+          "changePercent": -0.02356749
+        },
+        {
+          "date": "2025-04-22",
+          "value": 5287.759766,
+          "changePercent": 0.0251172
+        },
+        {
+          "date": "2025-04-23",
+          "value": 5375.859863,
+          "changePercent": 0.01666114
+        },
+        {
+          "date": "2025-04-24",
+          "value": 5484.77002,
+          "changePercent": 0.02025911
+        },
+        {
+          "date": "2025-04-25",
+          "value": 5525.209961,
+          "changePercent": 0.00737313
+        },
+        {
+          "date": "2025-04-28",
+          "value": 5528.75,
+          "changePercent": 0.00064071
+        },
+        {
+          "date": "2025-04-29",
+          "value": 5560.830078,
+          "changePercent": 0.00580241
+        },
+        {
+          "date": "2025-04-30",
+          "value": 5569.060059,
+          "changePercent": 0.00147999
+        },
+        {
+          "date": "2025-05-01",
+          "value": 5604.140137,
+          "changePercent": 0.0062991
+        },
+        {
+          "date": "2025-05-02",
+          "value": 5686.669922,
+          "changePercent": 0.01472657
+        },
+        {
+          "date": "2025-05-05",
+          "value": 5650.379883,
+          "changePercent": -0.0063816
+        },
+        {
+          "date": "2025-05-06",
+          "value": 5606.910156,
+          "changePercent": -0.00769324
+        },
+        {
+          "date": "2025-05-07",
+          "value": 5631.279785,
+          "changePercent": 0.00434636
+        },
+        {
+          "date": "2025-05-08",
+          "value": 5663.939941,
+          "changePercent": 0.00579978
+        },
+        {
+          "date": "2025-05-09",
+          "value": 5659.910156,
+          "changePercent": -0.00071148
+        },
+        {
+          "date": "2025-05-12",
+          "value": 5844.189941,
+          "changePercent": 0.03255878
+        },
+        {
+          "date": "2025-05-13",
+          "value": 5886.549805,
+          "changePercent": 0.0072482
+        },
+        {
+          "date": "2025-05-14",
+          "value": 5892.580078,
+          "changePercent": 0.00102442
+        },
+        {
+          "date": "2025-05-15",
+          "value": 5916.930176,
+          "changePercent": 0.00413233
+        },
+        {
+          "date": "2025-05-16",
+          "value": 5958.379883,
+          "changePercent": 0.00700527
+        },
+        {
+          "date": "2025-05-19",
+          "value": 5963.600098,
+          "changePercent": 0.00087611
+        },
+        {
+          "date": "2025-05-20",
+          "value": 5940.459961,
+          "changePercent": -0.00388023
+        },
+        {
+          "date": "2025-05-21",
+          "value": 5844.609863,
+          "changePercent": -0.01613513
+        },
+        {
+          "date": "2025-05-22",
+          "value": 5842.009766,
+          "changePercent": -0.00044487
+        },
+        {
+          "date": "2025-05-23",
+          "value": 5802.819824,
+          "changePercent": -0.0067083
+        },
+        {
+          "date": "2025-05-27",
+          "value": 5921.540039,
+          "changePercent": 0.02045906
+        },
+        {
+          "date": "2025-05-28",
+          "value": 5888.549805,
+          "changePercent": -0.00557123
+        },
+        {
+          "date": "2025-05-29",
+          "value": 5912.169922,
+          "changePercent": 0.00401119
+        },
+        {
+          "date": "2025-05-30",
+          "value": 5911.689941,
+          "changePercent": -8.119e-05
+        },
+        {
+          "date": "2025-06-02",
+          "value": 5935.939941,
+          "changePercent": 0.00410204
+        },
+        {
+          "date": "2025-06-03",
+          "value": 5970.370117,
+          "changePercent": 0.00580029
+        },
+        {
+          "date": "2025-06-04",
+          "value": 5970.810059,
+          "changePercent": 7.369e-05
+        },
+        {
+          "date": "2025-06-05",
+          "value": 5939.299805,
+          "changePercent": -0.00527738
+        },
+        {
+          "date": "2025-06-06",
+          "value": 6000.359863,
+          "changePercent": 0.01028068
+        },
+        {
+          "date": "2025-06-09",
+          "value": 6005.879883,
+          "changePercent": 0.00091995
+        },
+        {
+          "date": "2025-06-10",
+          "value": 6038.810059,
+          "changePercent": 0.00548299
+        },
+        {
+          "date": "2025-06-11",
+          "value": 6022.240234,
+          "changePercent": -0.00274389
+        },
+        {
+          "date": "2025-06-12",
+          "value": 6045.259766,
+          "changePercent": 0.00382242
+        },
+        {
+          "date": "2025-06-13",
+          "value": 5976.970215,
+          "changePercent": -0.01129638
+        },
+        {
+          "date": "2025-06-16",
+          "value": 6033.109863,
+          "changePercent": 0.00939266
+        },
+        {
+          "date": "2025-06-17",
+          "value": 5982.720215,
+          "changePercent": -0.00835218
+        },
+        {
+          "date": "2025-06-18",
+          "value": 5980.870117,
+          "changePercent": -0.00030924
+        },
+        {
+          "date": "2025-06-20",
+          "value": 5967.839844,
+          "changePercent": -0.00217866
+        },
+        {
+          "date": "2025-06-23",
+          "value": 6025.169922,
+          "changePercent": 0.0096065
+        },
+        {
+          "date": "2025-06-24",
+          "value": 6092.180176,
+          "changePercent": 0.01112172
+        },
+        {
+          "date": "2025-06-25",
+          "value": 6092.160156,
+          "changePercent": -3.29e-06
+        },
+        {
+          "date": "2025-06-26",
+          "value": 6141.02002,
+          "changePercent": 0.00802012
+        },
+        {
+          "date": "2025-06-27",
+          "value": 6173.069824,
+          "changePercent": 0.00521897
+        },
+        {
+          "date": "2025-06-30",
+          "value": 6204.950195,
+          "changePercent": 0.00516443
+        },
+        {
+          "date": "2025-07-01",
+          "value": 6198.009766,
+          "changePercent": -0.00111853
+        },
+        {
+          "date": "2025-07-02",
+          "value": 6227.419922,
+          "changePercent": 0.0047451
+        },
+        {
+          "date": "2025-07-03",
+          "value": 6279.350098,
+          "changePercent": 0.00833896
+        },
+        {
+          "date": "2025-07-07",
+          "value": 6229.97998,
+          "changePercent": -0.0078623
+        },
+        {
+          "date": "2025-07-08",
+          "value": 6225.52002,
+          "changePercent": -0.00071589
+        },
+        {
+          "date": "2025-07-09",
+          "value": 6263.259766,
+          "changePercent": 0.0060621
+        },
+        {
+          "date": "2025-07-10",
+          "value": 6280.459961,
+          "changePercent": 0.00274621
+        },
+        {
+          "date": "2025-07-11",
+          "value": 6259.75,
+          "changePercent": -0.00329752
+        },
+        {
+          "date": "2025-07-14",
+          "value": 6268.560059,
+          "changePercent": 0.00140741
+        },
+        {
+          "date": "2025-07-15",
+          "value": 6243.759766,
+          "changePercent": -0.0039563
+        },
+        {
+          "date": "2025-07-16",
+          "value": 6263.700195,
+          "changePercent": 0.00319366
+        },
+        {
+          "date": "2025-07-17",
+          "value": 6297.359863,
+          "changePercent": 0.00537377
+        },
+        {
+          "date": "2025-07-18",
+          "value": 6296.790039,
+          "changePercent": -9.049e-05
+        },
+        {
+          "date": "2025-07-21",
+          "value": 6305.600098,
+          "changePercent": 0.00139913
+        },
+        {
+          "date": "2025-07-22",
+          "value": 6309.620117,
+          "changePercent": 0.00063753
+        },
+        {
+          "date": "2025-07-23",
+          "value": 6358.910156,
+          "changePercent": 0.00781189
+        },
+        {
+          "date": "2025-07-24",
+          "value": 6363.350098,
+          "changePercent": 0.00069822
+        },
+        {
+          "date": "2025-07-25",
+          "value": 6388.640137,
+          "changePercent": 0.00397433
+        },
+        {
+          "date": "2025-07-28",
+          "value": 6389.77002,
+          "changePercent": 0.00017686
+        },
+        {
+          "date": "2025-07-29",
+          "value": 6370.859863,
+          "changePercent": -0.00295944
+        },
+        {
+          "date": "2025-07-30",
+          "value": 6362.899902,
+          "changePercent": -0.00124943
+        },
+        {
+          "date": "2025-07-31",
+          "value": 6339.390137,
+          "changePercent": -0.00369482
+        },
+        {
+          "date": "2025-08-01",
+          "value": 6238.009766,
+          "changePercent": -0.01599213
+        },
+        {
+          "date": "2025-08-04",
+          "value": 6329.939941,
+          "changePercent": 0.0147371
+        },
+        {
+          "date": "2025-08-05",
+          "value": 6299.189941,
+          "changePercent": -0.00485787
+        },
+        {
+          "date": "2025-08-06",
+          "value": 6345.060059,
+          "changePercent": 0.00728191
+        },
+        {
+          "date": "2025-08-07",
+          "value": 6340.0,
+          "changePercent": -0.00079748
+        },
+        {
+          "date": "2025-08-08",
+          "value": 6389.450195,
+          "changePercent": 0.00779972
+        },
+        {
+          "date": "2025-08-11",
+          "value": 6373.450195,
+          "changePercent": -0.00250413
+        },
+        {
+          "date": "2025-08-12",
+          "value": 6445.759766,
+          "changePercent": 0.01134544
+        },
+        {
+          "date": "2025-08-13",
+          "value": 6466.580078,
+          "changePercent": 0.00323008
+        },
+        {
+          "date": "2025-08-14",
+          "value": 6468.540039,
+          "changePercent": 0.00030309
+        },
+        {
+          "date": "2025-08-15",
+          "value": 6449.799805,
+          "changePercent": -0.00289714
+        },
+        {
+          "date": "2025-08-18",
+          "value": 6449.149902,
+          "changePercent": -0.00010076
+        },
+        {
+          "date": "2025-08-19",
+          "value": 6411.370117,
+          "changePercent": -0.0058581
+        },
+        {
+          "date": "2025-08-20",
+          "value": 6395.779785,
+          "changePercent": -0.00243167
+        },
+        {
+          "date": "2025-08-21",
+          "value": 6370.169922,
+          "changePercent": -0.00400418
+        },
+        {
+          "date": "2025-08-22",
+          "value": 6466.910156,
+          "changePercent": 0.01518644
+        },
+        {
+          "date": "2025-08-25",
+          "value": 6439.319824,
+          "changePercent": -0.00426639
+        },
+        {
+          "date": "2025-08-26",
+          "value": 6465.939941,
+          "changePercent": 0.004134
+        },
+        {
+          "date": "2025-08-27",
+          "value": 6481.399902,
+          "changePercent": 0.00239098
+        },
+        {
+          "date": "2025-08-28",
+          "value": 6501.859863,
+          "changePercent": 0.00315672
+        },
+        {
+          "date": "2025-08-29",
+          "value": 6460.259766,
+          "changePercent": -0.00639818
+        },
+        {
+          "date": "2025-09-02",
+          "value": 6415.540039,
+          "changePercent": -0.00692228
+        },
+        {
+          "date": "2025-09-03",
+          "value": 6448.259766,
+          "changePercent": 0.00510007
+        },
+        {
+          "date": "2025-09-04",
+          "value": 6502.080078,
+          "changePercent": 0.00834649
+        },
+        {
+          "date": "2025-09-05",
+          "value": 6481.5,
+          "changePercent": -0.00316515
+        },
+        {
+          "date": "2025-09-08",
+          "value": 6495.149902,
+          "changePercent": 0.00210598
+        },
+        {
+          "date": "2025-09-09",
+          "value": 6512.609863,
+          "changePercent": 0.00268815
+        },
+        {
+          "date": "2025-09-10",
+          "value": 6532.040039,
+          "changePercent": 0.00298347
+        },
+        {
+          "date": "2025-09-11",
+          "value": 6587.470215,
+          "changePercent": 0.00848589
+        },
+        {
+          "date": "2025-09-12",
+          "value": 6584.290039,
+          "changePercent": -0.00048276
+        },
+        {
+          "date": "2025-09-15",
+          "value": 6615.279785,
+          "changePercent": 0.00470662
+        },
+        {
+          "date": "2025-09-16",
+          "value": 6606.759766,
+          "changePercent": -0.00128793
+        },
+        {
+          "date": "2025-09-17",
+          "value": 6600.350098,
+          "changePercent": -0.00097017
+        },
+        {
+          "date": "2025-09-18",
+          "value": 6631.959961,
+          "changePercent": 0.00478912
+        },
+        {
+          "date": "2025-09-19",
+          "value": 6664.359863,
+          "changePercent": 0.00488542
+        },
+        {
+          "date": "2025-09-22",
+          "value": 6693.75,
+          "changePercent": 0.00441005
+        },
+        {
+          "date": "2025-09-23",
+          "value": 6656.919922,
+          "changePercent": -0.00550216
+        },
+        {
+          "date": "2025-09-24",
+          "value": 6637.970215,
+          "changePercent": -0.00284662
+        },
+        {
+          "date": "2025-09-25",
+          "value": 6604.720215,
+          "changePercent": -0.00500906
+        },
+        {
+          "date": "2025-09-26",
+          "value": 6643.700195,
+          "changePercent": 0.00590184
+        },
+        {
+          "date": "2025-09-29",
+          "value": 6661.209961,
+          "changePercent": 0.00263554
+        },
+        {
+          "date": "2025-09-30",
+          "value": 6688.459961,
+          "changePercent": 0.00409085
+        },
+        {
+          "date": "2025-10-01",
+          "value": 6711.200195,
+          "changePercent": 0.00339992
+        },
+        {
+          "date": "2025-10-02",
+          "value": 6715.350098,
+          "changePercent": 0.00061835
+        },
+        {
+          "date": "2025-10-03",
+          "value": 6715.790039,
+          "changePercent": 6.551e-05
+        },
+        {
+          "date": "2025-10-06",
+          "value": 6740.279785,
+          "changePercent": 0.00364659
+        },
+        {
+          "date": "2025-10-07",
+          "value": 6714.589844,
+          "changePercent": -0.00381141
+        },
+        {
+          "date": "2025-10-08",
+          "value": 6753.720215,
+          "changePercent": 0.00582766
+        },
+        {
+          "date": "2025-10-09",
+          "value": 6735.109863,
+          "changePercent": -0.00275557
+        },
+        {
+          "date": "2025-10-10",
+          "value": 6552.509766,
+          "changePercent": -0.02711167
+        },
+        {
+          "date": "2025-10-13",
+          "value": 6654.720215,
+          "changePercent": 0.01559867
+        },
+        {
+          "date": "2025-10-14",
+          "value": 6644.310059,
+          "changePercent": -0.00156433
+        },
+        {
+          "date": "2025-10-15",
+          "value": 6671.060059,
+          "changePercent": 0.004026
+        },
+        {
+          "date": "2025-10-16",
+          "value": 6629.069824,
+          "changePercent": -0.00629439
+        },
+        {
+          "date": "2025-10-17",
+          "value": 6664.009766,
+          "changePercent": 0.00527072
+        },
+        {
+          "date": "2025-10-20",
+          "value": 6735.129883,
+          "changePercent": 0.01067227
+        },
+        {
+          "date": "2025-10-21",
+          "value": 6735.350098,
+          "changePercent": 3.27e-05
+        },
+        {
+          "date": "2025-10-22",
+          "value": 6699.399902,
+          "changePercent": -0.00533754
+        },
+        {
+          "date": "2025-10-23",
+          "value": 6738.439941,
+          "changePercent": 0.00582739
+        },
+        {
+          "date": "2025-10-24",
+          "value": 6791.689941,
+          "changePercent": 0.00790242
+        },
+        {
+          "date": "2025-10-27",
+          "value": 6875.160156,
+          "changePercent": 0.01229005
+        },
+        {
+          "date": "2025-10-28",
+          "value": 6890.890137,
+          "changePercent": 0.00228794
+        },
+        {
+          "date": "2025-10-29",
+          "value": 6890.589844,
+          "changePercent": -4.358e-05
+        },
+        {
+          "date": "2025-10-30",
+          "value": 6822.339844,
+          "changePercent": -0.00990481
+        },
+        {
+          "date": "2025-10-31",
+          "value": 6840.200195,
+          "changePercent": 0.00261792
+        },
+        {
+          "date": "2025-11-03",
+          "value": 6851.970215,
+          "changePercent": 0.00172071
+        },
+        {
+          "date": "2025-11-04",
+          "value": 6771.549805,
+          "changePercent": -0.01173683
+        },
+        {
+          "date": "2025-11-05",
+          "value": 6796.290039,
+          "changePercent": 0.00365356
+        },
+        {
+          "date": "2025-11-06",
+          "value": 6720.319824,
+          "changePercent": -0.01117819
+        },
+        {
+          "date": "2025-11-07",
+          "value": 6728.799805,
+          "changePercent": 0.00126184
+        },
+        {
+          "date": "2025-11-10",
+          "value": 6832.430176,
+          "changePercent": 0.01540102
+        },
+        {
+          "date": "2025-11-11",
+          "value": 6846.609863,
+          "changePercent": 0.00207535
+        },
+        {
+          "date": "2025-11-12",
+          "value": 6850.919922,
+          "changePercent": 0.00062952
+        },
+        {
+          "date": "2025-11-13",
+          "value": 6737.490234,
+          "changePercent": -0.01655685
+        },
+        {
+          "date": "2025-11-14",
+          "value": 6734.109863,
+          "changePercent": -0.00050173
+        },
+        {
+          "date": "2025-11-17",
+          "value": 6672.410156,
+          "changePercent": -0.00916227
+        },
+        {
+          "date": "2025-11-18",
+          "value": 6617.319824,
+          "changePercent": -0.00825644
+        },
+        {
+          "date": "2025-11-19",
+          "value": 6642.160156,
+          "changePercent": 0.00375384
+        },
+        {
+          "date": "2025-11-20",
+          "value": 6538.759766,
+          "changePercent": -0.01556728
+        },
+        {
+          "date": "2025-11-21",
+          "value": 6602.990234,
+          "changePercent": 0.00982304
+        },
+        {
+          "date": "2025-11-24",
+          "value": 6705.120117,
+          "changePercent": 0.01546722
+        },
+        {
+          "date": "2025-11-25",
+          "value": 6765.879883,
+          "changePercent": 0.0090617
+        },
+        {
+          "date": "2025-11-26",
+          "value": 6812.609863,
+          "changePercent": 0.00690671
+        },
+        {
+          "date": "2025-11-28",
+          "value": 6849.089844,
+          "changePercent": 0.00535477
+        },
+        {
+          "date": "2025-12-01",
+          "value": 6812.629883,
+          "changePercent": -0.00532333
+        },
+        {
+          "date": "2025-12-02",
+          "value": 6829.370117,
+          "changePercent": 0.00245724
+        },
+        {
+          "date": "2025-12-03",
+          "value": 6849.720215,
+          "changePercent": 0.00297979
+        },
+        {
+          "date": "2025-12-04",
+          "value": 6857.120117,
+          "changePercent": 0.00108032
+        },
+        {
+          "date": "2025-12-05",
+          "value": 6870.399902,
+          "changePercent": 0.00193664
+        },
+        {
+          "date": "2025-12-08",
+          "value": 6846.509766,
+          "changePercent": -0.00347726
+        },
+        {
+          "date": "2025-12-09",
+          "value": 6840.509766,
+          "changePercent": -0.00087636
+        },
+        {
+          "date": "2025-12-10",
+          "value": 6886.680176,
+          "changePercent": 0.00674956
+        },
+        {
+          "date": "2025-12-11",
+          "value": 6901.0,
+          "changePercent": 0.00207935
+        },
+        {
+          "date": "2025-12-12",
+          "value": 6827.410156,
+          "changePercent": -0.01066365
+        },
+        {
+          "date": "2025-12-15",
+          "value": 6816.509766,
+          "changePercent": -0.00159656
+        },
+        {
+          "date": "2025-12-16",
+          "value": 6800.259766,
+          "changePercent": -0.00238392
+        },
+        {
+          "date": "2025-12-17",
+          "value": 6721.430176,
+          "changePercent": -0.01159214
+        },
+        {
+          "date": "2025-12-18",
+          "value": 6774.759766,
+          "changePercent": 0.00793426
+        },
+        {
+          "date": "2025-12-19",
+          "value": 6834.5,
+          "changePercent": 0.00881806
+        },
+        {
+          "date": "2025-12-22",
+          "value": 6878.490234,
+          "changePercent": 0.0064365
+        },
+        {
+          "date": "2025-12-23",
+          "value": 6909.790039,
+          "changePercent": 0.00455039
+        },
+        {
+          "date": "2025-12-24",
+          "value": 6932.049805,
+          "changePercent": 0.00322148
+        },
+        {
+          "date": "2025-12-26",
+          "value": 6929.939941,
+          "changePercent": -0.00030436
+        },
+        {
+          "date": "2025-12-29",
+          "value": 6905.740234,
+          "changePercent": -0.00349205
+        },
+        {
+          "date": "2025-12-30",
+          "value": 6896.240234,
+          "changePercent": -0.00137567
+        },
+        {
+          "date": "2025-12-31",
+          "value": 6845.5,
+          "changePercent": -0.00735767
+        },
+        {
+          "date": "2026-01-02",
+          "value": 6858.470215,
+          "changePercent": 0.00189471
+        },
+        {
+          "date": "2026-01-05",
+          "value": 6902.049805,
+          "changePercent": 0.00635413
+        },
+        {
+          "date": "2026-01-06",
+          "value": 6944.819824,
+          "changePercent": 0.00619671
+        },
+        {
+          "date": "2026-01-07",
+          "value": 6920.930176,
+          "changePercent": -0.00343992
+        },
+        {
+          "date": "2026-01-08",
+          "value": 6921.459961,
+          "changePercent": 7.655e-05
+        },
+        {
+          "date": "2026-01-09",
+          "value": 6966.279785,
+          "changePercent": 0.00647549
+        },
+        {
+          "date": "2026-01-12",
+          "value": 6977.27002,
+          "changePercent": 0.00157763
+        },
+        {
+          "date": "2026-01-13",
+          "value": 6963.740234,
+          "changePercent": -0.00193912
+        },
+        {
+          "date": "2026-01-14",
+          "value": 6926.600098,
+          "changePercent": -0.00533336
+        },
+        {
+          "date": "2026-01-15",
+          "value": 6944.470215,
+          "changePercent": 0.00257993
+        },
+        {
+          "date": "2026-01-16",
+          "value": 6940.009766,
+          "changePercent": -0.0006423
+        },
+        {
+          "date": "2026-01-20",
+          "value": 6796.859863,
+          "changePercent": -0.02062676
+        },
+        {
+          "date": "2026-01-21",
+          "value": 6875.620117,
+          "changePercent": 0.01158774
+        },
+        {
+          "date": "2026-01-22",
+          "value": 6913.350098,
+          "changePercent": 0.0054875
+        },
+        {
+          "date": "2026-01-23",
+          "value": 6915.609863,
+          "changePercent": 0.00032687
+        },
+        {
+          "date": "2026-01-26",
+          "value": 6950.22998,
+          "changePercent": 0.00500608
+        },
+        {
+          "date": "2026-01-27",
+          "value": 6978.600098,
+          "changePercent": 0.0040819
+        },
+        {
+          "date": "2026-01-28",
+          "value": 6978.029785,
+          "changePercent": -8.172e-05
+        },
+        {
+          "date": "2026-01-29",
+          "value": 6969.009766,
+          "changePercent": -0.00129263
+        },
+        {
+          "date": "2026-01-30",
+          "value": 6939.029785,
+          "changePercent": -0.0043019
+        },
+        {
+          "date": "2026-02-02",
+          "value": 6976.439941,
+          "changePercent": 0.00539127
+        },
+        {
+          "date": "2026-02-03",
+          "value": 6917.810059,
+          "changePercent": -0.00840398
+        },
+        {
+          "date": "2026-02-04",
+          "value": 6882.720215,
+          "changePercent": -0.00507239
+        },
+        {
+          "date": "2026-02-05",
+          "value": 6798.399902,
+          "changePercent": -0.01225102
+        },
+        {
+          "date": "2026-02-06",
+          "value": 6932.299805,
+          "changePercent": 0.0196958
+        },
+        {
+          "date": "2026-02-09",
+          "value": 6964.819824,
+          "changePercent": 0.00469109
+        },
+        {
+          "date": "2026-02-10",
+          "value": 6941.810059,
+          "changePercent": -0.00330371
+        },
+        {
+          "date": "2026-02-11",
+          "value": 6941.470215,
+          "changePercent": -4.896e-05
+        },
+        {
+          "date": "2026-02-12",
+          "value": 6832.759766,
+          "changePercent": -0.01566101
+        },
+        {
+          "date": "2026-02-13",
+          "value": 6836.169922,
+          "changePercent": 0.00049909
+        },
+        {
+          "date": "2026-02-17",
+          "value": 6843.220215,
+          "changePercent": 0.00103132
+        },
+        {
+          "date": "2026-02-18",
+          "value": 6881.310059,
+          "changePercent": 0.00556607
+        },
+        {
+          "date": "2026-02-19",
+          "value": 6861.890137,
+          "changePercent": -0.00282213
+        },
+        {
+          "date": "2026-02-20",
+          "value": 6909.509766,
+          "changePercent": 0.00693972
+        },
+        {
+          "date": "2026-02-23",
+          "value": 6837.75,
+          "changePercent": -0.01038565
+        },
+        {
+          "date": "2026-02-24",
+          "value": 6890.069824,
+          "changePercent": 0.00765161
+        },
+        {
+          "date": "2026-02-25",
+          "value": 6946.129883,
+          "changePercent": 0.00813636
+        },
+        {
+          "date": "2026-02-26",
+          "value": 6908.859863,
+          "changePercent": -0.00536558
+        },
+        {
+          "date": "2026-02-27",
+          "value": 6878.879883,
+          "changePercent": -0.00433935
+        },
+        {
+          "date": "2026-03-02",
+          "value": 6881.620117,
+          "changePercent": 0.00039835
+        },
+        {
+          "date": "2026-03-03",
+          "value": 6816.629883,
+          "changePercent": -0.00944403
+        },
+        {
+          "date": "2026-03-04",
+          "value": 6869.5,
+          "changePercent": 0.00775605
+        },
+        {
+          "date": "2026-03-05",
+          "value": 6830.709961,
+          "changePercent": -0.0056467
+        },
+        {
+          "date": "2026-03-06",
+          "value": 6740.02002,
+          "changePercent": -0.0132768
+        },
+        {
+          "date": "2026-03-09",
+          "value": 6795.990234,
+          "changePercent": 0.00830416
+        },
+        {
+          "date": "2026-03-10",
+          "value": 6781.47998,
+          "changePercent": -0.00213512
+        },
+        {
+          "date": "2026-03-11",
+          "value": 6775.799805,
+          "changePercent": -0.0008376
+        },
+        {
+          "date": "2026-03-12",
+          "value": 6672.620117,
+          "changePercent": -0.01522768
+        },
+        {
+          "date": "2026-03-13",
+          "value": 6632.189941,
+          "changePercent": -0.00605912
+        },
+        {
+          "date": "2026-03-16",
+          "value": 6699.379883,
+          "changePercent": 0.01013088
+        },
+        {
+          "date": "2026-03-17",
+          "value": 6716.089844,
+          "changePercent": 0.00249425
+        },
+        {
+          "date": "2026-03-18",
+          "value": 6624.700195,
+          "changePercent": -0.01360757
+        },
+        {
+          "date": "2026-03-19",
+          "value": 6606.490234,
+          "changePercent": -0.0027488
+        },
+        {
+          "date": "2026-03-20",
+          "value": 6506.47998,
+          "changePercent": -0.01513818
+        },
+        {
+          "date": "2026-03-23",
+          "value": 6581.0,
+          "changePercent": 0.0114532
+        },
+        {
+          "date": "2026-03-24",
+          "value": 6556.370117,
+          "changePercent": -0.00374257
+        },
+        {
+          "date": "2026-03-25",
+          "value": 6591.899902,
+          "changePercent": 0.00541912
+        },
+        {
+          "date": "2026-03-26",
+          "value": 6477.160156,
+          "changePercent": -0.01740617
+        },
+        {
+          "date": "2026-03-27",
+          "value": 6368.850098,
+          "changePercent": -0.01672184
+        },
+        {
+          "date": "2026-03-30",
+          "value": 6343.720215,
+          "changePercent": -0.00394575
+        },
+        {
+          "date": "2026-03-31",
+          "value": 6528.52002,
+          "changePercent": 0.02913114
+        },
+        {
+          "date": "2026-04-01",
+          "value": 6575.319824,
+          "changePercent": 0.00716852
+        },
+        {
+          "date": "2026-04-02",
+          "value": 6582.689941,
+          "changePercent": 0.00112088
+        },
+        {
+          "date": "2026-04-06",
+          "value": 6611.830078,
+          "changePercent": 0.00442678
+        },
+        {
+          "date": "2026-04-07",
+          "value": 6616.850098,
+          "changePercent": 0.00075925
+        },
+        {
+          "date": "2026-04-08",
+          "value": 6782.810059,
+          "changePercent": 0.02508141
+        },
+        {
+          "date": "2026-04-09",
+          "value": 6824.660156,
+          "changePercent": 0.00617002
+        },
+        {
+          "date": "2026-04-10",
+          "value": 6816.890137,
+          "changePercent": -0.00113852
+        },
+        {
+          "date": "2026-04-13",
+          "value": 6886.240234,
+          "changePercent": 0.01017327
+        },
+        {
+          "date": "2026-04-14",
+          "value": 6967.379883,
+          "changePercent": 0.01178287
+        },
+        {
+          "date": "2026-04-15",
+          "value": 7022.950195,
+          "changePercent": 0.00797578
+        },
+        {
+          "date": "2026-04-16",
+          "value": 7041.279785,
+          "changePercent": 0.00260996
+        },
+        {
+          "date": "2026-04-17",
+          "value": 7126.060059,
+          "changePercent": 0.01204046
+        },
+        {
+          "date": "2026-04-20",
+          "value": 7109.140137,
+          "changePercent": -0.00237437
+        },
+        {
+          "date": "2026-04-21",
+          "value": 7064.009766,
+          "changePercent": -0.00634822
+        },
+        {
+          "date": "2026-04-22",
+          "value": 7137.899902,
+          "changePercent": 0.01046008
+        },
+        {
+          "date": "2026-04-23",
+          "value": 7108.399902,
+          "changePercent": -0.00413287
+        },
+        {
+          "date": "2026-04-24",
+          "value": 7165.080078,
+          "changePercent": 0.00797369
+        },
+        {
+          "date": "2026-04-27",
+          "value": 7173.910156,
+          "changePercent": 0.00123238
+        },
+        {
+          "date": "2026-04-28",
+          "value": 7138.799805,
+          "changePercent": -0.00489417
+        },
+        {
+          "date": "2026-04-29",
+          "value": 7135.950195,
+          "changePercent": -0.00039917
+        },
+        {
+          "date": "2026-04-30",
+          "value": 7209.009766,
+          "changePercent": 0.01023824
+        },
+        {
+          "date": "2026-05-01",
+          "value": 7230.120117,
+          "changePercent": 0.00292833
+        },
+        {
+          "date": "2026-05-04",
+          "value": 7200.75,
+          "changePercent": -0.00406219
+        },
+        {
+          "date": "2026-05-05",
+          "value": 7259.220215,
+          "changePercent": 0.00812002
+        },
+        {
+          "date": "2026-05-06",
+          "value": 7365.120117,
+          "changePercent": 0.01458833
+        },
+        {
+          "date": "2026-05-07",
+          "value": 7337.109863,
+          "changePercent": -0.0038031
+        },
+        {
+          "date": "2026-05-08",
+          "value": 7398.930176,
+          "changePercent": 0.0084257
+        },
+        {
+          "date": "2026-05-11",
+          "value": 7412.839844,
+          "changePercent": 0.00187996
+        },
+        {
+          "date": "2026-05-12",
+          "value": 7400.959961,
+          "changePercent": -0.00160261
+        },
+        {
+          "date": "2026-05-13",
+          "value": 7444.25,
+          "changePercent": 0.00584925
+        },
+        {
+          "date": "2026-05-14",
+          "value": 7501.240234,
+          "changePercent": 0.0076556
+        },
+        {
+          "date": "2026-05-15",
+          "value": 7408.5,
+          "changePercent": -0.01236332
+        },
+        {
+          "date": "2026-05-18",
+          "value": 7403.049805,
+          "changePercent": -0.00073567
+        },
+        {
+          "date": "2026-05-19",
+          "value": 7353.609863,
+          "changePercent": -0.00667832
+        },
+        {
+          "date": "2026-05-20",
+          "value": 7432.970215,
+          "changePercent": 0.01079203
+        },
+        {
+          "date": "2026-05-21",
+          "value": 7445.720215,
+          "changePercent": 0.00171533
+        },
+        {
+          "date": "2026-05-22",
+          "value": 7473.470215,
+          "changePercent": 0.00372697
+        },
+        {
+          "date": "2026-05-26",
+          "value": 7519.120117,
+          "changePercent": 0.00610826
+        },
+        {
+          "date": "2026-05-27",
+          "value": 7520.359863,
+          "changePercent": 0.00016488
+        },
+        {
+          "date": "2026-05-28",
+          "value": 7563.629883,
+          "changePercent": 0.00575372
+        },
+        {
+          "date": "2026-05-29",
+          "value": 7580.060059,
+          "changePercent": 0.00217226
+        },
+        {
+          "date": "2026-06-01",
+          "value": 7599.959961,
+          "changePercent": 0.0026253
+        },
+        {
+          "date": "2026-06-02",
+          "value": 7609.779785,
+          "changePercent": 0.00129209
+        },
+        {
+          "date": "2026-06-03",
+          "value": 7553.680176,
+          "changePercent": -0.00737204
+        },
+        {
+          "date": "2026-06-04",
+          "value": 7584.310059,
+          "changePercent": 0.00405496
+        },
+        {
+          "date": "2026-06-05",
+          "value": 7383.740234,
+          "changePercent": -0.02644536
+        },
+        {
+          "date": "2026-06-08",
+          "value": 7405.72998,
+          "changePercent": 0.00297813
+        },
+        {
+          "date": "2026-06-09",
+          "value": 7386.649902,
+          "changePercent": -0.00257639
+        },
+        {
+          "date": "2026-06-10",
+          "value": 7266.990234,
+          "changePercent": -0.01619945
+        },
+        {
+          "date": "2026-06-11",
+          "value": 7394.299805,
+          "changePercent": 0.01751889
+        },
+        {
+          "date": "2026-06-12",
+          "value": 7431.459961,
+          "changePercent": 0.00502551
+        }
+      ]
+    },
+    {
       "label": "KOSPI",
       "symbol": "^KS11",
       "source": "yfinance",
       "formula": "Daily Close; change = Close / PreviousClose - 1",
       "status": "ok",
       "reason": null,
+      "series": [
+        7981.410156,
+        7493.180176,
+        7516.040039,
+        7271.660156,
+        7208.950195,
+        7815.589844,
+        7847.709961,
+        8047.509766,
+        8228.700195,
+        8185.290039,
+        8476.150391,
+        8788.379883,
+        8801.490234,
+        8639.410156,
+        8160.589844,
+        7484.410156,
+        8096.930176,
+        7730.819824,
+        7763.950195,
+        8123.620117
+      ],
       "rows": [
-        {
-          "date": "2024-12-02",
-          "value": 2454.47998,
-          "changePercent": null
-        },
-        {
-          "date": "2024-12-03",
-          "value": 2500.100098,
-          "changePercent": 0.01858647
-        },
-        {
-          "date": "2024-12-04",
-          "value": 2464.0,
-          "changePercent": -0.01443946
-        },
-        {
-          "date": "2024-12-05",
-          "value": 2441.850098,
-          "changePercent": -0.00898941
-        },
-        {
-          "date": "2024-12-06",
-          "value": 2428.159912,
-          "changePercent": -0.00560648
-        },
-        {
-          "date": "2024-12-09",
-          "value": 2360.580078,
-          "changePercent": -0.02783171
-        },
-        {
-          "date": "2024-12-10",
-          "value": 2417.840088,
-          "changePercent": 0.02425675
-        },
-        {
-          "date": "2024-12-11",
-          "value": 2442.51001,
-          "changePercent": 0.01020329
-        },
-        {
-          "date": "2024-12-12",
-          "value": 2482.120117,
-          "changePercent": 0.01621697
-        },
-        {
-          "date": "2024-12-13",
-          "value": 2494.459961,
-          "changePercent": 0.00497149
-        },
-        {
-          "date": "2024-12-16",
-          "value": 2488.969971,
-          "changePercent": -0.00220087
-        },
-        {
-          "date": "2024-12-17",
-          "value": 2456.810059,
-          "changePercent": -0.01292097
-        },
-        {
-          "date": "2024-12-18",
-          "value": 2484.429932,
-          "changePercent": 0.01124217
-        },
-        {
-          "date": "2024-12-19",
-          "value": 2435.929932,
-          "changePercent": -0.01952158
-        },
-        {
-          "date": "2024-12-20",
-          "value": 2404.149902,
-          "changePercent": -0.01304636
-        },
-        {
-          "date": "2024-12-23",
-          "value": 2442.01001,
-          "changePercent": 0.01574781
-        },
-        {
-          "date": "2024-12-24",
-          "value": 2440.52002,
-          "changePercent": -0.00061015
-        },
-        {
-          "date": "2024-12-26",
-          "value": 2429.669922,
-          "changePercent": -0.00444581
-        },
-        {
-          "date": "2024-12-27",
-          "value": 2404.77002,
-          "changePercent": -0.01024827
-        },
-        {
-          "date": "2024-12-30",
-          "value": 2399.48999,
-          "changePercent": -0.00219565
-        },
         {
           "date": "2025-01-02",
           "value": 2398.939941,
-          "changePercent": -0.00022924
+          "changePercent": null
         },
         {
           "date": "2025-01-03",
