@@ -230,15 +230,17 @@ class ArchiveAndScheduleTests(unittest.TestCase):
         ):
             self.assertNotIn(phrase, rendered)
 
-    def test_internal_routes_are_not_primary_navigation(self):
+    def test_advanced_is_one_primary_navigation_destination(self):
         html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         primary_nav = html.split('<nav class="primary-nav"', 1)[1].split("</nav>", 1)[0]
         self.assertNotIn('data-view="quality"', primary_nav)
         self.assertNotIn('data-view="explorer"', primary_nav)
-        self.assertIn('data-view-panel="quality"', html)
-        self.assertIn('data-view-panel="explorer"', html)
-        self.assertIn('data-go-view="quality"', html)
-        self.assertIn('data-go-view="explorer"', html)
+        self.assertIn('data-view="advanced"', primary_nav)
+        self.assertNotIn('data-view-panel="quality"', html)
+        self.assertNotIn('data-view-panel="explorer"', html)
+        self.assertIn('data-view-panel="advanced"', html)
+        self.assertIn('data-advanced-tab="quality"', html)
+        self.assertIn('data-advanced-tab="explorer"', html)
 
     def test_price_direction_colors_are_blue_and_red(self):
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")

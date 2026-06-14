@@ -9,14 +9,17 @@
       content="IDX RESEARCH is a source-limited Indonesian equity research dashboard."
     />
     <title>IDX RESEARCH</title>
-    <link rel="stylesheet" href="styles.css?v=20260614-product-v2" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css?v=20260614-product-v3" />
   </head>
   <body class="app-loading">
     <div id="loadBar" class="load-bar" aria-hidden="true"></div>
     <div class="app-shell">
       <aside class="sidebar" id="sidebar">
         <a class="brand" href="#dashboard" aria-label="IDX RESEARCH home">
-          <span class="brand-mark">IX</span>
+          <span class="brand-mark"><img src="assets/idx-research-character.png" alt="" /></span>
           <span>
             <strong>IDX RESEARCH</strong>
             <small>Source-limited workstation</small>
@@ -29,13 +32,8 @@
           <button class="nav-item" type="button" data-view="news"><span>03</span>IDX Ticker News</button>
           <button class="nav-item" type="button" data-view="watchlist"><span>04</span>Watchlist</button>
           <button class="nav-item" type="button" data-view="ownership"><span>05</span>KSEI Ownership</button>
+          <button class="nav-item" type="button" data-view="advanced"><span>06</span>Advanced</button>
         </nav>
-        <details class="advanced-nav">
-          <summary>Advanced</summary>
-          <button type="button" data-go-view="quality">Data Quality</button>
-          <button type="button" data-go-view="explorer">Workbook Explorer</button>
-          <button type="button" data-go-view="guide">Guide & Methodology</button>
-        </details>
 
         <div class="sidebar-foot">
           <div class="system-state">
@@ -45,7 +43,7 @@
               <small id="sidebarDate">Market date will appear when ready</small>
             </div>
           </div>
-          <p>Workbook, yfinance, public Investing.com fields, and TradingView chart display only.</p>
+          <p>Published research data with clearly separated external chart references.</p>
         </div>
       </aside>
 
@@ -119,72 +117,16 @@
               <span>SECTOR MOMENTUM</span>
               <strong id="dashboardSectorTitle">Loading</strong>
               <div id="dashboardSectors" class="dashboard-sector-list"></div>
-              <button type="button" class="text-button" data-scroll-dashboard="marketMap">Open market map</button>
+              <button type="button" class="text-button" data-go-view="screener">View sector signals</button>
             </article>
           </section>
-          <article class="panel dashboard-research-table">
-            <div class="panel-head">
-              <div><span class="panel-kicker">PRIORITY RESEARCH ROWS</span><h3>Highest activity among published signals</h3></div>
-              <span class="source-chip">Workbook / yfinance archive</span>
-            </div>
-            <div id="dashboardResearchRows" class="table-shell"></div>
-          </article>
-          <article class="panel dashboard-source-model">
-            <div><strong>Workbook</strong><span>Signals and published research fields</span></div>
-            <div><strong>yfinance archive</strong><span>Date-capped OHLCV calculations</span></div>
-            <div><strong>TradingView</strong><span>Display-only chart mode</span></div>
-            <div><strong>KSEI workbook</strong><span>Point-in-time ownership snapshot</span></div>
-          </article>
           <section class="index-workspace" aria-labelledby="indexWorkspaceTitle">
             <div class="view-intro compact-intro">
               <div><span class="section-kicker">INDEX FRAMEWORK</span><h2 id="indexWorkspaceTitle">Market and custom indexes</h2><p>Live external TradingView displays and date-capped local research indexes are kept visibly separate.</p></div>
             </div>
             <div id="indexSections" class="index-sections"></div>
           </section>
-
-          <div class="dashboard-market-suite" id="marketMapSection">
-          <div class="view-intro">
-            <div>
-              <span class="section-kicker">MARKET COMMAND CENTER</span>
-              <h2>IDX Market Map</h2>
-              <p>Sector-grouped price activity, signal coverage, participation, and source status for the selected date.</p>
-            </div>
-            <span id="marketCoverageBadge" class="hero-stat">— tickers</span>
-          </div>
-
-          <section id="marketContextGrid" class="market-context-grid" aria-label="Market context"></section>
-          <section id="marketMetricGrid" class="metric-grid"></section>
-
-          <article class="panel market-map-panel">
-            <div class="panel-head">
-              <div><span class="panel-kicker">MARKET MAP</span><h3>Sector and ticker activity</h3></div>
-              <div class="legend"><span class="blue-dot"></span>Positive <span class="red-dot"></span>Negative <span class="gray-dot"></span>Neutral</div>
-            </div>
-            <div id="marketMap" class="market-map"></div>
-          </article>
-
-          <div class="two-column-grid">
-            <article class="panel">
-              <div class="panel-head">
-                <div><span class="panel-kicker">SECTOR × SIGNAL</span><h3>Signal concentration</h3></div>
-                <button id="heatmapMode" class="text-button" type="button">Unique tickers</button>
-              </div>
-              <div id="sectorSignalHeatmap" class="heatmap-shell"></div>
-            </article>
-            <article class="panel">
-              <div class="panel-head">
-                <div><span class="panel-kicker">QUALITY FUNNEL</span><h3>Dataset progression</h3></div>
-              </div>
-              <div id="qualityFunnel" class="funnel"></div>
-            </article>
-          </div>
-
-          <details class="panel secondary-analysis">
-            <summary><span><span class="panel-kicker">SECONDARY ANALYSIS</span><strong>IDX activity map</strong></span><small>Daily change × relative volume</small></summary>
-            <div id="activityMap" class="activity-map"></div>
-          </details>
-          </div>
-          <p class="dashboard-data-note">Dataset health, cutoffs, missing fields, and source diagnostics are available in Advanced → Data Quality.</p>
+          <p class="dashboard-data-note">Coverage, source status, missing fields, and methodology are available in Advanced.</p>
         </section>
 
         <section class="view" data-view-panel="screener">
@@ -240,16 +182,17 @@
             <div class="panel-head"><div><span class="panel-kicker">TRADINGVIEW NEWS</span><h3 id="newsSearchTitle">Select an IDX ticker</h3></div></div>
             <div id="tradingViewNews" class="tradingview-news-shell"><div class="empty-state"><h3>No ticker selected</h3><p>Search a ticker or issuer to load its TradingView news timeline.</p></div></div>
           </article>
-          <article class="panel">
-            <div class="panel-head"><div><span class="panel-kicker">PUBLISHED WORKBOOK INTELLIGENCE</span><h3>Available dated headlines</h3></div></div>
-            <div id="publishedNewsFeed" class="published-news-feed"></div>
-          </article>
         </section>
 
-        <section class="view" data-view-panel="ticker">
+        <div id="tickerResearchModal" class="ticker-drawer-backdrop" hidden>
+          <aside class="ticker-drawer" role="dialog" aria-modal="true" aria-labelledby="tickerDrawerTitle">
+            <header class="ticker-drawer-header">
+              <div><span class="panel-kicker">TICKER INTELLIGENCE</span><h2 id="tickerDrawerTitle">Research workspace</h2></div>
+              <button class="icon-button" type="button" data-close-modal="ticker-research" aria-label="Close ticker research">Close</button>
+            </header>
           <div id="tickerEmpty" class="ticker-empty">
             <span class="section-kicker">TICKER RESEARCH</span>
-            <h2>Select a ticker from search, the market map, screener, or watchlist.</h2>
+            <h2>Select a ticker from search, Screener, Watchlist, KSEI Ownership, or an index detail.</h2>
           </div>
           <div id="tickerContent" hidden>
             <div id="tickerHero" class="ticker-hero"></div>
@@ -260,7 +203,7 @@
               <article class="panel">
                 <div class="panel-head">
                   <div><span class="panel-kicker">SIGNAL SUMMARY</span><h3>Matched technical conditions</h3></div>
-                  <span class="source-chip">Workbook / archive</span>
+                  <span class="panel-note">Selected market session</span>
                 </div>
                 <div id="tickerKeyMetrics" class="key-metric-grid"></div>
                 <div id="tickerSignals" class="ticker-signals"></div>
@@ -279,8 +222,12 @@
                 <div class="chart-toolbar">
                   <div><span class="panel-kicker">CHART WORKSPACE</span><h3>Price, volume, and technical overlays</h3></div>
                   <div class="toolbar-actions">
+                    <div class="chart-mode-tabs" aria-label="Chart mode">
+                      <button type="button" data-chart-mode="research" class="active">Research Overlay</button>
+                      <button type="button" data-chart-mode="tradingview">TradingView View</button>
+                    </div>
                     <span id="historyStatus" class="status-badge info">Loading history</span>
-                    <span id="chartSourceBadge" class="status-badge info">Website Calculated</span>
+                    <span id="chartSourceBadge" class="status-badge info">Research data</span>
                   </div>
                 </div>
                 <div class="terminal-toolbar">
@@ -298,6 +245,7 @@
                     <button type="button" data-chart-range="ALL">All</button>
                   </div>
                   <button id="indicatorSettingsButton" class="terminal-button" type="button">Indicators</button>
+                  <button id="resetChartLayout" class="terminal-button" type="button">Reset layout</button>
                   <button id="fullscreenChart" class="terminal-button" type="button">Fullscreen</button>
                 </div>
                 <div id="researchChartView" class="chart-mode-view active">
@@ -317,6 +265,10 @@
                   </div>
                   <div id="activeIndicatorStrip" class="active-indicator-strip"></div>
                 </div>
+                <div id="tradingViewChartView" class="chart-mode-view" hidden>
+                  <div id="tradingViewWidget" class="tradingview-chart-shell"></div>
+                  <div class="chart-discrepancy-note">TradingView chart data may differ from research overlay data because sources and timestamps may differ. TradingView is display-only.</div>
+                </div>
                 <div class="chart-footer">
                   <span id="historyMeta"></span>
                   <a id="tradingViewLink" href="https://www.tradingview.com/" target="_blank" rel="noopener">Open on TradingView</a>
@@ -324,18 +276,38 @@
               </article>
             </div>
 
+            <section class="ticker-technical-suite">
+              <div class="panel-head"><div><span class="panel-kicker">TECHNICAL SUMMARY</span><h3>Regime, structure, liquidity, levels, and momentum</h3></div></div>
+              <div class="technical-section-grid">
+                <article class="panel technical-group"><h4>Stock Regime</h4><div id="stockRegimeGrid" class="detail-grid compact-detail-grid"></div></article>
+                <article class="panel technical-group"><h4>Market Structure &amp; SMC</h4><div id="structureGrid" class="detail-grid compact-detail-grid"></div></article>
+                <article class="panel technical-group"><h4>Liquidity</h4><div id="liquidityGrid" class="detail-grid compact-detail-grid"></div></article>
+                <article class="panel technical-group"><h4>Market Profile</h4><div id="marketProfileGrid" class="detail-grid compact-detail-grid"></div></article>
+                <article class="panel technical-group"><h4>VWAP / MVWAP / QVWAP</h4><div id="vwapGrid" class="detail-grid compact-detail-grid"></div></article>
+                <article class="panel technical-group"><h4>Moving Average</h4><div id="movingAverageGrid" class="detail-grid compact-detail-grid"></div></article>
+                <article class="panel technical-group"><h4>RSI Momentum</h4><div id="rsiGrid" class="detail-grid compact-detail-grid"></div></article>
+                <article class="panel technical-group"><h4>MACD Momentum</h4><div id="macdGrid" class="detail-grid compact-detail-grid"></div></article>
+              </div>
+              <div id="technicalGrid" hidden></div>
+            </section>
+
             <div class="two-column-grid">
-              <article class="panel"><div class="panel-head"><div><span class="panel-kicker">TECHNICAL SNAPSHOT</span><h3>Trend, momentum, and structure</h3></div></div><div id="technicalGrid" class="detail-grid"></div></article>
               <article class="panel ticker-ksei-card">
-                <div class="panel-head"><div><span class="panel-kicker">KSEI OWNERSHIP SNAPSHOT</span><h3>Published concentration context</h3></div><span class="source-chip">KSEI workbook</span></div>
+                <div class="panel-head"><div><span class="panel-kicker">KSEI OWNERSHIP</span><h3>Latest concentration context</h3></div></div>
                 <div id="tickerKseiCard"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-head"><div><span class="panel-kicker">INVESTOR INFORMATION</span><h3>Published relationships and changes</h3></div></div>
+                <div id="tickerInvestors"></div>
               </article>
             </div>
 
             <article class="panel"><div class="panel-head"><div><span class="panel-kicker">FUNDAMENTAL SNAPSHOT</span><h3>Available company metrics</h3></div><span id="fundamentalModeBadge" class="status-badge"></span></div><div id="fundamentalGrid" class="detail-grid"></div></article>
-            <article class="panel"><div class="panel-head"><div><span class="panel-kicker">NEWS & EVENTS</span><h3>Published workbook intelligence</h3></div><span id="newsModeBadge" class="status-badge"></span></div><div id="newsPanel" class="news-panel"></div></article>
+            <article class="panel"><div class="panel-head"><div><span class="panel-kicker">NEWS &amp; EVENTS</span><h3>Published events and external news reference</h3></div><span id="newsModeBadge" class="status-badge"></span></div><div id="newsPanel" class="news-panel"></div></article>
+            <p id="tickerSourceStatus" class="ticker-source-note"></p>
           </div>
-        </section>
+          </aside>
+        </div>
 
         <section class="view ownership-view" data-view-panel="ownership">
           <div class="ownership-hero">
@@ -374,7 +346,7 @@
               </article>
               <article class="ownership-card ownership-span-2">
                 <div class="ownership-card-head"><div><span>ISSUER EXPLORER</span><h3>Ownership records</h3></div><span id="kseiResultCount"></span></div>
-                <div class="ownership-mode-tabs" role="tablist"><button type="button" class="active" data-ownership-mode="issuers">By ticker</button><button type="button" data-ownership-mode="investors">By investor</button></div>
+                <div class="ownership-mode-tabs" role="tablist"><button type="button" class="active" data-ownership-mode="issuers">By ticker</button><button type="button" data-ownership-mode="investors">By investor</button><button type="button" data-ownership-mode="changes">Ownership changes</button></div>
                 <div class="ownership-controls">
                   <label><span>Search</span><input id="kseiSearch" type="search" placeholder="Ticker, company, sector, holder" /></label>
                   <label><span>Sector</span><select id="kseiSectorFilter"><option value="ALL">All sectors</option></select></label>
@@ -390,6 +362,10 @@
                     <thead><tr><th>Investor</th><th>Type</th><th>Related tickers</th><th>Published ownership</th><th>Top relationship</th><th></th></tr></thead>
                     <tbody id="kseiInvestorTableBody"></tbody>
                   </table>
+                  <table id="kseiChangesTable" class="data-table ownership-table" hidden>
+                    <thead><tr><th>Type</th><th>Ticker</th><th>Issuer</th><th>Investor</th><th>Previous</th><th>Current</th><th>Notes</th></tr></thead>
+                    <tbody id="kseiChangesTableBody"></tbody>
+                  </table>
                 </div>
               </article>
             </div>
@@ -400,7 +376,16 @@
           </div>
         </section>
 
-        <section class="view" data-view-panel="quality">
+        <section class="view" data-view-panel="advanced">
+          <div class="view-intro">
+            <div><span class="section-kicker">ADVANCED</span><h2>Research methods and data controls</h2><p>Inspect coverage, normalized data, and calculation definitions without interrupting the primary research workflow.</p></div>
+          </div>
+          <div class="advanced-tabs" role="tablist">
+            <button type="button" class="active" data-advanced-tab="quality">Data Quality</button>
+            <button type="button" data-advanced-tab="explorer">Visual Explorer</button>
+            <button type="button" data-advanced-tab="guide">Guide &amp; Methodology</button>
+          </div>
+          <div class="advanced-pane active" data-advanced-pane="quality">
           <div class="view-intro">
             <div><span class="section-kicker">DATA QUALITY</span><h2>Coverage, sources, and calculation checks</h2><p>Provider failures and missing values remain visible with status and reason.</p></div>
             <span id="lastSuccessfulLoad" class="hero-stat">—</span>
@@ -411,11 +396,11 @@
             <article class="panel"><div class="panel-head"><div><span class="panel-kicker">QA SUMMARY</span><h3>Release checks</h3></div></div><div id="qaSummary" class="bar-list"></div></article>
           </div>
           <article class="panel"><div class="panel-head"><div><span class="panel-kicker">EXCEPTIONS</span><h3>Partial and unavailable records</h3></div></div><div id="qualityExceptions" class="table-shell"></div></article>
-        </section>
+          </div>
 
-        <section class="view" data-view-panel="explorer">
+          <div class="advanced-pane" data-advanced-pane="explorer" hidden>
           <div class="view-intro">
-            <div><span class="section-kicker">ADVANCED</span><h2>Workbook Explorer</h2><p>Inspect published, normalized sheets without treating raw rows as the primary product experience.</p></div>
+            <div><span class="section-kicker">VISUAL EXPLORER</span><h2>Normalized research data</h2><p>Inspect published normalized fields for QA and research verification.</p></div>
             <span id="explorerCount" class="hero-stat">—</span>
           </div>
           <article class="panel">
@@ -429,9 +414,9 @@
               <div id="explorerEmpty" class="empty-state" hidden></div>
             </div>
           </article>
-        </section>
+          </div>
 
-        <section class="view" data-view-panel="guide">
+          <div class="advanced-pane" data-advanced-pane="guide" hidden>
           <div class="view-intro">
             <div><span class="section-kicker">METHODOLOGY</span><h2>Guide & Logic Reference</h2><p>Search the same definitions used to generate the workbook guide, product tooltips, and QA labels.</p></div>
             <span id="guideCount" class="hero-stat">Loading guide</span>
@@ -454,11 +439,11 @@
               <div id="guideEmpty" class="empty-state" hidden><h3>No guide entries match.</h3><p>Clear the search or choose another category.</p></div>
             </div>
           </div>
+          </div>
         </section>
 
         <footer class="app-footer">
           <span>Educational research only. Not financial advice. Published datasets may be delayed; verify independently before making trading decisions.</span>
-          <span class="internal-links">Internal tools: <button type="button" data-go-view="quality">Data Quality</button><button type="button" data-go-view="explorer">Workbook Explorer</button></span>
           <span id="footerFreshness">Data as of loading</span>
         </footer>
       </main>
@@ -572,10 +557,10 @@
     </div>
 
     <script src="https://unpkg.com/lightweight-charts@5.2.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="chart/indicator-engine/math.js?v=20260614-product-v2"></script>
-    <script src="chart/indicator-engine/overlays.js?v=20260614-product-v2"></script>
-    <script src="chart/indicator-engine/momentum.js?v=20260614-product-v2"></script>
-    <script src="indicators.js?v=20260614-product-v2"></script>
-    <script src="app.js?v=20260614-product-v2"></script>
+    <script src="chart/indicator-engine/math.js?v=20260614-product-v3"></script>
+    <script src="chart/indicator-engine/overlays.js?v=20260614-product-v3"></script>
+    <script src="chart/indicator-engine/momentum.js?v=20260614-product-v3"></script>
+    <script src="indicators.js?v=20260614-product-v3"></script>
+    <script src="app.js?v=20260614-product-v3"></script>
   </body>
 </html>

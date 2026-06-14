@@ -19,9 +19,10 @@ from rebuild_backend.sector_normalization import normalize_idx_sector
 
 SOURCE_DIR = ROOT / "data_sources" / "ksei"
 OUTPUT_DIR = ROOT / "docs" / "data" / "ksei"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 HOLDER_PATTERN = re.compile(
-    r"^\s*\d+\.\s*(.*?)\s+-\s+(.+?)\s+-\s+([0-9]+(?:\.[0-9]+)?)%?\s*$"
+    r"^\s*(?P<rank>\d+)\.\s*(?P<name>.*?)\s+-\s+(?P<type>.+?)\s+-\s+"
+    r"(?P<percentage>[0-9]+(?:\.[0-9]+)?)%?\s*$"
 )
 
 
@@ -101,12 +102,14 @@ def parse_investors(value: Any) -> list[dict[str, Any]]:
         match = HOLDER_PATTERN.match(line)
         if not match:
             continue
-        name, holder_type, percentage = match.groups()
+        groups = match.groupdict()
         records.append(
             {
-                "name": re.sub(r"\s+", " ", name.strip()),
-                "type": holder_type.strip(),
-                "percentage": float(percentage),
+                "rank": int(groups["rank"]),
+                "name": re.sub(r"\s+", " ", groups["name"].strip()),
+                "type": groups["type"].strip(),
+                "percentage": float(groups["percentage"]),
+                "originalLine": line.strip(),
             }
         )
     return records
@@ -139,7 +142,7 @@ def record_from_row(row: pd.Series, as_of: str) -> dict[str, Any]:
         "missingFields": missing_fields,
         "source": "KSEI workbook",
         "asOf": as_of,
-        "formulaVersion": "ksei-ownership-v2",
+        "formulaVersion": "ksei-ownership-v3",
     }
 
 
@@ -202,6 +205,8 @@ def investor_directory(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                     "industry": issuer["industry"],
                     "percentage": holder["percentage"],
                     "type": holder["type"],
+                    "rank": holder["rank"],
+                    "originalLine": holder["originalLine"],
                 }
             )
             item["totalPublishedPercentage"] += holder["percentage"]
@@ -213,6 +218,45 @@ def investor_directory(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         item["tickers"].sort(key=lambda row: (-row["percentage"], row["ticker"]))
         output.append(item)
     return sorted(output, key=lambda item: (-item["tickerCount"], item["name"]))
+
+
+def indexed_changes(
+    records: list[dict[str, Any]],
+) -> tuple[dict[str, list[dict[str, Any]]], dict[str, list[dict[str, Any]]]]:
+    by_ticker: dict[str, list[dict[str, Any]]] = {}
+    by_investor: dict[str, list[dict[str, Any]]] = {}
+    for record in records:
+        by_ticker.setdefault(record["ticker"], []).append(record)
+        by_investor.setdefault(normalized_name(record["investor"]), []).append(record)
+    return dict(sorted(by_ticker.items())), dict(sorted(by_investor.items()))
+
+
+def schema_warnings(
+    frame: pd.DataFrame,
+    sheets: dict[str, pd.DataFrame],
+) -> list[dict[str, Any]]:
+    required = ("Kode", "Emiten", "Investors", "Free Float", "Classic HHI", "CCS")
+    warnings: list[dict[str, Any]] = []
+    missing = [column for column in required if column not in frame.columns]
+    if missing:
+        warnings.append(
+            {
+                "status": "warning",
+                "reason": "missing_required_columns",
+                "fields": missing,
+                "source": "KSEI workbook / KSEI Data",
+            }
+        )
+    if "Investor Changes" not in sheets:
+        warnings.append(
+            {
+                "status": "warning",
+                "reason": "investor_changes_sheet_missing",
+                "fields": ["Investor Changes"],
+                "source": "KSEI workbook",
+            }
+        )
+    return warnings
 
 
 def summary(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -308,6 +352,7 @@ def build() -> dict[str, Any]:
         sheets = pd.read_excel(path, sheet_name=None)
         frame = normalize_frame(sheets.get("KSEI Data", next(iter(sheets.values()))))
         changes = change_records(sheets.get("Investor Changes"), as_of)
+        changes_by_ticker, changes_by_investor = indexed_changes(changes)
         records = [
             record_from_row(row, as_of)
             for _, row in frame.iterrows()
@@ -326,7 +371,10 @@ def build() -> dict[str, Any]:
             "summary": summary(records),
             "records": records,
             "investorChanges": changes,
+            "changesByTicker": changes_by_ticker,
+            "changesByInvestor": changes_by_investor,
             "investorDirectory": investor_directory(records),
+            "schemaWarnings": schema_warnings(frame, sheets),
         }
         payload["comparison"] = compare(previous, payload)
         if changes:

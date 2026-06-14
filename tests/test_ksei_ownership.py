@@ -15,6 +15,8 @@ class KseiOwnershipTests(unittest.TestCase):
             "2. HOLDER TWO - Individual - 2.5"
         )
         self.assertEqual([item["percentage"] for item in rows], [51.25, 2.5])
+        self.assertEqual([item["rank"] for item in rows], [1, 2])
+        self.assertEqual(rows[0]["originalLine"], "1. HOLDER ONE - Corporate - 51.25%")
 
     def test_comparison_does_not_invent_changes(self):
         record = {
@@ -46,6 +48,16 @@ class KseiOwnershipTests(unittest.TestCase):
         self.assertEqual(latest["summary"]["sectors"]["Others"], 44)
         self.assertEqual(len(latest["investorChanges"]), 8)
         self.assertGreater(len(latest["investorDirectory"]), 5000)
+        self.assertEqual(latest["schemaVersion"], 3)
+        self.assertIn("changesByTicker", latest)
+        self.assertIn("changesByInvestor", latest)
+        self.assertIn("schemaWarnings", latest)
+        self.assertTrue(
+            all(
+                "rank" in row and "originalLine" in row
+                for row in latest["records"][0]["investors"]
+            )
+        )
 
 
 if __name__ == "__main__":

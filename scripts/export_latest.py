@@ -98,6 +98,23 @@ def first_value(row: dict[str, Any], names: Iterable[str]) -> Any:
     return None
 
 
+def matching_value(
+    row: dict[str, Any],
+    *,
+    contains: Iterable[str],
+    suffix: str | None = None,
+) -> Any:
+    required = tuple(part.lower() for part in contains)
+    for key, value in row.items():
+        normalized = str(key).lower()
+        if all(part in normalized for part in required) and (
+            suffix is None or normalized.endswith(suffix.lower())
+        ):
+            if value not in (None, "", "-"):
+                return value
+    return None
+
+
 def slug_date(value: Any) -> str:
     if isinstance(value, datetime):
         return value.date().isoformat()
@@ -323,6 +340,7 @@ def normalized_stocks(
             ],
             "entry": first_value(primary, ["Entry"]),
             "entryPoi": first_value(primary, ["Entry POI"]),
+            "entryDistancePercent": first_value(primary, ["Entry Distance %"]),
             "target": first_value(primary, ["Target"]),
             "targetPoi": first_value(primary, ["Target POI"]),
             "invalidation": first_value(primary, ["Invalidation"]),
@@ -345,6 +363,98 @@ def normalized_stocks(
                 "maZone": first_value(row, ["MA Zone"]),
                 "adrPercent": first_value(row, ["ADR %"]),
                 "atrPercent": first_value(row, ["ATR (14) %"]),
+                "regime": {
+                    "rsZone": first_value(row, ["RS Rating Zone"]),
+                    "marketCap": first_value(row, ["Market Cap"]),
+                    "marketCapCategory": first_value(row, ["Market Cap Categories"]),
+                    "liquidityCategory": first_value(row, ["Liquidity Categories"]),
+                    "verdictProfile": first_value(row, ["Verdict Weight Profiles"]),
+                },
+                "smc": {
+                    "strongHigh": first_value(row, ["Strong High"]),
+                    "weakHigh": first_value(row, ["Weak High"]),
+                    "premiumZone": first_value(row, ["Premium Zone"]),
+                    "strongLow": first_value(row, ["Strong Low"]),
+                    "weakLow": first_value(row, ["Weak Low"]),
+                    "discountZone": first_value(row, ["Discount Zone"]),
+                    "equilibrium": first_value(row, ["Equilibrium"]),
+                    "closestBullishBlock": first_value(row, ["Closest OB Bull"]),
+                    "closestBearishBlock": first_value(row, ["Closest OB Bear"]),
+                    "bullishBlockAgeDays": first_value(row, ["OB Bull Age (Days)"]),
+                    "bearishBlockAgeDays": first_value(row, ["OB Bear Age (Days)"]),
+                    "summary": first_value(row, ["Summary"]),
+                },
+                "liquidity": {
+                    "lot": first_value(row, ["Lot"]),
+                    "valueApprox": first_value(row, ["Value (Approx)"]),
+                    "averageValue20": first_value(row, ["Average Value 20 D (Approx)"]),
+                    "averageVolume20": first_value(row, ["Average Volume 20 D"]),
+                    "rvolZone": first_value(row, ["RVOL 20 D Zone"]),
+                    "rvolChangeZone": first_value(row, ["RVOL Change Zone"]),
+                    "rangeZone": first_value(row, ["ADR & ATR (14) Zone"]),
+                },
+                "marketProfile": {
+                    "ibh": first_value(row, ["IBH"]),
+                    "ibl": first_value(row, ["IBL"]),
+                    "vsIbl": first_value(row, ["vs IBL"]),
+                    "pwh": first_value(row, ["PWH"]),
+                    "pwl": first_value(row, ["PWL"]),
+                    "vsPwl": first_value(row, ["vs PWL"]),
+                    "mdh": first_value(row, ["MDH"]),
+                    "mdl": first_value(row, ["MDL"]),
+                    "vsMdl": first_value(row, ["vs MDL"]),
+                    "summary": first_value(row, ["MP Summary"]),
+                },
+                "vwapProfiles": {
+                    "currentMonth": {
+                        "vwap": matching_value(row, contains=("Current MVWAP",), suffix="VWAP"),
+                        "zone": matching_value(row, contains=("Current MVWAP",), suffix="VWAP Zone"),
+                        "priceSigma": matching_value(row, contains=("Current MVWAP",), suffix="Price σ"),
+                        "runningDays": matching_value(row, contains=("Current MVWAP",), suffix="Running Days"),
+                    },
+                    "previousMonth": {
+                        "vwap": matching_value(row, contains=("Previous MVWAP",), suffix="VWAP"),
+                        "zone": matching_value(row, contains=("Previous MVWAP",), suffix="VWAP Zone"),
+                        "priceSigma": matching_value(row, contains=("Previous MVWAP",), suffix="Price σ"),
+                    },
+                    "currentQuarter": {
+                        "vwap": matching_value(row, contains=("Current QVWAP",), suffix="VWAP"),
+                        "zone": matching_value(row, contains=("Current QVWAP",), suffix="VWAP Zone"),
+                        "priceSigma": matching_value(row, contains=("Current QVWAP",), suffix="Price σ"),
+                    },
+                    "previousQuarter": {
+                        "vwap": matching_value(row, contains=("Previous QVWAP",), suffix="VWAP"),
+                        "zone": matching_value(row, contains=("Previous QVWAP",), suffix="VWAP Zone"),
+                        "priceSigma": matching_value(row, contains=("Previous QVWAP",), suffix="Price σ"),
+                    },
+                    "previousYear": {
+                        "vwap": matching_value(row, contains=("Previous Year VWAP",), suffix="VWAP"),
+                        "zone": matching_value(row, contains=("Previous Year VWAP",), suffix="VWAP Zone"),
+                        "priceSigma": matching_value(row, contains=("Previous Year VWAP",), suffix="Price σ"),
+                    },
+                },
+                "movingAverageDetail": {
+                    "ema25DifferencePercent": first_value(row, ["EMA 25 %diff"]),
+                    "ema25Position": first_value(row, ["EMA 25 Pos"]),
+                    "ema50DifferencePercent": first_value(row, ["EMA 50 %diff"]),
+                    "ema50Position": first_value(row, ["EMA 50 Pos"]),
+                    "sma200DifferencePercent": first_value(row, ["SMA 200 %diff"]),
+                    "sma200Position": first_value(row, ["SMA 200 Pos"]),
+                },
+                "rsiDetail": {
+                    "change1d": first_value(row, ["RSI 14 Δ 1D"]),
+                    "average14": first_value(row, ["RSI MA 14"]),
+                    "position": first_value(row, ["RSI Pos"]),
+                    "cross": first_value(row, ["RSI Cross"]),
+                    "divergenceSignal": first_value(row, ["Divergence Signal"]),
+                    "divergenceStartDate": first_value(row, ["Divergence Start Date"]),
+                    "divergenceConfirmDate": first_value(row, ["Divergence Confirm Date"]),
+                },
+                "macdDetail": {
+                    "signalLine": first_value(row, ["Signal Line"]),
+                    "histogram": first_value(row, ["Histogram (EMA3)"]),
+                    "cross": first_value(row, ["MACD Cross"]),
+                },
                 "vwapPosition": next(
                     (
                         value

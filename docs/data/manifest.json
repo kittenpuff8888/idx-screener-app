@@ -5138,7 +5138,7 @@
       "okTickers": 952,
       "partialTickers": 4,
       "noDataTickers": 0,
-      "signalRows": 23,
+      "signalRows": 29,
       "uniqueSignalTickers": 14,
       "status": "ok",
       "snapshotMode": "full_workbook",
