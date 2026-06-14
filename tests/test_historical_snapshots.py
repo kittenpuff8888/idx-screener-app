@@ -100,8 +100,8 @@ class HistoricalSnapshotTests(unittest.TestCase):
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
         css = (ROOT / "docs" / "styles.css").read_text(encoding="utf-8")
         disclaimer = (
-            "Educational research only. Not financial advice. Data is source-limited, "
-            "archived, and not real-time. Verify independently before making trading decisions."
+            "Educational research only. Not financial advice. Published datasets may be "
+            "delayed; verify independently before making trading decisions."
         )
         self.assertEqual(html.count(disclaimer), 1)
         self.assertIn('id="datasetLine"', html)
@@ -117,19 +117,23 @@ class HistoricalSnapshotTests(unittest.TestCase):
         html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
         primary_nav = html.split('<nav class="primary-nav"', 1)[1].split("</nav>", 1)[0]
-        self.assertEqual(primary_nav.count('class="nav-item'), 6)
-        for view in ("dashboard", "market", "screener", "ticker", "watchlist", "ownership"):
+        self.assertEqual(primary_nav.count('class="nav-item'), 5)
+        for view in ("dashboard", "screener", "news", "watchlist", "ownership"):
             self.assertIn(f'data-view="{view}"', primary_nav)
+        self.assertNotIn('data-view="market"', primary_nav)
+        self.assertNotIn('data-view="ticker"', primary_nav)
         self.assertNotIn('data-view="guide"', primary_nav)
         self.assertIn('class="advanced-nav"', html)
         self.assertIn('data-view-panel="dashboard"', html)
-        self.assertIn("Archived · Not real-time", html)
+        self.assertNotIn("Archived · Not real-time", html)
         self.assertIn('id="dashboardResearchRows"', html)
+        self.assertIn('id="indexSections"', html)
+        self.assertIn('id="publishedNewsFeed"', html)
         self.assertIn('id="mobileTickerCommand"', html)
         self.assertIn('id="tickerKseiCard"', html)
         self.assertIn("function renderDashboard()", app)
         self.assertIn("function renderTickerKsei(ticker)", app)
-        self.assertIn('["Legacy Code Audit", "legacy"]', app)
+        self.assertNotIn('["Legacy Code Audit", "legacy"]', app)
 
     def test_reference_domains_are_explicit(self):
         fundamental = json.loads(

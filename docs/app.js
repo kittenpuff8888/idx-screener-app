@@ -1,8 +1,12 @@
-const DISCLAIMER = "Educational research only. Not financial advice. Data is source-limited, archived, and not real-time. Verify independently before making trading decisions.";
+const DISCLAIMER = "Educational research only. Not financial advice. Published datasets may be delayed; verify independently before making trading decisions.";
 const WATCHLIST_KEY = "idx-research-watchlist-v1";
 const THEME_KEY = "idx-research-theme";
 const INDICATOR_SETTINGS_KEY = "idx-research-indicators-v1";
 const DRAWINGS_KEY_PREFIX = "idx-research-drawings:";
+const IDX_SECTORS = [
+  "IDXENERGY", "IDXBASIC", "IDXINDUST", "IDXNONCYC", "IDXCYCLIC", "IDXHEALTH",
+  "IDXFINANCE", "IDXPROPERT", "IDXTECHNO", "IDXINFRA", "IDXTRANS", "Others",
+];
 
 const state = {
   manifest: null,
@@ -22,14 +26,12 @@ const state = {
     search: "",
     sector: "ALL",
     signal: "ALL",
-    rvol: null,
-    rs: null,
-    quality: "ALL",
-    sort: "source",
+    konglo: "ALL",
+    liquidity: "ALL",
   },
-  density: "comfortable",
+  density: "compact",
   heatmapMode: "tickers",
-  explorerSheet: "Screener",
+  explorerSheet: "Technical",
   explorerSearch: "",
   indicatorSettings: null,
   calendarMonth: null,
@@ -53,12 +55,16 @@ const state = {
   kseiManifest: null,
   kseiData: null,
   kseiFilters: { search: "", sector: "ALL", type: "ALL", sort: "hhi" },
+  ownershipMode: "issuers",
+  customIndexes: null,
+  kongloMembership: new Map(),
+  newsTicker: "",
 };
 
 const viewTitles = {
-  dashboard: ["DASHBOARD", "Research Dashboard"],
-  market: ["MARKET MAP", "IDX Market Map"],
+  dashboard: ["RESEARCH DASHBOARD", "IDX Research Dashboard"],
   screener: ["SCREENER", "Signal Screener"],
+  news: ["IDX TICKER NEWS", "IDX Ticker News"],
   watchlist: ["WATCHLIST", "Local Watchlist"],
   ticker: ["TICKER RESEARCH", "Ticker Research"],
   ownership: ["KSEI OWNERSHIP", "Ownership Dashboard"],
@@ -71,15 +77,15 @@ const els = Object.fromEntries(
   [
     "loadBar", "errorBanner", "pageTitle", "eyebrow", "sidebarStatus", "sidebarDate",
     "datasetState", "datasetLine", "footerFreshness", "refreshData", "workbookDownload",
-    "menuButton", "themeToggle", "tickerCommand", "mobileTickerCommand", "tickerList", "datePickerButton",
+    "menuButton", "themeToggle", "tickerCommand", "mobileTickerCommand", "tickerList", "tickerSuggestions", "datePickerButton",
     "selectedDateLabel", "datePickerModal", "calendarPrevious", "calendarNext",
     "calendarMonthLabel", "calendarGrid", "calendarLatest", "marketCoverageBadge",
     "dashboardMarketDate", "dashboardPublished", "dashboardHealthTitle", "dashboardHealth",
     "dashboardSignalTitle", "dashboardSignals", "dashboardSectorTitle", "dashboardSectors",
-    "dashboardResearchRows",
+    "dashboardResearchRows", "indexSections",
     "marketContextGrid", "marketMetricGrid", "marketMap", "sectorSignalHeatmap", "heatmapMode",
     "qualityFunnel", "activityMap", "screenerCount", "screenerSearch", "sectorSelect",
-    "signalSelect", "rvolMinimum", "rsMinimum", "qualitySelect", "sortSelect",
+    "signalSelect", "kongloSelect", "liquiditySelect", "rvolMinimum", "rsMinimum", "qualitySelect", "sortSelect",
     "resetFilters", "densityToggle", "exportScreener", "signalLenses", "screenerTable",
     "screenerHead", "screenerBody", "screenerEmpty", "watchlistContent",
     "exportWatchlist", "tickerEmpty", "tickerContent", "tickerHero", "tickerKeyMetrics",
@@ -100,9 +106,13 @@ const els = Object.fromEntries(
     "kseiMetricGrid", "kseiOwnershipTypes", "kseiCcsDonut",
     "kseiSectorConcentration", "kseiResultCount", "kseiSearch",
     "kseiSectorFilter", "kseiTypeFilter", "kseiSort", "kseiTableBody",
-    "kseiSourceNote", "kseiUpdateModal", "kseiUpdateDates",
+    "kseiSourceNote", "kseiIssuerTable", "kseiInvestorTable", "kseiInvestorTableBody",
+    "kseiUpdateModal", "kseiUpdateDates",
     "kseiUpdateSummary", "kseiUpdateDetails", "kseiDetailModal",
     "kseiDetailTitle", "kseiDetailSubtitle", "kseiDetailBody",
+    "investorDetailModal", "investorDetailTitle", "investorDetailSubtitle", "investorDetailBody",
+    "indexDetailModal", "indexDetailTitle", "indexDetailSubtitle", "indexDetailBody",
+    "newsSearch", "newsSearchButton", "newsSearchTitle", "tradingViewNews", "publishedNewsFeed",
   ].map((id) => [id, document.getElementById(id)]),
 );
 
@@ -152,6 +162,11 @@ function findValue(row, names) {
 
 function tickerOf(row) {
   return String(row?.Ticker || row?.ticker || "").trim().toUpperCase();
+}
+
+function normalizeSector(value) {
+  const sector = String(value || "").trim().toUpperCase();
+  return IDX_SECTORS.includes(sector) ? sector : "Others";
 }
 
 function formatNumber(value, digits = 2) {
@@ -356,16 +371,27 @@ function activeNewsRecords() {
 
 function rebuildIndexes() {
   const technical = state.data?.technical?.records || {};
-  state.maps.technical = new Map(Object.entries(technical).map(([ticker, row]) => [ticker.toUpperCase(), row]));
+  state.maps.technical = new Map(Object.entries(technical).map(([ticker, row]) => [
+    ticker.toUpperCase(),
+    { ...row, sector: normalizeSector(row.sector) },
+  ]));
   state.maps.fundamental = mapRows(activeFundamentalRecords());
   state.maps.news = groupRows(activeNewsRecords());
   state.maps.signals = groupRows(state.data?.screener?.records || []);
+  state.kongloMembership = new Map();
+  (state.customIndexes?.groups || []).filter((group) => group.section === "KONGLO INDEX").forEach((group) => {
+    group.constituents.forEach((item) => {
+      if (!state.kongloMembership.has(item.ticker)) state.kongloMembership.set(item.ticker, []);
+      state.kongloMembership.get(item.ticker).push(group.id);
+    });
+  });
   const tickers = [...new Set([
     ...state.maps.technical.keys(),
     ...state.maps.fundamental.keys(),
     ...state.maps.signals.keys(),
   ])].sort();
   els.tickerList.innerHTML = tickers.map((ticker) => `<option value="${escapeHtml(ticker)}"></option>`).join("");
+  renderTickerSuggestions("");
 }
 
 function archiveBase(marketDate) {
@@ -396,13 +422,8 @@ async function resolveReference(domain, marketDate, payload) {
   }
 }
 
-async function loadKseiForDate(marketDate) {
-  const available = (state.kseiManifest?.availableDates || []).filter((date) => date <= marketDate);
-  if (!available.length) return null;
-  const asOf = available.at(-1);
-  const entry = state.kseiManifest.snapshots.find((item) => item.asOf === asOf);
-  if (!entry) return null;
-  return fetchJson(entry.path.replace(/^data\//, "data/"));
+async function loadKseiLatest() {
+  return fetchJson("data/ksei/latest.json");
 }
 
 async function loadDate(marketDate, options = {}) {
@@ -431,7 +452,7 @@ async function loadDate(marketDate, options = {}) {
   const [fundamental, news, kseiData] = await Promise.all([
     resolveReference("fundamental", marketDate, fundamentalRaw),
     resolveReference("news", marketDate, newsRaw),
-    loadKseiForDate(marketDate),
+    state.kseiData ? Promise.resolve(state.kseiData) : loadKseiLatest(),
   ]);
   if (token !== state.loadToken) return;
   state.marketDate = marketDate;
@@ -473,7 +494,7 @@ function updateDateQuery(marketDate, historyMode = "auto") {
 }
 
 function showView(view, updateHash = true, options = {}) {
-  if (!viewTitles[view]) view = "market";
+  if (!viewTitles[view]) view = "dashboard";
   if (view !== "ticker") destroyChart();
   state.view = view;
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
@@ -525,6 +546,21 @@ function selectTicker(ticker, updateHash = true) {
   renderTicker();
 }
 
+function renderTickerSuggestions(value) {
+  if (!els.tickerSuggestions) return;
+  const needle = String(value || "").trim().toLowerCase();
+  if (!needle) {
+    els.tickerSuggestions.hidden = true;
+    els.tickerSuggestions.innerHTML = "";
+    return;
+  }
+  const matches = [...state.maps.technical.entries()]
+    .filter(([ticker, stock]) => `${ticker} ${stock.companyName || ""}`.toLowerCase().includes(needle))
+    .slice(0, 8);
+  els.tickerSuggestions.innerHTML = matches.map(([ticker, stock]) => `<button type="button" role="option" data-suggest-ticker="${escapeHtml(ticker)}"><strong>${escapeHtml(ticker)}</strong><span>${escapeHtml(stock.companyName || ticker)}</span><small>${escapeHtml(normalizeSector(stock.sector))}</small></button>`).join("");
+  els.tickerSuggestions.hidden = !matches.length;
+}
+
 function summary() {
   return state.data?.overview?.summary || {};
 }
@@ -546,7 +582,7 @@ function metricCard(label, value, detail, tone = "") {
 function sectorMomentumRows() {
   const groups = new Map();
   state.maps.technical.forEach((stock) => {
-    const sector = validValue(stock.sector) ? stock.sector : "Unclassified";
+    const sector = normalizeSector(stock.sector);
     const change = percentNumber(stock.changePercent);
     if (change === null) return;
     if (!groups.has(sector)) groups.set(sector, []);
@@ -559,22 +595,118 @@ function sectorMomentumRows() {
   })).sort((a, b) => b.average - a.average);
 }
 
+function indexPoint(group, marketDate = state.marketDate) {
+  return [...(group.series || [])].reverse().find((point) => point.date <= marketDate) || null;
+}
+
+function indexReturn(group, months) {
+  const current = indexPoint(group);
+  if (!current) return null;
+  const cutoff = new Date(`${current.date}T00:00:00Z`);
+  cutoff.setUTCMonth(cutoff.getUTCMonth() - months);
+  const targetDate = cutoff.toISOString().slice(0, 10);
+  const previous = [...(group.series || [])].reverse().find((point) => point.date <= targetDate);
+  return previous?.value ? ((current.value / previous.value) - 1) * 100 : null;
+}
+
+function indexCard(group) {
+  const point = indexPoint(group);
+  const previous = (group.series || []).filter((item) => item.date <= state.marketDate).at(-2);
+  const change = point && previous?.value ? ((point.value / previous.value) - 1) * 100 : null;
+  const coverage = point ? `${point.availableConstituents}/${point.totalConstituents}` : "0/0";
+  return `<button class="index-card ${toneFor(change)}" type="button" data-index-id="${escapeHtml(group.id)}">
+    <span>${escapeHtml(group.label)}</span>
+    <strong>${point ? formatNumber(point.value, 2) : "Unavailable"}</strong>
+    <b class="${toneFor(change)}">${formatPercent(change) || "No prior session"}</b>
+    <small>${coverage} constituents · ${escapeHtml(point?.date || state.marketDate)}</small>
+  </button>`;
+}
+
+function externalIndexCard(item) {
+  return `<a class="index-card external-index-card" href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(item.symbol)}" target="_blank" rel="noopener">
+    <span>${escapeHtml(item.label)}</span><strong>${escapeHtml(item.symbol)}</strong>
+    <b>Live chart</b><small>TradingView display · opens externally</small>
+  </a>`;
+}
+
+function renderIndexSections() {
+  if (!els.indexSections) return;
+  const payload = state.customIndexes;
+  if (!payload) {
+    els.indexSections.innerHTML = `<div class="empty-state"><h3>Index workspace unavailable</h3><p>The generated local-index dataset could not be loaded.</p></div>`;
+    return;
+  }
+  const sections = [
+    ["INDEX", [
+      ...(payload.externalIndexes?.INDEX || []).map(externalIndexCard),
+      ...(payload.groups || []).filter((group) => group.id === "PRIMBANK10").map(indexCard),
+    ]],
+    ["SECTORAL INDEX", (payload.groups || []).filter((group) => group.section === "SECTORAL INDEX").map(indexCard)],
+    ["KONGLO INDEX", (payload.groups || []).filter((group) => group.section === "KONGLO INDEX").map(indexCard)],
+    ["OTHERS INDEX", (payload.externalIndexes?.["OTHERS INDEX"] || []).map(externalIndexCard)],
+  ];
+  els.indexSections.innerHTML = sections.map(([label, cards]) => `
+    <section class="index-section">
+      <div class="index-section-head"><span>${escapeHtml(label)}</span><small>${cards.length} instruments</small></div>
+      <div class="index-card-grid">${cards.join("")}</div>
+    </section>`).join("");
+}
+
+function indexSeriesSvg(group) {
+  const rows = (group.series || []).filter((item) => item.date <= state.marketDate).slice(-140);
+  if (rows.length < 2) return `<div class="empty-state"><h3>Index history unavailable</h3><p>At least two calculated sessions are required.</p></div>`;
+  const width = 900;
+  const height = 250;
+  const pad = 22;
+  const values = rows.map((item) => item.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const points = rows.map((item, index) => {
+    const x = pad + (index / (rows.length - 1)) * (width - pad * 2);
+    const y = height - pad - ((item.value - min) / span) * (height - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(" ");
+  return `<svg class="index-detail-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(group.label)} calculated history"><defs><linearGradient id="indexFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b82f6" stop-opacity=".32"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs><polyline points="${points} ${width - pad},${height - pad} ${pad},${height - pad}" fill="url(#indexFill)" stroke="none"/><polyline points="${points}" fill="none" stroke="#60a5fa" stroke-width="3"/><text x="${pad}" y="16">${escapeHtml(rows[0].date)} · ${formatNumber(rows[0].value, 2)}</text><text x="${width - pad}" y="16" text-anchor="end">${escapeHtml(rows.at(-1).date)} · ${formatNumber(rows.at(-1).value, 2)}</text></svg>`;
+}
+
+function openIndexDetail(id) {
+  const group = state.customIndexes?.groups?.find((item) => item.id === id);
+  if (!group) return;
+  const point = indexPoint(group);
+  const missing = point?.missingTickers || [];
+  els.indexDetailTitle.textContent = group.label;
+  els.indexDetailSubtitle.textContent = `${group.section} · ${group.weightMethod} · selected session ${state.marketDate}`;
+  const rows = group.constituents.map((item) => {
+    const stock = state.maps.technical.get(item.ticker) || {};
+    return `<tr data-open-ticker="${escapeHtml(item.ticker)}"><td><strong>${escapeHtml(item.ticker)}</strong></td><td class="numeric">${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</td><td class="numeric ${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</td><td class="numeric">${valueHtml(stock.beta, null, (value) => formatNumber(value, 2), { source: "derived" })}</td><td>${escapeHtml(normalizeSector(stock.sector || item.sector))}</td><td>${escapeHtml(stock.industry || item.industry || "Others")}</td><td class="numeric">${valueHtml(stock.rvol, stock._meta?.rvol, (value) => formatNumber(value, 2))}</td><td class="numeric">${valueHtml(stock.technical?.adrPercent, null, formatPercent, { source: "derived" })}</td><td>${valueHtml(stock.summaryScreener, null, String, { source: "workbook" })}</td></tr>`;
+  }).join("");
+  els.indexDetailBody.innerHTML = `
+    <div class="index-detail-metrics">
+      ${kseiMetric("Index level", point ? formatNumber(point.value, 2) : "Unavailable", point?.date || state.marketDate)}
+      ${kseiMetric("Month", formatPercent(indexReturn(group, 1)) || "Unavailable", "Calculated local return")}
+      ${kseiMetric("Quarter", formatPercent(indexReturn(group, 3)) || "Unavailable", "Calculated local return")}
+      ${kseiMetric("Year", formatPercent(indexReturn(group, 12)) || "Unavailable", "Calculated local return")}
+    </div>
+    ${indexSeriesSvg(group)}
+    ${missing.length ? `<p class="index-warning">Missing prices were excluded and available constituent weights were normalized for ${escapeHtml(point.date)}: ${escapeHtml(missing.join(", "))}.</p>` : ""}
+    <p class="ownership-source-note"><strong>Formula:</strong> ${escapeHtml(group.formula)} · ${escapeHtml(group.formulaVersion)}. TradingView is not used for this calculation.</p>
+    <div class="table-shell"><table class="data-table"><thead><tr><th>Ticker</th><th>Close</th><th>Change</th><th>Beta vs IHSG</th><th>Sector</th><th>Industry</th><th>RVOL</th><th>ADR %</th><th>Summary</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  openModal(els.indexDetailModal);
+}
+
 function renderDashboard() {
   const stats = summary();
-  const qa = state.data.qa.summary || {};
-  const status = (qa.fail || 0) > 0
-    ? ["Issues found", "error"]
-    : (stats.partial || 0) > 0 || (qa.warn || 0) > 0
-      ? ["Partial", "warning"]
-      : ["OK", "ok"];
+  const breadth = state.data.overview.overview?.breadth || {};
   els.dashboardMarketDate.textContent = state.marketDate;
-  els.dashboardPublished.textContent = `Published ${formatTimestamp(state.data.overview.generatedAt || state.manifest.generatedAt)}. Archive release, not real-time.`;
-  els.dashboardHealthTitle.innerHTML = `Data Quality: <span class="status-badge ${status[1]}">${status[0]}</span>`;
+  els.dashboardPublished.textContent = `${formatNumber(breadth.advances, 0) || "0"} advancing · ${formatNumber(breadth.declines, 0) || "0"} declining · published ${formatTimestamp(state.data.overview.generatedAt || state.manifest.generatedAt)}`;
+  const changes = state.kseiData?.investorChanges || [];
+  els.dashboardHealthTitle.textContent = `KSEI ${state.kseiData?.asOf || "unavailable"} · ${changes.length} change rows`;
   els.dashboardHealth.innerHTML = [
-    ["Scanned", stats.totalScanned],
-    ["OK", stats.ok],
-    ["Partial", stats.partial],
-    ["No data", stats.noData],
+    ["Issuers", state.kseiData?.summary?.totalIssuers || 0],
+    ["Investors", state.kseiData?.investorDirectory?.length || 0],
+    ["Changes", changes.length],
+    ["Others", state.kseiData?.summary?.sectors?.Others || 0],
   ].map(([label, value]) => `<span><small>${escapeHtml(label)}</small><strong>${formatNumber(value, 0) || "0"}</strong></span>`).join("");
 
   const signalRows = (state.data.screener.records || []).map(normalizedSignal);
@@ -589,7 +721,7 @@ function renderDashboard() {
   const sectors = sectorMomentumRows();
   const strongest = sectors.slice(0, 2);
   const weakest = sectors.slice(-2).reverse();
-  els.dashboardSectorTitle.textContent = `${formatNumber(sectors.length, 0) || "0"} sectors with observed change`;
+  els.dashboardSectorTitle.textContent = `${formatNumber(sectors.length, 0) || "0"} IDX sectors observed`;
   els.dashboardSectors.innerHTML = [
     ...strongest.map((item) => ({ ...item, tone: item.average >= 0 ? "positive" : "negative", label: "Highest" })),
     ...weakest.map((item) => ({ ...item, tone: item.average >= 0 ? "positive" : "negative", label: "Lowest" })),
@@ -601,6 +733,7 @@ function renderDashboard() {
   els.dashboardResearchRows.innerHTML = priorityRows.length
     ? `<table class="data-table dashboard-table"><thead><tr><th>Ticker</th><th>Company</th><th>Sector</th><th>Signal</th><th>Change</th><th>RVOL</th><th>RS</th><th>Status</th><th>Actions</th></tr></thead><tbody>${priorityRows.map((row) => `<tr data-open-ticker="${escapeHtml(row.ticker)}"><td><strong>${escapeHtml(row.ticker)}</strong></td><td>${escapeHtml(row.company || row.ticker)}</td><td>${escapeHtml(row.sector || "Unclassified")}</td><td><span class="signal-chip">${escapeHtml(row.signal)}</span></td><td class="numeric ${toneFor(row.change)}">${formatPercent(row.change) || "—"}</td><td class="numeric">${formatNumber(row.rvol, 2) || "—"}</td><td class="numeric">${formatNumber(row.rs, 0) || "—"}</td><td><span class="status-badge ${escapeHtml(String(row.dataStatus).toLowerCase())}">${escapeHtml(row.dataStatus)}</span></td><td class="row-actions"><button type="button" data-open-ticker="${escapeHtml(row.ticker)}">Open</button><button type="button" data-toggle-watch="${escapeHtml(row.ticker)}">${watchlist().includes(row.ticker) ? "Saved" : "Watch"}</button></td></tr>`).join("")}</tbody></table>`
     : `<div class="empty-state"><h3>No published signal rows</h3><p>The selected archive loaded successfully, but contains no active signal rows.</p></div>`;
+  renderIndexSections();
 }
 
 function renderDatasetStatus() {
@@ -710,7 +843,7 @@ function renderMarketMap() {
   });
   const sectors = new Map();
   state.maps.technical.forEach((stock, ticker) => {
-    const sector = validValue(stock.sector) ? stock.sector : "Unclassified";
+    const sector = normalizeSector(stock.sector);
     if (!sectors.has(sector)) sectors.set(sector, []);
     sectors.get(sector).push({ ticker, stock });
   });
@@ -747,7 +880,7 @@ function sectorSignalMatrix() {
   const matrix = new Map();
   const signals = state.data.screener.records || [];
   signals.forEach((row) => {
-    const sector = findValue(row, ["Sector", "IDX Sector"]) || state.maps.technical.get(tickerOf(row))?.sector || "Unclassified";
+    const sector = normalizeSector(findValue(row, ["Sector", "IDX Sector"]) || state.maps.technical.get(tickerOf(row))?.sector);
     const signal = row.signalType || row["Filter Label"] || "Workbook Signal";
     const key = `${sector}|||${signal}`;
     if (!matrix.has(key)) matrix.set(key, { rows: 0, tickers: new Set() });
@@ -760,7 +893,7 @@ function sectorSignalMatrix() {
 
 function renderSectorSignalHeatmap() {
   const rows = state.data.screener.records || [];
-  const sectors = [...new Set(rows.map((row) => findValue(row, ["Sector", "IDX Sector"]) || state.maps.technical.get(tickerOf(row))?.sector || "Unclassified"))].sort();
+  const sectors = [...new Set(rows.map((row) => normalizeSector(findValue(row, ["Sector", "IDX Sector"]) || state.maps.technical.get(tickerOf(row))?.sector)))].sort();
   const signals = [...new Set(rows.map((row) => row.signalType || row["Filter Label"] || "Workbook Signal"))].sort();
   const matrix = sectorSignalMatrix();
   const values = [...matrix.values()].map((cell) => state.heatmapMode === "tickers" ? cell.tickers.size : cell.rows);
@@ -837,32 +970,23 @@ function normalizedSignal(row) {
     raw: row,
     ticker,
     company: stock.companyName || ticker,
-    sector: findValue(row, ["Sector", "IDX Sector"]) || stock.sector,
+    sector: normalizeSector(findValue(row, ["Sector", "IDX Sector"]) || stock.sector),
+    industry: stock.industry,
     signal: row.signalType || row["Filter Label"] || "Workbook Signal",
-    legacy: row.legacyFilter || "",
     price: findValue(row, ["Price", "Closing Price"]) ?? stock.lastPrice,
     change: findValue(row, ["Chg %", "Price Change %"]) ?? stock.changePercent,
+    beta: stock.beta ?? findValue(row, ["Beta", "Beta Zone"]),
     rvol: findValue(row, ["RVOL", "RVOL 20 D"]) ?? stock.rvol,
-    adr: findValue(row, ["ADR %", "ADR"]),
-    currentVwap: findValue(row, ["Current Q VWAP"]),
-    previousVwap: findValue(row, ["Prev Q VWAP"]),
-    previousYearVwap: findValue(row, ["Prev Y VWAP"]),
-    ma: findValue(row, ["MA", "MA Zone"]),
-    summary: findValue(row, ["Summary Screener", "Section"]),
-    sentiment: findValue(row, ["Sentiment News"]),
-    corporateAction: findValue(row, ["Corp. Action"]),
-    entryPoi: findValue(row, ["Entry POI"]),
-    entry: findValue(row, ["Entry"]),
-    targetPoi: findValue(row, ["Target POI"]),
-    target: findValue(row, ["Target"]),
-    upside: findValue(row, ["Target Upside %", "Upside %"]),
-    invalidationPoi: findValue(row, ["Invalidation POI"]),
-    invalidation: findValue(row, ["Invalidation"]),
-    rr: findValue(row, ["R/R"]),
-    beta: findValue(row, ["Beta Zone"]),
-    rs: findValue(row, ["RS Rating"]) ?? stock.rsRating,
+    rvolChange: stock.rvolChangePercent,
+    smc: stock.technical?.smcSummary || stock.structure?.swing || stock.structure?.internal,
+    vwapZone: stock.technical?.vwapPosition || findValue(row, ["Current Q VWAP"]),
+    marketProfileZone: stock.technical?.marketProfileZone,
+    maZone: stock.technical?.maZone || findValue(row, ["MA", "MA Zone"]),
+    adr: stock.technical?.adrPercent ?? findValue(row, ["ADR %", "ADR"]),
+    summary: stock.summaryScreener || findValue(row, ["Summary Screener", "Section"]),
+    liquidity: stock.liquidityCategory || "Unclassified",
+    konglo: state.kongloMembership.get(ticker) || [],
     dataStatus: stock.dataStatus || "UNKNOWN",
-    marketDate: state.marketDate,
     source: stock.provenance?.source || state.data.screener.provenance?.signals?.source || "workbook",
   };
 }
@@ -872,66 +996,47 @@ function filteredSignals() {
   let rows = (state.data.screener.records || []).map(normalizedSignal).filter((row) => {
     if (state.filters.sector !== "ALL" && row.sector !== state.filters.sector) return false;
     if (state.filters.signal !== "ALL" && row.signal !== state.filters.signal) return false;
-    if (state.filters.quality !== "ALL" && row.dataStatus !== state.filters.quality) return false;
-    if (state.filters.rvol !== null && (asNumber(row.rvol) ?? -Infinity) < state.filters.rvol) return false;
-    if (state.filters.rs !== null && (asNumber(row.rs) ?? -Infinity) < state.filters.rs) return false;
-    if (needle && !Object.values(row).some((value) => String(value ?? "").toLowerCase().includes(needle))) return false;
+    if (state.filters.konglo !== "ALL" && !row.konglo.includes(state.filters.konglo)) return false;
+    if (state.filters.liquidity !== "ALL" && row.liquidity !== state.filters.liquidity) return false;
+    if (needle && !`${row.ticker} ${row.company}`.toLowerCase().includes(needle)) return false;
     return true;
   });
-  const sorters = {
-    change: (a, b) => (percentNumber(b.change) || -Infinity) - (percentNumber(a.change) || -Infinity),
-    rvol: (a, b) => (asNumber(b.rvol) || -Infinity) - (asNumber(a.rvol) || -Infinity),
-    rs: (a, b) => (asNumber(b.rs) || -Infinity) - (asNumber(a.rs) || -Infinity),
-    rr: (a, b) => (asNumber(b.rr) || -Infinity) - (asNumber(a.rr) || -Infinity),
-  };
-  if (sorters[state.filters.sort]) rows = [...rows].sort(sorters[state.filters.sort]);
-  return rows;
+  return [...rows].sort((a, b) => (asNumber(b.rvol) || -Infinity) - (asNumber(a.rvol) || -Infinity));
 }
 
 const screenerColumns = [
-  ["Ticker", "ticker"], ["Company", "company"], ["Sector", "sector"], ["Signal", "signal"],
-  ["Data Status", "dataStatus"], ["Chg %", "change"], ["RVOL", "rvol"], ["RS Rating", "rs"],
-  ["Price", "price"], ["Market Date", "marketDate"], ["Legacy Code Audit", "legacy"],
-  ["Summary Screener", "summary"], ["ADR %", "adr"], ["Current Q VWAP", "currentVwap"],
-  ["Prev Q VWAP", "previousVwap"], ["Prev Y VWAP", "previousYearVwap"], ["MA", "ma"],
-  ["Sentiment News", "sentiment"], ["Corp. Action", "corporateAction"], ["Entry Level Basis", "entryPoi"], ["Entry", "entry"],
-  ["Target Level Basis", "targetPoi"], ["Target", "target"], ["Target Upside %", "upside"],
-  ["Invalidation Basis", "invalidationPoi"], ["Invalidation", "invalidation"], ["R/R", "rr"],
-  ["Beta Zone", "beta"], ["Source", "source"], ["Actions", "actions"],
+  ["", "watch"], ["Ticker", "ticker"], ["Company", "company"], ["Sector", "sector"], ["Industry", "industry"],
+  ["Price", "price"], ["Change", "change"], ["Beta vs IHSG", "beta"], ["RVOL", "rvol"],
+  ["RVOL Change", "rvolChange"], ["SMC", "smc"], ["VWAP Zone", "vwapZone"],
+  ["Market Profile Zone", "marketProfileZone"], ["MA Zone", "maZone"], ["ADR %", "adr"],
+  ["Summary", "summary"],
 ];
 
 function screenerCell(row, key) {
   if (key === "ticker") return `<strong>${escapeHtml(row.ticker)}</strong>`;
+  if (key === "watch") return `<button class="watch-star ${watchlist().includes(row.ticker) ? "active" : ""}" type="button" data-toggle-watch="${escapeHtml(row.ticker)}" aria-label="${watchlist().includes(row.ticker) ? "Remove" : "Add"} ${escapeHtml(row.ticker)} ${watchlist().includes(row.ticker) ? "from" : "to"} watchlist">★</button>`;
   if (key === "company") return `<span class="company-cell">${escapeHtml(row.company)}</span>`;
   if (key === "signal") return `<span class="signal-chip">${escapeHtml(row.signal)}</span>`;
-  if (key === "legacy") return row.legacy ? `<code class="legacy-code">${escapeHtml(row.legacy)}</code>` : valueHtml(null, { reason: "field_not_found", source: "workbook", asOf: state.marketDate }, String);
-  if (key === "change" || key === "upside") return `<span class="${toneFor(row[key])}">${valueHtml(row[key], null, (value) => formatPercent(value), { source: row.source })}</span>`;
-  if (["price", "entry", "target", "invalidation"].includes(key)) return valueHtml(row[key], null, formatPrice, { source: row.source });
-  if (["rvol", "adr", "rr", "rs"].includes(key)) return valueHtml(row[key], null, (value) => formatNumber(value, 2), { source: row.source });
-  if (key === "source") return `<span class="source-chip">${escapeHtml(sourceLabel(row.source))}</span>`;
-  if (key === "dataStatus") {
-    const reason = row.dataStatus === "PARTIAL"
-      ? "Some workbook or source fields are unavailable for this ticker/date."
-      : row.dataStatus === "NO_DATA"
-        ? "No usable archived data is available for this ticker/date."
-        : "Required research fields are available.";
-    return `<span class="status-badge ${escapeHtml(String(row.dataStatus).toLowerCase())}" title="${escapeHtml(reason)}">${escapeHtml(row.dataStatus)}</span>`;
-  }
-  if (key === "actions") return `<span class="row-actions"><button type="button" data-open-ticker="${escapeHtml(row.ticker)}">Open</button><button type="button" data-toggle-watch="${escapeHtml(row.ticker)}">${watchlist().includes(row.ticker) ? "Saved" : "Watch"}</button></span>`;
+  if (key === "change" || key === "rvolChange" || key === "adr") return `<span class="${toneFor(row[key])}">${valueHtml(row[key], null, (value) => formatPercent(value), { source: row.source })}</span>`;
+  if (key === "price") return valueHtml(row[key], null, formatPrice, { source: row.source });
+  if (["rvol", "beta"].includes(key)) return valueHtml(row[key], null, (value) => formatNumber(value, 2), { source: row.source });
   return valueHtml(row[key], null, (value) => String(value), { source: row.source });
 }
 
 function setupScreenerOptions() {
   const signals = (state.data.screener.records || []).map(normalizedSignal);
-  const sectors = [...new Set([
-    ...signals.map((row) => row.sector),
-    ...[...state.maps.technical.values()].map((stock) => stock.sector),
-  ].filter(Boolean))].sort();
+  const sectors = IDX_SECTORS;
   const signalTypes = [...new Set(signals.map((row) => row.signal).filter(Boolean))].sort();
+  const kongloGroups = (state.customIndexes?.groups || []).filter((group) => group.section === "KONGLO INDEX");
+  const liquidity = [...new Set([...state.maps.technical.values()].map((stock) => stock.liquidityCategory || "Unclassified"))].sort();
   els.sectorSelect.innerHTML = `<option value="ALL">All sectors</option>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)}</option>`).join("")}`;
-  els.signalSelect.innerHTML = `<option value="ALL">All signal categories</option>${signalTypes.map((signal) => `<option value="${escapeHtml(signal)}">${escapeHtml(signal)}</option>`).join("")}`;
+  if (els.signalSelect) els.signalSelect.innerHTML = `<option value="ALL">All signal categories</option>${signalTypes.map((signal) => `<option value="${escapeHtml(signal)}">${escapeHtml(signal)}</option>`).join("")}`;
+  els.kongloSelect.innerHTML = `<option value="ALL">All groups</option>${kongloGroups.map((group) => `<option value="${escapeHtml(group.id)}">${escapeHtml(group.label)}</option>`).join("")}`;
+  els.liquiditySelect.innerHTML = `<option value="ALL">All categories</option>${liquidity.map((item) => `<option value="${escapeHtml(item)}">${escapeHtml(item)}</option>`).join("")}`;
   els.sectorSelect.value = sectors.includes(state.filters.sector) ? state.filters.sector : "ALL";
-  els.signalSelect.value = signalTypes.includes(state.filters.signal) ? state.filters.signal : "ALL";
+  if (els.signalSelect) els.signalSelect.value = signalTypes.includes(state.filters.signal) ? state.filters.signal : "ALL";
+  els.kongloSelect.value = state.filters.konglo;
+  els.liquiditySelect.value = state.filters.liquidity;
   const counts = new Map();
   signals.forEach((row) => counts.set(row.signal, (counts.get(row.signal) || 0) + 1));
   els.signalLenses.innerHTML = `<button class="signal-lens ${state.filters.signal === "ALL" ? "active" : ""}" type="button" data-lens="ALL">All · ${signals.length}</button>${[...counts.entries()].map(([label, count]) => `<button class="signal-lens ${state.filters.signal === label ? "active" : ""}" type="button" data-lens="${escapeHtml(label)}">${escapeHtml(label)} · ${count}</button>`).join("")}`;
@@ -942,10 +1047,9 @@ function renderScreener() {
   const sourceRows = state.data.screener.records || [];
   const rows = filteredSignals();
   els.screenerCount.textContent = `${rows.length} of ${sourceRows.length} rows`;
-  els.screenerTable.classList.toggle("compact", state.density === "compact");
-  els.densityToggle.textContent = state.density === "compact" ? "Compact" : "Comfortable";
+  els.screenerTable.classList.add("compact");
   els.screenerHead.innerHTML = `<tr>${screenerColumns.map(([label]) => `<th>${guideHeading(label)}</th>`).join("")}</tr>`;
-  els.screenerBody.innerHTML = rows.map((row) => `<tr data-open-ticker="${escapeHtml(row.ticker)}">${screenerColumns.map(([, key]) => `<td class="${["price", "change", "rvol", "adr", "entry", "target", "upside", "invalidation", "rr", "rs"].includes(key) ? "numeric" : ""} ${key === "summary" ? "wide-cell" : ""}">${screenerCell(row, key)}</td>`).join("")}</tr>`).join("");
+  els.screenerBody.innerHTML = rows.map((row) => `<tr data-open-ticker="${escapeHtml(row.ticker)}">${screenerColumns.map(([, key]) => `<td class="${["price", "change", "rvol", "rvolChange", "adr", "beta"].includes(key) ? "numeric" : ""} ${key === "summary" ? "wide-cell" : ""}">${screenerCell(row, key)}</td>`).join("")}</tr>`).join("");
   if (rows.length) {
     els.screenerEmpty.hidden = true;
   } else {
@@ -958,12 +1062,8 @@ function renderScreener() {
 }
 
 function resetFilters() {
-  state.filters = { search: "", sector: "ALL", signal: "ALL", rvol: null, rs: null, quality: "ALL", sort: "source" };
+  state.filters = { search: "", sector: "ALL", signal: "ALL", konglo: "ALL", liquidity: "ALL" };
   els.screenerSearch.value = "";
-  els.rvolMinimum.value = "";
-  els.rsMinimum.value = "";
-  els.qualitySelect.value = "ALL";
-  els.sortSelect.value = "source";
   renderScreener();
 }
 
@@ -1019,7 +1119,6 @@ function renderTicker() {
   renderTickerMetrics(stock);
   renderTickerSignals(signals);
   renderLevelMap(stock, signals[0] || {});
-  renderTickerSourceStatus(stock);
   renderTechnical(stock);
   renderTickerKsei(ticker);
   renderFundamental(ticker);
@@ -1032,7 +1131,7 @@ function renderTickerHero(stock) {
   const inWatchlist = watchlist().includes(ticker);
   const sector = validValue(stock.sector) ? stock.sector : "Sector unavailable";
   const industry = validValue(stock.industry) ? ` · ${escapeHtml(stock.industry)}` : "";
-  els.tickerHero.innerHTML = `<div class="ticker-identity"><span class="section-kicker">${escapeHtml(sector)}</span><h2>${escapeHtml(ticker)}</h2><p>${escapeHtml(stock.companyName || ticker)}${industry}</p><small>${escapeHtml(state.marketDate)} · archived release · not real-time</small></div><div class="ticker-quote"><strong>${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</strong><span class="${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</span><div class="ticker-actions"><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span><button class="secondary-button persistent-watch-action" type="button" data-toggle-watch="${escapeHtml(ticker)}">${inWatchlist ? "Remove from watchlist" : "Add to watchlist"}</button></div></div>`;
+  els.tickerHero.innerHTML = `<div class="ticker-identity"><span class="section-kicker">${escapeHtml(sector)}</span><h2>${escapeHtml(ticker)}</h2><p>${escapeHtml(stock.companyName || ticker)}${industry}</p><small>Market session ${escapeHtml(state.marketDate)}</small></div><div class="ticker-quote"><strong>${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</strong><span class="${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</span><div class="ticker-actions"><span class="status-badge ${escapeHtml(String(stock.dataStatus || "NO_DATA").toLowerCase())}">${escapeHtml(stock.dataStatus || "NO_DATA")}</span><button class="secondary-button persistent-watch-action" type="button" data-toggle-watch="${escapeHtml(ticker)}">${inWatchlist ? "Remove from watchlist" : "Add to watchlist"}</button></div></div>`;
   els.tradingViewLink.href = `https://www.tradingview.com/chart/?symbol=IDX%3A${encodeURIComponent(ticker)}`;
 }
 
@@ -1048,7 +1147,7 @@ function concentrationLabel(hhi) {
 function renderTickerKsei(ticker) {
   const record = (state.kseiData?.records || []).find((item) => item.ticker === ticker);
   if (!record) {
-    els.tickerKseiCard.innerHTML = `<div class="empty-state compact-empty"><h3>No KSEI snapshot for this ticker/date.</h3><p>A later ownership snapshot is never inserted into an earlier historical view.</p><button type="button" class="secondary-button" data-go-view="ownership">Open KSEI Ownership</button></div>`;
+    els.tickerKseiCard.innerHTML = `<div class="empty-state compact-empty"><h3>No KSEI ownership record for this ticker.</h3><p>The latest independent KSEI dataset is ${escapeHtml(state.kseiData?.asOf || "unavailable")}.</p><button type="button" class="secondary-button" data-go-view="ownership">Open KSEI Ownership</button></div>`;
     return;
   }
   const metrics = [
@@ -1059,7 +1158,7 @@ function renderTickerKsei(ticker) {
     ["CCS", `${formatNumber(record.ccs, 0)} · ${record.ccsCategory}`, "ksei-ccs"],
     ["Ownership", record.ownershipType, "ksei-ownership-type"],
   ];
-  els.tickerKseiCard.innerHTML = `<div class="ticker-ksei-metrics">${metrics.map(([label, value, concept]) => `<div title="${escapeHtml(shortTooltip(concept))}"><span>${escapeHtml(label)} ${guideLink(concept, "?")}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div><div class="ticker-ksei-actions"><small>Snapshot ${escapeHtml(state.kseiData.asOf)} · point-in-time KSEI workbook</small><span><button type="button" class="text-button" data-ksei-ticker="${escapeHtml(ticker)}">Ownership detail</button><button type="button" class="secondary-button" data-go-view="ownership">Open full KSEI Ownership</button></span></div>`;
+  els.tickerKseiCard.innerHTML = `<div class="ticker-ksei-metrics">${metrics.map(([label, value, concept]) => `<div title="${escapeHtml(shortTooltip(concept))}"><span>${escapeHtml(label)} ${guideLink(concept, "?")}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}</div><div class="ticker-ksei-actions"><small>Latest KSEI dataset ${escapeHtml(state.kseiData.asOf)} · independent of market-date selection</small><span><button type="button" class="text-button" data-ksei-ticker="${escapeHtml(ticker)}">Ownership detail</button><button type="button" class="secondary-button" data-go-view="ownership">Open full KSEI Ownership</button></span></div>`;
 }
 
 function renderTickerMetrics(stock) {
@@ -1105,6 +1204,7 @@ function renderLevelMap(stock, signal) {
     ["Target level basis", findValue(signal, ["Target POI"])],
     ["Invalidation basis", findValue(signal, ["Invalidation POI"])],
     ["Target upside", findValue(signal, ["Target Upside %", "Upside %"])],
+    ["Invalidation downside", findValue(signal, ["Invalidation Down %"]) ?? stock.downsidePercent],
     ["R/R", findValue(signal, ["R/R"])],
     ["Support", stock.supportLevels?.find(validValue)],
     ["Resistance", stock.resistanceLevels?.find(validValue)],
@@ -1193,6 +1293,54 @@ function renderNews(ticker) {
     const url = findValue(row, ["URL", "News URL", "Link"]);
     return `<article class="news-item"><strong>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(title)}</a>` : escapeHtml(title)}</strong><p>${escapeHtml(detail)}</p><small class="source-chip">Workbook</small></article>`;
   }).join("");
+}
+
+function resolveTickerSearch(value) {
+  const needle = String(value || "").trim().toLowerCase();
+  if (!needle) return "";
+  const exact = [...state.maps.technical.keys()].find((ticker) => ticker.toLowerCase() === needle.replace(".jk", ""));
+  if (exact) return exact;
+  const match = [...state.maps.technical.entries()].find(([ticker, stock]) => `${ticker} ${stock.companyName || ""}`.toLowerCase().includes(needle));
+  return match?.[0] || "";
+}
+
+function loadTradingViewNews(ticker) {
+  if (!els.tradingViewNews) return;
+  els.newsSearchTitle.textContent = `${ticker} · TradingView News`;
+  els.tradingViewNews.innerHTML = "";
+  const widget = document.createElement("div");
+  widget.className = "tradingview-widget-container__widget";
+  els.tradingViewNews.append(widget);
+  const script = document.createElement("script");
+  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-timeline.js";
+  script.async = true;
+  script.textContent = JSON.stringify({
+    feedMode: "symbol",
+    symbol: `IDX:${ticker}`,
+    isTransparent: true,
+    displayMode: "regular",
+    width: "100%",
+    height: 620,
+    colorTheme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
+    locale: "en",
+  });
+  els.tradingViewNews.append(script);
+}
+
+function renderNewsPage() {
+  if (!els.publishedNewsFeed) return;
+  const rows = activeNewsRecords().filter((row) => Object.values(row).some(validValue));
+  els.publishedNewsFeed.innerHTML = rows.length
+    ? rows.slice(0, 200).map((row) => {
+      const ticker = tickerOf(row);
+      const title = findValue(row, ["Latest News Title", "Headline", "Title", "Sentiment News"]) || "Published workbook event";
+      const date = findValue(row, ["Date", "Published Date", "Posted", "As Of"]) || state.data.news.referenceMarketDate || state.marketDate;
+      const detail = findValue(row, ["Summary", "Description", "Corp. Action"]) || "No additional workbook description.";
+      const url = findValue(row, ["URL", "News URL", "Link"]);
+      return `<article class="published-news-card"><div><button type="button" data-open-ticker="${escapeHtml(ticker)}">${escapeHtml(ticker || "IDX")}</button><time>${escapeHtml(String(date))}</time></div><h3>${url && /^https?:/i.test(url) ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(title)}</a>` : escapeHtml(title)}</h3><p>${escapeHtml(detail)}</p><small>Workbook intelligence · ${escapeHtml(state.data.news.isReference ? `latest reference ${state.data.news.referenceMarketDate}` : state.marketDate)}</small></article>`;
+    }).join("")
+    : `<div class="empty-state"><h3>No published workbook headlines</h3><p>Status: missing · reason: source unavailable · source: workbook · as of ${escapeHtml(state.marketDate)}.</p></div>`;
+  if (state.newsTicker) loadTradingViewNews(state.newsTicker);
 }
 
 const GUIDE_GLOSSARY = {
@@ -1294,7 +1442,8 @@ function loadIndicatorSettings() {
   }
   state.indicatorSettings = IDXIndicators.deepMerge(IDXIndicators.DEFAULTS, saved);
   state.indicatorSettings.schemaVersion = IDXIndicators.DEFAULTS.schemaVersion;
-  state.chartMode = state.indicatorSettings.chart.mode || "research";
+  state.chartMode = "research";
+  state.indicatorSettings.chart.mode = "research";
   state.chartInterval = state.indicatorSettings.chart.interval || "1D";
   state.chartRange = state.indicatorSettings.chart.range || "1Y";
 }
@@ -1450,10 +1599,6 @@ function chartColors() {
 
 async function renderPriceChart(ticker) {
   els.chartTickerSearch.value = ticker;
-  if (state.chartMode === "tradingview") {
-    renderTradingViewWidget(ticker);
-    return;
-  }
   const marketDate = state.marketDate;
   const cacheKey = `${marketDate}:${ticker}`;
   els.historyStatus.className = "status-badge info";
@@ -1852,18 +1997,26 @@ function filteredKseiRecords() {
   return records.sort(sorters[filters.sort] || sorters.hhi);
 }
 
+function filteredKseiInvestors() {
+  const needle = state.kseiFilters.search.trim().toLowerCase();
+  return [...(state.kseiData?.investorDirectory || [])]
+    .filter((item) => !needle || item.name.toLowerCase().includes(needle)
+      || item.tickers.some((row) => `${row.ticker} ${row.companyName}`.toLowerCase().includes(needle)))
+    .sort((a, b) => b.tickerCount - a.tickerCount || b.totalPublishedPercentage - a.totalPublishedPercentage);
+}
+
 function renderKseiOwnership() {
   const payload = state.kseiData;
   els.kseiUnavailable.hidden = Boolean(payload);
   els.kseiContent.hidden = !payload;
   els.kseiUpdateButton.disabled = !payload;
   if (!payload) {
-    els.kseiAsOfBadge.textContent = `No snapshot on or before ${state.marketDate}`;
+    els.kseiAsOfBadge.textContent = "Latest KSEI dataset unavailable";
     return;
   }
   const stats = payload.summary;
   els.kseiAsOfBadge.textContent = `KSEI as of ${payload.asOf}`;
-  els.kseiSourceNote.textContent = `Point-in-time snapshot ${payload.asOf}. Selected market date ${state.marketDate}. Concentration describes the published ownership register, not transaction flow.`;
+  els.kseiSourceNote.textContent = `Latest uploaded KSEI dataset ${payload.asOf}. This ownership page is independent of the selected market date. Concentration describes the published register, not transaction flow.`;
   els.kseiMetricGrid.innerHTML = [
     kseiMetric("Listed issuers", formatNumber(stats.totalIssuers, 0) || "0", `${formatNumber(stats.okIssuers, 0) || 0} complete records`),
     kseiMetric("Average free float", kseiPercent(stats.averageFreeFloat), "Across records with a published value"),
@@ -1916,8 +2069,14 @@ function renderKseiOwnership() {
   els.kseiSectorFilter.innerHTML = `<option value="ALL">All sectors</option>${sectorsList.map((item) => `<option ${item === state.kseiFilters.sector ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}`;
   els.kseiTypeFilter.innerHTML = `<option value="ALL">All types</option>${types.map((item) => `<option ${item === state.kseiFilters.type ? "selected" : ""}>${escapeHtml(item)}</option>`).join("")}`;
   const records = filteredKseiRecords();
-  els.kseiResultCount.textContent = `${formatNumber(records.length, 0)} of ${formatNumber(payload.records.length, 0)}`;
-  els.kseiTableBody.innerHTML = records.slice(0, 956).map((item) => `
+  const investors = filteredKseiInvestors();
+  els.kseiIssuerTable.hidden = state.ownershipMode !== "issuers";
+  els.kseiInvestorTable.hidden = state.ownershipMode !== "investors";
+  document.querySelectorAll("[data-ownership-mode]").forEach((button) => button.classList.toggle("active", button.dataset.ownershipMode === state.ownershipMode));
+  els.kseiResultCount.textContent = state.ownershipMode === "issuers"
+    ? `${formatNumber(records.length, 0)} of ${formatNumber(payload.records.length, 0)} issuers`
+    : `${formatNumber(investors.length, 0)} of ${formatNumber(payload.investorDirectory?.length, 0)} investors`;
+  els.kseiTableBody.innerHTML = state.ownershipMode === "issuers" ? records.slice(0, 300).map((item) => `
     <tr>
       <td><strong>${escapeHtml(item.ticker)}</strong></td>
       <td><span class="ownership-company">${escapeHtml(item.companyName)}</span></td>
@@ -1930,27 +2089,37 @@ function renderKseiOwnership() {
       <td class="numeric">${formatNumber(item.ccs, 0) || "—"}<small class="concentration-label">${escapeHtml(item.ccsCategory || "Unavailable")}</small></td>
       <td><span class="ownership-type">${escapeHtml(item.ownershipType)}</span></td>
       <td><button class="ownership-detail-button" type="button" data-ksei-ticker="${escapeHtml(item.ticker)}">Detail</button></td>
-    </tr>`).join("");
+    </tr>`).join("") : "";
+  els.kseiInvestorTableBody.innerHTML = state.ownershipMode === "investors" ? investors.slice(0, 300).map((item) => {
+    const types = Object.entries(item.types || {}).sort((a, b) => b[1] - a[1]).map(([type]) => type).join(", ");
+    const top = item.tickers?.[0];
+    return `<tr>
+      <td><strong>${escapeHtml(item.name)}</strong></td>
+      <td>${escapeHtml(types || "Unknown")}</td>
+      <td class="numeric">${formatNumber(item.tickerCount, 0)}</td>
+      <td class="numeric">${kseiPercent(item.totalPublishedPercentage)}</td>
+      <td>${top ? `<button class="text-button" type="button" data-open-ticker="${escapeHtml(top.ticker)}">${escapeHtml(top.ticker)} · ${kseiPercent(top.percentage)}</button>` : valueHtml(null, inferredMissingMeta("KSEI workbook"), String)}</td>
+      <td><button class="ownership-detail-button" type="button" data-ksei-investor="${escapeHtml(item.name)}">Detail</button></td>
+    </tr>`;
+  }).join("") : "";
 }
 
 function renderKseiUpdateModal() {
-  const comparison = state.kseiData?.comparison;
-  if (!comparison) return;
-  const changed = comparison.changedTickers.length;
-  const additions = comparison.investorAdditions.length;
-  const removals = comparison.investorRemovals.length;
-  els.kseiUpdateDates.textContent = comparison.previousAsOf
-    ? `${state.kseiData.asOf} vs ${comparison.previousAsOf}`
-    : `First published snapshot ${state.kseiData.asOf}`;
+  const comparison = state.kseiData?.comparison || {};
+  const rows = state.kseiData?.investorChanges || [];
+  if (!state.kseiData) return;
+  const changed = rows.filter((row) => row.changeType === "Changed").length;
+  const additions = rows.filter((row) => /new|add/i.test(row.changeType || "")).length;
+  const removals = rows.filter((row) => /remove/i.test(row.changeType || "")).length;
+  els.kseiUpdateDates.textContent = `${state.kseiData.asOf} · latest uploaded KSEI workbook`;
   els.kseiUpdateSummary.innerHTML = [
-    ["New issuers", comparison.newTickers.length],
-    ["Changed issuers", changed],
-    ["Holder additions", additions],
+    ["Published changes", rows.length],
+    ["Changed holdings", changed],
+    ["Adds / removals", additions + removals],
   ].map(([label, value]) => `<div><strong>${formatNumber(value, 0)}</strong><span>${escapeHtml(label)}</span></div>`).join("");
-  const noChanges = !changed && !additions && !removals && !comparison.newTickers.length && !comparison.removedTickers.length;
-  els.kseiUpdateDetails.innerHTML = noChanges
-    ? `<section><h3>No ownership changes detected</h3><p>The June 6 workbook contains the same issuer-level ownership values as the May 14 workbook. The newer source date is published without inventing changes.</p></section>`
-    : `<section><h3>Published changes</h3><p>${changed} issuers changed, ${additions} holders entered the published &gt;1% list, and ${removals} left it.</p><div class="ksei-change-tags">${comparison.changedTickers.slice(0, 80).map((ticker) => `<span>${escapeHtml(ticker)}</span>`).join("")}</div></section>`;
+  els.kseiUpdateDetails.innerHTML = rows.length
+    ? `<section><h3>Investor Changes worksheet</h3><div class="ksei-change-list">${rows.map((row) => `<article><button type="button" data-open-ticker="${escapeHtml(row.ticker)}"><strong>${escapeHtml(row.ticker)}</strong></button><span>${escapeHtml(row.investor)}</span><b>${kseiPercent(row.oldPercentage)} → ${kseiPercent(row.newPercentage)}</b><small>${escapeHtml(row.notes || row.changeType)}</small></article>`).join("")}</div></section>`
+    : `<section><h3>No explicit change rows published</h3><p>The workbook loaded successfully, but its Investor Changes worksheet contains no rows.</p></section>`;
   openModal(els.kseiUpdateModal);
 }
 
@@ -1971,6 +2140,15 @@ function openKseiDetail(ticker) {
       <div><span><strong>${escapeHtml(holder.name)}</strong><small>${escapeHtml(holder.type)}</small></span><i><u style="--width:${(holder.percentage / top) * 100}%"></u></i><b>${kseiPercent(holder.percentage)}</b></div>`).join("") : `<p>No parsed holder rows are available in this source record.</p>`}</section>
     <p class="ownership-source-note">This view describes the published ownership register. It does not infer trading activity, participant intent, or transaction flow.</p>`;
   openModal(els.kseiDetailModal);
+}
+
+function openInvestorDetail(name) {
+  const item = state.kseiData?.investorDirectory?.find((record) => record.name === name);
+  if (!item) return;
+  els.investorDetailTitle.textContent = item.name;
+  els.investorDetailSubtitle.textContent = `${item.tickerCount} related issuers · ${kseiPercent(item.totalPublishedPercentage)} total published holdings · KSEI ${state.kseiData.asOf}`;
+  els.investorDetailBody.innerHTML = `<div class="table-shell"><table class="data-table"><thead><tr><th>Ticker</th><th>Company</th><th>Sector</th><th>Industry</th><th>Type</th><th>Published ownership</th></tr></thead><tbody>${item.tickers.map((row) => `<tr data-open-ticker="${escapeHtml(row.ticker)}"><td><strong>${escapeHtml(row.ticker)}</strong></td><td>${escapeHtml(row.companyName)}</td><td>${escapeHtml(normalizeSector(row.sector))}</td><td>${escapeHtml(row.industry || "Others")}</td><td>${escapeHtml(row.type)}</td><td class="numeric">${kseiPercent(row.percentage)}</td></tr>`).join("")}</tbody></table></div><p class="ownership-source-note">Issuer relationships come directly from the latest uploaded KSEI workbook. No participant intent or transaction activity is inferred.</p>`;
+  openModal(els.investorDetailModal);
 }
 
 function renderDataQuality() {
@@ -2067,14 +2245,8 @@ function sourceAuditRows() {
 
 function explorerDatasets() {
   return {
-    Overview: [state.data.overview.summary || {}],
-    Screener: state.data.screener.records || [],
     Technical: [...state.maps.technical.values()],
     Fundamental: activeFundamentalRecords(),
-    News: activeNewsRecords(),
-    "Processing Results": state.data.processing.records || [],
-    "QA Audit": state.data.qa.issues || [],
-    "Data Source Audit": sourceAuditRows(),
   };
 }
 
@@ -2115,6 +2287,7 @@ function renderAll() {
   renderScreener();
   renderWatchlist();
   renderKseiOwnership();
+  renderNewsPage();
   renderDataQuality();
   renderExplorer();
   renderGuide();
@@ -2147,8 +2320,9 @@ function openModal(element) {
 }
 
 function closeModal(element) {
+  if (!element) return;
   element.hidden = true;
-  if ([els.datePickerModal, els.indicatorSettingsModal, els.kseiUpdateModal, els.kseiDetailModal].every((modal) => modal.hidden)) {
+  if ([els.datePickerModal, els.indicatorSettingsModal, els.kseiUpdateModal, els.kseiDetailModal, els.investorDetailModal, els.indexDetailModal].filter(Boolean).every((modal) => modal.hidden)) {
     document.body.classList.remove("modal-open");
   }
 }
@@ -2192,6 +2366,7 @@ function handleIndicatorInput(event) {
 }
 
 function bindEvents() {
+  const on = (element, type, handler) => element?.addEventListener(type, handler);
   document.querySelectorAll(".nav-item").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
   document.addEventListener("click", (event) => {
     const guideTarget = event.target.closest("[data-guide-id]");
@@ -2241,6 +2416,21 @@ function bindEvents() {
     }
     const watchTarget = event.target.closest("[data-toggle-watch]");
     if (watchTarget) return toggleWatchlist(watchTarget.dataset.toggleWatch);
+    const suggestion = event.target.closest("[data-suggest-ticker]");
+    if (suggestion) {
+      els.tickerSuggestions.hidden = true;
+      return selectTicker(suggestion.dataset.suggestTicker);
+    }
+    const indexTarget = event.target.closest("[data-index-id]");
+    if (indexTarget) return openIndexDetail(indexTarget.dataset.indexId);
+    const investorTarget = event.target.closest("[data-ksei-investor]");
+    if (investorTarget) return openInvestorDetail(investorTarget.dataset.kseiInvestor);
+    const ownershipMode = event.target.closest("[data-ownership-mode]");
+    if (ownershipMode) {
+      state.ownershipMode = ownershipMode.dataset.ownershipMode;
+      renderKseiOwnership();
+      return;
+    }
     const removeTarget = event.target.closest("[data-remove-watch]");
     if (removeTarget) return toggleWatchlist(removeTarget.dataset.removeWatch);
     const sectorTarget = event.target.closest("[data-filter-sector]");
@@ -2273,6 +2463,7 @@ function bindEvents() {
     if (tickerTarget) return selectTicker(tickerTarget.dataset.openTicker);
     const kseiTicker = event.target.closest("[data-ksei-ticker]");
     if (kseiTicker) return openKseiDetail(kseiTicker.dataset.kseiTicker);
+    if (event.target.closest("[data-open-ksei-update]")) return renderKseiUpdateModal();
     const kseiSector = event.target.closest("[data-ksei-sector]");
     if (kseiSector) {
       state.kseiFilters.sector = kseiSector.dataset.kseiSector;
@@ -2293,6 +2484,8 @@ function bindEvents() {
         indicators: els.indicatorSettingsModal,
         "ksei-update": els.kseiUpdateModal,
         "ksei-detail": els.kseiDetailModal,
+        "investor-detail": els.investorDetailModal,
+        "index-detail": els.indexDetailModal,
       };
       closeModal(modals[closeTarget.dataset.closeModal] || els.indicatorSettingsModal);
       return;
@@ -2300,7 +2493,7 @@ function bindEvents() {
     const lens = event.target.closest("[data-lens]");
     if (lens) {
       state.filters.signal = lens.dataset.lens;
-      els.signalSelect.value = state.filters.signal;
+      if (els.signalSelect) els.signalSelect.value = state.filters.signal;
       renderScreener();
       return;
     }
@@ -2316,80 +2509,81 @@ function bindEvents() {
     if (event.target.closest("[data-reload-chart]")) return renderPriceChart(state.selectedTicker);
     const viewTarget = event.target.closest("[data-go-view]");
     if (viewTarget) return showView(viewTarget.dataset.goView);
+    const scrollTarget = event.target.closest("[data-scroll-dashboard]");
+    if (scrollTarget) document.getElementById(scrollTarget.dataset.scrollDashboard)?.scrollIntoView({ behavior: "smooth" });
   });
-  els.menuButton.addEventListener("click", () => document.body.classList.toggle("nav-open"));
-  els.priceChart.addEventListener("click", handleDrawingClick);
-  els.themeToggle.addEventListener("click", () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
-  els.refreshData.addEventListener("click", () => loadDate(state.marketDate).catch((error) => showError(error.message)));
-  els.datePickerButton.addEventListener("click", openCalendar);
-  els.calendarPrevious.addEventListener("click", () => {
+  on(els.menuButton, "click", () => document.body.classList.toggle("nav-open"));
+  on(els.priceChart, "click", handleDrawingClick);
+  on(els.themeToggle, "click", () => applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+  on(els.refreshData, "click", () => loadDate(state.marketDate).catch((error) => showError(error.message)));
+  on(els.datePickerButton, "click", openCalendar);
+  on(els.calendarPrevious, "click", () => {
     state.calendarMonth = new Date(Date.UTC(state.calendarMonth.getUTCFullYear(), state.calendarMonth.getUTCMonth() - 1, 1));
     renderCalendar();
   });
-  els.calendarNext.addEventListener("click", () => {
+  on(els.calendarNext, "click", () => {
     state.calendarMonth = new Date(Date.UTC(state.calendarMonth.getUTCFullYear(), state.calendarMonth.getUTCMonth() + 1, 1));
     renderCalendar();
   });
-  els.calendarLatest.addEventListener("click", () => {
+  on(els.calendarLatest, "click", () => {
     closeModal(els.datePickerModal);
     loadDate(state.manifest.latestMarketDate).catch((error) => showError(error.message));
   });
-  els.tickerCommand.addEventListener("change", (event) => selectTicker(event.target.value));
-  els.tickerCommand.addEventListener("keydown", (event) => {
+  on(els.tickerCommand, "input", (event) => renderTickerSuggestions(event.target.value));
+  on(els.tickerCommand, "change", (event) => selectTicker(event.target.value));
+  on(els.tickerCommand, "keydown", (event) => {
     if (event.key === "Enter") selectTicker(event.currentTarget.value);
   });
-  els.mobileTickerCommand.addEventListener("change", (event) => selectTicker(event.target.value));
-  els.mobileTickerCommand.addEventListener("keydown", (event) => {
+  on(els.mobileTickerCommand, "change", (event) => selectTicker(event.target.value));
+  on(els.mobileTickerCommand, "keydown", (event) => {
     if (event.key === "Enter") selectTicker(event.currentTarget.value);
   });
-  els.chartTickerSearch.addEventListener("keydown", (event) => {
+  on(els.chartTickerSearch, "keydown", (event) => {
     if (event.key === "Enter") selectTicker(event.currentTarget.value);
   });
-  els.screenerSearch.addEventListener("input", (event) => { state.filters.search = event.target.value; renderScreener(); });
-  els.sectorSelect.addEventListener("change", (event) => { state.filters.sector = event.target.value; renderScreener(); });
-  els.signalSelect.addEventListener("change", (event) => { state.filters.signal = event.target.value; renderScreener(); });
-  els.rvolMinimum.addEventListener("input", (event) => { state.filters.rvol = event.target.value === "" ? null : Number(event.target.value); renderScreener(); });
-  els.rsMinimum.addEventListener("input", (event) => { state.filters.rs = event.target.value === "" ? null : Number(event.target.value); renderScreener(); });
-  els.qualitySelect.addEventListener("change", (event) => { state.filters.quality = event.target.value; renderScreener(); });
-  els.sortSelect.addEventListener("change", (event) => { state.filters.sort = event.target.value; renderScreener(); });
-  els.resetFilters.addEventListener("click", resetFilters);
-  els.densityToggle.addEventListener("click", () => { state.density = state.density === "compact" ? "comfortable" : "compact"; renderScreener(); });
-  els.exportScreener.addEventListener("click", () => downloadCsv(`idx-screener-${state.marketDate}.csv`, filteredSignals()));
-  els.exportWatchlist.addEventListener("click", () => downloadCsv(`idx-watchlist-${state.marketDate}.csv`, watchlist().map((ticker) => state.maps.technical.get(ticker) || { ticker })));
-  els.heatmapMode.addEventListener("click", () => { state.heatmapMode = state.heatmapMode === "tickers" ? "rows" : "tickers"; renderSectorSignalHeatmap(); });
-  els.explorerSheet.addEventListener("change", (event) => { state.explorerSheet = event.target.value; renderExplorer(); });
-  els.explorerSearch.addEventListener("input", (event) => { state.explorerSearch = event.target.value; renderExplorer(); });
-  els.exportExplorer.addEventListener("click", () => downloadCsv(`idx-${state.explorerSheet.toLowerCase().replaceAll(" ", "-")}-${state.marketDate}.csv`, explorerDatasets()[state.explorerSheet] || []));
-  els.kseiUpdateButton.addEventListener("click", renderKseiUpdateModal);
-  els.kseiSearch.addEventListener("input", (event) => { state.kseiFilters.search = event.target.value; renderKseiOwnership(); });
-  els.kseiSectorFilter.addEventListener("change", (event) => { state.kseiFilters.sector = event.target.value; renderKseiOwnership(); });
-  els.kseiTypeFilter.addEventListener("change", (event) => { state.kseiFilters.type = event.target.value; renderKseiOwnership(); });
-  els.kseiSort.addEventListener("change", (event) => { state.kseiFilters.sort = event.target.value; renderKseiOwnership(); });
-  els.indicatorSettingsButton.addEventListener("click", () => { populateIndicatorSettingsForm(); openModal(els.indicatorSettingsModal); });
-  els.resetChartLayout.addEventListener("click", () => {
-    state.chartInterval = "1D";
-    state.chartRange = "1Y";
-    state.indicatorSettings.chart.interval = "1D";
-    state.indicatorSettings.chart.range = "1Y";
-    saveIndicatorSettings();
-    document.querySelectorAll("[data-chart-interval]").forEach((button) => button.classList.toggle("active", button.dataset.chartInterval === "1D"));
-    document.querySelectorAll("[data-chart-range]").forEach((button) => button.classList.toggle("active", button.dataset.chartRange === "1Y"));
-    renderPriceChart(state.selectedTicker);
+  on(els.screenerSearch, "input", (event) => { state.filters.search = event.target.value; renderScreener(); });
+  on(els.sectorSelect, "change", (event) => { state.filters.sector = event.target.value; renderScreener(); });
+  on(els.kongloSelect, "change", (event) => { state.filters.konglo = event.target.value; renderScreener(); });
+  on(els.liquiditySelect, "change", (event) => { state.filters.liquidity = event.target.value; renderScreener(); });
+  on(els.heatmapMode, "click", () => { state.heatmapMode = state.heatmapMode === "tickers" ? "rows" : "tickers"; renderSectorSignalHeatmap(); });
+  on(els.explorerSheet, "change", (event) => { state.explorerSheet = event.target.value; renderExplorer(); });
+  on(els.explorerSearch, "input", (event) => { state.explorerSearch = event.target.value; renderExplorer(); });
+  on(els.kseiUpdateButton, "click", renderKseiUpdateModal);
+  on(els.kseiSearch, "input", (event) => { state.kseiFilters.search = event.target.value; renderKseiOwnership(); });
+  on(els.kseiSectorFilter, "change", (event) => { state.kseiFilters.sector = event.target.value; renderKseiOwnership(); });
+  on(els.kseiTypeFilter, "change", (event) => { state.kseiFilters.type = event.target.value; renderKseiOwnership(); });
+  on(els.kseiSort, "change", (event) => { state.kseiFilters.sort = event.target.value; renderKseiOwnership(); });
+  on(els.newsSearchButton, "click", () => {
+    const ticker = resolveTickerSearch(els.newsSearch.value);
+    if (!ticker) {
+      els.newsSearchTitle.textContent = "Ticker not found";
+      els.tradingViewNews.innerHTML = `<div class="empty-state"><h3>No matching IDX ticker</h3><p>Search by ticker code or issuer name from the loaded dataset.</p></div>`;
+      return;
+    }
+    state.newsTicker = ticker;
+    loadTradingViewNews(ticker);
   });
-  els.fullscreenChart.addEventListener("click", () => els.chartWorkspace.requestFullscreen?.());
-  els.indicatorSettingsForm.addEventListener("change", handleIndicatorInput);
-  els.indicatorSettingsForm.addEventListener("input", handleIndicatorInput);
-  els.guideSearch.addEventListener("input", (event) => {
+  on(els.newsSearch, "keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      els.newsSearchButton.click();
+    }
+  });
+  on(els.indicatorSettingsButton, "click", () => { populateIndicatorSettingsForm(); openModal(els.indicatorSettingsModal); });
+  on(els.fullscreenChart, "click", () => els.chartWorkspace.requestFullscreen?.());
+  on(els.indicatorSettingsForm, "change", handleIndicatorInput);
+  on(els.indicatorSettingsForm, "input", handleIndicatorInput);
+  on(els.guideSearch, "input", (event) => {
     state.guideSearch = event.target.value;
     renderGuide();
   });
-  els.guideClear.addEventListener("click", () => {
+  on(els.guideClear, "click", () => {
     state.guideSearch = "";
     state.guideCategory = "ALL";
     els.guideSearch.value = "";
     renderGuide();
   });
-  els.resetIndicatorSettings.addEventListener("click", () => {
+  on(els.resetIndicatorSettings, "click", () => {
     state.indicatorSettings = IDXIndicators.deepMerge(IDXIndicators.DEFAULTS, {});
     saveIndicatorSettings();
     populateIndicatorSettingsForm();
@@ -2405,6 +2599,8 @@ function bindEvents() {
       closeModal(els.indicatorSettingsModal);
       closeModal(els.kseiUpdateModal);
       closeModal(els.kseiDetailModal);
+      closeModal(els.investorDetailModal);
+      closeModal(els.indexDetailModal);
     }
   });
   window.addEventListener("hashchange", () => routeFromHash());
@@ -2416,25 +2612,23 @@ function bindEvents() {
 async function init() {
   initTheme();
   loadIndicatorSettings();
-  document.querySelectorAll("[data-chart-mode]").forEach((button) => button.classList.toggle("active", button.dataset.chartMode === state.chartMode));
   document.querySelectorAll("[data-chart-interval]").forEach((button) => button.classList.toggle("active", button.dataset.chartInterval === state.chartInterval));
   document.querySelectorAll("[data-chart-range]").forEach((button) => button.classList.toggle("active", button.dataset.chartRange === state.chartRange));
-  els.researchChartView.hidden = state.chartMode !== "research";
-  els.tradingViewChartView.hidden = state.chartMode !== "tradingview";
   populateIndicatorSettingsForm();
   updateActiveIndicatorStrip();
   bindEvents();
   loading(8);
-  [state.manifest, state.logicReference, state.kseiManifest, state.updateLog] = await Promise.all([
+  [state.manifest, state.logicReference, state.kseiManifest, state.updateLog, state.customIndexes] = await Promise.all([
     fetchJson("data/manifest.json"),
     fetchJson("data/logic-reference.json"),
     fetchJson("data/ksei/manifest.json"),
     fetchJson("data/update-log.json").catch(() => ({ entries: [] })),
+    fetchJson("data/indexes.json").catch(() => null),
   ]);
   if (state.logicReference.schemaVersion !== 1 || !state.logicReference.records?.length) {
     throw new Error("Logic reference registry is unavailable.");
   }
-  if (state.kseiManifest.schemaVersion !== 1) throw new Error("KSEI ownership manifest is unavailable.");
+  if (![1, 2].includes(state.kseiManifest.schemaVersion)) throw new Error("KSEI ownership manifest is unavailable.");
   hydrateGuideTooltips();
   if (state.manifest.schemaVersion !== 5) throw new Error("Published manifest is not schema version 5.");
   if (!state.manifest.dates?.length) throw new Error("No market dates are published.");

@@ -64,6 +64,7 @@ jobs:
       - name: Validate generated archive
         run: |
           python scripts/export_ksei_ownership.py
+          python scripts/build_custom_indexes.py
           python scripts/validate_data.py
 
       - name: Run Python tests

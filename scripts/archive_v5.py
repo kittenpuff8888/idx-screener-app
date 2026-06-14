@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
 from rebuild_backend.calculations.quality import ticker_quality, validate_ohlcv_record
 from rebuild_backend.logic_reference import export_registry
 from rebuild_backend.schema import SCHEMA_VERSION, field_metadata, missing
+from rebuild_backend.sector_normalization import normalize_idx_sector
 from rebuild_backend.source_registry import registry_payload
 from scripts.build_historical_snapshots import build_snapshot, prepare_ticker
 
@@ -209,6 +210,10 @@ def normalized_signal(row: dict[str, Any]) -> dict[str, Any]:
     item["legacyFilter"] = legacy or None
     item["signalType"] = label or "Workbook Signal"
     item["Filter Label"] = item["signalType"]
+    item["Sector"] = normalize_idx_sector(
+        item.get("IDX Sector"),
+        item.get("Sector") or item.get("sector"),
+    )
     item.pop("Filter", None)
     return item
 
@@ -306,6 +311,10 @@ def normalize_stocks(
                     for key, value in stock[group_name].items()
                 }
         stock["ticker"] = ticker
+        stock["sector"] = normalize_idx_sector(
+            stock.get("idxSector"),
+            stock.get("sector"),
+        )
         stock["supportLevels"] = clean_levels(stock.get("supportLevels"))
         stock["resistanceLevels"] = clean_levels(stock.get("resistanceLevels"))
 

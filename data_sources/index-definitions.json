@@ -1,0 +1,1006 @@
+{
+  "schemaVersion": 1,
+  "source": "IDX Research Website Upgrade - Codex Ready Updated v2 Complete.docx",
+  "konglo": {
+    "Agung Sedayu Group": [
+      {
+        "ticker": "PANI",
+        "category": "main"
+      },
+      {
+        "ticker": "CBDK",
+        "category": "main"
+      },
+      {
+        "ticker": "ERAA",
+        "category": "small"
+      },
+      {
+        "ticker": "ERAL",
+        "category": "small"
+      },
+      {
+        "ticker": "PDPP",
+        "category": "sharing"
+      },
+      {
+        "ticker": "INPC",
+        "category": "sharing"
+      },
+      {
+        "ticker": "JIHD",
+        "category": "sharing"
+      }
+    ],
+    "Alfa Corp": [
+      {
+        "ticker": "AMRT",
+        "category": "main"
+      },
+      {
+        "ticker": "MIDI",
+        "category": "main"
+      },
+      {
+        "ticker": "BLOG",
+        "category": "small"
+      },
+      {
+        "ticker": "BANK",
+        "category": "sharing"
+      },
+      {
+        "ticker": "LAJU",
+        "category": "sharing"
+      }
+    ],
+    "Aneka Kimia Raya Group (AKR)": [
+      {
+        "ticker": "AKRA",
+        "category": "main"
+      }
+    ],
+    "Artha Graha Group": [
+      {
+        "ticker": "INPC",
+        "category": "small"
+      },
+      {
+        "ticker": "JIHD",
+        "category": "small"
+      },
+      {
+        "ticker": "ECII",
+        "category": "small"
+      },
+      {
+        "ticker": "TRUS",
+        "category": "small"
+      }
+    ],
+    "Astra – Jardine Matheson Corp.": [
+      {
+        "ticker": "ASII",
+        "category": "main"
+      },
+      {
+        "ticker": "UNTR",
+        "category": "main"
+      },
+      {
+        "ticker": "AALI",
+        "category": "main"
+      },
+      {
+        "ticker": "AUTO",
+        "category": "main"
+      },
+      {
+        "ticker": "ASGR",
+        "category": "small"
+      },
+      {
+        "ticker": "ACST",
+        "category": "small"
+      },
+      {
+        "ticker": "HERO",
+        "category": "small"
+      },
+      {
+        "ticker": "HEAL",
+        "category": "sharing"
+      },
+      {
+        "ticker": "ARKO",
+        "category": "sharing"
+      }
+    ],
+    "Bakrie Group": [
+      {
+        "ticker": "BUMI",
+        "category": "main"
+      },
+      {
+        "ticker": "BRMS",
+        "category": "main"
+      },
+      {
+        "ticker": "VKTR",
+        "category": "main"
+      },
+      {
+        "ticker": "BNBR",
+        "category": "main"
+      },
+      {
+        "ticker": "ENRG",
+        "category": "main"
+      },
+      {
+        "ticker": "DEWA",
+        "category": "main"
+      },
+      {
+        "ticker": "MDIA",
+        "category": "small"
+      },
+      {
+        "ticker": "VIVA",
+        "category": "small"
+      },
+      {
+        "ticker": "UNSP",
+        "category": "small"
+      },
+      {
+        "ticker": "BTEL",
+        "category": "small"
+      },
+      {
+        "ticker": "ELTY",
+        "category": "small"
+      }
+    ],
+    "Barito Group (Prajogo Pangestu)": [
+      {
+        "ticker": "BRPT",
+        "category": "main"
+      },
+      {
+        "ticker": "BREN",
+        "category": "main"
+      },
+      {
+        "ticker": "TPIA",
+        "category": "main"
+      },
+      {
+        "ticker": "CUAN",
+        "category": "main"
+      },
+      {
+        "ticker": "PTRO",
+        "category": "main"
+      },
+      {
+        "ticker": "CDIA",
+        "category": "main"
+      },
+      {
+        "ticker": "RATU",
+        "category": "sharing"
+      },
+      {
+        "ticker": "SSIA",
+        "category": "sharing"
+      }
+    ],
+    "Bayan Resources Group": [
+      {
+        "ticker": "BYAN",
+        "category": "main"
+      },
+      {
+        "ticker": "TRJA",
+        "category": "small"
+      },
+      {
+        "ticker": "MYOH",
+        "category": "small"
+      },
+      {
+        "ticker": "VOKS",
+        "category": "sharing"
+      },
+      {
+        "ticker": "TOTL",
+        "category": "sharing"
+      }
+    ],
+    "Charoen Pokphand Group": [
+      {
+        "ticker": "CPIN",
+        "category": "main"
+      },
+      {
+        "ticker": "CPRO",
+        "category": "small"
+      }
+    ],
+    "Ciputra Group": [
+      {
+        "ticker": "CTRA",
+        "category": "main"
+      }
+    ],
+    "CT Corp (Chairul Tanjung)": [
+      {
+        "ticker": "MEGA",
+        "category": "main"
+      },
+      {
+        "ticker": "BBHI",
+        "category": "main"
+      },
+      {
+        "ticker": "GIAA",
+        "category": "sharing"
+      }
+    ],
+    "Djarum Group (Hartono Brothers)": [
+      {
+        "ticker": "BBCA",
+        "category": "main"
+      },
+      {
+        "ticker": "TOWR",
+        "category": "main"
+      },
+      {
+        "ticker": "BELI",
+        "category": "main"
+      },
+      {
+        "ticker": "SUPR",
+        "category": "main"
+      },
+      {
+        "ticker": "RANC",
+        "category": "small"
+      },
+      {
+        "ticker": "IBST",
+        "category": "small"
+      },
+      {
+        "ticker": "DATA",
+        "category": "sharing"
+      },
+      {
+        "ticker": "SSIA",
+        "category": "sharing"
+      },
+      {
+        "ticker": "HEAL",
+        "category": "sharing"
+      },
+      {
+        "ticker": "ARKO",
+        "category": "sharing"
+      }
+    ],
+    "Emtek Group (Elang Mahkota Teknologi)": [
+      {
+        "ticker": "EMTK",
+        "category": "main"
+      },
+      {
+        "ticker": "SCMA",
+        "category": "main"
+      },
+      {
+        "ticker": "BUKA",
+        "category": "main"
+      },
+      {
+        "ticker": "ANJT",
+        "category": "small"
+      },
+      {
+        "ticker": "CASS",
+        "category": "small"
+      }
+    ],
+    "First Resources": [
+      {
+        "ticker": "FAPA",
+        "category": "main"
+      },
+      {
+        "ticker": "ANJT",
+        "category": "small"
+      }
+    ],
+    "FKS Group": [
+      {
+        "ticker": "FISH",
+        "category": "main"
+      },
+      {
+        "ticker": "AISA",
+        "category": "small"
+      }
+    ],
+    "Gajah Tunggal – MAP Group": [
+      {
+        "ticker": "MAPA",
+        "category": "main"
+      },
+      {
+        "ticker": "MAPI",
+        "category": "main"
+      },
+      {
+        "ticker": "BGTG",
+        "category": "small"
+      },
+      {
+        "ticker": "GJTL",
+        "category": "small"
+      },
+      {
+        "ticker": "GSMF",
+        "category": "small"
+      },
+      {
+        "ticker": "MAPB",
+        "category": "small"
+      },
+      {
+        "ticker": "ADMG",
+        "category": "small"
+      }
+    ],
+    "Garuda Food": [
+      {
+        "ticker": "GOOD",
+        "category": "main"
+      },
+      {
+        "ticker": "KEJU",
+        "category": "small"
+      }
+    ],
+    "Gunung Sewu Group | Sequis": [
+      {
+        "ticker": "SIPD",
+        "category": "small"
+      }
+    ],
+    "Harita Group": [
+      {
+        "ticker": "NCKL",
+        "category": "main"
+      },
+      {
+        "ticker": "CITA",
+        "category": "main"
+      },
+      {
+        "ticker": "TIRT",
+        "category": "small"
+      }
+    ],
+    "Harum Energy Group": [
+      {
+        "ticker": "HRUM",
+        "category": "main"
+      }
+    ],
+    "Indika Group": [
+      {
+        "ticker": "INDY",
+        "category": "main"
+      }
+    ],
+    "Japfa Group": [
+      {
+        "ticker": "JPFA",
+        "category": "main"
+      }
+    ],
+    "Karunia Prima Nastari (KPN) – Wilmar Corp.": [
+      {
+        "ticker": "CMNT",
+        "category": "main"
+      },
+      {
+        "ticker": "CEKA",
+        "category": "small"
+      }
+    ],
+    "Kawan Lama Group": [
+      {
+        "ticker": "ACES",
+        "category": "small"
+      }
+    ],
+    "Lippo Group": [
+      {
+        "ticker": "MLPT",
+        "category": "main"
+      },
+      {
+        "ticker": "MLPL",
+        "category": "small"
+      },
+      {
+        "ticker": "LPPF",
+        "category": "small"
+      },
+      {
+        "ticker": "MPPA",
+        "category": "small"
+      },
+      {
+        "ticker": "KBLV",
+        "category": "small"
+      },
+      {
+        "ticker": "LPIN",
+        "category": "small"
+      },
+      {
+        "ticker": "LPLI",
+        "category": "small"
+      },
+      {
+        "ticker": "LPPS",
+        "category": "small"
+      },
+      {
+        "ticker": "LPCK",
+        "category": "small"
+      },
+      {
+        "ticker": "LPKR",
+        "category": "small"
+      },
+      {
+        "ticker": "GMTD",
+        "category": "small"
+      },
+      {
+        "ticker": "LPGI",
+        "category": "sharing"
+      },
+      {
+        "ticker": "NOBU",
+        "category": "sharing"
+      },
+      {
+        "ticker": "SILO",
+        "category": "sharing"
+      }
+    ],
+    "Mandiri Coal Group": [
+      {
+        "ticker": "MCOL",
+        "category": "main"
+      },
+      {
+        "ticker": "MAHA",
+        "category": "small"
+      }
+    ],
+    "Mayapada Group": [
+      {
+        "ticker": "SRAJ",
+        "category": "main"
+      },
+      {
+        "ticker": "MPRO",
+        "category": "main"
+      },
+      {
+        "ticker": "MAYA",
+        "category": "small"
+      },
+      {
+        "ticker": "SONA",
+        "category": "small"
+      }
+    ],
+    "Mayora Group": [
+      {
+        "ticker": "MYOR",
+        "category": "main"
+      }
+    ],
+    "Medco – Amman Mineral": [
+      {
+        "ticker": "MEDC",
+        "category": "main"
+      },
+      {
+        "ticker": "AMMN",
+        "category": "main"
+      }
+    ],
+    "Meratus Line": [
+      {
+        "ticker": "KARW",
+        "category": "small"
+      }
+    ],
+    "Pakuwon Group": [
+      {
+        "ticker": "PWON",
+        "category": "main"
+      },
+      {
+        "ticker": "SAME",
+        "category": "sharing"
+      }
+    ],
+    "Raja Garuda Mas | Royal Golden Eagle Group": [
+      {
+        "ticker": "INRU",
+        "category": "small"
+      }
+    ],
+    "Rajawali Corp": [
+      {
+        "ticker": "ARCI",
+        "category": "main"
+      },
+      {
+        "ticker": "BWPT",
+        "category": "small"
+      },
+      {
+        "ticker": "FORU",
+        "category": "small"
+      }
+    ],
+    "Rukun Raharja Group (Happy Hapsoro)": [
+      {
+        "ticker": "RAJA",
+        "category": "main"
+      },
+      {
+        "ticker": "RATU",
+        "category": "main"
+      },
+      {
+        "ticker": "BUVA",
+        "category": "main"
+      },
+      {
+        "ticker": "ARCI",
+        "category": "small"
+      },
+      {
+        "ticker": "PSKT",
+        "category": "small"
+      },
+      {
+        "ticker": "PADI",
+        "category": "small"
+      },
+      {
+        "ticker": "MINA",
+        "category": "small"
+      },
+      {
+        "ticker": "SINI",
+        "category": "small"
+      },
+      {
+        "ticker": "PTRO",
+        "category": "sharing"
+      },
+      {
+        "ticker": "CBRE",
+        "category": "sharing"
+      }
+    ],
+    "Salim Group": [
+      {
+        "ticker": "INDF",
+        "category": "main"
+      },
+      {
+        "ticker": "ICBP",
+        "category": "main"
+      },
+      {
+        "ticker": "DNET",
+        "category": "main"
+      },
+      {
+        "ticker": "AMMN",
+        "category": "main"
+      },
+      {
+        "ticker": "BINA",
+        "category": "main"
+      },
+      {
+        "ticker": "LSIP",
+        "category": "small"
+      },
+      {
+        "ticker": "SIMP",
+        "category": "small"
+      },
+      {
+        "ticker": "IMAS",
+        "category": "small"
+      },
+      {
+        "ticker": "IMJS",
+        "category": "small"
+      },
+      {
+        "ticker": "DCII",
+        "category": "sharing"
+      },
+      {
+        "ticker": "PANI",
+        "category": "sharing"
+      },
+      {
+        "ticker": "MEDC",
+        "category": "sharing"
+      },
+      {
+        "ticker": "EMTK",
+        "category": "sharing"
+      },
+      {
+        "ticker": "MEGA",
+        "category": "sharing"
+      },
+      {
+        "ticker": "BUMI",
+        "category": "sharing"
+      },
+      {
+        "ticker": "BRMS",
+        "category": "sharing"
+      },
+      {
+        "ticker": "DEWA",
+        "category": "sharing"
+      },
+      {
+        "ticker": "UNIC",
+        "category": "sharing"
+      },
+      {
+        "ticker": "FAST",
+        "category": "sharing"
+      },
+      {
+        "ticker": "JECC",
+        "category": "sharing"
+      }
+    ],
+    "Sampoerna Group": [
+      {
+        "ticker": "SGRO",
+        "category": "small"
+      }
+    ],
+    "Sinarmas Group": [
+      {
+        "ticker": "DSSA",
+        "category": "main"
+      },
+      {
+        "ticker": "GEMS",
+        "category": "main"
+      },
+      {
+        "ticker": "SMMA",
+        "category": "main"
+      },
+      {
+        "ticker": "BSDE",
+        "category": "main"
+      },
+      {
+        "ticker": "INKP",
+        "category": "main"
+      },
+      {
+        "ticker": "TKIM",
+        "category": "main"
+      },
+      {
+        "ticker": "EXCL",
+        "category": "main"
+      },
+      {
+        "ticker": "SMAR",
+        "category": "main"
+      },
+      {
+        "ticker": "LIFE",
+        "category": "main"
+      },
+      {
+        "ticker": "BSIM",
+        "category": "main"
+      },
+      {
+        "ticker": "DUTI",
+        "category": "small"
+      },
+      {
+        "ticker": "SMDM",
+        "category": "small"
+      },
+      {
+        "ticker": "PYFA",
+        "category": "small"
+      },
+      {
+        "ticker": "DMAS",
+        "category": "small"
+      },
+      {
+        "ticker": "PLIN",
+        "category": "sharing"
+      }
+    ],
+    "Summarecon Group": [
+      {
+        "ticker": "SMRA",
+        "category": "main"
+      }
+    ],
+    "Sungai Budi Group": [
+      {
+        "ticker": "TBLA",
+        "category": "small"
+      },
+      {
+        "ticker": "BUDI",
+        "category": "small"
+      }
+    ],
+    "Tanoko Group": [
+      {
+        "ticker": "RISE",
+        "category": "main"
+      },
+      {
+        "ticker": "AVIA",
+        "category": "main"
+      },
+      {
+        "ticker": "CAKK",
+        "category": "small"
+      },
+      {
+        "ticker": "PEVE",
+        "category": "small"
+      },
+      {
+        "ticker": "CLEO",
+        "category": "small"
+      },
+      {
+        "ticker": "DEPO",
+        "category": "small"
+      },
+      {
+        "ticker": "ABMM",
+        "category": "sharing"
+      },
+      {
+        "ticker": "MERI",
+        "category": "sharing"
+      },
+      {
+        "ticker": "BLES",
+        "category": "sharing"
+      },
+      {
+        "ticker": "ZONE",
+        "category": "sharing"
+      }
+    ],
+    "Tempo Scan Pacific": [
+      {
+        "ticker": "TSPC",
+        "category": "main"
+      }
+    ],
+    "TNT-Saratoga-Adaro": [
+      {
+        "ticker": "ADRO",
+        "category": "main"
+      },
+      {
+        "ticker": "AADI",
+        "category": "main"
+      },
+      {
+        "ticker": "ADMR",
+        "category": "main"
+      },
+      {
+        "ticker": "MDKA",
+        "category": "main"
+      },
+      {
+        "ticker": "MBMA",
+        "category": "main"
+      },
+      {
+        "ticker": "EMAS",
+        "category": "main"
+      },
+      {
+        "ticker": "ESSA",
+        "category": "main"
+      },
+      {
+        "ticker": "SRTG",
+        "category": "main"
+      },
+      {
+        "ticker": "TBIG",
+        "category": "main"
+      },
+      {
+        "ticker": "BFIN",
+        "category": "small"
+      },
+      {
+        "ticker": "TRIM",
+        "category": "small"
+      },
+      {
+        "ticker": "MPMX",
+        "category": "small"
+      },
+      {
+        "ticker": "WOMF",
+        "category": "sharing"
+      },
+      {
+        "ticker": "GOTO",
+        "category": "sharing"
+      },
+      {
+        "ticker": "PALM",
+        "category": "sharing"
+      },
+      {
+        "ticker": "GHON",
+        "category": "sharing"
+      },
+      {
+        "ticker": "GOLD",
+        "category": "sharing"
+      }
+    ],
+    "Trakindo Group": [
+      {
+        "ticker": "ABMM",
+        "category": "main"
+      },
+      {
+        "ticker": "HDFA",
+        "category": "small"
+      },
+      {
+        "ticker": "GEMS",
+        "category": "sharing"
+      }
+    ],
+    "Triputra Group – Adaro Group": [
+      {
+        "ticker": "TAPG",
+        "category": "main"
+      },
+      {
+        "ticker": "ADRO",
+        "category": "main"
+      },
+      {
+        "ticker": "ASSA",
+        "category": "small"
+      },
+      {
+        "ticker": "ESSA",
+        "category": "small"
+      },
+      {
+        "ticker": "KMTR",
+        "category": "small"
+      },
+      {
+        "ticker": "DAYA",
+        "category": "small"
+      },
+      {
+        "ticker": "ASLC",
+        "category": "small"
+      }
+    ],
+    "Wings Group": [
+      {
+        "ticker": "MASB",
+        "category": "small"
+      }
+    ]
+  },
+  "primbank10": [
+    {
+      "ticker": "BBCA",
+      "freeFloat": "42.59%",
+      "weight": 35.0,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BBNI",
+      "freeFloat": "39.12%",
+      "weight": 8.2,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BBRI",
+      "freeFloat": "46.62%",
+      "weight": 31.99,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BBTN",
+      "freeFloat": "35.24%",
+      "weight": 0.8,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BDMN",
+      "freeFloat": "7.54%",
+      "weight": 0.24,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BMRI",
+      "freeFloat": "37.77%",
+      "weight": 21.56,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BNGA",
+      "freeFloat": "7.51%",
+      "weight": 0.43,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BRIS",
+      "freeFloat": "9.33%",
+      "weight": 1.18,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "BTPN",
+      "freeFloat": "7.88%",
+      "weight": 0.22,
+      "weightSource": "Post Evaluation (35% Cap)"
+    },
+    {
+      "ticker": "PNBN",
+      "freeFloat": "12.37%",
+      "weight": 0.38,
+      "weightSource": "Post Evaluation (35% Cap)"
+    }
+  ]
+}

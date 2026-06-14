@@ -33,17 +33,19 @@ class KseiOwnershipTests(unittest.TestCase):
         self.assertEqual(result["changedTickers"], [])
         self.assertEqual(result["investorAdditions"], [])
 
-    def test_published_latest_snapshot_is_june_6(self):
+    def test_published_latest_snapshot_is_june_14(self):
         manifest = json.loads(
             (ROOT / "docs" / "data" / "ksei" / "manifest.json").read_text(encoding="utf-8")
         )
-        self.assertEqual(manifest["latestAsOf"], "2026-06-06")
+        self.assertEqual(manifest["latestAsOf"], "2026-06-14")
         self.assertIn("2026-05-14", manifest["availableDates"])
         latest = json.loads(
             (ROOT / "docs" / "data" / "ksei" / "latest.json").read_text(encoding="utf-8")
         )
         self.assertEqual(latest["summary"]["totalIssuers"], 956)
-        self.assertEqual(latest["comparison"]["changedTickers"], [])
+        self.assertEqual(latest["summary"]["sectors"]["Others"], 44)
+        self.assertEqual(len(latest["investorChanges"]), 8)
+        self.assertGreater(len(latest["investorDirectory"]), 5000)
 
 
 if __name__ == "__main__":

@@ -18,6 +18,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from rebuild_backend.sector_normalization import normalize_idx_sector
+
 OUTPUT_DIR = ROOT / "Output"
 DOCS_DIR = ROOT / "docs"
 DATA_DIR = DOCS_DIR / "data"
@@ -278,13 +280,19 @@ def normalized_stocks(
         stocks[ticker] = {
             "ticker": ticker,
             "companyName": first_value(row, ["Emiten", "Company"]) or first_value(fund, ["Company", "Emiten"]),
-            "sector": first_value(row, ["IDX Sector", "Sector"]) or first_value(fund, ["IDX Sector", "Sector"]),
+            "sector": normalize_idx_sector(
+                first_value(row, ["IDX Sector"]),
+                first_value(row, ["Sector"]) or first_value(fund, ["IDX Sector", "Sector"]),
+            ),
             "industry": first_value(row, ["Industry"]) or first_value(fund, ["Industry"]),
             "lastPrice": first_value(row, ["Closing Price", "Price"]),
             "changePercent": first_value(row, ["Price Change %", "Chg %"]),
             "volume": first_value(row, ["Volume"]),
             "rvol": first_value(row, ["RVOL 20 D", "RVOL"]),
+            "rvolChangePercent": first_value(row, ["RVOL Change %", "RVOL 20 D Change %"]),
             "rsRating": first_value(row, ["RS Rating"]),
+            "beta": first_value(row, ["Beta (vs IHSG)", "Beta vs IHSG"]),
+            "liquidityCategory": first_value(row, ["Liquidity Categories", "Liquidity Category"]),
             "trend": {
                 "internal": first_value(row, ["Internal Trend"]),
                 "swing": first_value(row, ["Swing Trend"]),
@@ -314,12 +322,16 @@ def normalized_stocks(
                 first_value(row, ["MDH"]),
             ],
             "entry": first_value(primary, ["Entry"]),
+            "entryPoi": first_value(primary, ["Entry POI"]),
             "target": first_value(primary, ["Target"]),
+            "targetPoi": first_value(primary, ["Target POI"]),
             "invalidation": first_value(primary, ["Invalidation"]),
+            "invalidationPoi": first_value(primary, ["Invalidation POI"]),
             "riskReward": first_value(primary, ["R/R"]),
             "upsidePercent": first_value(primary, ["Target Upside %", "Upside %"]),
             "downsidePercent": first_value(primary, ["Invalidation Down %"]),
             "signalExplanation": first_value(primary, ["Summary Screener", "Section"]),
+            "summaryScreener": first_value(primary, ["Summary Screener", "Section"]),
             "signalCount": len(stock_signals),
             "technical": {
                 "rsiStatus": first_value(row, ["RSI Status"]),
@@ -328,6 +340,11 @@ def normalized_stocks(
                 "wavePattern": first_value(row, ["Wave Pattern"]),
                 "betaZone": first_value(row, ["Beta (vs IHSG) Zone"]),
                 "priceLocation": first_value(row, ["Summary"]),
+                "smcSummary": first_value(row, ["Summary"]),
+                "marketProfileZone": first_value(row, ["MP Summary"]),
+                "maZone": first_value(row, ["MA Zone"]),
+                "adrPercent": first_value(row, ["ADR %"]),
+                "atrPercent": first_value(row, ["ATR (14) %"]),
                 "vwapPosition": next(
                     (
                         value
@@ -442,7 +459,10 @@ def market_overview(
         ticker = str(row.get("Ticker") or "").strip()
         change = number(first_value(row, ("Price Change %", "Chg %")))
         price = number(first_value(row, ("Closing Price", "Price")))
-        sector = str(first_value(row, ("IDX Sector", "Sector")) or "Unclassified")
+        sector = normalize_idx_sector(
+            first_value(row, ("IDX Sector",)),
+            first_value(row, ("Sector",)),
+        )
         if change is not None:
             if change > 0:
                 breadth["advances"] += 1
@@ -459,7 +479,10 @@ def market_overview(
 
     signal_tickers: dict[str, set[str]] = defaultdict(set)
     for row in screener:
-        sector = str(first_value(row, ("Sector", "IDX Sector")) or "Unclassified")
+        sector = normalize_idx_sector(
+            first_value(row, ("IDX Sector",)),
+            first_value(row, ("Sector",)),
+        )
         signal_tickers[sector].add(str(row.get("Ticker") or ""))
 
     sector_rows = []

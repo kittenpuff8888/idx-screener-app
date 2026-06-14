@@ -64,6 +64,7 @@ FILL_HEADER = PatternFill("solid", fgColor="2A4A66")  # post-import themed init
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import ScatterChart, Reference, Series
 from rebuild_backend.logic_reference import workbook_rows
+from rebuild_backend.sector_normalization import normalize_idx_sector
 
 # =========================
 # CONFIG
@@ -3548,6 +3549,15 @@ def load_ksei():
     for k, src in mappings.items():
         out[k] = df[src] if src else np.nan
 
+    # Keep the descriptive source sector for audit, but expose only the
+    # authoritative 11-sector IDX classification plus Others downstream.
+    out["Source Sector"] = out["Sector"]
+    out["idx_sector"] = [
+        normalize_idx_sector(idx_sector, source_sector)
+        for idx_sector, source_sector in zip(out["idx_sector"], out["Source Sector"])
+    ]
+    out["Sector"] = out["idx_sector"]
+
     # Preserve extra Raw/Stockbit columns so downstream sheets can prefer
     # source-of-truth Stockbit values over yfinance approximations when present.
     for _c in df.columns:
@@ -3776,7 +3786,6 @@ def base_row_from_ksei(ksei_row: pd.Series):
         "rrg_quadrant": "-",
         "emiten": ksei_row.get("Emiten", ""),
         "idx_sector": ksei_row.get("idx_sector", ""),
-        "idx_sector_weight": safe_num(ksei_row.get("idx_sector_weight")),
         "idx_sector_weight": safe_num(ksei_row.get("idx_sector_weight")),
         "sector": ksei_row.get("Sector", ""),
         "industry": ksei_row.get("Industry", ""),
@@ -11670,7 +11679,7 @@ def build_idx_screener_sheet(wb, latest_market_day: str, rows: list):
     ws.row_dimensions[2].height = 20
     ws.merge_cells(start_row=2, start_column=COL_START, end_row=2, end_column=COL_END)
     t2 = ws.cell(2, COL_START)
-    t2.value = "  Filter Gates : ADTR 20D (IDR) ≥ 5B  or  ADTV 20D (Shares) ≥ 5M  and  RSI ≥ 50"
+    t2.value = "  Filter Gates : (ADTR 20D (IDR) ≥ 5B OR ADTV 20D (Shares) ≥ 5M) AND RSI ≥ 50"
     t2.fill      = FILL_STATS
     t2.font      = FT_STATS
     t2.alignment = AL_L

@@ -3,14 +3,19 @@ from __future__ import annotations
 import json
 import math
 import shutil
+import sys
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from statistics import fmean
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from rebuild_backend.sector_normalization import normalize_idx_sector
+
 DOCS = ROOT / "docs"
 DATA = DOCS / "data"
 SOURCE_DATE = "2026-06-10"
@@ -309,7 +314,7 @@ def build_stock(
     return {
         "ticker": ticker,
         "companyName": static.get("companyName") or ticker,
-        "sector": static.get("sector") or "-",
+        "sector": normalize_idx_sector(static.get("idxSector"), static.get("sector")),
         "industry": static.get("industry") or "-",
         "lastPrice": round_value(close, 2),
         "changePercent": round_value(change, 6),
@@ -446,7 +451,7 @@ def market_overview(stocks: dict[str, dict[str, Any]], signals: list[dict[str, A
     signal_tickers = {str(row.get("Ticker") or "") for row in signals}
     sector_rows: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for stock in stocks.values():
-        sector_rows[str(stock.get("sector") or "-")].append(stock)
+        sector_rows[normalize_idx_sector(stock.get("idxSector"), stock.get("sector"))].append(stock)
     sectors = []
     for sector, rows in sector_rows.items():
         changes = [number(row.get("changePercent")) for row in rows]
@@ -494,7 +499,7 @@ def load_sources() -> tuple[dict[str, Any], dict[str, dict[str, Any]], list[str]
             str(row.get("Ticker") or ""): {
                 "ticker": row.get("Ticker"),
                 "companyName": row.get("Emiten"),
-                "sector": row.get("IDX Sector") or row.get("Sector"),
+                "sector": normalize_idx_sector(row.get("IDX Sector"), row.get("Sector")),
                 "industry": row.get("Industry"),
             }
             for row in latest.get("technical", [])

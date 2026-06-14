@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,11 +11,15 @@ from typing import Any
 
 import pandas as pd
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from rebuild_backend.sector_normalization import normalize_idx_sector
+
 SOURCE_DIR = ROOT / "data_sources" / "ksei"
 OUTPUT_DIR = ROOT / "docs" / "data" / "ksei"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 HOLDER_PATTERN = re.compile(
     r"^\s*\d+\.\s*(.*?)\s+-\s+(.+?)\s+-\s+([0-9]+(?:\.[0-9]+)?)%?\s*$"
 )
@@ -40,6 +45,56 @@ def normalized_name(value: str) -> str:
     return re.sub(r"\s+", " ", value.strip().upper())
 
 
+def normalized_header(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(value or "").strip().lower())
+
+
+def normalize_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    aliases = {
+        "kode": "Kode",
+        "ticker": "Kode",
+        "emiten": "Emiten",
+        "company": "Emiten",
+        "sektor": "Sektor",
+        "sector": "Sektor",
+        "industri": "Industri",
+        "industry": "Industri",
+        "investors": "Investors",
+        "investor": "Investor",
+        "freefloat": "Free Float",
+        "classichhi": "Classic HHI",
+        "concentrationratiotop1cr1": "Concentration Ratio Top 1 (CR1)",
+        "concentrationratiotop3cr3": "Concentration Ratio Top 3 (CR3)",
+        "holder": "Holder",
+        "ccs": "CCS",
+        "ownershiptype": "Ownership Type",
+        "ccscategory": "CCS Category",
+        "idxsector": "IDX Sector",
+        "idxsectorweight": "IDX Sector Weight",
+        "changetype": "Change Type",
+        "oldt ipe": "Old Tipe",
+        "oldtipe": "Old Tipe",
+        "newtipe": "New Tipe",
+        "oldpersentase": "Old Persentase",
+        "newpersentase": "New Persentase",
+        "oldinvestorline": "Old Investor Line",
+        "newinvestorline": "New Investor Line",
+        "notes": "Notes",
+        "oldclassichhi": "Old Classic HHI",
+        "newclassichhi": "New Classic HHI",
+        "oldholder": "Old Holder",
+        "newholder": "New Holder",
+        "oldccs": "Old CCS",
+        "newccs": "New CCS",
+    }
+    rename = {}
+    for column in frame.columns:
+        key = normalized_header(column)
+        if key in aliases:
+            rename[column] = aliases[key]
+    return frame.rename(columns=rename)
+
+
 def parse_investors(value: Any) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     for line in str(value or "").splitlines():
@@ -61,11 +116,15 @@ def record_from_row(row: pd.Series, as_of: str) -> dict[str, Any]:
     investors = parse_investors(row.get("Investors"))
     required = ("Kode", "Emiten", "Free Float", "Classic HHI", "CCS")
     missing_fields = [field for field in required if pd.isna(row.get(field))]
+    source_sector = text_value(row.get("Sektor"))
+    idx_sector = normalize_idx_sector(row.get("IDX Sector"), source_sector)
     return {
         "ticker": text_value(row.get("Kode")).upper(),
         "companyName": text_value(row.get("Emiten")),
-        "sector": text_value(row.get("Sektor"), "Unclassified"),
-        "industry": text_value(row.get("Industri"), "Unclassified"),
+        "sector": idx_sector,
+        "idxSector": idx_sector,
+        "sourceSector": source_sector or "Others",
+        "industry": text_value(row.get("Industri"), "Others"),
         "investors": investors,
         "freeFloat": finite_number(row.get("Free Float")),
         "hhi": finite_number(row.get("Classic HHI")),
@@ -75,14 +134,85 @@ def record_from_row(row: pd.Series, as_of: str) -> dict[str, Any]:
         "ccs": finite_number(row.get("CCS")),
         "ownershipType": text_value(row.get("Ownership Type"), "Unclassified"),
         "ccsCategory": text_value(row.get("CCS Category"), "Unclassified"),
-        "idxSector": text_value(row.get("IDX Sector"), "Unclassified"),
         "idxSectorWeight": finite_number(row.get("IDX Sector Weight")),
         "status": "partial" if missing_fields else "ok",
         "missingFields": missing_fields,
         "source": "KSEI workbook",
         "asOf": as_of,
-        "formulaVersion": "ksei-ownership-v1",
+        "formulaVersion": "ksei-ownership-v2",
     }
+
+
+def change_records(frame: pd.DataFrame | None, as_of: str) -> list[dict[str, Any]]:
+    if frame is None or frame.empty:
+        return []
+    frame = normalize_frame(frame)
+    records = []
+    for _, row in frame.iterrows():
+        ticker = text_value(row.get("Kode")).upper()
+        investor = text_value(row.get("Investor"))
+        if not ticker or not investor:
+            continue
+        records.append(
+            {
+                "changeType": text_value(row.get("Change Type"), "Changed"),
+                "ticker": ticker,
+                "companyName": text_value(row.get("Emiten")),
+                "investor": investor,
+                "oldType": text_value(row.get("Old Tipe")) or None,
+                "newType": text_value(row.get("New Tipe")) or None,
+                "oldPercentage": finite_number(row.get("Old Persentase")),
+                "newPercentage": finite_number(row.get("New Persentase")),
+                "oldInvestorLine": text_value(row.get("Old Investor Line")) or None,
+                "newInvestorLine": text_value(row.get("New Investor Line")) or None,
+                "notes": text_value(row.get("Notes")) or None,
+                "oldHHI": finite_number(row.get("Old Classic HHI")),
+                "newHHI": finite_number(row.get("New Classic HHI")),
+                "oldHolderCount": finite_number(row.get("Old Holder")),
+                "newHolderCount": finite_number(row.get("New Holder")),
+                "oldCCS": finite_number(row.get("Old CCS")),
+                "newCCS": finite_number(row.get("New CCS")),
+                "source": "KSEI workbook · Investor Changes",
+                "asOf": as_of,
+            }
+        )
+    return records
+
+
+def investor_directory(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    investors: dict[str, dict[str, Any]] = {}
+    for issuer in records:
+        for holder in issuer["investors"]:
+            key = normalized_name(holder["name"])
+            item = investors.setdefault(
+                key,
+                {
+                    "name": holder["name"],
+                    "types": Counter(),
+                    "tickers": [],
+                    "totalPublishedPercentage": 0.0,
+                },
+            )
+            item["types"][holder["type"]] += 1
+            item["tickers"].append(
+                {
+                    "ticker": issuer["ticker"],
+                    "companyName": issuer["companyName"],
+                    "sector": issuer["sector"],
+                    "industry": issuer["industry"],
+                    "percentage": holder["percentage"],
+                    "type": holder["type"],
+                }
+            )
+            item["totalPublishedPercentage"] += holder["percentage"]
+    output = []
+    for item in investors.values():
+        item["types"] = dict(item["types"].most_common())
+        item["tickerCount"] = len(item["tickers"])
+        item["totalPublishedPercentage"] = round(item["totalPublishedPercentage"], 4)
+        item["tickers"].sort(key=lambda row: (-row["percentage"], row["ticker"]))
+        output.append(item)
+    return sorted(output, key=lambda item: (-item["tickerCount"], item["name"]))
 
 
 def summary(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -93,7 +223,7 @@ def summary(records: list[dict[str, Any]]) -> dict[str, Any]:
     hhi = values("hhi")
     ownership_types = Counter(item["ownershipType"] for item in records)
     ccs_categories = Counter(item["ccsCategory"] for item in records)
-    sectors = Counter(item["sector"] or "Unclassified" for item in records)
+    sectors = Counter(item["sector"] or "Others" for item in records)
     return {
         "totalIssuers": len(records),
         "okIssuers": sum(item["status"] == "ok" for item in records),
@@ -175,7 +305,9 @@ def build() -> dict[str, Any]:
     previous: dict[str, Any] | None = None
     for path in sorted(SOURCE_DIR.glob("*.xlsx")):
         as_of = path.stem
-        frame = pd.read_excel(path)
+        sheets = pd.read_excel(path, sheet_name=None)
+        frame = normalize_frame(sheets.get("KSEI Data", next(iter(sheets.values()))))
+        changes = change_records(sheets.get("Investor Changes"), as_of)
         records = [
             record_from_row(row, as_of)
             for _, row in frame.iterrows()
@@ -193,8 +325,12 @@ def build() -> dict[str, Any]:
             },
             "summary": summary(records),
             "records": records,
+            "investorChanges": changes,
+            "investorDirectory": investor_directory(records),
         }
         payload["comparison"] = compare(previous, payload)
+        if changes:
+            payload["comparison"]["workbookChanges"] = changes
         dated_path = OUTPUT_DIR / "dates" / as_of / "ownership.json"
         payload = preserve_generated_at(dated_path, payload)
         write_json(dated_path, payload)
@@ -214,6 +350,8 @@ def build() -> dict[str, Any]:
                 "asOf": item["asOf"],
                 "path": f"data/ksei/dates/{item['asOf']}/ownership.json",
                 "recordCount": len(item["records"]),
+                "investorCount": len(item["investorDirectory"]),
+                "changeCount": len(item["investorChanges"]),
                 "status": "ok" if not item["summary"]["partialIssuers"] else "partial",
             }
             for item in snapshots

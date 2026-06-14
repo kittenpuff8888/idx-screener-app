@@ -88,6 +88,16 @@ def main() -> None:
             )
         build_archive(end=market_date, source_date=market_date, clean=False)
         subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "export_ksei_ownership.py")],
+            cwd=ROOT,
+            check=True,
+        )
+        subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "build_custom_indexes.py")],
+            cwd=ROOT,
+            check=True,
+        )
+        subprocess.run(
             [sys.executable, str(ROOT / "scripts" / "validate_data.py")],
             cwd=ROOT,
             check=True,
