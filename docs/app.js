@@ -7,6 +7,15 @@ const IDX_SECTORS = [
   "IDXENERGY", "IDXBASIC", "IDXINDUST", "IDXNONCYC", "IDXCYCLIC", "IDXHEALTH",
   "IDXFINANCE", "IDXPROPERT", "IDXTECHNO", "IDXINFRA", "IDXTRANS", "Others",
 ];
+const SIGNAL_CATALOG = [
+  { id: "A", label: "EMA Trend", requirement: "Close > EMA25, EMA25 > EMA50, and RSI > 50", tone: "blue" },
+  { id: "B", label: "Golden Cross", requirement: "EMA golden cross or MACD crossed above its signal", tone: "blue" },
+  { id: "C", label: "Structure Break", requirement: "Swing or internal bullish structure break on the market date", tone: "amber" },
+  { id: "D", label: "Price Level Reclaim", requirement: "Price touched a tracked level and closed back above it", tone: "purple" },
+  { id: "E", label: "Equal-Level Breakout", requirement: "Price broke above a VWAP equilibrium zone on the market date", tone: "cyan" },
+  { id: "F", label: "Near VWAP", requirement: "Price is near the previous-quarter or previous-year VWAP zone", tone: "red" },
+  { id: "G", label: "Structure Location", requirement: "Price is inside a bullish order block, equilibrium, or discount zone", tone: "gold" },
+];
 
 const state = {
   manifest: null,
@@ -29,6 +38,7 @@ const state = {
     konglo: "ALL",
     liquidity: "ALL",
   },
+  screenerSort: { key: "rvol", direction: "desc" },
   density: "compact",
   heatmapMode: "tickers",
   explorerSheet: "Technical",
@@ -85,13 +95,13 @@ const els = Object.fromEntries(
     "marketContextGrid", "marketMetricGrid", "marketMap", "sectorSignalHeatmap", "heatmapMode",
     "qualityFunnel", "activityMap", "screenerCount", "screenerSearch", "sectorSelect",
     "signalSelect", "kongloSelect", "liquiditySelect", "rvolMinimum", "rsMinimum", "qualitySelect", "sortSelect",
-    "resetFilters", "densityToggle", "exportScreener", "signalLenses", "screenerTable",
+    "resetFilters", "densityToggle", "exportScreener", "signalLenses", "signalCatalog", "screenerTable",
     "screenerHead", "screenerBody", "screenerEmpty", "watchlistContent",
     "exportWatchlist", "tickerResearchModal", "tickerEmpty", "tickerContent", "tickerHero", "tickerKeyMetrics",
     "tickerSignals", "chartWorkspace", "priceChart", "chartLegend", "historyStatus", "historyMeta",
     "indicatorSettingsButton", "activeIndicatorStrip", "tradingViewLink", "levelMap",
     "chartSourceBadge", "chartTickerSearch", "resetChartLayout", "fullscreenChart",
-    "researchChartView", "tradingViewChartView", "tradingViewWidget", "chartOverlayLayer", "chartDrawingLayer",
+    "researchChartView", "chartOverlayLayer", "chartDrawingLayer",
     "tickerSourceStatus", "technicalGrid", "stockRegimeGrid", "structureGrid", "liquidityGrid",
     "marketProfileGrid", "vwapGrid", "movingAverageGrid", "rsiGrid", "macdGrid",
     "fundamentalGrid", "fundamentalModeBadge", "tickerKseiCard", "tickerInvestors",
@@ -340,6 +350,12 @@ function applyTheme(theme) {
     "content",
     normalized === "dark" ? "#07111f" : "#edf3f9",
   );
+  if (els.themeToggle) {
+    const nextTheme = normalized === "dark" ? "light" : "dark";
+    els.themeToggle.setAttribute("aria-checked", String(normalized === "light"));
+    els.themeToggle.setAttribute("aria-label", `Use ${nextTheme} theme`);
+    els.themeToggle.title = `Use ${nextTheme} theme`;
+  }
   if (state.selectedTicker && !els.tickerResearchModal?.hidden) renderPriceChart(state.selectedTicker);
   if (state.customIndexes && els.indexSections?.children.length) renderIndexSections();
 }
@@ -727,18 +743,18 @@ function externalIndexCard(item) {
     : "Live display loading";
   const change = hasPublishedValue ? formatPercent(record.changePercent) : "Local series unavailable";
   const publishedDetail = hasPublishedValue
-    ? `Published ${record.asOf || state.marketDate} · ${record.source || "yfinance"}`
+    ? `Published ${record.asOf || state.marketDate} - ${record.source || "yfinance"}`
     : item.id === "ID10Y"
-      ? "TradingView display only · no permitted local series"
-      : `${record?.source || "yfinance"} · ${record?.reason || "source unavailable"}`;
+      ? "TradingView display only - no permitted local series"
+      : `${record?.source || "yfinance"} - ${record?.reason || "source unavailable"}`;
   return `<article class="index-card external-index-card ${tone}">
-    <div class="external-index-heading">
-      <span class="index-avatar" aria-hidden="true">${escapeHtml(definition.icon)}</span>
-      <div><span>${escapeHtml(definition.name)}</span><small>${escapeHtml(item.symbol)}</small></div>
-      <span class="live-reference-pill">LIVE REF</span>
-    </div>
     <div class="external-index-visual">
       <div class="external-index-fallback">
+        <div class="external-index-heading">
+          <span class="index-avatar" aria-hidden="true">${escapeHtml(definition.icon)}</span>
+          <div><span>${escapeHtml(definition.name)}</span><small>${escapeHtml(item.symbol)}</small></div>
+          <span class="live-reference-pill">LIVE REF</span>
+        </div>
         <div class="external-index-quote">
           <strong>${escapeHtml(price)}</strong>
           <b class="${tone}">${escapeHtml(change)}</b>
@@ -751,7 +767,7 @@ function externalIndexCard(item) {
       </div>
     </div>
     <div class="external-index-footer">
-      <span>TradingView live display · research data remains date-capped</span>
+      <span>TradingView live display - research data remains date-capped</span>
       <a href="https://www.tradingview.com/chart/?symbol=${encodeURIComponent(item.symbol)}" target="_blank" rel="noopener">Full chart</a>
     </div>
   </article>`;
@@ -760,6 +776,13 @@ function externalIndexCard(item) {
 function mountTradingViewMiniWidgets() {
   const colorTheme = document.documentElement.dataset.theme === "light" ? "light" : "dark";
   document.querySelectorAll("[data-tv-mini-symbol]").forEach((container) => {
+    const visual = container.closest(".external-index-visual");
+    const observer = new MutationObserver(() => {
+      if (!container.querySelector("iframe")) return;
+      visual?.classList.add("tv-ready");
+      observer.disconnect();
+    });
+    observer.observe(container, { childList: true, subtree: true });
     const script = document.createElement("script");
     script.src = "https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js";
     script.async = true;
@@ -797,10 +820,10 @@ function renderIndexSections() {
     ["OTHERS INDEX", (payload.externalIndexes?.["OTHERS INDEX"] || []).map(externalIndexCard)],
   ];
   els.indexSections.innerHTML = sections.map(([label, cards]) => `
-    <section class="index-section ${label === "INDEX" || label === "OTHERS INDEX" ? "live-index-section" : ""}">
-      <div class="index-section-head"><span>${escapeHtml(label)}</span><small>${cards.length} instruments</small></div>
+    <details class="index-section ${label === "INDEX" || label === "OTHERS INDEX" ? "live-index-section" : ""}" open>
+      <summary class="index-section-head"><span>${escapeHtml(label)}</span><small>${cards.length} instruments</small></summary>
       <div class="index-card-grid">${cards.join("")}</div>
-    </section>`).join("");
+    </details>`).join("");
   mountTradingViewMiniWidgets();
 }
 
@@ -828,10 +851,11 @@ function openIndexDetail(id) {
   const point = indexPoint(group);
   const missing = point?.missingTickers || [];
   els.indexDetailTitle.textContent = group.label;
-  els.indexDetailSubtitle.textContent = `${group.section} · ${group.weightMethod} · selected session ${state.marketDate}`;
+  els.indexDetailSubtitle.textContent = `${group.section} - ${group.weightMethod} - selected session ${state.marketDate}`;
   const rows = group.constituents.map((item) => {
     const stock = state.maps.technical.get(item.ticker) || {};
-    return `<tr data-open-ticker="${escapeHtml(item.ticker)}"><td><strong>${escapeHtml(item.ticker)}</strong></td><td class="numeric">${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</td><td class="numeric ${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</td><td class="numeric">${valueHtml(stock.beta, null, (value) => formatNumber(value, 2), { source: "derived" })}</td><td>${escapeHtml(normalizeSector(stock.sector || item.sector))}</td><td>${escapeHtml(stock.industry || item.industry || "Others")}</td><td class="numeric">${valueHtml(stock.rvol, stock._meta?.rvol, (value) => formatNumber(value, 2))}</td><td class="numeric">${valueHtml(stock.technical?.adrPercent, null, formatPercent, { source: "derived" })}</td><td>${valueHtml(stock.summaryScreener, null, String, { source: "workbook" })}</td></tr>`;
+    const marketCap = stock.fundamentals?.marketCapDisplay || stock.technical?.regime?.marketCap;
+    return `<tr data-open-ticker="${escapeHtml(item.ticker)}"><td><strong>${escapeHtml(item.ticker)}</strong></td><td class="numeric">${valueHtml(item.weight, null, formatPercent, { source: item.weightSource || group.weightMethod })}</td><td class="numeric">${valueHtml(marketCap, null, String, { source: "workbook/yfinance", reason: "market_cap_unavailable" })}</td><td class="numeric">${valueHtml(stock.lastPrice, stock._meta?.lastPrice, formatPrice)}</td><td class="numeric ${toneFor(stock.changePercent)}">${valueHtml(stock.changePercent, stock._meta?.changePercent, formatPercent)}</td><td class="numeric">${valueHtml(stock.beta, null, (value) => formatNumber(value, 2), { source: "derived" })}</td><td>${escapeHtml(normalizeSector(stock.sector || item.sector))}</td><td>${escapeHtml(stock.industry || item.industry || "Others")}</td><td class="numeric">${valueHtml(stock.rvol, stock._meta?.rvol, (value) => formatNumber(value, 2))}</td><td class="numeric">${valueHtml(stock.technical?.adrPercent, null, formatPercent, { source: "derived" })}</td><td>${valueHtml(stock.summaryScreener, null, String, { source: "workbook" })}</td></tr>`;
   }).join("");
   els.indexDetailBody.innerHTML = `
     <div class="index-detail-metrics">
@@ -842,8 +866,8 @@ function openIndexDetail(id) {
     </div>
     ${indexSeriesSvg(group)}
     ${missing.length ? `<p class="index-warning">Missing prices were excluded and available constituent weights were normalized for ${escapeHtml(point.date)}: ${escapeHtml(missing.join(", "))}.</p>` : ""}
-    <p class="ownership-source-note"><strong>Formula:</strong> ${escapeHtml(group.formula)} · ${escapeHtml(group.formulaVersion)}. TradingView is not used for this calculation.</p>
-    <div class="table-shell"><table class="data-table"><thead><tr><th>Ticker</th><th>Close</th><th>Change</th><th>Beta vs IHSG</th><th>Sector</th><th>Industry</th><th>RVOL</th><th>ADR %</th><th>Summary</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    <p class="ownership-source-note"><strong>Formula:</strong> ${escapeHtml(group.formula)} - ${escapeHtml(group.formulaVersion)}. TradingView is not used for this calculation.</p>
+    <div class="table-shell"><table class="data-table"><thead><tr><th>Ticker</th><th>Weight</th><th>Market Cap</th><th>Close</th><th>Change</th><th>Beta vs IHSG</th><th>Sector</th><th>Industry</th><th>RVOL</th><th>ADR %</th><th>Summary</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   openModal(els.indexDetailModal);
 }
 
@@ -1151,7 +1175,18 @@ function filteredSignals() {
     if (needle && !row.ticker.toLowerCase().includes(needle)) return false;
     return true;
   });
-  return [...rows].sort((a, b) => (asNumber(b.rvol) || -Infinity) - (asNumber(a.rvol) || -Infinity));
+  const { key, direction } = state.screenerSort;
+  const multiplier = direction === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    const leftNumber = asNumber(a[key]);
+    const rightNumber = asNumber(b[key]);
+    if (leftNumber !== null || rightNumber !== null) {
+      if (leftNumber === null) return 1;
+      if (rightNumber === null) return -1;
+      return (leftNumber - rightNumber) * multiplier;
+    }
+    return String(a[key] || "").localeCompare(String(b[key] || "")) * multiplier;
+  });
 }
 
 const screenerColumns = [
@@ -1175,7 +1210,7 @@ function screenerCell(row, key) {
 function setupScreenerOptions() {
   const signals = (state.data.screener.records || []).map(normalizedSignal);
   const sectors = IDX_SECTORS;
-  const signalTypes = [...new Set(signals.map((row) => row.signal).filter(Boolean))].sort();
+  const signalTypes = SIGNAL_CATALOG.map((item) => item.label);
   const kongloGroups = (state.customIndexes?.groups || []).filter((group) => group.section === "KONGLO INDEX");
   const liquidity = [...new Set([...state.maps.technical.values()].map((stock) => stock.liquidityCategory || "Unclassified"))].sort();
   els.sectorSelect.innerHTML = `<option value="ALL">All sectors</option>${sectors.map((sector) => `<option value="${escapeHtml(sector)}">${escapeHtml(sector)}</option>`).join("")}`;
@@ -1188,7 +1223,20 @@ function setupScreenerOptions() {
   els.liquiditySelect.value = state.filters.liquidity;
   const counts = new Map();
   signals.forEach((row) => counts.set(row.signal, (counts.get(row.signal) || 0) + 1));
-  els.signalLenses.innerHTML = `<button class="signal-lens ${state.filters.signal === "ALL" ? "active" : ""}" type="button" data-lens="ALL">All · ${signals.length}</button>${[...counts.entries()].map(([label, count]) => `<button class="signal-lens ${state.filters.signal === label ? "active" : ""}" type="button" data-lens="${escapeHtml(label)}">${escapeHtml(label)} · ${count}</button>`).join("")}`;
+  els.signalLenses.innerHTML = `<button class="signal-lens ${state.filters.signal === "ALL" ? "active" : ""}" type="button" data-lens="ALL">All - ${signals.length}</button>${SIGNAL_CATALOG.map((item) => {
+    const count = counts.get(item.label) || 0;
+    return `<button class="signal-lens signal-${item.tone} ${state.filters.signal === item.label ? "active" : ""} ${count === 0 ? "empty" : ""}" type="button" data-lens="${escapeHtml(item.label)}">${escapeHtml(item.label)} - ${count}</button>`;
+  }).join("")}`;
+  if (els.signalCatalog) {
+    els.signalCatalog.innerHTML = SIGNAL_CATALOG.map((item) => {
+      const count = counts.get(item.label) || 0;
+      return `<button class="signal-definition signal-${item.tone} ${state.filters.signal === item.label ? "active" : ""}" type="button" data-lens="${escapeHtml(item.label)}">
+        <span>${escapeHtml(item.id)}</span>
+        <div><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.requirement)}</small></div>
+        <b>${count}</b>
+      </button>`;
+    }).join("");
+  }
 }
 
 function renderScreener() {
@@ -1197,7 +1245,13 @@ function renderScreener() {
   const rows = filteredSignals();
   els.screenerCount.textContent = `${rows.length} of ${sourceRows.length} rows`;
   els.screenerTable.classList.add("compact");
-  els.screenerHead.innerHTML = `<tr>${screenerColumns.map(([label]) => `<th>${guideHeading(label)}</th>`).join("")}</tr>`;
+  els.screenerHead.innerHTML = `<tr>${screenerColumns.map(([label, key]) => {
+    if (key === "watch") return `<th>${guideHeading(label)}</th>`;
+    const selected = state.screenerSort.key === key;
+    const arrow = selected ? (state.screenerSort.direction === "asc" ? " ↑" : " ↓") : "";
+    const ariaSort = selected ? (state.screenerSort.direction === "asc" ? "ascending" : "descending") : "none";
+    return `<th aria-sort="${ariaSort}"><button class="table-sort" type="button" data-screener-sort="${escapeHtml(key)}">${guideHeading(label)}<span aria-hidden="true">${arrow}</span></button></th>`;
+  }).join("")}</tr>`;
   els.screenerBody.innerHTML = rows.map((row) => `<tr data-open-ticker="${escapeHtml(row.ticker)}">${screenerColumns.map(([, key]) => `<td class="${["price", "change", "rvol", "rvolChange", "beta"].includes(key) ? "numeric" : ""} ${key === "summary" ? "wide-cell" : ""}">${screenerCell(row, key)}</td>`).join("")}</tr>`).join("");
   if (rows.length) {
     els.screenerEmpty.hidden = true;
@@ -1386,7 +1440,18 @@ function renderLevelMap(stock, signal) {
     ["Support", stock.supportLevels?.find(validValue)],
     ["Resistance", stock.resistanceLevels?.find(validValue)],
     ["VWAP", stock.technical?.vwap],
-  ].map(([label, value]) => `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${valueHtml(value, null, /upside|downside|distance/i.test(label) ? formatPercent : label === "R/R" ? (item) => formatNumber(item, 2) : validValue(asNumber(value)) ? formatPrice : String, { source: "workbook" })}</strong></div>`).join("")}</div>`;
+  ].map(([label, value]) => {
+    const formatter = /basis/i.test(label)
+      ? String
+      : /upside|downside|distance/i.test(label)
+        ? formatPercent
+        : label === "R/R"
+          ? (item) => formatNumber(item, 2)
+          : validValue(asNumber(value))
+            ? formatPrice
+            : String;
+    return `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${valueHtml(value, null, formatter, { source: "workbook" })}</strong></div>`;
+  }).join("")}</div>`;
 }
 
 function renderTickerSourceStatus(stock) {
@@ -1397,7 +1462,7 @@ function renderTickerSourceStatus(stock) {
   const reference = referenceDate
     ? ` Fundamentals and news use a clearly labelled latest-reference workbook dated ${referenceDate}; price, technical values, and signals remain capped to ${state.marketDate}.`
     : " Fundamentals and news are from the selected point-in-time workbook.";
-  els.tickerSourceStatus.innerHTML = `<strong>Source note.</strong> Price and technical: ${escapeHtml(sourceLabel(provenance.priceTechnical?.source || stock.provenance?.source || "derived"))}. Signals: ${escapeHtml(sourceLabel(provenance.signals?.source || "workbook"))}.${escapeHtml(reference)} TradingView mode is display-only and can differ by source or timestamp.`;
+  els.tickerSourceStatus.innerHTML = `<strong>Source note.</strong> Price and technical: ${escapeHtml(sourceLabel(provenance.priceTechnical?.source || stock.provenance?.source || "derived"))}. Signals: ${escapeHtml(sourceLabel(provenance.signals?.source || "workbook"))}.${escapeHtml(reference)} The website chart uses date-capped research OHLCV; the TradingView link is an external live reference and may differ by source or timestamp.`;
 }
 
 function technicalGroupHtml(rows, source = "workbook") {
@@ -1682,8 +1747,8 @@ function loadIndicatorSettings() {
   }
   state.indicatorSettings = IDXIndicators.deepMerge(IDXIndicators.DEFAULTS, saved);
   state.indicatorSettings.schemaVersion = IDXIndicators.DEFAULTS.schemaVersion;
-  state.chartMode = state.indicatorSettings.chart.mode === "tradingview" ? "tradingview" : "research";
-  state.indicatorSettings.chart.mode = state.chartMode;
+  state.chartMode = "research";
+  state.indicatorSettings.chart.mode = "research";
   state.chartInterval = state.indicatorSettings.chart.interval || "1D";
   state.chartRange = state.indicatorSettings.chart.range || "1Y";
 }
@@ -1839,13 +1904,9 @@ function chartColors() {
 
 async function renderPriceChart(ticker) {
   els.chartTickerSearch.value = ticker;
-  if (state.chartMode === "tradingview") {
-    renderTradingViewWidget(ticker);
-    return;
-  }
   const marketDate = state.marketDate;
   const cacheKey = `${marketDate}:${ticker}`;
-  els.historyStatus.className = "status-badge info";
+  els.historyStatus.className = "visually-hidden";
   els.historyStatus.textContent = "Loading";
   try {
     let payload = state.ohlcvCache.get(cacheKey);
@@ -1876,7 +1937,7 @@ async function renderPriceChart(ticker) {
 
 function renderChartEmpty(ticker, detail) {
   destroyChart();
-  els.historyStatus.className = "status-badge warning";
+  els.historyStatus.className = "visually-hidden";
   els.historyStatus.textContent = "Missing history";
   els.historyMeta.textContent = detail;
   els.chartLegend.innerHTML = `<strong>${escapeHtml(ticker)} · OHLCV unavailable</strong>`;
@@ -2150,11 +2211,11 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
   });
   state.chartResizeObserver.observe(els.priceChart);
   const partial = rows.length < 60;
-  els.historyStatus.className = `status-badge ${partial ? "warning" : "ok"}`;
+  els.historyStatus.className = "visually-hidden";
   els.historyStatus.textContent = partial ? "Partial price history" : "History loaded";
   els.historyMeta.textContent = `${formatNumber(rows.length, 0)} ${state.chartInterval} bars · ${rows[0].date} to ${rows.at(-1).date} · ${sourceLabel(source)} · formula chart-v4`;
   els.chartSourceBadge.textContent = "Website Calculated";
-  els.chartSourceBadge.className = "status-badge ok";
+  els.chartSourceBadge.className = "visually-hidden";
   renderStructureOverlays(chart, candles, smcResult, state.smcHiddenLabels || 0);
   renderSavedDrawings();
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
@@ -2164,50 +2225,12 @@ function renderInteractiveChart(ticker, rows, source = "yfinance") {
   updateActiveIndicatorStrip();
 }
 
-function renderTradingViewWidget(ticker) {
-  destroyChart();
-  const symbol = `IDX:${ticker}`;
-  state.tradingViewSymbol = symbol;
-  els.chartSourceBadge.textContent = "TradingView Display";
-  els.chartSourceBadge.className = "status-badge info";
-  els.historyStatus.textContent = "External display";
-  els.historyStatus.className = "status-badge info";
-  els.historyMeta.textContent = `${symbol} · TradingView-managed data and toolbar`;
-  els.tradingViewWidget.innerHTML = "";
-  const container = document.createElement("div");
-  container.className = "tradingview-widget-container__widget";
-  els.tradingViewWidget.append(container);
-  const script = document.createElement("script");
-  script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-  script.async = true;
-  script.textContent = JSON.stringify({
-    autosize: true,
-    symbol,
-    interval: state.chartInterval === "1D" ? "D" : state.chartInterval === "1W" ? "W" : "M",
-    timezone: "Asia/Jakarta",
-    theme: document.documentElement.dataset.theme === "light" ? "light" : "dark",
-    style: "1",
-    locale: "en",
-    hide_top_toolbar: false,
-    hide_side_toolbar: false,
-    hide_legend: false,
-    hide_volume: false,
-    allow_symbol_change: true,
-    save_image: true,
-    support_host: "https://www.tradingview.com",
-  });
-  els.tradingViewWidget.append(script);
-}
-
 function setChartMode(mode) {
-  state.chartMode = mode === "tradingview" ? "tradingview" : "research";
-  state.indicatorSettings.chart.mode = state.chartMode;
+  state.chartMode = "research";
+  state.indicatorSettings.chart.mode = "research";
   saveIndicatorSettings();
-  document.querySelectorAll("[data-chart-mode]").forEach((button) => button.classList.toggle("active", button.dataset.chartMode === state.chartMode));
-  els.researchChartView.hidden = state.chartMode !== "research";
-  els.tradingViewChartView.hidden = state.chartMode !== "tradingview";
-  els.researchChartView.classList.toggle("active", state.chartMode === "research");
-  els.tradingViewChartView.classList.toggle("active", state.chartMode === "tradingview");
+  els.researchChartView.hidden = false;
+  els.researchChartView.classList.add("active");
   if (state.selectedTicker) renderPriceChart(state.selectedTicker);
 }
 
@@ -2585,6 +2608,12 @@ function downloadCsv(filename, rows) {
 }
 
 function openModal(element) {
+  if (!element) return;
+  if (element === els.datePickerModal) {
+    element.hidden = false;
+    els.datePickerButton?.setAttribute("aria-expanded", "true");
+    return;
+  }
   element.hidden = false;
   document.body.classList.add("modal-open");
 }
@@ -2596,6 +2625,9 @@ function closeModal(element) {
     return;
   }
   element.hidden = true;
+  if (element === els.datePickerModal) {
+    els.datePickerButton?.setAttribute("aria-expanded", "false");
+  }
   if ([els.datePickerModal, els.indicatorSettingsModal, els.kseiUpdateModal, els.kseiDetailModal, els.investorDetailModal, els.indexDetailModal, els.tickerResearchModal].filter(Boolean).every((modal) => modal.hidden)) {
     document.body.classList.remove("modal-open");
   }
@@ -2625,6 +2657,13 @@ function renderCalendar() {
 function openCalendar() {
   state.calendarMonth = new Date(`${state.marketDate.slice(0, 7)}-01T00:00:00Z`);
   renderCalendar();
+  const trigger = els.datePickerButton?.getBoundingClientRect();
+  if (trigger) {
+    const top = Math.min(trigger.bottom + 8, window.innerHeight - 410);
+    const left = Math.max(12, Math.min(trigger.right - 350, window.innerWidth - 362));
+    els.datePickerModal.style.setProperty("--calendar-top", `${Math.max(12, top)}px`);
+    els.datePickerModal.style.setProperty("--calendar-left", `${left}px`);
+  }
   openModal(els.datePickerModal);
 }
 
@@ -2651,8 +2690,6 @@ function bindEvents() {
       renderGuide();
       return;
     }
-    const chartMode = event.target.closest("[data-chart-mode]");
-    if (chartMode) return setChartMode(chartMode.dataset.chartMode);
     const advancedTab = event.target.closest("[data-advanced-tab]");
     if (advancedTab) return setAdvancedTab(advancedTab.dataset.advancedTab, true);
     const interval = event.target.closest("[data-chart-interval]");
@@ -2774,6 +2811,16 @@ function bindEvents() {
       renderScreener();
       return;
     }
+    const screenerSort = event.target.closest("[data-screener-sort]");
+    if (screenerSort) {
+      const key = screenerSort.dataset.screenerSort;
+      state.screenerSort = {
+        key,
+        direction: state.screenerSort.key === key && state.screenerSort.direction === "desc" ? "asc" : "desc",
+      };
+      renderScreener();
+      return;
+    }
     const heat = event.target.closest("[data-sector-filter]");
     if (heat) {
       state.filters.sector = heat.dataset.sectorFilter;
@@ -2885,6 +2932,9 @@ function bindEvents() {
   document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.addEventListener("click", (event) => {
     if (event.target === backdrop) closeModal(backdrop);
   }));
+  on(els.datePickerModal, "click", (event) => {
+    if (event.target === els.datePickerModal) closeModal(els.datePickerModal);
+  });
   on(els.tickerResearchModal, "click", (event) => {
     if (event.target === els.tickerResearchModal) closeTickerResearch();
   });
