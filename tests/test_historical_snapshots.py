@@ -102,15 +102,12 @@ class HistoricalSnapshotTests(unittest.TestCase):
         html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
         css = (ROOT / "docs" / "styles.css").read_text(encoding="utf-8")
-        disclaimer = (
-            "Educational research only. Not financial advice. Published datasets may be "
-            "delayed; verify independently before making trading decisions."
-        )
+        disclaimer = "Research only. Not financial advice. Verify important information independently."
         self.assertEqual(html.count(disclaimer), 1)
         self.assertIn('id="datasetLine"', html)
         self.assertNotIn('id="datasetTitle"', html)
         self.assertNotIn('id="datasetFacts"', html)
-        self.assertIn("<h2>Active Signals</h2>", html)
+        self.assertIn("<h2>Research Screener</h2>", html)
         self.assertIn('id="footerFreshness"', html)
         self.assertIn("function sparklineSvg(item)", app)
         self.assertIn("--accent:", css)

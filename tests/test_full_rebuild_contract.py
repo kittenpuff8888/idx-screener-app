@@ -93,7 +93,6 @@ class FullRebuildContractTests(unittest.TestCase):
         self.assertEqual(
             labels,
             [
-                "",
                 "Ticker",
                 "Emiten",
                 "IDX Sector",
@@ -108,6 +107,7 @@ class FullRebuildContractTests(unittest.TestCase):
                 "Market Profile Zone",
                 "MA Zone",
                 "Summary Screener",
+                "",
             ],
         )
 

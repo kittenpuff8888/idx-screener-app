@@ -83,7 +83,7 @@ python scripts/backfill_history.py --start 2025-01-01 --end 2026-06-12 --source-
 Daily update:
 
 ```powershell
-python scripts/update_daily.py --timezone Asia/Jakarta --market-close-time 16:30
+python scripts/update_daily.py --timezone Asia/Jakarta --market-close-time 16:30 --session-ready-time 17:00
 ```
 
 Validation and tests:
@@ -101,53 +101,62 @@ node --check docs/indicators.js
 
 ```text
 30 9 * * 1-5
+30 10 * * 1-5
+30 11 * * 1-5
 ```
 
-This is 16:30 WIB. The workflow also supports `workflow_dispatch`.
+These are the required 16:30 WIB close check plus 17:30 and 18:30 WIB retries.
+The workflow also supports `workflow_dispatch`.
 
 Each run:
 
 1. Resolves the completed market date.
-2. Runs the workbook backend and exporter when a new date is needed.
-3. Creates a new dated schema-v5 folder.
-4. Preserves older dated folders.
-5. Validates schema and reconciliation counts.
-6. Runs Python and JavaScript checks.
-7. Commits generated files only when content changed.
+2. Waits until the current session is expected to be available after 17:00 WIB.
+3. Runs the workbook backend and exporter when a new date is needed.
+4. Confirms the latest observed IDX OHLCV date matches the requested market date.
+5. Discards a date-stamped export when its underlying IDX prices are still stale.
+6. Creates a new dated schema-v5 folder only for a valid market session.
+7. Preserves older dated folders.
+8. Validates schema and reconciliation counts.
+9. Runs Python and JavaScript checks.
+10. Commits generated files only when content changed.
 
 If no new valid dataset exists, the last successful snapshot remains active and
 the updater writes an explicit log entry.
 
-## Current June 10 Baseline
+## Current June 12 Baseline
 
 - 956 scanned tickers
 - 952 OK tickers
 - 4 partial-data tickers
 - 0 no-data tickers
-- 35 screener signal rows
-- 22 unique signal tickers
+- 49 screener signal rows
+- 35 unique signal tickers
 
 ## Frontend
 
-The date selector affects Dashboard, Market Map, Screener, Watchlist values,
-Ticker Research, KSEI Ownership, internal QA tools, and chart history. The selected
-date remains visible in the sticky top bar.
+The date selector affects Research Dashboard, Screener, Watchlist values,
+Ticker Research, local research indexes, internal QA tools, and chart history.
+The selected date remains visible in the sticky top bar.
+
+KSEI Ownership is intentionally independent of the selected market date. It loads
+the latest KSEI ownership snapshot once and does not reload when price-research
+dates change.
 
 Main pages:
 
-- Dashboard
-- Market Map
+- Research Dashboard
 - Screener
-- Ticker Research
 - Watchlist
 - KSEI Ownership
+- IDX Ticker News
+- Advanced
 
-Data Quality, Workbook Explorer, Guide & Methodology, and workbook downloads
-remain reachable through Advanced / QA and footer utilities without dominating
-the primary research workflow.
+Ticker Research opens as a shared drawer from search, Screener, Watchlist, KSEI,
+and index details. Data Quality, Workbook Explorer, and Guide & Methodology remain
+reachable inside Advanced without dominating the primary research workflow.
 
 Indicator settings use one browser-wide profile and apply to every ticker and
 market date.
 
-Educational research only. Not financial advice. Data is source-limited,
-archived, and not real-time. Verify independently before making trading decisions.
+Research only. Not financial advice. Verify important information independently.

@@ -11,6 +11,12 @@
       "marketDate": "2026-06-12",
       "status": "NO_CHANGE",
       "message": "Dataset already published; last successful snapshot preserved."
+    },
+    {
+      "timestamp": "2026-06-16T01:40:00+07:00",
+      "marketDate": "2026-06-15",
+      "status": "NO_DATA",
+      "message": "No valid IDX session was available for 2026-06-15; latest observed OHLCV date was 2026-06-12. The last successful snapshot was preserved."
     }
   ]
 }
