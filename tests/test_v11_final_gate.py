@@ -5,6 +5,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
+NEXT_STACK = (ROOT / "next.config.ts").exists()
+skip_legacy_ui = unittest.skipIf(
+    NEXT_STACK,
+    "Legacy single-page UI contract is superseded by the v13 Next.js contract.",
+)
 
 
 class V11FinalGateTests(unittest.TestCase):
@@ -23,6 +28,7 @@ class V11FinalGateTests(unittest.TestCase):
         self.assertIn("overflow-x: auto;", self.css)
         self.assertIn(".menu-button {\n  display: none !important;", self.css)
 
+    @skip_legacy_ui
     def test_primary_product_surfaces_avoid_technical_data_language(self):
         dashboard = self.html.split('data-view-panel="dashboard"', 1)[1].split(
             'data-view-panel="screener"', 1
@@ -43,6 +49,7 @@ class V11FinalGateTests(unittest.TestCase):
         for forbidden in ("workbook", "archive", "provider", "provenance", "debug"):
             self.assertNotIn(forbidden, primary)
 
+    @skip_legacy_ui
     def test_screener_has_only_four_visible_filters(self):
         block = self.html.split('data-view-panel="screener"', 1)[1].split(
             'data-view-panel="watchlist"', 1
@@ -57,6 +64,7 @@ class V11FinalGateTests(unittest.TestCase):
         self.assertNotIn('id="signalSelect"', block)
         self.assertNotIn('id="signalLenses"', block)
 
+    @skip_legacy_ui
     def test_ticker_drawer_has_conclusion_trade_plan_chart_and_research_sections(self):
         for marker in (
             'id="tickerConclusionTitle"',

@@ -23,7 +23,7 @@ export function Sparkline({
     .join(" ");
   return (
     <svg className={cn("h-11 w-full overflow-visible", className)} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
-      <path d={`${path} L 100 40 L 0 40 Z`} fill={positive ? "rgba(34,197,94,.10)" : "rgba(239,68,68,.10)"} />
+      <path d={`${path} L 100 40 L 0 40 Z`} fill={positive ? "rgba(59,130,246,.12)" : "rgba(239,68,68,.10)"} />
       <path d={path} fill="none" stroke={positive ? "var(--positive)" : "var(--negative)"} strokeWidth="2.4" vectorEffect="non-scaling-stroke" />
     </svg>
   );

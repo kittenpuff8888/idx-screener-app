@@ -20,6 +20,11 @@ from scripts.update_daily import latest_completed_market_day_at
 
 ROOT = Path(__file__).resolve().parents[1]
 WIB = ZoneInfo("Asia/Jakarta")
+NEXT_STACK = (ROOT / "next.config.ts").exists()
+skip_legacy_ui = unittest.skipIf(
+    NEXT_STACK,
+    "Legacy single-page UI contract is superseded by the v13 Next.js contract.",
+)
 
 
 class TechnicalFormulaTests(unittest.TestCase):
@@ -230,6 +235,7 @@ class ArchiveAndScheduleTests(unittest.TestCase):
         ):
             self.assertNotIn(phrase, rendered)
 
+    @skip_legacy_ui
     def test_advanced_is_one_primary_navigation_destination(self):
         html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         primary_nav = html.split('<nav class="primary-nav"', 1)[1].split("</nav>", 1)[0]

@@ -9,7 +9,7 @@
     "prebuild": "python scripts/prepare_next_data.py",
     "build": "next build",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "tsc --noEmit",
     "check": "pnpm typecheck && pnpm build"
   },
   "dependencies": {

@@ -5,6 +5,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "docs" / "data"
+NEXT_STACK = (ROOT / "next.config.ts").exists()
+skip_legacy_ui = unittest.skipIf(
+    NEXT_STACK,
+    "Legacy single-page UI contract is superseded by the v13 Next.js contract.",
+)
 
 
 class HistoricalSnapshotTests(unittest.TestCase):
@@ -98,6 +103,7 @@ class HistoricalSnapshotTests(unittest.TestCase):
         self.assertEqual(len(bbca["supportLevels"]), len(set(bbca["supportLevels"])))
         self.assertEqual(len(bbca["resistanceLevels"]), len(set(bbca["resistanceLevels"])))
 
+    @skip_legacy_ui
     def test_steps_21_to_30_product_surface(self):
         html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
@@ -113,6 +119,7 @@ class HistoricalSnapshotTests(unittest.TestCase):
         self.assertIn("--accent:", css)
         self.assertIn(".market-context-sparkline", css)
 
+    @skip_legacy_ui
     def test_follow_up_dashboard_and_research_workflow_exist(self):
         html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
         app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")

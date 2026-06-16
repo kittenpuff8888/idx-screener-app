@@ -6,8 +6,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
+NEXT_STACK = (ROOT / "next.config.ts").exists()
 
 
+@unittest.skipIf(NEXT_STACK, "Legacy single-page UI contract is superseded by the v13 Next.js contract.")
 class FullRebuildContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
