@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils/classNames";
 
 export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return <section className={cn("rounded-lg border border-white/10 bg-surface/85 p-5 shadow-terminal", className)}>{children}</section>;
+  return <section className={cn("panel", className)}>{children}</section>;
 }
 
 export function CardHeader({
@@ -14,10 +14,10 @@ export function CardHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+    <div className="panel-head">
       <div>
-        {kicker ? <p className="mb-1 text-xs font-bold uppercase tracking-[0.22em] text-accent">{kicker}</p> : null}
-        <h2 className="text-xl font-semibold text-text">{title}</h2>
+        {kicker ? <span className="panel-kicker">{kicker}</span> : null}
+        <h3>{title}</h3>
       </div>
       {children}
     </div>

@@ -1,13 +1,26 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useApp } from "@/components/providers/AppProvider";
-import { Button } from "@/components/shared/Button";
 import { DatePicker } from "./DatePicker";
 
+const pageTitles: Record<string, [string, string]> = {
+  "/dashboard": ["DASHBOARD", "Research Dashboard"],
+  "/explorer": ["SIGNAL DISCOVERY", "Research Screener"],
+  "/watchlist": ["WATCHLIST", "Local Watchlist"],
+  "/ksei": ["KSEI OWNERSHIP", "Ownership Dashboard"],
+  "/news": ["IDX TICKER NEWS", "IDX Ticker News"],
+  "/advanced": ["ADVANCED", "Research Methods & Data"],
+  "/": ["DASHBOARD", "Research Dashboard"],
+};
+
 export function TopBar() {
-  const { tickerOptions, openTicker, reload, loading, marketDate, notice } = useApp();
+  const pathname = usePathname();
+  const { tickerOptions, openTicker, reload, loading } = useApp();
   const [query, setQuery] = useState("");
+  const [navOpen, setNavOpen] = useState(false);
+  const [eyebrow, title] = pageTitles[pathname] || pageTitles["/dashboard"];
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return [];
@@ -22,52 +35,64 @@ export function TopBar() {
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-bg/88 px-4 py-4 backdrop-blur lg:px-8">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-accent">Indonesian Equity Research Platform</p>
-          <h2 className="text-2xl font-semibold text-text">IDX RESEARCH</h2>
-          <p className="mt-1 text-sm text-muted">
-            Selected IDX session: <span className="font-semibold text-text">{marketDate || "Preparing"}</span>
-            {notice ? <span className="ml-2 text-warning">{notice}</span> : null}
-          </p>
-        </div>
-        <div className="flex flex-col gap-3 md:flex-row md:items-end">
-          <div className="relative min-w-72">
-            <label className="flex flex-col gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Ticker command
+    <header className="topbar">
+      <button
+        className="icon-button menu-button"
+        type="button"
+        aria-label="Toggle navigation"
+        aria-expanded={navOpen}
+        onClick={() => {
+          const next = !navOpen;
+          setNavOpen(next);
+          document.body.classList.toggle("nav-open", next);
+        }}
+      >
+        <span></span><span></span><span></span>
+      </button>
+      <div className="topbar-title">
+        <span>{eyebrow}</span>
+        <h1>{title}</h1>
+      </div>
+      <div className="topbar-actions">
+        <div className="ticker-search-shell">
+          <label className="ticker-command">
+            <span className="command-prefix">IDX</span>
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && matches[0]) submitTicker(matches[0].ticker);
                 }}
-                placeholder="Search BBCA, AADI, sector names"
-                className="min-h-10 rounded-md border border-white/10 bg-surface-2 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-text placeholder:text-faint focus:border-accent focus:outline-none"
+              placeholder="Search ticker"
                 aria-label="Search ticker"
+              aria-controls="tickerSuggestions"
+              aria-expanded={matches.length > 0}
               />
-            </label>
+          </label>
             {matches.length ? (
-              <div className="absolute left-0 right-0 top-[68px] z-50 overflow-hidden rounded-lg border border-white/10 bg-surface shadow-terminal">
+            <div id="tickerSuggestions" className="ticker-suggestions" role="listbox">
                 {matches.map((item) => (
                   <button
                     key={item.ticker}
                     type="button"
                     onClick={() => submitTicker(item.ticker)}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm hover:bg-accent/10 focus:bg-accent/10 focus:outline-none"
+                  className="ticker-suggestion"
                   >
-                    <strong className="text-text">{item.ticker}</strong>
-                    <span className="truncate text-muted">{item.label}</span>
+                  <strong>{item.ticker}</strong>
+                  <span>{item.label}</span>
                   </button>
                 ))}
               </div>
             ) : null}
           </div>
-          <DatePicker />
-          <Button type="button" onClick={reload} disabled={loading} aria-label="Reload datasets">
-            {loading ? "Loading" : "Reload"}
-          </Button>
-        </div>
+        <DatePicker />
+        <button className="icon-button header-icon-button" type="button" onClick={reload} disabled={loading} aria-label="Reload dataset" title="Reload dataset">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 8.2A7 7 0 0 1 18.8 10M17.9 15.8A7 7 0 0 1 5.2 14" /></svg>
+        </button>
+        <button className="theme-switch" type="button" role="switch" aria-checked="false" aria-label="Theme uses system colors" title="Theme uses system colors">
+          <span className="theme-switch-icon" aria-hidden="true">◐</span>
+          <span className="theme-switch-track"><span className="theme-switch-thumb"></span></span>
+        </button>
       </div>
     </header>
   );

@@ -12,24 +12,18 @@ import { SectorMomentum } from "./SectorMomentum";
 export function DashboardPage() {
   const { loading, bundle } = useApp();
   if (loading && !bundle) {
-    return <div className="grid gap-4 md:grid-cols-2"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>;
+    return <div className="dashboard-summary-grid"><SkeletonCard /><SkeletonCard /><SkeletonCard /></div>;
   }
   return (
-    <div className="page-stack">
-      <div className="page-title">
-        <div>
-          <h1>Research Dashboard</h1>
-          <p>Start here to understand the market story, breadth, sector leadership, ownership changes, and what to inspect next.</p>
-        </div>
-      </div>
+    <section className="view active" data-view-panel="dashboard">
       <MarketToneHero />
-      <IndexStrip />
-      <div className="panel-grid">
+      <section className="dashboard-summary-grid">
         <BreadthCard />
-        <SectorMomentum />
         <KSEIChanges />
-      </div>
-      <PriorityIdeas />
-    </div>
+        <PriorityIdeas />
+        <SectorMomentum />
+      </section>
+      <IndexStrip />
+    </section>
   );
 }

@@ -43,12 +43,12 @@ class V13NextContractTests(unittest.TestCase):
         self.assertIn('basePath: isProd ? "/IDXScreener" : ""', config)
         self.assertIn('assetPrefix: isProd ? "/IDXScreener/" : ""', config)
 
-    def test_v13_primary_shell_uses_left_sidebar(self):
+    def test_next_shell_preserves_pre_v13_sidebar_labels(self):
         sidebar = (ROOT / "components/layout/Sidebar.tsx").read_text(encoding="utf-8")
         self.assertIn("Research Dashboard", sidebar)
-        self.assertIn("Research Explorer", sidebar)
+        self.assertIn("Screener", sidebar)
         self.assertIn("KSEI Ownership", sidebar)
-        self.assertIn("hidden min-h-screen w-72", sidebar)
+        self.assertIn('className="sidebar"', sidebar)
         self.assertNotIn("data-view", sidebar)
 
     def test_data_coverage_is_capped_from_2026_for_next_ui(self):

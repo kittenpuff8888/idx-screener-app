@@ -31,25 +31,22 @@ export function KseiPage() {
   const investorRows = investor ? investorDirectory.get(investor) || [] : [];
 
   return (
-    <div className="page-stack">
-      <div className="page-title">
-        <div>
-          <h1>KSEI Ownership</h1>
-          <p>Understand who controls a company, how concentrated ownership is, and which reported holders changed in the latest snapshot.</p>
-        </div>
+    <section className="view active" data-view-panel="ownership">
+      <div className="view-intro">
+        <div><span className="section-kicker">OWNERSHIP INTELLIGENCE</span><h2>KSEI Ownership</h2><p>Understand who controls a company, how concentrated ownership is, and which reported holders changed in the latest snapshot.</p></div>
       </div>
       <KSEIConcentration ksei={ksei} />
       <KSEIChangesLog changes={ksei?.investorChanges || []} onTicker={openTicker} />
       <Card>
         <CardHeader kicker="Issuer Search" title="Ownership records" />
-        <div className="mb-4 grid gap-3 md:grid-cols-2">
-          <input value={issuerSearch} onChange={(event) => setIssuerSearch(event.target.value)} placeholder="Search ticker, issuer, sector, industry" className="min-h-10 rounded-md border border-white/10 bg-surface-2 px-3 text-sm text-text focus:border-accent focus:outline-none" />
+        <div className="screener-controls two-col">
+          <label><span>Issuer</span><input value={issuerSearch} onChange={(event) => setIssuerSearch(event.target.value)} placeholder="Search ticker, issuer, sector, industry" /></label>
           <div className="relative">
-            <input value={investorSearch} onChange={(event) => setInvestorSearch(event.target.value)} placeholder="Search investor name" className="min-h-10 w-full rounded-md border border-white/10 bg-surface-2 px-3 text-sm text-text focus:border-accent focus:outline-none" />
+            <label><span>Investor</span><input value={investorSearch} onChange={(event) => setInvestorSearch(event.target.value)} placeholder="Search investor name" /></label>
             {investorMatches.length ? (
-              <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-lg border border-white/10 bg-surface shadow-terminal">
+              <div className="ticker-suggestions static-suggestions">
                 {investorMatches.map((name) => (
-                  <button key={name} type="button" onClick={() => { setInvestor(name); setInvestorSearch(""); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-accent/10">{name}</button>
+                  <button key={name} type="button" onClick={() => { setInvestor(name); setInvestorSearch(""); }} className="ticker-suggestion">{name}</button>
                 ))}
               </div>
             ) : null}
@@ -59,6 +56,6 @@ export function KseiPage() {
       </Card>
       <KSEIIssuerDrawer issuer={issuer} onClose={() => setIssuer(null)} onTicker={(ticker) => { setIssuer(null); openTicker(ticker); }} />
       <KSEIInvestorDrawer investor={investor} rows={investorRows} onClose={() => setInvestor(null)} onTicker={(ticker) => { setInvestor(null); openTicker(ticker); }} />
-    </div>
+    </section>
   );
 }

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useApp } from "@/components/providers/AppProvider";
-import { Badge } from "@/components/shared/Badge";
 import { Sparkline } from "@/components/shared/Sparkline";
 import { capSeriesToDate, performance } from "@/lib/data/indexes";
 import { latestInstrumentValue } from "@/lib/data/marketContext";
@@ -30,7 +29,7 @@ function lookupInstrument<T>(map: Map<string, T>, label: string, id: string) {
 
 export function IndexStrip() {
   const { indexes, marketContext, marketDate } = useApp();
-  const local = (indexes?.groups || []).filter((group) => group.id === "PRIMBANK10" || group.section === "SECTORAL INDEX").slice(0, 6);
+  const local = (indexes?.groups || []).filter((group) => group.id === "PRIMBANK10" || group.section === "SECTORAL INDEX").slice(0, 10);
   const external = Object.values(indexes?.externalIndexes || {}).flat().slice(0, 8);
   const instrumentMap = new Map(
     (marketContext?.instruments || []).flatMap((item) => [
@@ -40,15 +39,21 @@ export function IndexStrip() {
   );
 
   return (
-    <section data-testid="index-ecosystem" className="rounded-lg border border-white/10 bg-surface/80 p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+    <section data-testid="index-ecosystem" className="index-workspace" aria-labelledby="indexWorkspaceTitle">
+      <div className="view-intro compact-intro">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Index Ecosystem</p>
-          <h2 className="text-xl font-semibold text-text">Live references and local research indexes</h2>
+          <span className="section-kicker">INDEX ECOSYSTEM</span>
+          <h2 id="indexWorkspaceTitle">Live references and local research indexes</h2>
+          <p>Follow current external instruments separately from indexes calculated for the selected market session.</p>
         </div>
-        <Badge tone="neutral">Local indexes capped at {marketDate}</Badge>
       </div>
-      <div className="flex max-w-full gap-3 overflow-x-auto pb-2">
+      <div className="index-sections">
+        <section className="index-section">
+          <div className="panel-head">
+            <div><span className="panel-kicker">Live References</span><h3>External market instruments</h3></div>
+            <span className="status-badge info">TradingView links</span>
+          </div>
+          <div className="index-grid">
         {external.map((item) => {
           const instrument = lookupInstrument(instrumentMap, item.label, item.id);
           const latest = instrument ? latestInstrumentValue(instrument) : { value: null, change: null, changePct: null, series: [] as number[] };
@@ -60,27 +65,35 @@ export function IndexStrip() {
               href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(item.symbol)}`}
               target="_blank"
               rel="noreferrer"
-              className="min-w-72 rounded-lg border border-white/10 bg-white/[0.03] p-4 transition hover:border-accent/40 hover:bg-accent/10"
+                  className="index-card"
             >
-              <div className="flex items-start justify-between gap-3">
+                  <div className="index-card-head">
                 <div>
-                  <p data-testid="index-card-title" className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{item.label}</p>
-                  <strong data-testid="index-card-value" className="mt-1 block text-2xl text-text">{formatNumber(latest.value, 2)}</strong>
-                  <span data-testid="index-card-change" className={latest.changePct !== null && latest.changePct < 0 ? "text-negative" : "text-positive"}>
+                      <span data-testid="index-card-title">{item.label}</span>
+                      <strong data-testid="index-card-value">{formatNumber(latest.value, 2)}</strong>
+                      <small>{item.symbol}</small>
+                    </div>
+                    <b data-testid="index-card-change" className={latest.changePct !== null && latest.changePct < 0 ? "text-negative" : "text-positive"}>
                     {hasSeries ? `${formatNumber(latest.change, 2)} / ${formatPercent(latest.changePct)}` : "Local provider series unavailable"}
-                  </span>
+                    </b>
                 </div>
-                <Badge tone="accent">Live Reference</Badge>
-              </div>
               <Sparkline values={latest.series} positive={(latest.changePct || 0) >= 0} className="mt-4" />
               {!hasSeries ? (
-                <p data-testid="index-card-note" className="mt-3 text-xs leading-relaxed text-muted">
+                    <p data-testid="index-card-note" className="index-note">
                   Opens in TradingView; no local yfinance/workbook series is available for this reference.
                 </p>
               ) : null}
             </a>
           );
         })}
+          </div>
+        </section>
+        <section className="index-section">
+          <div className="panel-head">
+            <div><span className="panel-kicker">Local Research</span><h3>Selected session indexes</h3></div>
+            <span className="status-badge neutral">Capped at {marketDate}</span>
+          </div>
+          <div className="index-grid">
         {local.map((group) => {
           const series = capSeriesToDate(group.series, marketDate);
           const latest = series.at(-1);
@@ -90,20 +103,22 @@ export function IndexStrip() {
               key={group.id}
               data-testid="index-card"
               href="/explorer?tab=indexes"
-              className="min-w-72 rounded-lg border border-white/10 bg-white/[0.03] p-4 transition hover:border-accent/40 hover:bg-accent/10"
+                  className="index-card"
             >
-              <div className="flex items-start justify-between gap-3">
+                  <div className="index-card-head">
                 <div>
-                  <p data-testid="index-card-title" className="text-xs font-bold uppercase tracking-[0.16em] text-muted">{group.label}</p>
-                  <strong data-testid="index-card-value" className="mt-1 block text-2xl text-text">{formatNumber(latest?.value, 2)}</strong>
-                  <span data-testid="index-card-change" className={perf !== null && perf < 0 ? "text-negative" : "text-positive"}>{formatPercent(perf)}</span>
+                      <span data-testid="index-card-title">{group.label}</span>
+                      <strong data-testid="index-card-value">{formatNumber(latest?.value, 2)}</strong>
+                      <small>{group.section}</small>
                 </div>
-                <Badge tone="neutral">Local Research Index</Badge>
+                    <b data-testid="index-card-change" className={perf !== null && perf < 0 ? "text-negative" : "text-positive"}>{formatPercent(perf)}</b>
               </div>
               <Sparkline values={series.map((point) => point.value)} positive={(perf || 0) >= 0} className="mt-4" />
             </Link>
           );
         })}
+          </div>
+        </section>
       </div>
     </section>
   );

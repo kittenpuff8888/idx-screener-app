@@ -12,17 +12,14 @@ export function AdvancedPage() {
   const { manifest, bundle, ksei, indexes, marketDate } = useApp();
   const [tab, setTab] = useState<(typeof tabs)[number]>("Data Quality");
   return (
-    <div className="page-stack">
-      <div className="page-title">
-        <div>
-          <h1>Advanced</h1>
-          <p>Audit data quality, workbook lineage, source provenance, and methodology. These technical terms stay here instead of the primary research flow.</p>
-        </div>
+    <section className="view active" data-view-panel="advanced">
+      <div className="view-intro">
+        <div><span className="section-kicker">ADVANCED</span><h2>Research Methods &amp; Data</h2><p>Audit data quality, workbook lineage, source provenance, and methodology. These technical terms stay here instead of the primary research flow.</p></div>
         <Badge tone="warning">Audit workspace</Badge>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="advanced-tabs">
         {tabs.map((item) => (
-          <button key={item} type="button" onClick={() => setTab(item)} className={`rounded-full border px-4 py-2 text-sm font-semibold ${tab === item ? "border-accent/40 bg-accent/10 text-accent" : "border-white/10 text-muted"}`}>{item}</button>
+          <button key={item} type="button" onClick={() => setTab(item)} className={tab === item ? "active" : ""}>{item}</button>
         ))}
       </div>
       {tab === "Data Quality" ? (
@@ -42,7 +39,7 @@ export function AdvancedPage() {
       {tab === "Workbook Explorer" ? (
         <Card>
           <CardHeader kicker="Workbook Explorer" title="Generated data shapes" />
-          <div className="data-table-shell">
+          <div className="table-shell">
             <table className="data-table">
               <thead><tr><th>Artifact</th><th>Current Count</th><th>Purpose</th></tr></thead>
               <tbody>
@@ -59,13 +56,13 @@ export function AdvancedPage() {
       {tab === "Guide & Methodology" ? (
         <Card>
           <CardHeader kicker="Guide" title="How to read the platform" />
-          <div className="grid gap-4 lg:grid-cols-3">
-            <article className="rounded-lg border border-white/10 bg-white/[0.03] p-4"><h3 className="font-semibold">Dashboard</h3><p className="mt-2 text-sm leading-6 text-muted">Start with market tone, breadth, sector leadership, and ownership changes before drilling down.</p></article>
-            <article className="rounded-lg border border-white/10 bg-white/[0.03] p-4"><h3 className="font-semibold">Explorer</h3><p className="mt-2 text-sm leading-6 text-muted">Use the screener and index views to discover what deserves deeper ticker research.</p></article>
-            <article className="rounded-lg border border-white/10 bg-white/[0.03] p-4"><h3 className="font-semibold">Ticker Drawer</h3><p className="mt-2 text-sm leading-6 text-muted">Read the quote header, summary, trade plan, chart, ownership, fundamentals, technicals, and news in order.</p></article>
+          <div className="guide-grid">
+            <article><h3>Dashboard</h3><p>Start with market tone, breadth, sector leadership, and ownership changes before drilling down.</p></article>
+            <article><h3>Screener</h3><p>Use the screener and index views to discover what deserves deeper ticker research.</p></article>
+            <article><h3>Ticker Drawer</h3><p>Read the quote header, summary, trade plan, chart, ownership, fundamentals, technicals, and news in order.</p></article>
           </div>
         </Card>
       ) : null}
-    </div>
+    </section>
   );
 }

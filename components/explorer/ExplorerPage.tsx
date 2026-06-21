@@ -49,48 +49,64 @@ export function ExplorerPage() {
   const localIndexes = (indexes?.groups || []).filter((group) => group.section !== "KONGLO INDEX");
 
   return (
-    <div className="page-stack">
-      <div className="page-title">
+    <section className="view active" data-view-panel="screener">
+      <div className="view-intro">
         <div>
-          <h1>Research Explorer</h1>
-          <p>Discover signal rows, inspect index behavior, compare sectors, and trace group-level constituents for the selected IDX session.</p>
+          <span className="section-kicker">SIGNAL DISCOVERY</span>
+          <h2>Research Screener</h2>
+          <p>Find liquid, momentum-qualified IDX tickers and open the full research drawer from any row.</p>
         </div>
-        <Badge tone="accent">{marketDate}</Badge>
+        <span className="hero-stat">{filteredRows.length} rows</span>
       </div>
-      <div className="flex flex-wrap gap-2">
+      <div className="screener-mode-tabs">
         {tabs.map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => setTab(item)}
-            className={`rounded-full border px-4 py-2 text-sm font-semibold capitalize transition ${tab === item ? "border-accent/40 bg-accent/10 text-accent" : "border-white/10 text-muted hover:bg-white/5"}`}
+            className={tab === item ? "active" : ""}
           >
-            {item}
+            {item === "screener" ? "Screener" : item}
           </button>
         ))}
       </div>
 
       {tab === "screener" ? (
-        <>
+        <article className="panel screener-panel">
+          <div className="filter-gate-notice">
+            <strong>Filter gates</strong>
+            <span>(ADTR 20D ≥ Rp5B OR ADTV 20D ≥ 5M shares) AND RSI ≥ 50</span>
+          </div>
           <ScreenerFilters rows={bundle?.screener || []} kongloOptions={kongloOptions} value={filters} onChange={setFilters} />
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="screener-insight-strip">
             <Badge tone="accent">{filteredRows.length} visible rows</Badge>
             <Badge tone="neutral">{bundle?.screener.length || 0} total signal rows</Badge>
+            <Badge tone="neutral">{marketDate}</Badge>
           </div>
+          <details className="signal-guide">
+            <summary>Signal definitions</summary>
+            <div className="signal-catalog">
+              <span>EMA Trend</span>
+              <span>Golden Cross</span>
+              <span>Structure Break</span>
+              <span>POI Reclaim</span>
+              <span>Equal-Level Breakout</span>
+            </div>
+          </details>
           <ScreenerTable rows={filteredRows} />
-        </>
+        </article>
       ) : null}
 
       {tab === "indexes" ? (
-        <div className="grid gap-4">
+        <div className="index-sections">
           {selectedIndex ? <IndexDetail group={selectedIndex} onClose={() => setSelectedIndex(null)} /> : null}
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="index-grid">
             {localIndexes.map((group) => {
               const series = capSeriesToDate(group.series, marketDate);
               const latest = series.at(-1);
               const perf = performance(group.series, marketDate, 1);
               return (
-                <Card key={group.id} className="cursor-pointer transition hover:border-accent/40" >
+                <Card key={group.id}>
                   <button type="button" onClick={() => setSelectedIndex(group)} className="block w-full text-left">
                     <CardHeader kicker={group.section} title={group.label} />
                     <div className="metric-grid">
@@ -108,6 +124,6 @@ export function ExplorerPage() {
 
       {tab === "sectors" ? <SectorView /> : null}
       {tab === "konglo" ? <KongloView /> : null}
-    </div>
+    </section>
   );
 }

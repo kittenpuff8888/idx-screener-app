@@ -17,8 +17,8 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
   }
 
   return (
-    <div className="data-table-shell">
-      <table className="data-table">
+    <div className="table-shell">
+      <table className="data-table screener-table">
         <thead>
           <tr>
             <th>Ticker</th>
@@ -71,7 +71,7 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
                   type="button"
                   aria-label={isWatched(row.ticker) ? `Remove ${row.ticker} from watchlist` : `Add ${row.ticker} to watchlist`}
                   onClick={() => toggleWatchlist(row.ticker)}
-                  className="rounded-md border border-white/10 px-3 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
+                  className="text-button"
                 >
                   {isWatched(row.ticker) ? "Saved" : "Watch"}
                 </button>

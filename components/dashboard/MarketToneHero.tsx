@@ -1,8 +1,6 @@
 "use client";
 
 import { useApp } from "@/components/providers/AppProvider";
-import { Badge } from "@/components/shared/Badge";
-import { Card } from "@/components/shared/Card";
 import { asNumber, formatNumber, formatPercent } from "@/lib/format/number";
 import { normalizeSector } from "@/lib/domain/sectors";
 
@@ -17,36 +15,38 @@ export function MarketToneHero() {
   const topSignal = bundle?.screener[0];
 
   return (
-    <Card className="overflow-hidden border-accent/25 bg-[linear-gradient(135deg,rgba(20,184,166,.16),rgba(13,24,40,.82)_42%,rgba(7,17,31,.96))] p-7">
-      <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <Badge tone={tone === "Risk-on" ? "positive" : tone === "Defensive" ? "negative" : "warning"}>Market tone: {tone}</Badge>
-          <h1 className="mt-5 max-w-5xl text-4xl font-black leading-[0.98] tracking-[-0.055em] md:text-6xl">
-            {advances > declines
-              ? "Participation is broadening across the IDX session."
-              : "Participation is selective; read leadership before drilling into tickers."}
-          </h1>
-          <p className="mt-5 max-w-4xl text-base leading-8 text-muted md:text-lg">
+    <section className="dashboard-hero">
+      <div>
+        <span className="section-kicker">TODAY&apos;S MARKET READ</span>
+        <h2>
+          {advances > declines
+            ? "Participation is broadening across the IDX session."
+            : "Participation is selective; read leadership before drilling into tickers."}
+        </h2>
+        <p>
             {advances} advancing names versus {declines} declining names on {marketDate}.{" "}
             {leader ? `${normalizeSector(String(leader.sector))} leads sector momentum with ${formatPercent(leader.avgChange)} average change.` : "Sector leadership is still loading."}
             {topSignal ? ` First research candidate to inspect: ${topSignal.ticker}, driven by ${topSignal.signalLabel}.` : " No active signal group is available for this session."}
-          </p>
-        </div>
-        <div className="grid min-w-72 grid-cols-2 gap-3">
-          <div className="metric-card">
-            <span>Advancing</span>
-            <strong>{formatNumber(advances, 0)}</strong>
-          </div>
-          <div className="metric-card">
-            <span>Declining</span>
-            <strong>{formatNumber(declines, 0)}</strong>
-          </div>
-          <div className="metric-card col-span-2">
-            <span>Active signal tickers</span>
-            <strong>{formatNumber(bundle?.overview.summary?.signalTickers, 0)}</strong>
-          </div>
+        </p>
+        <div className="dashboard-next-step">
+          <span>Market tone</span>
+          <strong>{tone}</strong>
         </div>
       </div>
-    </Card>
+      <div className="dashboard-actions">
+        <div className="hero-stat-card">
+          <span>Advancing</span>
+          <strong>{formatNumber(advances, 0)}</strong>
+        </div>
+        <div className="hero-stat-card">
+          <span>Declining</span>
+          <strong>{formatNumber(declines, 0)}</strong>
+        </div>
+        <div className="hero-stat-card">
+          <span>Active signal tickers</span>
+          <strong>{formatNumber(bundle?.overview.summary?.signalTickers, 0)}</strong>
+        </div>
+      </div>
+    </section>
   );
 }

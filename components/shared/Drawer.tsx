@@ -28,19 +28,19 @@ export function Drawer({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/72 backdrop-blur-sm" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="absolute inset-y-0 right-0 flex w-full justify-end">
-        <div className={cn("h-full w-full overflow-y-auto border-l border-white/10 bg-bg p-5 shadow-terminal", wide ? "max-w-6xl" : "max-w-3xl")}>
-          <div className="sticky top-0 z-10 mb-5 flex items-center justify-between gap-4 border-b border-white/10 bg-bg/95 pb-4 backdrop-blur">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-accent">Research Detail</p>
-              <h2 className="text-2xl font-semibold text-text">{title}</h2>
-            </div>
-            <Button variant="ghost" onClick={onClose} aria-label="Close drawer">Close</Button>
+    <div className="ticker-drawer-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+      <aside className={cn("ticker-drawer", wide && "wide")}>
+        <header className="ticker-drawer-header">
+          <div>
+            <span className="panel-kicker">Ticker Research</span>
+            <h2>{title}</h2>
           </div>
+          <Button variant="ghost" onClick={onClose} aria-label="Close drawer">Close</Button>
+        </header>
+        <div className="ticker-drawer-body">
           {children}
         </div>
-      </div>
+      </aside>
     </div>
   );
 }

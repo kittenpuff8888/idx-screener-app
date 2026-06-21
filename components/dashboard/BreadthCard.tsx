@@ -1,7 +1,6 @@
 "use client";
 
 import { useApp } from "@/components/providers/AppProvider";
-import { Card, CardHeader } from "@/components/shared/Card";
 import { asNumber, formatNumber } from "@/lib/format/number";
 
 export function BreadthCard() {
@@ -14,16 +13,19 @@ export function BreadthCard() {
   const advancePct = (advances / total) * 100;
   const declinePct = (declines / total) * 100;
   return (
-    <Card>
-      <CardHeader kicker="Breadth" title="Participation balance" />
-      <div className="flex h-4 overflow-hidden rounded-full bg-white/10" aria-label="Market breadth ratio">
-        <div style={{ width: `${advancePct}%` }} className="bg-positive" />
-        <div style={{ width: `${declinePct}%` }} className="bg-negative" />
+    <article className="dashboard-summary-card">
+      <span>MARKET BREADTH</span>
+      <strong>Participation balance</strong>
+      <div className="breadth-numbers">
+        <b>{formatNumber(advances, 0)} advancing</b>
+        <b>{formatNumber(declines, 0)} declining</b>
+        <b>{formatNumber(unchanged, 0)} unchanged</b>
       </div>
-      <p className="mt-4 text-sm leading-6 text-muted">
-        {formatNumber(advances, 0)} advancing, {formatNumber(declines, 0)} declining, and {formatNumber(unchanged, 0)} unchanged names.
-        The next useful check is whether leadership is concentrated in a few sectors or spread across several groups.
-      </p>
-    </Card>
+      <div className="breadth-track" aria-label="Market breadth ratio">
+        <i style={{ width: `${advancePct}%` }} />
+        <b style={{ width: `${declinePct}%` }} />
+      </div>
+      <p>The next useful check is whether leadership is concentrated in a few sectors or spread across several groups.</p>
+    </article>
   );
 }

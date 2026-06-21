@@ -13,17 +13,15 @@ export function WatchlistPage() {
   }));
 
   return (
-    <div className="page-stack">
-      <div className="page-title">
-        <div>
-          <h1>Watchlist</h1>
-          <p>Track research candidates you saved from the screener or ticker drawer. Data follows the selected IDX market session, while ownership follows latest KSEI.</p>
-        </div>
+    <section className="view active" data-view-panel="watchlist">
+      <div className="view-intro">
+        <div><span className="section-kicker">LOCAL RESEARCH LIST</span><h2>Watchlist</h2><p>Track research candidates you saved from the screener or ticker drawer. Data follows the selected IDX market session, while ownership follows latest KSEI.</p></div>
       </div>
       {!rows.length ? (
         <EmptyState title="No tickers saved yet" body="Save a ticker from the screener or ticker research drawer to build your research board." />
       ) : (
-        <div className="data-table-shell">
+        <article className="panel">
+        <div className="table-shell">
           <table className="data-table">
             <thead>
               <tr>
@@ -50,7 +48,7 @@ export function WatchlistPage() {
                   <td>
                     <button
                       type="button"
-                      className="rounded-md border border-white/10 px-3 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
+                      className="text-button"
                       onClick={() => toggleWatchlist(ticker)}
                     >
                       Remove
@@ -61,7 +59,8 @@ export function WatchlistPage() {
             </tbody>
           </table>
         </div>
+        </article>
       )}
-    </div>
+    </section>
   );
 }

@@ -41,18 +41,24 @@ export function TickerDrawer() {
   return (
     <Drawer open={Boolean(selectedTicker)} onClose={closeTicker} title={selectedTicker ? `${selectedTicker} research` : "Ticker research"} wide>
       {!selectedTicker ? null : (
-        <div className="grid gap-5">
+        <div id="tickerContent">
           {!stock && !ownership ? (
             <EmptyState title="Ticker not found" body="This ticker is not available in the selected research session or latest ownership snapshot." />
           ) : (
             <>
               <TickerHeader stock={stock} ownership={ownership} />
-              <ResearchSummary summary={summary} />
-              <TradePlan plan={plan} />
+              <article className="ticker-conclusion-card">
+                <ResearchSummary summary={summary} />
+              </article>
+              <div className="ticker-overview-grid">
+                <TradePlan plan={plan} />
+                <OwnershipPanel ownership={ownership} />
+              </div>
               <TickerChart payload={ohlcv} stock={stock} />
-              <OwnershipPanel ownership={ownership} />
-              <FundamentalsPanel row={fundamental} stock={stock} />
-              <TechnicalsPanel stock={stock} />
+              <div className="ticker-overview-grid">
+                <FundamentalsPanel row={fundamental} stock={stock} />
+                <TechnicalsPanel stock={stock} />
+              </div>
               <NewsPanel ticker={selectedTicker} row={news} />
             </>
           )}
