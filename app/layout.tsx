@@ -4,8 +4,8 @@ import { AppShell } from "@/components/layout/AppShell";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "IDX RESEARCH",
-  description: "Investor-focused Indonesian equity research platform powered by IDX screener datasets.",
+  title: "8888 Screener",
+  description: "Institutional IDX equity screener — wealth doesn't wander. It lands.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

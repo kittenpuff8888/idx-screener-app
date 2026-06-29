@@ -7,11 +7,12 @@ import { BASE_PATH } from "@/lib/data/client";
 import { cn } from "@/lib/utils/classNames";
 
 const navItems = [
-  { href: "/dashboard", label: "Research Dashboard" },
+  { href: "/dashboard", label: "Research" },
   { href: "/explorer", label: "Screener" },
+  { href: "/ksei", label: "KSEI" },
   { href: "/watchlist", label: "Watchlist" },
-  { href: "/ksei", label: "KSEI Ownership" },
-  { href: "/news", label: "IDX Ticker News" },
+  { href: "/news", label: "News" },
+  { href: "/advanced?tab=guide", label: "Guide" },
 ];
 
 export function Sidebar() {
@@ -19,11 +20,14 @@ export function Sidebar() {
   const { loading, marketDate } = useApp();
   return (
     <aside className="sidebar" id="sidebar">
-      <Link href="/dashboard" className="brand" aria-label="IDX RESEARCH home">
+      <Link href="/dashboard" className="brand" aria-label="8888 Screener home">
         <span className="brand-mark">
           <img src={`${BASE_PATH}/assets/idx-research-character.png`} alt="" />
         </span>
-        <strong>IDX RESEARCH</strong>
+        <span className="brand-copy">
+          <strong>8888 Screener</strong>
+          <small className="brand-tag">Wealth doesn&apos;t wander. It lands.</small>
+        </span>
       </Link>
       <nav aria-label="Primary navigation" className="primary-nav">
         {navItems.map((item) => {

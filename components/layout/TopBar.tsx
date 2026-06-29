@@ -36,11 +36,12 @@ export function TopBar() {
 
   useEffect(() => {
     const stored = window.localStorage.getItem(THEME_KEY);
+    // Spec §2: light is the default.
     const initial: Theme = stored === "light" || stored === "dark"
       ? stored
-      : window.matchMedia("(prefers-color-scheme: light)").matches
-        ? "light"
-        : "dark";
+      : window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
     setTheme(initial);
     document.documentElement.dataset.theme = initial;
   }, []);
