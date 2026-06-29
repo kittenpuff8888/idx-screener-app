@@ -11,10 +11,13 @@ export function asNumber(value: unknown): number | null {
   return null;
 }
 
+// Indonesian convention: dot thousands, comma decimal (e.g. 6.007,66) — IMPLEMENTATION_SPEC §2.
+const LOCALE = "id-ID";
+
 export function formatNumber(value: unknown, digits = 2): string {
   const parsed = asNumber(value);
   if (parsed === null) return "Unavailable";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(LOCALE, {
     maximumFractionDigits: digits,
     minimumFractionDigits: 0,
   }).format(parsed);
@@ -23,7 +26,7 @@ export function formatNumber(value: unknown, digits = 2): string {
 export function formatPrice(value: unknown): string {
   const parsed = asNumber(value);
   if (parsed === null) return "Unavailable";
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(parsed);
+  return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 }).format(parsed);
 }
 
 export function formatPercent(value: unknown, digits = 2): string {
@@ -44,10 +47,26 @@ export function formatPlainPercent(value: unknown, digits = 2): string {
 export function formatCompact(value: unknown): string {
   const parsed = asNumber(value);
   if (parsed === null) return "Unavailable";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(LOCALE, {
     notation: "compact",
     maximumFractionDigits: 2,
   }).format(parsed);
+}
+
+/**
+ * Format an ISO date (or YYYY-MM-DD) into a compact provenance stamp,
+ * e.g. "2026-06-14" → "14 Jun 2026". Returns the raw input on parse failure
+ * rather than inventing a date.
+ */
+export function formatAsOf(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value.length <= 10 ? `${value}T00:00:00` : value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }
 
 export function directionClass(value: unknown): "text-positive" | "text-negative" | "text-muted" {
