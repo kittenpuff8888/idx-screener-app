@@ -446,7 +446,7 @@ a {
 .date-popover label span {
   display: block;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -985,7 +985,7 @@ a {
   z-index: 1;
   background: #102540;
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.1em;
   text-transform: uppercase;

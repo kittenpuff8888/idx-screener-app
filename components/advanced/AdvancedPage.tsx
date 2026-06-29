@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Badge } from "@/components/shared/Badge";
 import { Card, CardHeader } from "@/components/shared/Card";
@@ -8,9 +8,21 @@ import { formatNumber } from "@/lib/format/number";
 
 const tabs = ["Data Quality", "Workbook Explorer", "Guide & Methodology"] as const;
 
+// Sidebar deep-links use ?tab=quality|explorer|guide.
+const tabByParam: Record<string, (typeof tabs)[number]> = {
+  quality: "Data Quality",
+  explorer: "Workbook Explorer",
+  guide: "Guide & Methodology",
+};
+
 export function AdvancedPage() {
   const { manifest, bundle, ksei, indexes, marketDate } = useApp();
   const [tab, setTab] = useState<(typeof tabs)[number]>("Data Quality");
+
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("tab");
+    if (param && tabByParam[param]) setTab(tabByParam[param]);
+  }, []);
   return (
     <section className="view active" data-view-panel="advanced">
       <div className="view-intro">

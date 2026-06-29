@@ -20,7 +20,10 @@ class HistoricalSnapshotTests(unittest.TestCase):
     def test_market_date_window_contains_real_sessions(self):
         dates = [entry["marketDate"] for entry in self.manifest["dates"]]
         self.assertEqual(self.manifest["schemaVersion"], 5)
-        self.assertEqual(len(dates), 341)
+        # Assert a growing-archive invariant (minimum coverage + uniqueness),
+        # not a frozen exact count. A permanent `== 341` made every newly
+        # published session fail CI before generated data could be committed.
+        self.assertGreaterEqual(len(dates), 341)
         self.assertEqual(len(dates), len(set(dates)))
         self.assertIn("2025-01-02", dates)
         self.assertIn("2026-01-02", dates)

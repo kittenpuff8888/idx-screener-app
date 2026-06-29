@@ -6,7 +6,7 @@ import { isMissing, provenance, type Cell } from "@/lib/dataReady";
  */
 export function Provenance({ source, asOf, className }: { source: string; asOf: string; className?: string }) {
   return (
-    <span className={cn("text-[11px] font-medium text-faint", className)}>
+    <span className={cn("text-[12px] font-medium text-faint", className)}>
       {provenance(source, asOf)}
     </span>
   );
@@ -37,7 +37,7 @@ export function Metric<T>({
   const missing = isMissing(cell);
   return (
     <div className={cn("flex flex-col gap-0.5", className)}>
-      {label ? <span className="text-[11px] font-medium uppercase tracking-wide text-faint">{label}</span> : null}
+      {label ? <span className="text-[12px] font-medium uppercase tracking-wide text-faint">{label}</span> : null}
       {missing ? (
         <span className="font-mono text-muted" title={cell.reason} aria-label={cell.reason}>
           —
@@ -46,7 +46,7 @@ export function Metric<T>({
         <span className={cn("font-mono text-text", valueClassName)}>{format(cell.value)}</span>
       )}
       {!missing && showSource ? <Provenance source={cell.source} asOf={cell.asOf} /> : null}
-      {missing ? <span className="text-[11px] text-faint">{cell.reason}</span> : null}
+      {missing ? <span className="text-[12px] text-faint">{cell.reason}</span> : null}
     </div>
   );
 }
