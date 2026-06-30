@@ -3,59 +3,14 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  /* Light is the default theme — exact prototype palette (IMPLEMENTATION_SPEC §2). */
+  color-scheme: light;
   --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Categorical palette (KSEI types, konglo lines, sectors) — IMPLEMENTATION_SPEC §2 */
   --cat-1: #1d4ed8; --cat-2: #d92d20; --cat-3: #0891b2; --cat-4: #7c3aed;
   --cat-5: #ea580c; --cat-6: #0f766e; --cat-7: #be185d; --cat-8: #475569;
   --cat-9: #ca8a04; --cat-10: #2563eb; --cat-11: #9333ea;
-  --bg: #030914;
-  --bg-soft: #07111f;
-  --surface: rgba(10, 23, 41, 0.9);
-  --surface-2: #102540;
-  --surface-3: #173252;
-  --surface-solid: #091629;
-  --surface-hover: #173252;
-  --border: rgba(148, 163, 184, 0.18);
-  --border-strong: rgba(96, 165, 250, 0.34);
-  --text: #e8eef7;
-  --text-muted: #98a8bd;
-  --text-faint: #64748b;
-  /* Brand: strictly Black / White / Blue / Red. Blue = up/positive, Red = down/negative. */
-  --accent: #4d86ff;
-  --accent-hover: #6f9dff;
-  --accent-soft: rgba(77, 134, 255, 0.13);
-  --accent-border: rgba(77, 134, 255, 0.5);
-  --positive: #4d86ff;
-  --negative: #ff5a52;
-  --warning: #ca8a04;
-  --neutral: #8b94a3;
-  --cyan: #0891b2;
-  /* Spec §2 token aliases (dark) */
-  --frame: var(--bg);
-  --panel: #0f141b;
-  --muted: #8b94a3;
-  --faint: #586374;
-  --hair: #171d27;
-  --soft: #151b24;
-  --softer: #0f141b;
-  --up: #4d86ff;
-  --down: #ff5a52;
-  --accentSoft: rgba(77, 134, 255, 0.13);
-  --accentLine: rgba(77, 134, 255, 0.28);
-  --downSoft: rgba(255, 90, 82, 0.12);
-  --sidebar: 246px;
-  --radius-sm: 10px;
-  --radius-md: 15px;
-  --radius-lg: 22px;
-  --r: 10px;
-  --r2: 8px;
-  --shadow: 0 1px 2px rgba(10, 14, 20, 0.05);
-}
-
-:root[data-theme="light"] {
-  color-scheme: light;
   --bg: #eef0f3;
   --bg-soft: #f4f6f8;
   --surface: #ffffff;
@@ -68,6 +23,7 @@
   --text: #0a0e14;
   --text-muted: #5b6472;
   --text-faint: #97a1b0;
+  /* Brand: strictly Black / White / Blue / Red. Blue = up/positive, Red = down/negative. */
   --accent: #1d4ed8;
   --accent-hover: #1746c4;
   --accent-soft: rgba(29, 78, 216, 0.08);
@@ -86,11 +42,58 @@
   --soft: #f4f6f8;
   --softer: #fafbfc;
   --up: #1d4ed8;
+  --upSoft: rgba(29, 78, 216, 0.09);
   --down: #d92d20;
   --accentSoft: rgba(29, 78, 216, 0.08);
   --accentLine: rgba(29, 78, 216, 0.28);
   --downSoft: rgba(217, 45, 32, 0.09);
+  --sidebar: 246px;
+  --radius-sm: 10px;
+  --radius-md: 15px;
+  --radius-lg: 22px;
+  --r: 10px;
+  --r2: 8px;
   --shadow: 0 1px 2px rgba(10, 14, 20, 0.05);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #070a0f;
+  --bg-soft: #0f141b;
+  --surface: #0f141b;
+  --surface-2: #151b24;
+  --surface-3: #1e2530;
+  --surface-solid: #0f141b;
+  --surface-hover: #1e2530;
+  --border: #1e2530;
+  --border-strong: rgba(77, 134, 255, 0.34);
+  --text: #e6eaf0;
+  --text-muted: #8b94a3;
+  --text-faint: #586374;
+  --accent: #4d86ff;
+  --accent-hover: #6f9dff;
+  --accent-soft: rgba(77, 134, 255, 0.13);
+  --accent-border: rgba(77, 134, 255, 0.5);
+  --positive: #4d86ff;
+  --negative: #ff5a52;
+  --warning: #ca8a04;
+  --neutral: #8b94a3;
+  --cyan: #0891b2;
+  /* Spec §2 token aliases (dark) */
+  --frame: #070a0f;
+  --panel: #0f141b;
+  --muted: #8b94a3;
+  --faint: #586374;
+  --hair: #171d27;
+  --soft: #151b24;
+  --softer: #0f141b;
+  --up: #4d86ff;
+  --upSoft: rgba(77, 134, 255, 0.13);
+  --down: #ff5a52;
+  --accentSoft: rgba(77, 134, 255, 0.13);
+  --accentLine: rgba(77, 134, 255, 0.28);
+  --downSoft: rgba(255, 90, 82, 0.12);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -146,7 +149,7 @@ a {
   flex-direction: column;
   padding: 24px 18px;
   border-right: 1px solid var(--border);
-  background: rgba(7, 17, 31, 0.94);
+  background: var(--panel);
   backdrop-filter: blur(20px);
 }
 
@@ -260,7 +263,7 @@ a {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--soft);
 }
 
 .system-state strong,
@@ -302,7 +305,7 @@ a {
   min-height: 82px;
   padding: 17px 0;
   border-bottom: 1px solid var(--border);
-  background: rgba(3, 9, 20, 0.86);
+  background: var(--panel);
   backdrop-filter: blur(18px);
 }
 
@@ -359,7 +362,7 @@ a {
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--soft);
 }
 
 .command-prefix {
@@ -379,7 +382,7 @@ a {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--soft);
   color: var(--text);
   outline: none;
   padding: 0 12px;
@@ -436,7 +439,7 @@ a {
   padding: 7px 14px;
   border: 1px solid var(--border);
   border-radius: 15px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--soft);
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -473,7 +476,7 @@ a {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--soft);
   color: var(--text-muted);
   cursor: pointer;
   font-size: 13px;
@@ -494,7 +497,7 @@ a {
   min-height: 46px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--soft);
   color: var(--text);
   cursor: pointer;
 }
@@ -543,7 +546,7 @@ a {
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--soft);
 }
 
 .dataset-line {
@@ -564,7 +567,7 @@ a {
   padding: 5px 9px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--soft);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 850;
@@ -654,7 +657,7 @@ a {
   padding: 13px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--soft);
 }
 
 .dashboard-next-step span,
@@ -728,7 +731,7 @@ a {
   margin-top: 14px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--soft);
 }
 
 .breadth-track i,
@@ -750,7 +753,7 @@ a {
   padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--soft);
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -774,7 +777,7 @@ a {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--soft);
 }
 
 .sector-track i {
@@ -823,7 +826,7 @@ a {
   padding: 15px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--soft);
   color: var(--text);
   text-decoration: none;
   transition: 160ms ease;
@@ -877,7 +880,7 @@ a {
   padding: 9px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--soft);
   color: var(--text-muted);
   cursor: pointer;
   font-weight: 750;
@@ -951,7 +954,7 @@ a {
   padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--soft);
   color: var(--text);
   font-size: 12px;
 }
@@ -983,7 +986,7 @@ a {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #102540;
+  background: var(--soft);
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 900;
@@ -1011,7 +1014,7 @@ a {
   padding: 13px;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--soft);
 }
 
 .metric-card strong {
@@ -1032,7 +1035,7 @@ a {
   padding: 9px 14px;
   border: 1px solid var(--border);
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--soft);
   color: var(--text);
   cursor: pointer;
   font-size: 14px;
@@ -1089,7 +1092,7 @@ a {
   margin: -24px -24px 18px;
   padding: 20px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(7, 17, 31, 0.94);
+  background: var(--panel);
   backdrop-filter: blur(16px);
 }
 
@@ -1182,7 +1185,7 @@ a {
   padding: 15px;
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--soft);
 }
 
 .text-positive {

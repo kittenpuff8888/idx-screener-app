@@ -36,12 +36,10 @@ export function TopBar() {
 
   useEffect(() => {
     const stored = window.localStorage.getItem(THEME_KEY);
-    // Spec §2: light is the default.
-    const initial: Theme = stored === "light" || stored === "dark"
-      ? stored
-      : window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
+    // Spec §2: light is the default. The prototype is light-first, so first
+    // visit always starts light (OS dark mode no longer forces dark); an
+    // explicit saved preference still wins.
+    const initial: Theme = stored === "light" || stored === "dark" ? stored : "light";
     setTheme(initial);
     document.documentElement.dataset.theme = initial;
   }, []);
