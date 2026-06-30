@@ -2,10 +2,11 @@
 
 import { useApp } from "@/components/providers/AppProvider";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { Provenance } from "@/components/shared/Metric";
 import { formatPercent, formatPrice } from "@/lib/format/number";
 
 export function WatchlistPage() {
-  const { watchlist, bundle, ksei, openTicker, toggleWatchlist } = useApp();
+  const { watchlist, bundle, ksei, openTicker, toggleWatchlist, marketDate } = useApp();
   const rows = watchlist.map((ticker) => ({
     ticker,
     stock: bundle?.technical.get(ticker),
@@ -16,6 +17,7 @@ export function WatchlistPage() {
     <section className="view active" data-view-panel="watchlist">
       <div className="view-intro">
         <div><span className="section-kicker">LOCAL RESEARCH LIST</span><h2>Watchlist</h2><p>Track research candidates you saved from the screener or ticker drawer. Data follows the selected IDX market session, while ownership follows latest KSEI.</p></div>
+        <Provenance source={`Close · ${marketDate} · KSEI ownership`} asOf="" />
       </div>
       {!rows.length ? (
         <EmptyState title="No tickers saved yet" body="Save a ticker from the screener or ticker research drawer to build your research board." />

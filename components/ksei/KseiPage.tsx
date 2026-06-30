@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Button } from "@/components/shared/Button";
 import { Card, CardHeader } from "@/components/shared/Card";
+import { Provenance } from "@/components/shared/Metric";
+import { formatAsOf } from "@/lib/format/number";
 import { buildInvestorDirectory } from "@/lib/data/ksei";
 import type { KseiIssuer } from "@/lib/domain/types";
 import { KSEIChangesLog } from "./KSEIChangesLog";
@@ -34,6 +36,7 @@ export function KseiPage() {
     <section className="view active" data-view-panel="ownership">
       <div className="view-intro">
         <div><span className="section-kicker">OWNERSHIP INTELLIGENCE</span><h2>KSEI Ownership</h2><p>Understand who controls a company, how concentrated ownership is, and which reported holders changed in the latest snapshot.</p></div>
+        <Provenance source="KSEI snapshot" asOf={formatAsOf(ksei?.asOf)} />
       </div>
       <KSEIConcentration ksei={ksei} />
       <KSEIChangesLog changes={ksei?.investorChanges || []} onTicker={openTicker} />

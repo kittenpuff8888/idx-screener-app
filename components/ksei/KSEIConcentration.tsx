@@ -1,14 +1,17 @@
 "use client";
 
 import { Card, CardHeader } from "@/components/shared/Card";
+import { Provenance } from "@/components/shared/Metric";
 import type { KseiPayload } from "@/lib/domain/types";
-import { formatNumber, formatPlainPercent } from "@/lib/format/number";
+import { formatAsOf, formatNumber, formatPlainPercent } from "@/lib/format/number";
 
 export function KSEIConcentration({ ksei }: { ksei: KseiPayload | null }) {
   const summary = ksei?.summary || {};
   return (
     <Card>
-      <CardHeader kicker="Ownership Intelligence" title="Control and concentration overview" />
+      <CardHeader kicker="Ownership Intelligence" title="Control and concentration overview">
+        <Provenance source="KSEI" asOf={formatAsOf(ksei?.asOf)} />
+      </CardHeader>
       <div className="metric-grid">
         <div className="metric-card"><span>Issuers</span><strong>{formatNumber(summary.totalIssuers, 0)}</strong></div>
         <div className="metric-card"><span>Average Free Float</span><strong>{formatPlainPercent(summary.averageFreeFloat, 2)}</strong></div>

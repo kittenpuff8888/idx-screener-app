@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Badge } from "@/components/shared/Badge";
 import { Card, CardHeader } from "@/components/shared/Card";
+import { Provenance } from "@/components/shared/Metric";
 import { newsItems } from "@/lib/data/news";
 
 export function NewsPage() {
@@ -30,7 +31,9 @@ export function NewsPage() {
         <label><span>Ticker or issuer</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search ticker, company, headline" /></label>
       </Card>
       <Card>
-        <CardHeader kicker="Ticker context" title="News timeline" />
+        <CardHeader kicker="Ticker context" title="News timeline">
+          <Provenance source="Workbook news" asOf={marketDate} />
+        </CardHeader>
         <div className="grid gap-3">
           {rows.map((item) => (
             <article key={item.ticker} className="news-card">
