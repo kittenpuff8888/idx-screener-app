@@ -7,6 +7,7 @@ export type ScreenerFilterState = {
   sector: string;
   konglo: string;
   liquidity: string;
+  signal: string;
 };
 
 export function ScreenerFilters({
@@ -22,8 +23,32 @@ export function ScreenerFilters({
 }) {
   const sectors = [...new Set(rows.map((row) => row.sector))].sort();
   const liquidity = [...new Set(rows.map((row) => row.liquidityCategory))].sort();
+  // Signal lenses come from the real signalLabel field, with each lens's row count.
+  const signalCounts = new Map<string, number>();
+  for (const row of rows) signalCounts.set(row.signalLabel, (signalCounts.get(row.signalLabel) || 0) + 1);
+  const signals = [...signalCounts.entries()].sort((a, b) => b[1] - a[1]);
   return (
-    <div className="screener-controls">
+    <div className="screener-filter-stack">
+      <div className="signal-lenses" role="group" aria-label="Signal filters">
+        <button
+          type="button"
+          className={`lens-chip ${value.signal === "ALL" ? "active" : ""}`}
+          onClick={() => onChange({ ...value, signal: "ALL" })}
+        >
+          All signals <span className="lens-count">{rows.length}</span>
+        </button>
+        {signals.map(([label, count]) => (
+          <button
+            key={label}
+            type="button"
+            className={`lens-chip ${value.signal === label ? "active" : ""}`}
+            onClick={() => onChange({ ...value, signal: value.signal === label ? "ALL" : label })}
+          >
+            {label} <span className="lens-count">{count}</span>
+          </button>
+        ))}
+      </div>
+      <div className="screener-controls">
       <label>
         <span>Ticker</span>
         <input
@@ -53,6 +78,7 @@ export function ScreenerFilters({
           {liquidity.map((item) => <option key={item} value={item}>{item}</option>)}
         </select>
       </label>
+      </div>
     </div>
   );
 }

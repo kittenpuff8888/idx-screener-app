@@ -5,6 +5,7 @@ import { useApp } from "@/components/providers/AppProvider";
 import { Badge } from "@/components/shared/Badge";
 import { Card, CardHeader } from "@/components/shared/Card";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
+import { Provenance } from "@/components/shared/Metric";
 import { capSeriesToDate, performance } from "@/lib/data/indexes";
 import type { IndexGroup } from "@/lib/domain/types";
 import { formatNumber, formatPercent } from "@/lib/format/number";
@@ -26,6 +27,7 @@ export function ExplorerPage() {
     sector: "ALL",
     konglo: "ALL",
     liquidity: "ALL",
+    signal: "ALL",
   });
   const kongloOptions = (indexes?.groups || []).filter((group) => group.section === "KONGLO INDEX").map((group) => ({ id: group.id, label: group.label }));
   useEffect(() => {
@@ -40,6 +42,7 @@ export function ExplorerPage() {
       if (filters.sector !== "ALL" && row.sector !== filters.sector) return false;
       if (filters.konglo !== "ALL" && !row.kongloGroups.includes(filters.konglo)) return false;
       if (filters.liquidity !== "ALL" && row.liquidityCategory !== filters.liquidity) return false;
+      if (filters.signal !== "ALL" && row.signalLabel !== filters.signal) return false;
       return true;
     });
   }, [bundle, filters]);
@@ -94,6 +97,9 @@ export function ExplorerPage() {
             </div>
           </details>
           <ScreenerTable rows={filteredRows} />
+          <div className="mt-3">
+            <Provenance source="IDX Screener" asOf={marketDate} />
+          </div>
         </article>
       ) : null}
 

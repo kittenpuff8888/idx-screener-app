@@ -1317,3 +1317,74 @@ a {
     min-width: 820px;
   }
 }
+
+/* --- Screener: signal lenses + sortable headers (8888 Screener refit) --- */
+.screener-filter-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.signal-lenses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.lens-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  background: var(--soft);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: 140ms ease;
+}
+
+.lens-chip:hover {
+  border-color: var(--accent-border);
+  color: var(--text);
+}
+
+.lens-chip.active {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.lens-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.lens-chip.active .lens-count {
+  color: var(--accent);
+}
+
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.th-sort:hover {
+  color: var(--accent);
+}
+
+.th-sort-caret {
+  font-size: 9px;
+  color: var(--accent);
+}
