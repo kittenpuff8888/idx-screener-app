@@ -43,11 +43,14 @@ class V13NextContractTests(unittest.TestCase):
         self.assertIn('basePath: isProd ? "/IDXScreener" : ""', config)
         self.assertIn('assetPrefix: isProd ? "/IDXScreener/" : ""', config)
 
-    def test_next_shell_preserves_pre_v13_sidebar_labels(self):
+    def test_next_shell_uses_8888_screener_nav(self):
+        # The 8888 Screener rebrand replaces the pre-V13 sidebar labels with the
+        # spec nav (Research, Screener, KSEI, Watchlist, News, Guide) under the
+        # "8888 Screener" brand lockup. Still a Next.js sidebar, no legacy data-view.
         sidebar = (ROOT / "components/layout/Sidebar.tsx").read_text(encoding="utf-8")
-        self.assertIn("Research Dashboard", sidebar)
-        self.assertIn("Screener", sidebar)
-        self.assertIn("KSEI Ownership", sidebar)
+        self.assertIn("8888 Screener", sidebar)
+        for label in ("Research", "Screener", "KSEI", "Watchlist", "News", "Guide"):
+            self.assertIn(f'label: "{label}"', sidebar)
         self.assertIn('className="sidebar"', sidebar)
         self.assertNotIn("data-view", sidebar)
 
