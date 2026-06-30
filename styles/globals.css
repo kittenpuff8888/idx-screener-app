@@ -53,6 +53,7 @@
   --radius-lg: 22px;
   --r: 10px;
   --r2: 8px;
+  --shellR: 14px;
   --shadow: 0 1px 2px rgba(10, 14, 20, 0.05);
 }
 
@@ -88,10 +89,10 @@
   --soft: #151b24;
   --softer: #0f141b;
   --up: #4d86ff;
-  --upSoft: rgba(77, 134, 255, 0.13);
+  --upSoft: rgba(77, 134, 255, 0.12);
   --down: #ff5a52;
   --accentSoft: rgba(77, 134, 255, 0.13);
-  --accentLine: rgba(77, 134, 255, 0.28);
+  --accentLine: rgba(77, 134, 255, 0.32);
   --downSoft: rgba(255, 90, 82, 0.12);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
