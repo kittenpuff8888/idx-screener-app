@@ -56,7 +56,7 @@ export function TickerDrawer() {
               </div>
               <TickerChart payload={ohlcv} stock={stock} />
               <div className="ticker-overview-grid">
-                <FundamentalsPanel row={fundamental} stock={stock} />
+                <FundamentalsPanel row={fundamental} stock={stock} asOf={marketDate} />
                 <TechnicalsPanel stock={stock} />
               </div>
               <NewsPanel ticker={selectedTicker} row={news} />
