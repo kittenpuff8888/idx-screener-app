@@ -1388,3 +1388,119 @@ a {
   font-size: 9px;
   color: var(--accent);
 }
+
+/* --- Dashboard: Leaders/Laggards + Market Map heatmap (8888 Screener refit) --- */
+.leaders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.movers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.movers-row {
+  display: grid;
+  grid-template-columns: 56px 1fr 90px 64px 64px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px;
+  border: 0;
+  border-radius: var(--r2);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: 120ms ease;
+}
+
+.movers-row:hover {
+  background: var(--soft);
+}
+
+.movers-ticker {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.movers-sector {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.movers-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--soft);
+}
+
+.movers-bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.movers-price {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.market-map {
+  margin: 16px 0;
+}
+
+.heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.heatmap-sector-label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.heatmap-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.heatmap-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-basis: 84px;
+  min-width: 72px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: var(--r2);
+  cursor: pointer;
+  text-align: left;
+}
+
+.heatmap-tile strong {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.heatmap-tile span {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  opacity: 0.92;
+}

@@ -5,6 +5,8 @@ import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { BreadthCard } from "./BreadthCard";
 import { IndexStrip } from "./IndexStrip";
 import { KSEIChanges } from "./KSEIChanges";
+import { Leaders } from "./Leaders";
+import { MarketMap } from "./MarketMap";
 import { MarketToneHero } from "./MarketToneHero";
 import { PriorityIdeas } from "./PriorityIdeas";
 import { SectorMomentum } from "./SectorMomentum";
@@ -24,6 +26,8 @@ export function DashboardPage() {
         <SectorMomentum />
       </section>
       <IndexStrip />
+      <Leaders />
+      <MarketMap />
     </section>
   );
 }
