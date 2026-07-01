@@ -95,6 +95,18 @@
       "marketDate": "2026-06-30",
       "status": "NO_CHANGE",
       "message": "Dataset already published; last successful snapshot preserved."
+    },
+    {
+      "timestamp": "2026-07-01T19:20:26.473331+07:00",
+      "marketDate": "2026-07-01",
+      "status": "STARTED",
+      "message": "Daily update pipeline started."
+    },
+    {
+      "timestamp": "2026-07-01T20:34:22.064193+07:00",
+      "marketDate": "2026-07-01",
+      "status": "SUCCESS",
+      "message": "Created and validated a new dated snapshot."
     }
   ]
 }
