@@ -1,135 +1,124 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
-import { Badge } from "@/components/shared/Badge";
-import { Card, CardHeader } from "@/components/shared/Card";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { Provenance } from "@/components/shared/Metric";
-import { capSeriesToDate, performance } from "@/lib/data/indexes";
-import type { IndexGroup } from "@/lib/domain/types";
-import { formatNumber, formatPercent } from "@/lib/format/number";
-import { IndexDetail } from "./IndexDetail";
-import { KongloView } from "./KongloView";
-import { ScreenerFilters, type ScreenerFilterState } from "./ScreenerFilters";
 import { ScreenerTable } from "./ScreenerTable";
-import { SectorView } from "./SectorView";
+import type { ScreenerRow } from "@/lib/domain/types";
 
-const tabs = ["screener", "indexes", "sectors", "konglo"] as const;
-type Tab = typeof tabs[number];
+const MONO = "var(--mono, var(--font-mono))";
+const SEL: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 10, padding: "9px 11px", fontFamily: "var(--sans, var(--font-body))", fontSize: 12.5, color: "var(--text)", outline: "none", cursor: "pointer", boxShadow: "var(--sh, var(--shadow))" };
+
+type Chip = { id: string; label: string; test: (r: ScreenerRow) => boolean };
+const CHIPS: Chip[] = [
+  { id: "all", label: "All", test: () => true },
+  { id: "belowvwap", label: "Below VWAP", test: (r) => /below/i.test(r.vwapZone) },
+  { id: "abovevwap", label: "Above VWAP", test: (r) => /above/i.test(r.vwapZone) },
+  { id: "accum", label: "Accumulating", test: (r) => /accumul/i.test(`${r.summary} ${r.smc}`) },
+  { id: "distrib", label: "Distributing", test: (r) => /distribut/i.test(`${r.summary} ${r.smc}`) },
+  { id: "rvol", label: "RVOL ≥ 1.2×", test: (r) => (r.rvol ?? 0) >= 1.2 },
+];
 
 export function ExplorerPage() {
   const { bundle, indexes, marketDate, loading } = useApp();
-  const [tab, setTab] = useState<Tab>("screener");
-  const [selectedIndex, setSelectedIndex] = useState<IndexGroup | null>(null);
-  const [filters, setFilters] = useState<ScreenerFilterState>({
-    search: "",
-    sector: "ALL",
-    konglo: "ALL",
-    liquidity: "ALL",
-    signal: "ALL",
-  });
-  const kongloOptions = (indexes?.groups || []).filter((group) => group.section === "KONGLO INDEX").map((group) => ({ id: group.id, label: group.label }));
+  const rows = bundle?.screener || [];
+  const [search, setSearch] = useState("");
+  const [sector, setSector] = useState("all");
+  const [konglo, setKonglo] = useState("all");
+  const [liquidity, setLiquidity] = useState("all");
+  const [chip, setChip] = useState("all");
+
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const requested = new URLSearchParams(window.location.search).get("tab");
-    if (requested && tabs.includes(requested as Tab)) setTab(requested as Tab);
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t) setChip("all");
   }, []);
-  const filteredRows = useMemo(() => {
-    const needle = filters.search.trim().toLowerCase();
-    return (bundle?.screener || []).filter((row) => {
-      if (needle && !`${row.ticker} ${row.companyName}`.toLowerCase().includes(needle)) return false;
-      if (filters.sector !== "ALL" && row.sector !== filters.sector) return false;
-      if (filters.konglo !== "ALL" && !row.kongloGroups.includes(filters.konglo)) return false;
-      if (filters.liquidity !== "ALL" && row.liquidityCategory !== filters.liquidity) return false;
-      if (filters.signal !== "ALL" && row.signalLabel !== filters.signal) return false;
+
+  const sectorOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const r of rows) m.set(r.idxSectorRaw, r.sector);
+    return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+  const kongloOptions = (indexes?.groups || []).filter((g) => g.section === "KONGLO INDEX").map((g) => g.label);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const chipDef = CHIPS.find((c) => c.id === chip) || CHIPS[0];
+    return rows.filter((r) => {
+      if (q && !`${r.ticker} ${r.companyName}`.toLowerCase().includes(q)) return false;
+      if (sector !== "all" && r.idxSectorRaw !== sector) return false;
+      if (konglo !== "all" && !r.kongloGroups.includes(konglo)) return false;
+      if (liquidity !== "all" && !r.liquidityCategory.toLowerCase().includes(liquidity.toLowerCase())) return false;
+      if (!chipDef.test(r)) return false;
       return true;
     });
-  }, [bundle, filters]);
+  }, [rows, search, sector, konglo, liquidity, chip]);
+
+  const dirty = Boolean(search) || sector !== "all" || konglo !== "all" || liquidity !== "all" || chip !== "all";
+  function reset() { setSearch(""); setSector("all"); setKonglo("all"); setLiquidity("all"); setChip("all"); }
 
   if (loading && !bundle) return <SkeletonCard />;
 
-  const localIndexes = (indexes?.groups || []).filter((group) => group.section !== "KONGLO INDEX");
-
   return (
-    <section className="view active" data-view-panel="screener">
-      <div className="view-intro">
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
         <div>
-          <span className="section-kicker">SIGNAL DISCOVERY</span>
-          <h2>Research Screener</h2>
-          <p>Find liquid, momentum-qualified IDX tickers and open the full research drawer from any row.</p>
+          <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Screener</h1>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
+            <span style={{ fontFamily: MONO, fontWeight: 600, color: "var(--text)" }}>{filtered.length}</span> of {rows.length} tickers pass · sorted by change % ↓
+          </p>
         </div>
-        <span className="hero-stat">{filteredRows.length} rows</span>
-      </div>
-      <div className="screener-mode-tabs">
-        {tabs.map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTab(item)}
-            className={tab === item ? "active" : ""}
-          >
-            {item === "screener" ? "Screener" : item}
-          </button>
-        ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, background: "var(--softer)", border: "1px solid var(--border)", color: "var(--muted)", padding: "8px 13px", borderRadius: 10, fontSize: 11 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--accent)", fontWeight: 600 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />Filter gates
+          </span>
+          <span style={{ fontFamily: MONO }}>ADTV 20D ≥ Rp5B <span style={{ color: "var(--faint)" }}>or</span> ≥ 5M shares <span style={{ color: "var(--faint)" }}>and</span> RSI ≥ 50</span>
+        </div>
       </div>
 
-      {tab === "screener" ? (
-        <article className="panel screener-panel">
-          <div className="filter-gate-notice">
-            <strong>Filter gates</strong>
-            <span>(ADTR 20D ≥ Rp5B OR ADTV 20D ≥ 5M shares) AND RSI ≥ 50</span>
-          </div>
-          <ScreenerFilters rows={bundle?.screener || []} kongloOptions={kongloOptions} value={filters} onChange={setFilters} />
-          <div className="screener-insight-strip">
-            <Badge tone="accent">{filteredRows.length} visible rows</Badge>
-            <Badge tone="neutral">{bundle?.screener.length || 0} total signal rows</Badge>
-            <Badge tone="neutral">{marketDate}</Badge>
-          </div>
-          <details className="signal-guide">
-            <summary>Signal definitions</summary>
-            <div className="signal-catalog">
-              <span>EMA Trend</span>
-              <span>Golden Cross</span>
-              <span>Structure Break</span>
-              <span>POI Reclaim</span>
-              <span>Equal-Level Breakout</span>
-            </div>
-          </details>
-          <ScreenerTable rows={filteredRows} />
-          <div className="mt-3">
-            <Provenance source="IDX Screener" asOf={marketDate} />
-          </div>
-        </article>
-      ) : null}
-
-      {tab === "indexes" ? (
-        <div className="index-sections">
-          {selectedIndex ? <IndexDetail group={selectedIndex} onClose={() => setSelectedIndex(null)} /> : null}
-          <div className="index-grid">
-            {localIndexes.map((group) => {
-              const series = capSeriesToDate(group.series, marketDate);
-              const latest = series.at(-1);
-              const perf = performance(group.series, marketDate, 1);
-              return (
-                <Card key={group.id}>
-                  <button type="button" onClick={() => setSelectedIndex(group)} className="block w-full text-left">
-                    <CardHeader kicker={group.section} title={group.label} />
-                    <div className="metric-grid">
-                      <div className="metric-card"><span>Latest</span><strong>{formatNumber(latest?.value, 2)}</strong></div>
-                      <div className="metric-card"><span>1D</span><strong className={perf !== null && perf < 0 ? "text-negative" : "text-positive"}>{formatPercent(perf)}</strong></div>
-                    </div>
-                    <p className="mt-4 text-sm text-muted">{group.constituents.length} constituents / click for performance horizons and constituent weights.</p>
-                  </button>
-                </Card>
-              );
-            })}
-          </div>
+      {/* toolbar */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 11px", boxShadow: "var(--sh, var(--shadow))" }}>
+          <span style={{ color: "var(--faint)", fontSize: 13 }}>⌕</span>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Ticker…" style={{ border: "none", background: "transparent", outline: "none", color: "var(--text)", fontFamily: MONO, fontSize: 12.5, width: 84 }} />
         </div>
-      ) : null}
+        <select value={sector} onChange={(e) => setSector(e.target.value)} style={SEL}>
+          <option value="all">All sectors</option>
+          {sectorOptions.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+        </select>
+        <select value={konglo} onChange={(e) => setKonglo(e.target.value)} style={SEL}>
+          <option value="all">All konglo groups</option>
+          {kongloOptions.map((k) => <option key={k} value={k}>{k}</option>)}
+        </select>
+        <select value={liquidity} onChange={(e) => setLiquidity(e.target.value)} style={SEL}>
+          <option value="all">All liquidity</option>
+          <option value="High">High liquidity</option>
+          <option value="Medium">Medium liquidity</option>
+          <option value="Low">Low liquidity</option>
+          <option value="Very Low">Very low liquidity</option>
+        </select>
+        <div style={{ flex: 1 }} />
+        {dirty ? <button type="button" onClick={reset} style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer", padding: "8px 10px", borderRadius: 9, border: "1px solid var(--border)", background: "transparent" }}>Reset</button> : null}
+      </div>
 
-      {tab === "sectors" ? <SectorView /> : null}
-      {tab === "konglo" ? <KongloView /> : null}
+      {/* quick chips */}
+      <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
+        {CHIPS.map((c) => {
+          const active = chip === c.id;
+          return (
+            <button key={c.id} type="button" onClick={() => setChip(c.id)}
+              style={{ fontSize: 12, fontWeight: 600, padding: "7px 13px", borderRadius: 999, cursor: "pointer",
+                border: `1px solid ${active ? "var(--accentLine)" : "var(--border)"}`, background: active ? "var(--accentSoft)" : "var(--panel)", color: active ? "var(--accent)" : "var(--muted)" }}>
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <ScreenerTable rows={filtered} />
+      <div style={{ marginTop: 10 }}><Provenance source="IDX Screener" asOf={marketDate} /></div>
     </section>
   );
 }
