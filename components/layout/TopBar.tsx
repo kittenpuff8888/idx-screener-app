@@ -1,30 +1,37 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname } from "next/navigation";
 import { useApp } from "@/components/providers/AppProvider";
 import { DatePicker } from "./DatePicker";
-
-const pageTitles: Record<string, [string, string]> = {
-  "/dashboard": ["DASHBOARD", "Research Dashboard"],
-  "/explorer": ["SIGNAL DISCOVERY", "Research Screener"],
-  "/watchlist": ["WATCHLIST", "Local Watchlist"],
-  "/ksei": ["KSEI OWNERSHIP", "Ownership Dashboard"],
-  "/news": ["IDX TICKER NEWS", "IDX Ticker News"],
-  "/advanced": ["ADVANCED", "Research Methods & Data"],
-  "/": ["DASHBOARD", "Research Dashboard"],
-};
 
 const THEME_KEY = "idx-research-theme";
 type Theme = "dark" | "light";
 
+const ICTRL: React.CSSProperties = {
+  width: 34,
+  height: 34,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 8,
+  cursor: "pointer",
+  color: "var(--muted)",
+  border: "1px solid var(--border)",
+  background: "transparent",
+};
+
 export function TopBar() {
-  const pathname = usePathname();
   const { tickerOptions, openTicker, reload, loading } = useApp();
   const [query, setQuery] = useState("");
-  const [navOpen, setNavOpen] = useState(false);
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [eyebrow, title] = pageTitles[pathname] || pageTitles["/dashboard"];
+  const [focused, setFocused] = useState(false);
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(THEME_KEY);
+    const initial: Theme = stored === "light" || stored === "dark" ? stored : "light";
+    setTheme(initial);
+    document.documentElement.dataset.theme = initial;
+  }, []);
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -34,19 +41,10 @@ export function TopBar() {
       .slice(0, 8);
   }, [query, tickerOptions]);
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem(THEME_KEY);
-    // Spec §2: light is the default. The prototype is light-first, so first
-    // visit always starts light (OS dark mode no longer forces dark); an
-    // explicit saved preference still wins.
-    const initial: Theme = stored === "light" || stored === "dark" ? stored : "light";
-    setTheme(initial);
-    document.documentElement.dataset.theme = initial;
-  }, []);
-
   function submitTicker(ticker: string) {
     openTicker(ticker);
     setQuery("");
+    setFocused(false);
   }
 
   function toggleTheme() {
@@ -57,72 +55,71 @@ export function TopBar() {
   }
 
   return (
-    <header className="topbar">
-      <button
-        className="icon-button menu-button"
-        type="button"
-        aria-label="Toggle navigation"
-        aria-expanded={navOpen}
-        onClick={() => {
-          const next = !navOpen;
-          setNavOpen(next);
-          document.body.classList.toggle("nav-open", next);
-        }}
-      >
-        <span></span><span></span><span></span>
-      </button>
-      <div className="topbar-title">
-        <span>{eyebrow}</span>
-        <h1>{title}</h1>
-      </div>
-      <div className="topbar-actions">
-        <div className="ticker-search-shell">
-          <label className="ticker-command">
-            <span className="command-prefix">IDX</span>
+    <header
+      style={{
+        position: "sticky",
+        top: 14,
+        zIndex: 40,
+        background: "var(--panel)",
+        borderBottom: "1px solid var(--hair)",
+        borderRadius: "0 var(--shellR) 0 0",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 22px", flexWrap: "wrap" }}>
+        {/* search */}
+        <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 380 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 10, padding: "7px 11px" }}>
+            <span style={{ color: "var(--faint)", fontSize: 13 }}>⌕</span>
             <input
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && matches[0]) submitTicker(matches[0].ticker);
-              }}
-              placeholder="Search ticker"
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setTimeout(() => setFocused(false), 120)}
+              onKeyDown={(e) => { if (e.key === "Enter" && matches[0]) submitTicker(matches[0].ticker); }}
+              placeholder={`Search ${tickerOptions.length || ""} tickers…`}
               aria-label="Search ticker"
-              aria-controls="tickerSuggestions"
-              aria-expanded={matches.length > 0}
+              style={{ border: "none", background: "transparent", outline: "none", color: "var(--text)", fontFamily: "var(--mono, var(--font-mono))", fontSize: 13, width: "100%" }}
             />
-          </label>
-          {matches.length ? (
-            <div id="tickerSuggestions" className="ticker-suggestions" role="listbox">
-              {matches.map((item) => (
+          </div>
+          {focused && matches.length ? (
+            <div style={{ position: "absolute", top: 42, left: 0, right: 0, background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 10, boxShadow: "0 12px 30px rgba(16,19,25,.12)", overflow: "hidden", zIndex: 50 }} role="listbox">
+              {matches.map((m) => (
                 <button
-                  key={item.ticker}
+                  key={m.ticker}
                   type="button"
-                  onClick={() => submitTicker(item.ticker)}
-                  className="ticker-suggestion"
+                  onMouseDown={() => submitTicker(m.ticker)}
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 13px", cursor: "pointer", borderBottom: "1px solid var(--border)", width: "100%", background: "transparent", border: "none", textAlign: "left" }}
                 >
-                  <strong>{item.ticker}</strong>
-                  <span>{item.label}</span>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <span style={{ fontFamily: "var(--mono, var(--font-mono))", fontWeight: 600, fontSize: 13, color: "var(--text)" }}>{m.ticker}</span>
+                    <span style={{ fontSize: 11, color: "var(--muted)" }}>{m.label}</span>
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--faint)" }}>{m.sector}</span>
                 </button>
               ))}
             </div>
           ) : null}
         </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* market date */}
         <DatePicker />
-        <button className="icon-button header-icon-button" type="button" onClick={reload} disabled={loading} aria-label="Reload dataset" title="Reload dataset">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M6.1 8.2A7 7 0 0 1 18.8 10M17.9 15.8A7 7 0 0 1 5.2 14" /></svg>
-        </button>
-        <button
-          className="theme-switch"
-          type="button"
-          role="switch"
-          aria-checked={theme === "light"}
-          aria-label={theme === "light" ? "Use dark theme" : "Use light theme"}
-          title={theme === "light" ? "Use dark theme" : "Use light theme"}
-          onClick={toggleTheme}
-        >
-          <span className="theme-switch-icon" aria-hidden="true">{theme === "light" ? "Light" : "Dark"}</span>
-          <span className="theme-switch-track"><span className="theme-switch-thumb"></span></span>
-        </button>
+
+        {/* icon controls */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button type="button" title="Reload data" onClick={reload} disabled={loading} style={ICTRL} aria-label="Reload data">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={loading ? { animation: "spin 1s linear infinite" } : undefined}><path d="M23 4v6h-6" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+          </button>
+          <button type="button" title="Toggle theme" onClick={toggleTheme} style={ICTRL} aria-label="Toggle theme">
+            {theme === "light" ? (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" /></svg>
+            ) : (
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+            )}
+          </button>
+          <div title="Profile" style={{ width: 34, height: 34, borderRadius: 999, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 700 }}>88</div>
+        </div>
       </div>
     </header>
   );

@@ -6,27 +6,46 @@ import { TickerDrawer } from "@/components/ticker/TickerDrawer";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
+// Frame ports the prototype shell (IDX Research.dc.html): an outer padded frame
+// wrapping a single rounded "app card" that holds the sidebar + main column.
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { error, loading, marketDate, manifest, notice } = useApp();
+  const { error } = useApp();
   return (
-    <div className="app-shell">
-      <Sidebar />
-      <main className="workspace">
-        <TopBar />
-        {error ? <div className="error-banner"><ErrorState message={error} /></div> : null}
-        <section className="dataset-strip" aria-live="polite">
-          <span className={`status-badge ${error ? "error" : loading ? "partial" : "info"}`}>
-            {error ? "Dataset issue" : loading ? "Market session" : "Dataset loaded"}
-          </span>
-          <p className="dataset-line">
-            {loading && !marketDate
-              ? "Preparing the latest available research session."
-              : `Selected IDX session ${marketDate || "preparing"}${manifest?.latestMarketDate ? ` / latest ${manifest.latestMarketDate}` : ""}.`}
-            {notice ? <span className="dataset-note"> {notice}</span> : null}
-          </p>
-        </section>
-        {children}
-      </main>
+    <div
+      style={{
+        fontFamily: "var(--sans, var(--font-body))",
+        background: "var(--frame)",
+        color: "var(--text)",
+        minHeight: "100vh",
+        WebkitFontSmoothing: "antialiased",
+        padding: 14,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          maxWidth: 1560,
+          margin: "0 auto",
+          background: "var(--panel)",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--shellR)",
+          boxShadow: "0 1px 3px rgba(10,14,20,.06), 0 8px 28px rgba(10,14,20,.04)",
+        }}
+      >
+        <Sidebar />
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <TopBar />
+          <main style={{ flex: 1, minWidth: 0, padding: "26px 30px 60px" }}>
+            {error ? (
+              <div className="error-banner" style={{ marginBottom: 16 }}>
+                <ErrorState message={error} />
+              </div>
+            ) : null}
+            {children}
+          </main>
+        </div>
+      </div>
       <TickerDrawer />
     </div>
   );
