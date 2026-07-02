@@ -13,9 +13,10 @@ on:
         default: false
         type: boolean
   schedule:
-    - cron: "30 9 * * 1-5"
-    - cron: "30 10 * * 1-5"
-    - cron: "30 11 * * 1-5"
+    - cron: "30 9 * * 1-5"   # 16:30 WIB - just after market close
+    - cron: "0 10 * * 1-5"   # 17:00 WIB - 5 PM daily refresh
+    - cron: "30 10 * * 1-5"  # 17:30 WIB - post-close retry
+    - cron: "30 11 * * 1-5"  # 18:30 WIB - post-close retry
 
 permissions:
   contents: write

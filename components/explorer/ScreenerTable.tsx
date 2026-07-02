@@ -1,59 +1,39 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
-import { EmptyState } from "@/components/shared/EmptyState";
 import type { ScreenerRow } from "@/lib/domain/types";
-import { asNumber, directionClass, formatNumber, formatPercent, formatPrice } from "@/lib/format/number";
+import { asNumber, formatNumber, formatPercent, formatPrice } from "@/lib/format/number";
 
-type SortKey =
-  | "ticker"
-  | "companyName"
-  | "sector"
-  | "price"
-  | "changePct"
-  | "beta"
-  | "rs"
-  | "rvol"
-  | "rvolChangePct";
-
+type SortKey = "ticker" | "price" | "chg" | "rvol";
 type SortDir = "asc" | "desc";
 
-function rsOf(row: ScreenerRow): number | null {
-  return asNumber(row.raw["RS Rating"] ?? row.raw.rsRating);
-}
+const MONO = "var(--mono, var(--font-mono))";
+const rsOf = (r: ScreenerRow) => asNumber(r.raw["RS Rating"] ?? r.raw.rsRating);
+const sectorShort = (code: string) => code.replace(/^IDX/i, "").toUpperCase() || "—";
+const chgColor = (v: number | null) => (v === null || v === 0 ? "var(--muted)" : v > 0 ? "var(--up)" : "var(--down)");
 
-// Render a numeric cell, degrading missing values to a muted em dash (no bluffing).
-function numCell(value: unknown, format: (v: unknown) => string, extraClass = "") {
-  const parsed = asNumber(value);
-  if (parsed === null) return <td className={`numeric ${extraClass}`}><span className="text-muted">—</span></td>;
-  return <td className={`numeric ${extraClass}`}>{format(value)}</td>;
-}
+const TH: CSSProperties = { padding: "4px 8px 11px", textAlign: "right", cursor: "pointer", whiteSpace: "nowrap" };
+const TD: CSSProperties = { padding: "11px 8px", fontFamily: MONO, fontSize: 12 };
 
 export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
   const { openTicker, toggleWatchlist, isWatched } = useApp();
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey | null>("chg");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const sorted = useMemo(() => {
     if (!sortKey) return rows;
-    const accessor: Record<SortKey, (r: ScreenerRow) => number | string | null> = {
+    const acc: Record<SortKey, (r: ScreenerRow) => number | string | null> = {
       ticker: (r) => r.ticker,
-      companyName: (r) => r.companyName,
-      sector: (r) => r.sector,
       price: (r) => r.price,
-      changePct: (r) => r.changePct,
-      beta: (r) => r.beta,
-      rs: (r) => rsOf(r),
+      chg: (r) => r.changePct,
       rvol: (r) => r.rvol,
-      rvolChangePct: (r) => r.rvolChangePct,
     };
-    const get = accessor[sortKey];
+    const get = acc[sortKey];
     const dir = sortDir === "asc" ? 1 : -1;
     return [...rows].sort((a, b) => {
-      const av = get(a);
-      const bv = get(b);
-      // Missing values always sort to the bottom regardless of direction.
+      const av = get(a), bv = get(b);
       if (av === null || av === undefined) return 1;
       if (bv === null || bv === undefined) return -1;
       if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
@@ -61,100 +41,71 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
     });
   }, [rows, sortKey, sortDir]);
 
-  if (!rows.length) {
-    return (
-      <EmptyState
-        title="No active signals for this market session"
-        body="The selected filters remove every current row. Clear filters or choose another available market date."
-      />
-    );
+  function toggle(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir("desc"); }
   }
-
-  function toggleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("desc");
-    }
-  }
-
-  function sortable(key: SortKey, label: string, numeric = false) {
-    const active = sortKey === key;
-    return (
-      <th className={numeric ? "numeric" : ""}>
-        <button type="button" className="th-sort" onClick={() => toggleSort(key)} aria-label={`Sort by ${label}`}>
-          {label}
-          <span className="th-sort-caret">{active ? (sortDir === "asc" ? "▲" : "▼") : ""}</span>
-        </button>
-      </th>
-    );
-  }
+  const caret = (k: SortKey) => (sortKey === k ? (sortDir === "asc" ? " ↑" : " ↓") : "");
 
   return (
-    <div className="table-shell">
-      <table className="data-table screener-table">
-        <thead>
-          <tr>
-            {sortable("ticker", "Ticker")}
-            {sortable("companyName", "Emiten")}
-            {sortable("sector", "IDX Sector")}
-            <th>Industry</th>
-            {sortable("price", "Price", true)}
-            {sortable("changePct", "Chg %", true)}
-            {sortable("beta", "Beta", true)}
-            {sortable("rs", "RS", true)}
-            {sortable("rvol", "RVOL", true)}
-            {sortable("rvolChangePct", "RVOL Δ%", true)}
-            <th>SMC</th>
-            <th>VWAP Zone</th>
-            <th>MA Zone</th>
-            <th>Summary Screener</th>
-            <th>Watch</th>
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row, index) => (
-            <tr key={`${row.ticker}-${row.signalLabel}-${index}`} data-testid="screener-row" onDoubleClick={() => openTicker(row.ticker)}>
-              <td>
-                <button
-                  className="font-bold text-accent hover:underline"
-                  type="button"
-                  data-testid="open-ticker"
-                  data-ticker={row.ticker}
-                  data-row-index={index}
-                  onClick={() => openTicker(row.ticker)}
-                >
-                  {row.ticker}
-                </button>
-              </td>
-              <td>{row.companyName}</td>
-              <td>{row.sector}</td>
-              <td>{row.industry}</td>
-              {numCell(row.price, (v) => formatPrice(v))}
-              {numCell(row.changePct, (v) => formatPercent(v), directionClass(row.changePct))}
-              {numCell(row.beta, (v) => formatNumber(v, 2))}
-              {numCell(rsOf(row), (v) => formatNumber(v, 0))}
-              {numCell(row.rvol, (v) => formatNumber(v, 2))}
-              {numCell(row.rvolChangePct, (v) => formatPercent(v), directionClass(row.rvolChangePct))}
-              <td>{row.smc}</td>
-              <td>{row.vwapZone}</td>
-              <td>{row.maZone}</td>
-              <td>{row.summary}</td>
-              <td>
-                <button
-                  type="button"
-                  aria-label={isWatched(row.ticker) ? `Remove ${row.ticker} from watchlist` : `Add ${row.ticker} to watchlist`}
-                  onClick={() => toggleWatchlist(row.ticker)}
-                  className="text-button"
-                >
-                  {isWatched(row.ticker) ? "Saved" : "Watch"}
-                </button>
-              </td>
+    <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))", overflow: "hidden" }}>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1280 }}>
+          <thead>
+            <tr>
+              <th colSpan={6} style={{ textAlign: "left", padding: "11px 16px 5px", fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>STOCK INFO</th>
+              <th colSpan={10} style={{ textAlign: "left", padding: "11px 16px 5px", fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--accent)", borderLeft: "1px solid var(--hair)" }}>PRICE ACTION</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            <tr style={{ color: "var(--muted)", fontSize: 10.5, borderBottom: "1px solid var(--border)" }}>
+              <th style={{ padding: "4px 6px 11px 16px", width: 34 }} />
+              <th onClick={() => toggle("ticker")} style={{ ...TH, textAlign: "left" }}>Ticker{caret("ticker")}</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "left" }}>Emiten</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "left" }}>Sector</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "left" }}>Industry</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "right" }}>RS</th>
+              <th onClick={() => toggle("price")} style={{ ...TH, borderLeft: "1px solid var(--hair)" }}>Price{caret("price")}</th>
+              <th onClick={() => toggle("chg")} style={TH}>Chg %{caret("chg")}</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "right" }}>IHSG β</th>
+              <th onClick={() => toggle("rvol")} style={TH}>RVOL{caret("rvol")}</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "right" }}>Score</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "center" }}>SMC</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "center" }}>VWAP</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "center" }}>MP</th>
+              <th style={{ padding: "4px 8px 11px", textAlign: "center" }}>MA</th>
+              <th style={{ padding: "4px 16px 11px 8px", textAlign: "center" }}>Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r, i) => {
+              const rs = rsOf(r);
+              const watched = isWatched(r.ticker);
+              const pick = () => openTicker(r.ticker);
+              return (
+                <tr key={`${r.ticker}-${i}`} style={{ borderTop: "1px solid var(--hair)", cursor: "pointer", background: i % 2 ? "var(--softer)" : "transparent" }}>
+                  <td style={{ padding: "11px 6px 11px 16px", textAlign: "center" }}>
+                    <span onClick={() => toggleWatchlist(r.ticker)} style={{ fontSize: 15, color: watched ? "var(--accent)" : "var(--faint)", cursor: "pointer" }} title={watched ? "Unwatch" : "Watch"}>{watched ? "★" : "☆"}</span>
+                  </td>
+                  <td onClick={pick} style={{ ...TD, fontWeight: 700, fontSize: 12.5 }}>{r.ticker}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", fontSize: 11.5, color: "var(--muted)", maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.companyName}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px" }}><span style={{ fontSize: 10, background: "var(--soft)", padding: "3px 7px", borderRadius: 6, color: "var(--muted)", whiteSpace: "nowrap" }}>{sectorShort(r.idxSectorRaw)}</span></td>
+                  <td onClick={pick} style={{ padding: "11px 8px", fontSize: 11, color: "var(--muted)" }}>{r.industry}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: rs === null ? "var(--muted)" : "var(--text)" }}>{rs === null ? "—" : formatNumber(rs, 0)}</span></td>
+                  <td onClick={pick} style={{ ...TD, textAlign: "right", borderLeft: "1px solid var(--hair)" }}>{r.price === null ? "—" : formatPrice(r.price)}</td>
+                  <td onClick={pick} style={{ ...TD, textAlign: "right", fontWeight: 600, color: chgColor(r.changePct) }}>{r.changePct === null ? "—" : formatPercent(r.changePct)}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right", fontFamily: MONO, fontSize: 11.5, color: "var(--muted)" }}>{r.beta === null ? "—" : formatNumber(r.beta, 2)}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right", fontFamily: MONO, fontSize: 11.5, color: chgColor((r.rvol ?? 0) - 1) }}>{r.rvol === null ? "—" : formatNumber(r.rvol, 2)}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)" }} title="Conviction score — no backing field in dataset (see DATA_GAPS.md)">—</span></td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "center", fontSize: 10, color: "var(--muted)", fontWeight: 600 }}>{r.smc}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "center", fontSize: 10, color: "var(--muted)" }}>{r.vwapZone}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "center", fontSize: 10, color: "var(--muted)" }}>{r.marketProfileZone}</td>
+                  <td onClick={pick} style={{ padding: "11px 8px", textAlign: "center", fontSize: 10, color: "var(--muted)" }}>{r.maZone}</td>
+                  <td onClick={pick} style={{ padding: "11px 16px 11px 8px", textAlign: "center" }}><span style={{ fontSize: 10, fontWeight: 600, padding: "3px 9px", borderRadius: 6, background: "var(--accentSoft)", color: "var(--accent)", whiteSpace: "nowrap" }}>{r.signalLabel}</span></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
