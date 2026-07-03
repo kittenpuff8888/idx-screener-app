@@ -44,14 +44,16 @@ class V13NextContractTests(unittest.TestCase):
         self.assertIn('assetPrefix: isProd ? "/IDXScreener/" : ""', config)
 
     def test_next_shell_uses_8888_screener_nav(self):
-        # The 8888 Screener rebrand replaces the pre-V13 sidebar labels with the
-        # spec nav (Research, Screener, KSEI, Watchlist, News, Guide) under the
-        # "8888 Screener" brand lockup. Still a Next.js sidebar, no legacy data-view.
+        # The 8888 Screener design (IDX Research.dc.html) sidebar: MENU nav
+        # (Research, Screener, KSEI, Watchlist, News) under the "8888 Screener"
+        # brand lockup, plus a SUPPORT "Help & Guide" link. Inline-styled <nav>,
+        # no legacy data-view.
         sidebar = (ROOT / "components/layout/Sidebar.tsx").read_text(encoding="utf-8")
         self.assertIn("8888 Screener", sidebar)
-        for label in ("Research", "Screener", "KSEI", "Watchlist", "News", "Guide"):
+        for label in ("Research", "Screener", "KSEI", "Watchlist", "News"):
             self.assertIn(f'label: "{label}"', sidebar)
-        self.assertIn('className="sidebar"', sidebar)
+        self.assertIn("Help", sidebar)  # SUPPORT: Help & Guide
+        self.assertIn("<nav", sidebar)
         self.assertNotIn("data-view", sidebar)
 
     def test_data_coverage_is_capped_from_2026_for_next_ui(self):
