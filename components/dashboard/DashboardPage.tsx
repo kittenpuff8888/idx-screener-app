@@ -9,7 +9,7 @@ import { MarketMap } from "./MarketMap";
 import { latestInstrumentValue } from "@/lib/data/marketContext";
 import { normalizeSector } from "@/lib/domain/sectors";
 import type { JsonRecord } from "@/lib/domain/types";
-import { asNumber, formatNumber, formatPercent, formatPrice } from "@/lib/format/number";
+import { asNumber, formatNumber, formatPercent, formatPlainPercent, formatPrice } from "@/lib/format/number";
 
 const CARD: CSSProperties = {
   background: "var(--panel)",
@@ -50,7 +50,8 @@ function pctOver(series: number[], back: number): number | null {
   const a = series[n - 1 - back];
   const b = series[n - 1];
   if (!Number.isFinite(a) || !a) return null;
-  return (b / a - 1) * 100;
+  // Ratio — formatPercent scales ×100 at render time.
+  return b / a - 1;
 }
 
 export function DashboardPage() {
@@ -102,6 +103,8 @@ export function DashboardPage() {
       : { label: "NEUTRAL", color: "var(--muted)", bg: "var(--soft)" };
 
   // ---- KSEI latest changes ----
+  // KSEI percentages are already in percent points (e.g. 5.71), not ratios —
+  // delta is a percentage-point change rendered with formatPlainPercent.
   const kseiChanges = (ksei?.investorChanges || []).map((c) => ({
     ticker: c.ticker,
     label: c.investor,
@@ -119,22 +122,22 @@ export function DashboardPage() {
   // ---- Sector momentum ----
   const sectorsRaw = Array.isArray(overview.sectors) ? (overview.sectors as JsonRecord[]) : [];
   const sectors = sectorsRaw
-    .map((s) => ({ code: normalizeSector(String(s.sector ?? "Others")), v: (asNumber(s.avgChange) ?? 0) * 100 }))
+    .map((s) => ({ code: normalizeSector(String(s.sector ?? "Others")), v: asNumber(s.avgChange) ?? 0 }))
     .sort((a, b) => b.v - a.v)
     .slice(0, 7);
-  const maxAbs = Math.max(0.01, ...sectors.map((s) => Math.abs(s.v)));
+  const maxAbs = Math.max(1e-4, ...sectors.map((s) => Math.abs(s.v)));
 
   // ---- Leaders / laggards ----
   const movers = (list: JsonRecord[] | undefined) => (list || []).map((r) => ({
     ticker: String(r.ticker ?? "").toUpperCase(),
     sector: normalizeSector(String(r.sector ?? "Others")),
     price: asNumber(r.price),
-    chg: (asNumber(r.change) ?? 0) * 100,
+    chg: asNumber(r.change) ?? 0,
   })).filter((m) => m.ticker).slice(0, 8);
   const leaders = movers(overview.topGainers as JsonRecord[] | undefined);
   const laggards = movers(overview.topDecliners as JsonRecord[] | undefined);
-  const leadMax = Math.max(0.01, ...leaders.map((m) => Math.abs(m.chg)));
-  const lagMax = Math.max(0.01, ...laggards.map((m) => Math.abs(m.chg)));
+  const leadMax = Math.max(1e-4, ...leaders.map((m) => Math.abs(m.chg)));
+  const lagMax = Math.max(1e-4, ...laggards.map((m) => Math.abs(m.chg)));
 
   if (loading && !bundle) {
     return <section style={{ display: "grid", gap: 14 }}><SkeletonCard /><SkeletonCard /></section>;
@@ -212,7 +215,7 @@ export function DashboardPage() {
                 <button key={`${k.ticker}-${i}`} type="button" onClick={() => openTicker(k.ticker)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "var(--text)" }}>
                   <span style={{ fontFamily: MONO, fontWeight: 600, width: 46 }}>{k.ticker}</span>
                   <span style={{ color: "var(--muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k.label}</span>
-                  <span style={{ fontFamily: MONO, fontWeight: 600, color: chgColor(k.delta) }}>{formatPercent(k.delta)} pp</span>
+                  <span style={{ fontFamily: MONO, fontWeight: 600, color: chgColor(k.delta) }}>{k.delta > 0 ? "+" : ""}{formatPlainPercent(k.delta)} pp</span>
                 </button>
               ))}
             </div>
