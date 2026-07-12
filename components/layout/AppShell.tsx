@@ -30,7 +30,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           background: "var(--panel)",
           border: "1px solid var(--border)",
           borderRadius: "var(--shellR)",
-          boxShadow: "0 1px 3px rgba(10,14,20,.06), 0 8px 28px rgba(10,14,20,.04)",
+          boxShadow: "0 4px 24px rgba(11,14,20,.06)",
         }}
       >
         <Sidebar />

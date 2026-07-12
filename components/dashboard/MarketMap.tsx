@@ -17,7 +17,7 @@ type SectorGroup = { sector: string; count: number; weight: number; capChange: n
 // only when the fill is saturated enough. No green (prototype palette).
 function tileColor(change: number): { bg: string; light: boolean } {
   const intensity = Math.min(0.92, Math.abs(change) * 11 + 0.1);
-  const rgb = change >= 0 ? "29, 78, 216" : "217, 45, 32";
+  const rgb = change >= 0 ? "37, 99, 235" : "229, 72, 77";
   return { bg: `rgba(${rgb}, ${intensity.toFixed(3)})`, light: intensity > 0.45 };
 }
 
