@@ -90,6 +90,10 @@ export function SetupsPage() {
         </div>
       ) : null}
 
+      {payload?.methodology ? (
+        <p style={{ margin: "0 0 14px", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5 }}>{payload.methodology}</p>
+      ) : null}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(360px,1fr))", gap: 14 }}>
         {rows.map((s) => (
           <div key={s.ticker} style={CARD}>
