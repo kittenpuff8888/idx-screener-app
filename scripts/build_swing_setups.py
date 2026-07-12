@@ -364,12 +364,17 @@ def main() -> None:
     if not ohlcv_dir or not tech_all:
         raise SystemExit(f"missing inputs for {market_date} (ohlcv dir: {ohlcv_dir})")
 
+    parity_fail = set((_load(DATA / "parity-fail.json") or {}).get("tickers") or [])
     setups, quarantined, scanned = [], [], 0
     spot_sample = []
     for f in sorted(ohlcv_dir.glob("*.json")):
         ticker = f.stem.upper()
         tech = tech_all.get(ticker)
         if not tech:
+            continue
+        if ticker in parity_fail:
+            quarantined.append({"ticker": ticker, "quarantined": True, "issues": ["PARITY_FAIL this run"]})
+            scanned += 1
             continue
         data = _load(f) or {}
         rows = data.get("rows") or []

@@ -6,7 +6,8 @@
   "size": 956,
   "source": "KSEI workbook roster",
   "liveIdxRosterDiff": null,
-  "liveIdxRosterDiffReason": "IDX roster fetch requires a networked CI run; not yet automated"
+  "liveIdxRosterDiffReason": "IDX roster fetch failed: ProxyError: HTTPSConnectionPool(host='www.idx.co.id', port=443): Max retries exceeded with url: /primary/StockData/GetSecuritiesStock?start=0&length=9999 (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))",
+  "auditedAt": "2026-07-12T15:10:19.518187+07:00"
  },
  "runLog": [
   {
@@ -80,10 +81,17 @@
   "lagNote": "KSEI is monthly; ownership signals are context, never timing triggers."
  },
  "parity": {
-  "status": "UNVERIFIED",
-  "method": "Dual-source agreement (yfinance vs Investing) approximates TradingView parity; true TV data needs a paid feed.",
-  "lastChecked": null,
-  "note": "Automated cross-check must run in networked CI; this sandbox cannot reach either source."
+  "status": "SOURCE_UNREACHABLE",
+  "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
+  "lastChecked": "2026-07-12T15:10:19.600204+07:00",
+  "checked": 0,
+  "failures": [],
+  "results": [
+   {
+    "note": "yfinance unavailable in this environment: ModuleNotFoundError"
+   }
+  ],
+  "note": "Price exact-match required (discrete IDX ticks); volume tolerance 0.5%. PARITY_FAIL tickers are excluded from swing setups this run."
  },
  "setups": {
   "count": 2,
