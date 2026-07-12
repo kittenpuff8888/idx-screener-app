@@ -3,98 +3,105 @@
 @tailwind utilities;
 
 :root {
-  /* Light is the default theme — exact prototype palette (IMPLEMENTATION_SPEC §2). */
+  /* Light is the default theme — 8888 Tracker v2 palette (moneytracker repo,
+     app/globals.css) ported as the visual source of truth. */
   color-scheme: light;
   --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* Categorical palette (KSEI types, konglo lines, sectors) — IMPLEMENTATION_SPEC §2 */
-  --cat-1: #1d4ed8; --cat-2: #d92d20; --cat-3: #0891b2; --cat-4: #7c3aed;
+  /* Categorical palette (KSEI types, konglo lines, sectors) */
+  --cat-1: #2563eb; --cat-2: #e5484d; --cat-3: #0891b2; --cat-4: #7c3aed;
   --cat-5: #ea580c; --cat-6: #0f766e; --cat-7: #be185d; --cat-8: #475569;
-  --cat-9: #ca8a04; --cat-10: #2563eb; --cat-11: #9333ea;
+  --cat-9: #ca8a04; --cat-10: #1d4ed8; --cat-11: #9333ea;
   --bg: #eef0f3;
-  --bg-soft: #f4f6f8;
+  --bg-soft: #f4f6f9;
   --surface: #ffffff;
-  --surface-2: #f4f6f8;
-  --surface-3: #eef0f3;
+  --surface-2: #f4f6f9;
+  --surface-3: #eff1f4;
   --surface-solid: #ffffff;
-  --surface-hover: #f4f6f8;
-  --border: #e4e7ec;
-  --border-strong: rgba(29, 78, 216, 0.32);
-  --text: #0a0e14;
+  --surface-hover: #f4f6f9;
+  --border: #e7e9ee;
+  --border-strong: rgba(37, 99, 235, 0.32);
+  --text: #0b0e14;
   --text-muted: #5b6472;
-  --text-faint: #97a1b0;
+  --text-faint: #9aa1ad;
   /* Brand: strictly Black / White / Blue / Red. Blue = up/positive, Red = down/negative. */
-  --accent: #1d4ed8;
-  --accent-hover: #1746c4;
-  --accent-soft: rgba(29, 78, 216, 0.08);
-  --accent-border: rgba(29, 78, 216, 0.28);
-  --positive: #1d4ed8;
-  --negative: #d92d20;
-  --warning: #ca8a04;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --accent-border: rgba(37, 99, 235, 0.28);
+  --positive: #2563eb;
+  --negative: #e5484d;
+  --warning: #f59e0b;
+  --warnSoft: rgba(245, 158, 11, 0.12);
   --neutral: #5b6472;
   --cyan: #0891b2;
-  /* Spec §2 token aliases (light) */
+  /* Token aliases (light) */
   --frame: #eef0f3;
   --panel: #ffffff;
+  --ink: #0b0e14;
   --muted: #5b6472;
-  --faint: #97a1b0;
-  --hair: #eef0f3;
-  --soft: #f4f6f8;
+  --faint: #9aa1ad;
+  --hair: #eff1f4;
+  --soft: #f4f6f9;
   --softer: #fafbfc;
-  --up: #1d4ed8;
-  --upSoft: rgba(29, 78, 216, 0.09);
-  --down: #d92d20;
-  --accentSoft: rgba(29, 78, 216, 0.08);
-  --accentLine: rgba(29, 78, 216, 0.28);
-  --downSoft: rgba(217, 45, 32, 0.09);
+  --up: #2563eb;
+  --upSoft: rgba(37, 99, 235, 0.1);
+  --down: #e5484d;
+  --accentSoft: rgba(37, 99, 235, 0.1);
+  --accentLine: rgba(37, 99, 235, 0.28);
+  --downSoft: rgba(229, 72, 77, 0.1);
   --sidebar: 246px;
-  --radius-sm: 10px;
-  --radius-md: 15px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
   --radius-lg: 22px;
-  --r: 10px;
-  --r2: 8px;
-  --shellR: 14px;
-  --shadow: 0 1px 2px rgba(10, 14, 20, 0.05);
+  --r: 16px;
+  --r2: 12px;
+  --shellR: 26px;
+  --shadow: 0 1px 2px rgba(11, 14, 20, 0.05);
+  --sh: 0 1px 2px rgba(11, 14, 20, 0.05);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #070a0f;
-  --bg-soft: #0f141b;
-  --surface: #0f141b;
-  --surface-2: #151b24;
-  --surface-3: #1e2530;
-  --surface-solid: #0f141b;
-  --surface-hover: #1e2530;
-  --border: #1e2530;
-  --border-strong: rgba(77, 134, 255, 0.34);
-  --text: #e6eaf0;
-  --text-muted: #8b94a3;
-  --text-faint: #586374;
-  --accent: #4d86ff;
-  --accent-hover: #6f9dff;
-  --accent-soft: rgba(77, 134, 255, 0.13);
-  --accent-border: rgba(77, 134, 255, 0.5);
-  --positive: #4d86ff;
-  --negative: #ff5a52;
-  --warning: #ca8a04;
-  --neutral: #8b94a3;
+  --bg: #080a0d;
+  --bg-soft: #11151b;
+  --surface: #11151b;
+  --surface-2: #161b22;
+  --surface-3: #1c222c;
+  --surface-solid: #11151b;
+  --surface-hover: #1c222c;
+  --border: #1c222c;
+  --border-strong: rgba(91, 140, 255, 0.34);
+  --text: #e9edf3;
+  --text-muted: #8a93a3;
+  --text-faint: #5b6473;
+  --accent: #5b8cff;
+  --accent-hover: #7da3ff;
+  --accent-soft: rgba(91, 140, 255, 0.12);
+  --accent-border: rgba(91, 140, 255, 0.32);
+  --positive: #5b8cff;
+  --negative: #ff5c61;
+  --warning: #f3b03c;
+  --warnSoft: rgba(243, 176, 60, 0.14);
+  --neutral: #8a93a3;
   --cyan: #0891b2;
-  /* Spec §2 token aliases (dark) */
-  --frame: #070a0f;
-  --panel: #0f141b;
-  --muted: #8b94a3;
-  --faint: #586374;
-  --hair: #171d27;
-  --soft: #151b24;
-  --softer: #0f141b;
-  --up: #4d86ff;
-  --upSoft: rgba(77, 134, 255, 0.12);
-  --down: #ff5a52;
-  --accentSoft: rgba(77, 134, 255, 0.13);
-  --accentLine: rgba(77, 134, 255, 0.32);
-  --downSoft: rgba(255, 90, 82, 0.12);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  /* Token aliases (dark) */
+  --frame: #080a0d;
+  --panel: #11151b;
+  --ink: #e9edf3;
+  --muted: #8a93a3;
+  --faint: #5b6473;
+  --hair: #191e27;
+  --soft: #161b22;
+  --softer: #11151b;
+  --up: #5b8cff;
+  --upSoft: rgba(91, 140, 255, 0.12);
+  --down: #ff5c61;
+  --accentSoft: rgba(91, 140, 255, 0.12);
+  --accentLine: rgba(91, 140, 255, 0.32);
+  --downSoft: rgba(255, 92, 97, 0.12);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sh: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 * {
@@ -126,6 +133,27 @@ button,
 input,
 select {
   font: inherit;
+}
+
+/* v2 polish (moneytracker): selection tint + slim rounded scrollbars */
+::selection {
+  background: rgba(37, 99, 235, 0.18);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 button {

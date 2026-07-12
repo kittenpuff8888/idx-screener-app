@@ -34,8 +34,9 @@ export function Sidebar() {
       borderRadius: 11,
       cursor: "pointer",
       textDecoration: "none",
-      color: active ? "var(--accent)" : "var(--muted)",
-      background: active ? "var(--accentSoft)" : "transparent",
+      // v2 (moneytracker) active state: neutral soft fill, not accent tint.
+      color: active ? "var(--text)" : "var(--muted)",
+      background: active ? "var(--soft)" : "transparent",
     };
   }
   const labelStyle: CSSProperties = { fontSize: 13, fontWeight: 600, letterSpacing: ".005em" };
@@ -57,8 +58,9 @@ export function Sidebar() {
       }}
     >
       <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 6px 20px", textDecoration: "none", color: "var(--text)" }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 10px var(--accentSoft)" }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="13" width="3.6" height="8" rx="1.2" fill="#fff" opacity=".55" /><rect x="9" y="8" width="3.6" height="13" rx="1.2" fill="#fff" opacity=".8" /><rect x="15" y="3" width="3.6" height="18" rx="1.2" fill="#fff" /></svg>
+        {/* v2 brand mark: solid ink square with mono "88" */}
+        <div style={{ width: 36, height: 36, borderRadius: 11, background: "var(--ink)", display: "grid", placeItems: "center" }}>
+          <span style={{ fontFamily: "var(--mono, var(--font-mono))", fontSize: 13, fontWeight: 700, letterSpacing: ".02em", color: "var(--panel)" }}>88</span>
         </div>
         <div style={{ lineHeight: 1.1 }}>
           <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: "-.01em" }}>8888 Screener</div>
