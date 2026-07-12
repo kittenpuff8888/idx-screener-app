@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
+import { formatAsOf } from "@/lib/format/number";
 
 export function DatePicker() {
   const { manifest, marketDate, setMarketDate } = useApp();
@@ -17,8 +18,8 @@ export function DatePicker() {
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <span>Market date</span>
-        <strong>{marketDate || "Preparing"}</strong>
+        <span>Data</span>
+        <strong>{marketDate ? formatAsOf(marketDate) : "Preparing"}</strong>
       </button>
       {open ? (
         <div className="date-popover" role="dialog" aria-label="Select available IDX market date">
