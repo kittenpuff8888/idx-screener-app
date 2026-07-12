@@ -29,7 +29,8 @@ export function latestInstrumentValue(item: MarketInstrument): { value: number |
   return {
     value: latest,
     change: latest - previous,
-    changePct: previous ? ((latest / previous) - 1) * 100 : null,
+    // Ratio (fraction of 1) — formatPercent scales ×100 at render time.
+    changePct: previous ? (latest / previous) - 1 : null,
     series,
   };
 }

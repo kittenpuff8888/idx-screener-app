@@ -29,19 +29,28 @@ export function formatPrice(value: unknown): string {
   return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 }).format(parsed);
 }
 
+/**
+ * Signed percentage for RATIO inputs (the repo's price/change/sector/screener
+ * convention, e.g. 0.0176 → "+1,76%"). Input is a fraction of 1; it is scaled
+ * ×100 exactly once. Do NOT pre-multiply callers — pass the raw ratio.
+ */
 export function formatPercent(value: unknown, digits = 2): string {
   const parsed = asNumber(value);
   if (parsed === null) return "Unavailable";
-  const pct = Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
+  const pct = parsed * 100;
   const sign = pct > 0 ? "+" : "";
   return `${sign}${pct.toFixed(digits)}%`;
 }
 
+/**
+ * Unsigned percentage for values ALREADY expressed in percent points — the
+ * KSEI ownership convention (freeFloat 20.51, cr1 41.1, oldPercentage 5.71).
+ * No scaling is applied.
+ */
 export function formatPlainPercent(value: unknown, digits = 2): string {
   const parsed = asNumber(value);
   if (parsed === null) return "Unavailable";
-  const pct = Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
-  return `${pct.toFixed(digits)}%`;
+  return `${parsed.toFixed(digits)}%`;
 }
 
 export function formatCompact(value: unknown): string {

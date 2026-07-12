@@ -55,5 +55,6 @@ export function performance(series: IndexPoint[], marketDate: string, offsetDays
   else if (offsetDays === "ytd") start = capped.find((point) => point.date >= `${marketDate.slice(0, 4)}-01-01`) || capped[0];
   else start = capped[Math.max(0, capped.length - 1 - offsetDays)];
   if (!start || !start.value) return null;
-  return (latest.value / start.value - 1) * 100;
+  // Ratio (fraction of 1) — formatPercent scales ×100 at render time.
+  return latest.value / start.value - 1;
 }

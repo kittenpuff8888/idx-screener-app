@@ -3,7 +3,7 @@
 import { useApp } from "@/components/providers/AppProvider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Provenance } from "@/components/shared/Metric";
-import { formatPercent, formatPrice } from "@/lib/format/number";
+import { formatPercent, formatPlainPercent, formatPrice } from "@/lib/format/number";
 
 export function WatchlistPage() {
   const { watchlist, bundle, ksei, openTicker, toggleWatchlist, marketDate } = useApp();
@@ -46,7 +46,7 @@ export function WatchlistPage() {
                   <td className="numeric">{formatPercent(stock?.changePercent)}</td>
                   <td>{stock?.sector || ownership?.sector || "Others"}</td>
                   <td>{stock?.summaryScreener || "No active signal summary for this date."}</td>
-                  <td>{ownership ? `${ownership.ownershipType} / CR1 ${formatPercent(ownership.cr1)}` : "Ownership unavailable"}</td>
+                  <td>{ownership ? `${ownership.ownershipType} / CR1 ${formatPlainPercent(ownership.cr1)}` : "Ownership unavailable"}</td>
                   <td>
                     <button
                       type="button"
