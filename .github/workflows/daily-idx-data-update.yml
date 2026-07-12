@@ -86,6 +86,7 @@ jobs:
         run: |
           python scripts/export_ksei_ownership.py
           python scripts/build_custom_indexes.py
+          python scripts/build_swing_setups.py
           python scripts/validate_data.py
 
       - name: Run Python tests

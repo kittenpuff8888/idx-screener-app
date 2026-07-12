@@ -1,0 +1,19 @@
+# PHASE 1–3 AUDITS — Swing Upgrade (executed 2026-07-12, sandboxed session)
+
+## Phase 1 — Data integrity (feasible slice)
+- **OHLCV validators (§1.2)**: implemented in `scripts/build_swing_setups.py::validate_bars` — OHLC consistency, negative volume, duplicate dates on the last 260 bars. Failing tickers are quarantined into `setups.json.quarantined` (this run: 0 of 956).
+- **Universe**: KSEI roster (956). Live IDX roster diff **NOT automated yet** — requires networked CI; surfaced honestly on Data Health ("⚠ not yet automated"). `is_recent_ipo` flag implemented (<90 bars of history); <30 bars ⇒ excluded from setups entirely (no garbage indicators).
+- **Parity (§1.3)**: status **UNVERIFIED**, stated on Data Health with method note (dual-source agreement approximates TV; true TV needs paid feed). The repo already has `rebuild_backend/providers/{yfinance,investing}_provider.py` for the second source; automated cross-check must run in networked CI — TODO with visible banner until then.
+- **Data Health page (§1.4)**: `/health` — universe card, parity card, swing-engine stats + backtest sanity, KSEI snapshots + lag warning, last-8 run log (from update-log.json), and the manual TradingView spot-check table (§1.5) prefilled with site-held close/volume + one-click TV links (BBCA/BBRI/TLKM/ASII/ANTM + current setup tickers).
+
+## Phase 2 — Reversal + orderflow engine
+- **CVD approx (§2.1)**: per-bar delta = volume × (2·(close−low)/(high−low) − 1), cumulative; labelled "CVD (approx.)" in UI and methodology string. Signals: 20-bar slope (bonus only), bullish divergence (price undercuts prior 30-bar low while CVD holds higher), absorption (top-quartile volume + bottom-third range + close ≥ mid + within 3% of 20d low).
+- **KSEI (§2.2)**: net percentage-point delta per ticker from latest snapshot's investorChanges; `accumulation` = net > +0.25pp; used as conviction bonus only, lag labelled.
+- **Setup definition (§2.3)**: location (pipeline POI within ±3% or 20d-low band) AND structure (pipeline bullish CHoCH or sweep-of-lows + reclaim) AND orderflow (divergence or absorption — slope alone rejected) AND tradability (20d median value traded ≥ 1B IDR, dataStatus OK). Score 0–100 (weights 25/25/25/15/10) with component breakdown, invalidation (pipeline level or 1% under swept low), target (pipeline target or 20d mid-range). Vault rules NOT incorporated (vault unreachable) — marked `TODO(vault-rule)` in code; §2.3 baseline used as-is.
+- **Worked examples**: run of 2026-07-10 → 2 candidates: APLN 75 (POI EMA25 + internal bullish CHoCH + sweep-reclaim + CVD divergence; entry 124 / inval 115 / target 160), NTBK 75 (POI OB Bear High + internal bullish CHoCH + CVD divergence; 106/100/125). Full component values in `docs/data/dates/2026-07-10/setups.json`.
+- **Backtest sanity (§2.4, as measured, untuned)**: price-computable core (sweep+reclaim + CVD confirm) across the 956-ticker × ~700-bar cache: 6,330 signals; target-before-invalidation within 5 bars: 2,799 vs 1,077 (hit-rate of decided = 0.722); 2,454 undecided in 5 bars. Caveats: POI/KSEI components not replayable historically; survivorship of the current universe applies; thresholds were NOT tuned on these numbers.
+
+## Phase 3 — Setups page
+- `/setups` in top nav: ranked cards with score + 5-component breakdown bar, entry/invalidation/target boxes, CVD-approx sparkline (30 sessions), KSEI footprint badge, ADTV, RECENT IPO badge, data-source label, "Verify on TradingView ↗" deep link, rule-generated one-line "why" (no filler). Filters: min score, exclude recent IPOs, KSEI-footprint-only. Honest empty state ("0 setups today is a valid, expected output"). Missing setups.json for a selected date degrades with a reason. Desktop render verified by screenshot; cards are single-column under ~780px (auto-fill minmax(360px,1fr)).
+
+**Gates: PASS with the documented UNVERIFIED items (parity, live roster) carried visibly on the Data Health page rather than claimed done.**
