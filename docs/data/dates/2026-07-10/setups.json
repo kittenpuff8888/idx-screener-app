@@ -1,7 +1,7 @@
 {
  "schemaVersion": 1,
  "marketDate": "2026-07-10",
- "generatedAt": "2026-07-12T14:46:45.854859+07:00",
+ "generatedAt": "2026-07-12T22:12:44.624368+07:00",
  "config": {
   "minMedianValueTraded": 1000000000,
   "minScore": 55,
@@ -80,6 +80,11 @@
    ],
    "dataSource": "yfinance",
    "why": "at POI EMA25; bullish CHoCH (Internal Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 7,
+    "hitRate": 0.57,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
    "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AAPLN"
   },
   {
@@ -142,6 +147,11 @@
    ],
    "dataSource": "yfinance",
    "why": "at POI OB Bear High; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 5,
+    "hitRate": 0.6,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
    "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ANTBK"
   }
  ],
