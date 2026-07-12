@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { Provenance } from "@/components/shared/Metric";
+import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { MarketMap } from "./MarketMap";
 import { latestInstrumentValue } from "@/lib/data/marketContext";
 import { normalizeSector } from "@/lib/domain/sectors";
@@ -54,8 +55,10 @@ function pctOver(series: number[], back: number): number | null {
   return b / a - 1;
 }
 
+const KONGLO_FEATURED = ["Barito", "Salim", "Sinarmas", "Astra", "Djarum", "Saratoga", "Bakrie", "Lippo"];
+
 export function DashboardPage() {
-  const { loading, bundle, ksei, marketContext, marketDate, openTicker } = useApp();
+  const { loading, bundle, indexes, ksei, marketContext, marketDate, openTicker } = useApp();
 
   const overview = (bundle?.overview?.overview || {}) as JsonRecord;
   const summary = (bundle?.overview?.summary || {}) as JsonRecord;
@@ -127,17 +130,65 @@ export function DashboardPage() {
     .slice(0, 7);
   const maxAbs = Math.max(1e-4, ...sectors.map((s) => Math.abs(s.v)));
 
-  // ---- Leaders / laggards ----
-  const movers = (list: JsonRecord[] | undefined) => (list || []).map((r) => ({
-    ticker: String(r.ticker ?? "").toUpperCase(),
-    sector: normalizeSector(String(r.sector ?? "Others")),
-    price: asNumber(r.price),
-    chg: asNumber(r.change) ?? 0,
-  })).filter((m) => m.ticker).slice(0, 8);
+  // ---- IHSG series (market context) — shared by charts and points derivation ----
+  const ihsgSeries = useMemo(() => {
+    const inst = (marketContext?.instruments || []).find((i) => i.label.toUpperCase() === "IHSG" || i.symbol.toUpperCase() === "^JKSE");
+    return (inst?.rows || [])
+      .filter((r) => !marketDate || String(r.date) <= marketDate)
+      .map((r) => ({ date: String(r.date), value: Number(r.close ?? r.value) }))
+      .filter((p) => Number.isFinite(p.value));
+  }, [marketContext, marketDate]);
+
+  // ---- Leaders / laggards (Bandar Metrics-style content) ----
+  // POINTS ≈ index-point contribution: IHSG_prev × (mcap / Σ mcap) × chg.
+  // %IDX MV = points / |IHSG move| — both documented derivations (spec §0.5).
+  const totalMcap = useMemo(() => {
+    let sum = 0;
+    bundle?.fundamentals.forEach((raw) => { sum += asNumber(raw["Market Cap"]) ?? 0; });
+    return sum;
+  }, [bundle]);
+  const ihsgLast = ihsgSeries.at(-1)?.value ?? null;
+  const ihsgPrev = ihsgSeries.at(-2)?.value ?? null;
+  const idxMove = ihsgLast !== null && ihsgPrev !== null ? ihsgLast - ihsgPrev : null;
+
+  const movers = (list: JsonRecord[] | undefined) => (list || []).map((r) => {
+    const ticker = String(r.ticker ?? "").toUpperCase();
+    const chg = asNumber(r.change) ?? 0;
+    const mcap = asNumber((bundle?.fundamentals.get(ticker) as JsonRecord | undefined)?.["Market Cap"]);
+    const points = ihsgPrev !== null && mcap !== null && totalMcap > 0 ? ihsgPrev * (mcap / totalMcap) * chg : null;
+    return {
+      ticker,
+      name: bundle?.technical.get(ticker)?.companyName || normalizeSector(String(r.sector ?? "Others")),
+      price: asNumber(r.price),
+      chg,
+      points,
+      pctIdxMv: points !== null && idxMove ? points / Math.abs(idxMove) : null,
+    };
+  }).filter((m) => m.ticker).slice(0, 8);
   const leaders = movers(overview.topGainers as JsonRecord[] | undefined);
   const laggards = movers(overview.topDecliners as JsonRecord[] | undefined);
   const leadMax = Math.max(1e-4, ...leaders.map((m) => Math.abs(m.chg)));
   const lagMax = Math.max(1e-4, ...laggards.map((m) => Math.abs(m.chg)));
+
+  // ---- Sectoral & konglo compare entries (local research indexes) ----
+  const sectoralEntries = useMemo<CompareEntry[]>(() => (indexes?.groups || [])
+    .filter((g) => g.section === "SECTORAL INDEX" && g.series.length)
+    .map((g) => ({
+      id: g.id,
+      label: g.label,
+      group: g,
+      series: g.series.filter((p) => !marketDate || p.date <= marketDate),
+    })), [indexes, marketDate]);
+
+  const kongloEntries = useMemo<CompareEntry[]>(() => KONGLO_FEATURED
+    .map((key) => (indexes?.groups || []).find((g) => g.section === "KONGLO INDEX" && g.label.toLowerCase().includes(key.toLowerCase())))
+    .filter((g): g is NonNullable<typeof g> => Boolean(g && g.series.length))
+    .map((g) => ({
+      id: g.id,
+      label: g.label.replace(/\s*\(.*\)$/, ""),
+      group: g,
+      series: g.series.filter((p) => !marketDate || p.date <= marketDate),
+    })), [indexes, marketDate]);
 
   if (loading && !bundle) {
     return <section style={{ display: "grid", gap: 14 }}><SkeletonCard /><SkeletonCard /></section>;
@@ -268,27 +319,37 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* leaders / laggards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))", gap: 14, marginBottom: 16 }}>
+      {/* leaders / laggards — Bandar Metrics-style content: END PRC / %CHG / POINTS / %IDX MV */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(400px,1fr))", gap: 14, marginBottom: 16 }}>
         {([["TOP LEADERS · TODAY", leaders, leadMax, "var(--up)"], ["TOP LAGGARDS · TODAY", laggards, lagMax, "var(--down)"]] as const).map(([title, rows, mx, color]) => (
           <div key={title} style={{ ...CARD, padding: "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 13 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
-                <span style={KICKER}>{title}</span>
-              </div>
-              <span style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)" }}>% change</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
+              <span style={KICKER}>{title}</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 0 6px", borderBottom: "1px solid var(--hair)" }}>
+              <span style={{ fontSize: 9.5, color: "var(--faint)", letterSpacing: ".06em", flex: 1 }}>TICKER</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 56, textAlign: "right" }}>END PRC</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 58, textAlign: "right" }}>% CHG</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 48, textAlign: "right" }}>POINTS</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 56, textAlign: "right" }}>%IDX MV</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {rows.map((m) => (
-                <button key={m.ticker} type="button" onClick={() => openTicker(m.ticker)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderTop: "1px solid var(--hair)", background: "transparent", border: "none", borderTopWidth: 1, borderTopStyle: "solid", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
-                  <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 12.5, width: 50 }}>{m.ticker}</span>
-                  <span style={{ fontSize: 10.5, color: "var(--muted)", width: 84, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.sector}</span>
-                  <div style={{ flex: 1, height: 6, background: "var(--soft)", borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ width: `${(Math.abs(m.chg) / mx) * 100}%`, height: "100%", background: color, borderRadius: 4 }} />
-                  </div>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 52, textAlign: "right" }}>{formatPrice(m.price)}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600, color: chgColor(m.chg), width: 62, textAlign: "right" }}>{formatPercent(m.chg)}</span>
+              {rows.map((m, i) => (
+                <button key={m.ticker} type="button" onClick={() => openTicker(m.ticker)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", background: "transparent", border: "none", borderTop: i === 0 ? "none" : "1px solid var(--hair)", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 12.5, width: 48, flexShrink: 0 }}>{m.ticker}</span>
+                      <span style={{ flex: 1, height: 5, background: "var(--soft)", borderRadius: 4, overflow: "hidden", minWidth: 30 }}>
+                        <span style={{ display: "block", width: `${(Math.abs(m.chg) / mx) * 100}%`, height: "100%", background: color, borderRadius: 4 }} />
+                      </span>
+                    </span>
+                    <span style={{ display: "block", fontSize: 9.5, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{m.name}</span>
+                  </span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 56, textAlign: "right" }}>{m.price === null ? "—" : formatPrice(m.price)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 600, color: chgColor(m.chg), width: 58, textAlign: "right" }}>{formatPercent(m.chg)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: m.points === null ? "var(--faint)" : chgColor(m.points), width: 48, textAlign: "right" }}>{m.points === null ? "—" : `${m.points > 0 ? "+" : ""}${m.points.toFixed(2)}`}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: m.pctIdxMv === null ? "var(--faint)" : chgColor(m.pctIdxMv), width: 56, textAlign: "right" }}>{m.pctIdxMv === null ? "—" : formatPercent(m.pctIdxMv)}</span>
                 </button>
               ))}
               {!rows.length ? <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 0" }}>No movers reported.</div> : null}
@@ -296,6 +357,22 @@ export function DashboardPage() {
           </div>
         ))}
       </div>
+
+      <IndexCompareSection
+        title="SECTORAL INDICES vs IHSG"
+        badge="basis: % return"
+        hint="click a sector for detail"
+        entries={sectoralEntries}
+        ihsg={ihsgSeries}
+      />
+
+      <IndexCompareSection
+        title="KONGLO INDEX vs IHSG"
+        badge="basis: % return · base 100"
+        hint="market-cap weighted"
+        entries={kongloEntries}
+        ihsg={ihsgSeries}
+      />
 
       <MarketMap />
     </section>

@@ -103,7 +103,9 @@
 
 html {
   min-width: 320px;
-  overflow-x: hidden;
+  /* clip, not hidden: overflow-x hidden makes body a scroll container and
+     breaks position:sticky on the sidebar/top bar (design keeps them still). */
+  overflow-x: clip;
   background: var(--bg);
   color-scheme: dark light;
   scroll-behavior: smooth;
@@ -112,10 +114,11 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.55 var(--font-body);
+  /* Prototype base type scale is ~13px, not 16 (UI_UX_REQUIREMENTS §1.2). */
+  font: 13.5px/1.55 var(--font-body);
   font-variant-numeric: tabular-nums;
 }
 
@@ -434,19 +437,28 @@ a {
   background: var(--surface-hover);
 }
 
+/* Compact one-line pill, prototype style: `Data 26 Jun 2026 ⌄` */
 .date-picker-button {
-  min-width: 142px;
-  min-height: 46px;
-  padding: 7px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 6px 12px;
   border: 1px solid var(--border);
-  border-radius: 15px;
-  background: var(--soft);
+  border-radius: 10px;
+  background: transparent;
   color: var(--text);
   cursor: pointer;
   text-align: left;
+  white-space: nowrap;
 }
 
-.date-picker-button span,
+.date-picker-button span {
+  color: var(--faint);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
 .date-popover label span {
   display: block;
   color: var(--text-muted);
@@ -457,9 +469,16 @@ a {
 }
 
 .date-picker-button strong {
-  display: block;
-  margin-top: 1px;
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.date-picker-button::after {
+  content: "⌄";
+  color: var(--faint);
+  font-size: 11px;
+  line-height: 1;
 }
 
 .date-popover {
