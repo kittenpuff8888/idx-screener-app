@@ -13,6 +13,8 @@ const NAV: NavItem[] = [
     icon: <svg {...ICON}><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg> },
   { href: "/explorer", label: "Screener", match: (p) => p.startsWith("/explorer"),
     icon: <svg {...ICON}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg> },
+  { href: "/setups", label: "Setups", match: (p) => p.startsWith("/setups"),
+    icon: <svg {...ICON}><path d="M3 17l6-6 4 4 7-8" /><path d="M21 7h-4" /><path d="M21 7v4" /></svg> },
   { href: "/ksei", label: "KSEI", match: (p) => p.startsWith("/ksei"),
     icon: <svg {...ICON}><path d="M3 21h18" /><path d="M5 21V8l7-4 7 4v13" /><path d="M9 21v-6h6v6" /></svg> },
   { href: "/watchlist", label: "Watchlist", match: (p) => p.startsWith("/watchlist"),
@@ -85,6 +87,10 @@ export function Sidebar() {
 
       <div style={sectionStyle}>SUPPORT</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <Link href="/health" style={itemStyle(pathname.startsWith("/health"))}>
+          <svg {...ICON}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
+          <span style={labelStyle}>Data Health</span>
+        </Link>
         <Link href="/advanced?tab=guide" style={itemStyle(guideActive)}>
           <svg {...ICON}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3" /><path d="M12 17h.01" /></svg>
           <span style={labelStyle}>Help &amp; Guide</span>

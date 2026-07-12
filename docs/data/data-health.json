@@ -1,0 +1,206 @@
+{
+ "schemaVersion": 1,
+ "generatedAt": "2026-07-12T14:46:51.998304+07:00",
+ "marketDate": "2026-07-10",
+ "universe": {
+  "size": 956,
+  "source": "KSEI workbook roster",
+  "liveIdxRosterDiff": null,
+  "liveIdxRosterDiffReason": "IDX roster fetch requires a networked CI run; not yet automated"
+ },
+ "runLog": [
+  {
+   "timestamp": "2026-07-07T21:46:46.687057+07:00",
+   "marketDate": "2026-07-07",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
+  },
+  {
+   "timestamp": "2026-07-08T18:22:28.816350+07:00",
+   "marketDate": "2026-07-08",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-07-08T19:52:48.445666+07:00",
+   "marketDate": "2026-07-08",
+   "status": "SUCCESS",
+   "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-07-08T21:01:48.394385+07:00",
+   "marketDate": "2026-07-08",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
+  },
+  {
+   "timestamp": "2026-07-09T19:20:06.640594+07:00",
+   "marketDate": "2026-07-09",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-07-09T21:25:26.770435+07:00",
+   "marketDate": "2026-07-09",
+   "status": "SUCCESS",
+   "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-07-10T19:13:39.212350+07:00",
+   "marketDate": "2026-07-10",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-07-10T20:26:19.808492+07:00",
+   "marketDate": "2026-07-10",
+   "status": "SUCCESS",
+   "message": "Created and validated a new dated snapshot."
+  }
+ ],
+ "qaSummary": {
+  "checks": 2869,
+  "pass": 2869,
+  "warn": 0,
+  "fail": 0
+ },
+ "processingSummary": {
+  "totalScanned": 956,
+  "ok": 952,
+  "partial": 4,
+  "noData": 0
+ },
+ "ksei": {
+  "snapshots": [
+   "2026-05-14",
+   "2026-06-06",
+   "2026-06-14"
+  ],
+  "latest": "2026-06-14",
+  "lagNote": "KSEI is monthly; ownership signals are context, never timing triggers."
+ },
+ "parity": {
+  "status": "UNVERIFIED",
+  "method": "Dual-source agreement (yfinance vs Investing) approximates TradingView parity; true TV data needs a paid feed.",
+  "lastChecked": null,
+  "note": "Automated cross-check must run in networked CI; this sandbox cannot reach either source."
+ },
+ "setups": {
+  "count": 2,
+  "scanned": 956,
+  "quarantined": 0,
+  "spotCheckSample": [
+   {
+    "ticker": "ANTM",
+    "date": "2026-07-10",
+    "close": 2900.0,
+    "volume": 60196300.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "ASII",
+    "date": "2026-07-10",
+    "close": 4810.0,
+    "volume": 24557100.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "BBCA",
+    "date": "2026-07-10",
+    "close": 6175.0,
+    "volume": 138050500.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "BBRI",
+    "date": "2026-07-10",
+    "close": 2790.0,
+    "volume": 144957900.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2026-07-10",
+    "close": 2480.0,
+    "volume": 129033800.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "APLN",
+    "date": "2026-07-10",
+    "close": 125.0,
+    "volume": null,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "NTBK",
+    "date": "2026-07-10",
+    "close": 106.0,
+    "volume": null,
+    "source": "yfinance"
+   }
+  ],
+  "backtest": {
+   "signals": 6330,
+   "targetFirst": 2799,
+   "invalidationFirst": 1077,
+   "undecidedIn5Bars": 2454,
+   "hitRateDecided": 0.722,
+   "caveats": "Price-only core (sweep+reclaim + CVD-approx); POI/KSEI components not replayable historically; thresholds NOT tuned on these results."
+  }
+ },
+ "manualSpotCheck": {
+  "instructions": "Compare each close/volume below against TradingView (IDX:<ticker>, daily, unadjusted display) and tick off.",
+  "tickers": [
+   {
+    "ticker": "ANTM",
+    "date": "2026-07-10",
+    "close": 2900.0,
+    "volume": 60196300.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "ASII",
+    "date": "2026-07-10",
+    "close": 4810.0,
+    "volume": 24557100.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "BBCA",
+    "date": "2026-07-10",
+    "close": 6175.0,
+    "volume": 138050500.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "BBRI",
+    "date": "2026-07-10",
+    "close": 2790.0,
+    "volume": 144957900.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "TLKM",
+    "date": "2026-07-10",
+    "close": 2480.0,
+    "volume": 129033800.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "APLN",
+    "date": "2026-07-10",
+    "close": 125.0,
+    "volume": null,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "NTBK",
+    "date": "2026-07-10",
+    "close": 106.0,
+    "volume": null,
+    "source": "yfinance"
+   }
+  ]
+ }
+}
