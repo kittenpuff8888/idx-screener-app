@@ -85,7 +85,10 @@ export function normalizeScreenerRows(
       tradePlan: tradePlanFrom(row, stock),
       raw: row,
     };
-  });
+  })
+    // screener.json emits one row per triggered signal; the table is
+    // one-row-per-ticker (first occurrence keeps the primary signal label).
+    .filter((row, index, all) => all.findIndex((r) => r.ticker === row.ticker) === index);
 }
 
 export async function loadResearchBundle(marketDate: string, kongloMembership: Map<string, string[]>): Promise<ResearchBundle> {
