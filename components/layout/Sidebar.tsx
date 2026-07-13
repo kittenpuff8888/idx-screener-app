@@ -46,6 +46,7 @@ export function Sidebar() {
 
   return (
     <nav
+      className="app-sidebar"
       style={{
         position: "sticky",
         top: 14,
@@ -64,20 +65,20 @@ export function Sidebar() {
         <div style={{ width: 36, height: 36, borderRadius: 11, background: "var(--ink)", display: "grid", placeItems: "center" }}>
           <span style={{ fontFamily: "var(--mono, var(--font-mono))", fontSize: 13, fontWeight: 700, letterSpacing: ".02em", color: "var(--panel)" }}>88</span>
         </div>
-        <div style={{ lineHeight: 1.1 }}>
+        <div className="sb-label" style={{ lineHeight: 1.1 }}>
           <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: "-.01em" }}>8888 Screener</div>
           <div style={{ fontSize: 9, color: "var(--faint)", letterSpacing: ".01em", marginTop: 2 }}>Wealth doesn&apos;t wander. It lands.</div>
         </div>
       </Link>
 
-      <div style={sectionStyle}>MENU</div>
+      <div className="sb-label" style={sectionStyle}>MENU</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {NAV.map((n) => {
           const active = n.match(pathname);
           return (
             <Link key={n.href} href={n.href} style={itemStyle(active)}>
               {n.icon}
-              <span style={labelStyle}>{n.label}</span>
+              <span className="sb-label" style={labelStyle}>{n.label}</span>
             </Link>
           );
         })}
@@ -85,15 +86,15 @@ export function Sidebar() {
 
       <div style={{ flex: 1 }} />
 
-      <div style={sectionStyle}>SUPPORT</div>
+      <div className="sb-label" style={sectionStyle}>SUPPORT</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         <Link href="/health" style={itemStyle(pathname.startsWith("/health"))}>
           <svg {...ICON}><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></svg>
-          <span style={labelStyle}>Data Health</span>
+          <span className="sb-label" style={labelStyle}>Data Health</span>
         </Link>
         <Link href="/advanced?tab=guide" style={itemStyle(guideActive)}>
           <svg {...ICON}><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 0 1 4.5 1.5c0 1.5-2 2-2 3" /><path d="M12 17h.01" /></svg>
-          <span style={labelStyle}>Help &amp; Guide</span>
+          <span className="sb-label" style={labelStyle}>Help &amp; Guide</span>
         </Link>
       </div>
     </nav>
