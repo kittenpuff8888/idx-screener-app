@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-07-12T22:12:51.412483+07:00",
+ "generatedAt": "2026-07-13T11:19:30.534167+07:00",
  "marketDate": "2026-07-10",
  "universe": {
   "size": 956,
@@ -88,7 +88,7 @@
  "setups": {
   "count": 2,
   "scanned": 956,
-  "quarantined": 0,
+  "quarantined": 5,
   "spotCheckSample": [
    {
     "ticker": "ANTM",
@@ -139,29 +139,7 @@
     "volume": null,
     "source": "yfinance"
    }
-  ],
-  "backtest": {
-   "signals": 6330,
-   "targetFirst": 2799,
-   "invalidationFirst": 1077,
-   "undecidedIn5Bars": 2454,
-   "hitRateDecided": 0.722,
-   "componentAttribution": {
-    "divergence": {
-     "decided": 3823,
-     "hitRate": 0.726
-    },
-    "absorption": {
-     "decided": 28,
-     "hitRate": 0.357
-    },
-    "both": {
-     "decided": 25,
-     "hitRate": 0.6
-    }
-   },
-   "caveats": "Price-only core (sweep+reclaim + CVD-approx); POI/KSEI components not replayable historically; thresholds NOT tuned on these results."
-  }
+  ]
  },
  "manualSpotCheck": {
   "instructions": "Compare each close/volume below against TradingView (IDX:<ticker>, daily, unadjusted display) and tick off.",

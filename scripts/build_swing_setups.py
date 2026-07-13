@@ -71,6 +71,15 @@ def validate_bars(rows: list[dict]) -> list[str]:
             issues.append(f"OHLC inconsistency on {d}")
         if v < 0:
             issues.append(f"negative volume on {d}")
+    # ARA/ARB sanity (§1.2): IDX auto-reject caps daily moves at ±35% even on
+    # the loosest band; anything beyond that vs the prior close is bad data
+    # (unadjusted split, feed glitch) — quarantine, don't propagate.
+    # 0.355 not 0.35: a close AT the +35% ARA ceiling is legal; float rounding
+    # of e.g. 135/100 must not quarantine limit-up days.
+    closes = [(r.get("date"), r.get("close")) for r in rows[-260:] if r.get("close")]
+    for (d0, c0), (d1, c1) in zip(closes, closes[1:]):
+        if c0 and abs(c1 / c0 - 1) > 0.355:
+            issues.append(f"move beyond ARA/ARB bound {d0}->{d1} ({c0}->{c1})")
     return issues[:5]
 
 

@@ -662,16 +662,19 @@ a {
 .view-intro h2,
 .dashboard-hero h2 {
   margin: 4px 0 0;
-  font-size: clamp(30px, 4vw, 48px);
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .view-intro p,
 .dashboard-hero p {
   max-width: 760px;
-  margin: 12px 0 0;
+  margin: 6px 0 0;
   color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
 }
 
 .hero-stat {
@@ -737,9 +740,9 @@ a {
 .panel,
 .index-section {
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--r);
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: var(--sh, var(--shadow));
 }
 
 .dashboard-summary-card {
@@ -850,7 +853,7 @@ a {
 
 .index-section,
 .panel {
-  padding: 20px;
+  padding: 16px 18px;
 }
 
 .panel-head {
@@ -859,7 +862,9 @@ a {
 
 .panel-head h3 {
   margin: 3px 0 0;
-  font-size: 20px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .index-grid {
@@ -1012,7 +1017,7 @@ a {
   width: 100%;
   overflow: auto;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--r2);
 }
 
 .data-table {
@@ -1023,27 +1028,27 @@ a {
 
 .data-table th,
 .data-table td {
-  padding: 11px 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--hair);
   text-align: left;
   vertical-align: top;
-  font-size: 13px;
+  font-size: 12.5px;
 }
 
 .data-table th {
   position: sticky;
   top: 0;
   z-index: 1;
-  background: var(--soft);
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+  background: var(--panel);
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .data-table tr:hover td {
-  background: rgba(59, 130, 246, 0.07);
+  background: var(--soft);
 }
 
 .numeric {
@@ -1061,7 +1066,7 @@ a {
 .metric-card {
   padding: 13px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--r2);
   background: var(--soft);
 }
 
