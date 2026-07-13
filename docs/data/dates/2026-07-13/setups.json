@@ -1,0 +1,130 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-07-13",
+ "generatedAt": "2026-07-13T20:46:29.238852+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 1,
+ "setups": [
+  {
+   "ticker": "GPSO",
+   "name": "GEOPRIMA SOLUSI Tbk",
+   "sector": "IDXINDUST",
+   "close": 314.0,
+   "score": 55,
+   "components": {
+    "location": 0,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 267,
+   "invalidation": 261.36,
+   "target": 378,
+   "medianValueTraded20": 5968672800,
+   "rvol": 1.894118007287425,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-06-14",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    335863674,
+    345066924,
+    331962549,
+    333805426,
+    329872126,
+    324346726,
+    322312994,
+    313127194,
+    313127194,
+    370552094,
+    461672794,
+    474863905,
+    471538272,
+    482624558,
+    548477786,
+    531982506,
+    523112660,
+    518553340,
+    503924240,
+    495695240,
+    485675046,
+    483273392,
+    492037654,
+    484265236,
+    484265236,
+    478727736,
+    474540936,
+    476300469,
+    478885419,
+    518404443
+   ],
+   "dataSource": "yfinance",
+   "why": "bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 3,
+    "hitRate": 1.0,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AGPSO"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 956
+}
