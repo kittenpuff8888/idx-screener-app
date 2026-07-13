@@ -262,15 +262,50 @@ def evaluate(ticker: str, bars: list[dict], tech: dict, market_date: str) -> dic
         "cvdSpark": of["spark"],
         "dataSource": rows[-1].get("source", "yfinance"),
         "why": "; ".join(why),
+        "history": ticker_history_stats(rows),
         "tradingView": f"https://www.tradingview.com/chart/?symbol=IDX%3A{ticker}",
     }
+
+
+def ticker_history_stats(rows: list[dict]) -> dict | None:
+    """Per-ticker historical stats for the price-computable core signal:
+    how often this ticker's sweep+reclaim+CVD signals hit target before
+    invalidation within 5 bars. Honest sample sizes; None when too thin."""
+    wins = losses = 0
+    for i in range(60, len(rows) - 6, 2):
+        win = rows[: i + 1]
+        sw = sweep_reclaim(win)
+        if not sw["reclaimed"]:
+            continue
+        of = orderflow_signals(win)
+        if not (of["bullishDivergence"] or of["absorption"]):
+            continue
+        entry = win[-1]["close"]
+        inval = (sw["sweptLow"] or entry) * 0.99
+        low20 = min(r["low"] for r in win[-20:])
+        high20 = max(r["high"] for r in win[-20:])
+        tgt = max((high20 + low20) / 2, entry * 1.03)
+        for fwd in rows[i + 1: i + 6]:
+            if fwd["low"] <= inval:
+                losses += 1
+                break
+            if fwd["high"] >= tgt:
+                wins += 1
+                break
+    total = wins + losses
+    if total < 3:
+        return None
+    return {"signals": total, "hitRate": round(wins / total, 2),
+            "note": "price-only core signal history for this ticker; small sample"}
 
 
 def backtest(ohlcv_dir: Path, dates_back: int) -> dict:
     """Sanity harness (§2.4): price-computable core only (sweep+reclaim with CVD
     confirmation); POI/ownership components are excluded because historical
-    technical.json snapshots are not retained per bar. Reported as measured."""
+    technical.json snapshots are not retained per bar. Reported as measured.
+    Component attribution: divergence-only vs absorption-only vs both."""
     wins = losses = undecided = signals = 0
+    comp = {"divergence": [0, 0], "absorption": [0, 0], "both": [0, 0]}
     for f in sorted(ohlcv_dir.glob("*.json")):
         data = _load(f)
         rows = (data or {}).get("rows") or []
@@ -304,16 +339,21 @@ def backtest(ohlcv_dir: Path, dates_back: int) -> dict:
                 if fwd["high"] >= tgt:
                     hit = True
                     break
+            key = "both" if (of["bullishDivergence"] and of["absorption"]) else ("divergence" if of["bullishDivergence"] else "absorption")
             if hit is True:
                 wins += 1
+                comp[key][0] += 1
+                comp[key][1] += 1
             elif hit is False:
                 losses += 1
+                comp[key][1] += 1
             else:
                 undecided += 1
     total = wins + losses
     return {"signals": signals, "targetFirst": wins, "invalidationFirst": losses,
             "undecidedIn5Bars": undecided,
             "hitRateDecided": round(wins / total, 3) if total else None,
+            "componentAttribution": {k: {"decided": v[1], "hitRate": round(v[0] / v[1], 3) if v[1] else None} for k, v in comp.items()},
             "caveats": "Price-only core (sweep+reclaim + CVD-approx); POI/KSEI components not replayable historically; thresholds NOT tuned on these results."}
 
 

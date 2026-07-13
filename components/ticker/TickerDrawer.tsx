@@ -13,6 +13,7 @@ import { ResearchSummary } from "./ResearchSummary";
 import { TechnicalsPanel } from "./TechnicalsPanel";
 import { TickerChart } from "./TickerChart";
 import { TickerHeader } from "./TickerHeader";
+import { SetupPanel } from "./SetupPanel";
 import { TradePlan } from "./TradePlan";
 
 export function TickerDrawer() {
@@ -47,6 +48,7 @@ export function TickerDrawer() {
           ) : (
             <>
               <TickerHeader stock={stock} ownership={ownership} />
+              {selectedTicker ? <SetupPanel ticker={selectedTicker} /> : null}
               <article className="ticker-conclusion-card">
                 <ResearchSummary summary={summary} />
               </article>
