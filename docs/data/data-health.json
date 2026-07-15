@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-07-15T19:32:15.114443+07:00",
+ "generatedAt": "2026-07-15T21:40:46.885794+07:00",
  "marketDate": "2026-07-15",
  "universe": {
   "size": 916,
@@ -9,12 +9,6 @@
   "liveIdxRosterDiffReason": "IDX roster fetch requires a networked CI run; not yet automated"
  },
  "runLog": [
-  {
-   "timestamp": "2026-07-10T20:26:19.808492+07:00",
-   "marketDate": "2026-07-10",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
-  },
   {
    "timestamp": "2026-07-13T19:20:06.932954+07:00",
    "marketDate": "2026-07-13",
@@ -56,6 +50,12 @@
    "marketDate": "2026-07-15",
    "status": "SUCCESS",
    "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-07-15T21:40:08.961722+07:00",
+   "marketDate": "2026-07-15",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
   }
  ],
  "qaSummary": {
