@@ -1,0 +1,197 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-07-15",
+ "generatedAt": "2026-07-15T19:32:15.112297+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 2,
+ "setups": [
+  {
+   "ticker": "BUKA",
+   "name": "BUKALAPAK.COM Tbk",
+   "sector": "IDXTECHNO",
+   "close": 106.0,
+   "score": 80,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 104,
+   "invalidation": 100,
+   "target": 114,
+   "medianValueTraded20": 16838424900,
+   "rvol": 0.7816903049862776,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-06-14",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -19984932107,
+    -19949202032,
+    -20026806232,
+    -20187805532,
+    -20070269432,
+    -19971004532,
+    -20007367865,
+    -20032432515,
+    -20279595155,
+    -20422598080,
+    -20224104830,
+    -19208453187,
+    -19578395544,
+    -19823750769,
+    -20283783609,
+    -20192706084,
+    -20404389234,
+    -20347694201,
+    -20375644101,
+    -20358293461,
+    -20404796161,
+    -20371298361,
+    -20413592161,
+    -20413592161,
+    -20520243261,
+    -19873714761,
+    -19894508594,
+    -19820240594,
+    -19793949974,
+    -19596798260
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI EMA25; bullish CHoCH (Internal Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 3,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ABUKA"
+  },
+  {
+   "ticker": "GPSO",
+   "name": "GEOPRIMA SOLUSI Tbk",
+   "sector": "IDXINDUST",
+   "close": 328.0,
+   "score": 55,
+   "components": {
+    "location": 0,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 267,
+   "invalidation": 261.36,
+   "target": 378,
+   "medianValueTraded20": 5255511200,
+   "rvol": 0.6947952903833583,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-06-14",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    345027792,
+    346870669,
+    342937369,
+    337411969,
+    335378237,
+    326192437,
+    326192437,
+    383617337,
+    474738037,
+    487929148,
+    484603515,
+    495689801,
+    561543029,
+    545047749,
+    536177902,
+    531618582,
+    516989482,
+    508760482,
+    498740289,
+    496338635,
+    505102897,
+    497330479,
+    497330479,
+    491792979,
+    487606179,
+    489365712,
+    491950662,
+    531469685,
+    586667238,
+    582661513
+   ],
+   "dataSource": "yfinance",
+   "why": "bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 3,
+    "hitRate": 1.0,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AGPSO"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 916
+}
