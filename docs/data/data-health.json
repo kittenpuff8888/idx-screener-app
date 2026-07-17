@@ -1,7 +1,7 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-07-16T22:26:40.159067+07:00",
- "marketDate": "2026-07-16",
+ "generatedAt": "2026-07-17T19:21:06.996166+07:00",
+ "marketDate": "2026-07-17",
  "universe": {
   "size": 916,
   "source": "KSEI workbook roster",
@@ -9,18 +9,6 @@
   "liveIdxRosterDiffReason": "IDX roster fetch requires a networked CI run; not yet automated"
  },
  "runLog": [
-  {
-   "timestamp": "2026-07-14T19:04:45.331715+07:00",
-   "marketDate": "2026-07-14",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
-  },
-  {
-   "timestamp": "2026-07-14T21:36:33.192815+07:00",
-   "marketDate": "2026-07-14",
-   "status": "NO_CHANGE",
-   "message": "Dataset already published; last successful snapshot preserved."
-  },
   {
    "timestamp": "2026-07-15T18:07:57.396764+07:00",
    "marketDate": "2026-07-15",
@@ -56,6 +44,18 @@
    "marketDate": "2026-07-16",
    "status": "NO_CHANGE",
    "message": "Dataset already published; last successful snapshot preserved."
+  },
+  {
+   "timestamp": "2026-07-17T18:04:32.849541+07:00",
+   "marketDate": "2026-07-17",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-07-17T19:20:33.082890+07:00",
+   "marketDate": "2026-07-17",
+   "status": "SUCCESS",
+   "message": "Created and validated a new dated snapshot."
   }
  ],
  "qaSummary": {
@@ -86,43 +86,50 @@
   "note": "Automated cross-check must run in networked CI; this sandbox cannot reach either source."
  },
  "setups": {
-  "count": 0,
+  "count": 1,
   "scanned": 916,
   "quarantined": 5,
   "spotCheckSample": [
    {
     "ticker": "ANTM",
-    "date": "2026-07-16",
-    "close": 3080.0,
-    "volume": 91739100.0,
+    "date": "2026-07-17",
+    "close": 3070.0,
+    "volume": 84673200.0,
     "source": "yfinance"
    },
    {
     "ticker": "ASII",
-    "date": "2026-07-16",
+    "date": "2026-07-17",
     "close": 5100.0,
-    "volume": 72624500.0,
+    "volume": 67012100.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBCA",
-    "date": "2026-07-16",
-    "close": 6225.0,
-    "volume": 94235100.0,
+    "date": "2026-07-17",
+    "close": 6475.0,
+    "volume": 319191300.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBRI",
-    "date": "2026-07-16",
-    "close": 2860.0,
-    "volume": 197705800.0,
+    "date": "2026-07-17",
+    "close": 2970.0,
+    "volume": 441992600.0,
     "source": "yfinance"
    },
    {
     "ticker": "TLKM",
-    "date": "2026-07-16",
-    "close": 2530.0,
-    "volume": 56858100.0,
+    "date": "2026-07-17",
+    "close": 2660.0,
+    "volume": 143963900.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "DGWG",
+    "date": "2026-07-17",
+    "close": 282.0,
+    "volume": null,
     "source": "yfinance"
    }
   ]
@@ -132,37 +139,44 @@
   "tickers": [
    {
     "ticker": "ANTM",
-    "date": "2026-07-16",
-    "close": 3080.0,
-    "volume": 91739100.0,
+    "date": "2026-07-17",
+    "close": 3070.0,
+    "volume": 84673200.0,
     "source": "yfinance"
    },
    {
     "ticker": "ASII",
-    "date": "2026-07-16",
+    "date": "2026-07-17",
     "close": 5100.0,
-    "volume": 72624500.0,
+    "volume": 67012100.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBCA",
-    "date": "2026-07-16",
-    "close": 6225.0,
-    "volume": 94235100.0,
+    "date": "2026-07-17",
+    "close": 6475.0,
+    "volume": 319191300.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBRI",
-    "date": "2026-07-16",
-    "close": 2860.0,
-    "volume": 197705800.0,
+    "date": "2026-07-17",
+    "close": 2970.0,
+    "volume": 441992600.0,
     "source": "yfinance"
    },
    {
     "ticker": "TLKM",
-    "date": "2026-07-16",
-    "close": 2530.0,
-    "volume": 56858100.0,
+    "date": "2026-07-17",
+    "close": 2660.0,
+    "volume": 143963900.0,
+    "source": "yfinance"
+   },
+   {
+    "ticker": "DGWG",
+    "date": "2026-07-17",
+    "close": 282.0,
+    "volume": null,
     "source": "yfinance"
    }
   ]
