@@ -1560,3 +1560,18 @@ a {
   font-size: 12px;
   opacity: 0.92;
 }
+
+/* ── Responsive shell: sidebar collapses to an icon rail (UI spec §2.1) ── */
+@media (max-width: 880px) {
+  .app-sidebar {
+    width: 64px !important;
+    flex: 0 0 64px !important;
+    padding: 16px 9px !important;
+  }
+  .app-sidebar .sb-label {
+    display: none !important;
+  }
+  .app-sidebar a {
+    justify-content: center;
+  }
+}

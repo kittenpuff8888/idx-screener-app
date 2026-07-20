@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-07-17T20:47:35.910136+07:00",
+ "generatedAt": "2026-07-20T20:24:03.395707+07:00",
  "marketDate": "2026-07-17",
  "universe": {
   "size": 916,
@@ -74,9 +74,10 @@
   "snapshots": [
    "2026-05-14",
    "2026-06-06",
-   "2026-06-14"
+   "2026-06-14",
+   "2026-07-20"
   ],
-  "latest": "2026-06-14",
+  "latest": "2026-07-20",
   "lagNote": "KSEI is monthly; ownership signals are context, never timing triggers."
  },
  "parity": {
@@ -132,7 +133,13 @@
     "volume": null,
     "source": "yfinance"
    }
-  ]
+  ],
+  "forwardOutcomes": {
+   "total": 6,
+   "decided": 2,
+   "targetFirst": 1,
+   "hitRate": 0.5
+  }
  },
  "manualSpotCheck": {
   "instructions": "Compare each close/volume below against TradingView (IDX:<ticker>, daily, unadjusted display) and tick off.",

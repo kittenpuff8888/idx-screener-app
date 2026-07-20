@@ -366,6 +366,43 @@ def backtest(ohlcv_dir: Path, dates_back: int) -> dict:
             "caveats": "Price-only core (sweep+reclaim + CVD-approx); POI/KSEI components not replayable historically; thresholds NOT tuned on these results."}
 
 
+def build_setups_history(ohlcv_dir: Path, current_date: str) -> dict:
+    """Forward outcomes for previously published setups (§'past setups view').
+    For each historical dates/<D>/setups.json, check the 5 bars after D:
+    target-first, invalidation-first, undecided, or still-open. Real forward
+    data only — no backtest, no re-simulation."""
+    entries = []
+    for ddir in sorted((DATA / "dates").iterdir()):
+        if not ddir.is_dir() or ddir.name >= current_date:
+            continue
+        payload = _load(ddir / "setups.json")
+        if not payload:
+            continue
+        for s in payload.get("setups", []):
+            bars = ((_load(ohlcv_dir / f"{s['ticker']}.json") or {}).get("rows")) or []
+            fwd = [r for r in bars if r["date"] > ddir.name][:5]
+            outcome = "open"
+            for r in fwd:
+                if r["low"] <= s["invalidation"]:
+                    outcome = "invalidated"
+                    break
+                if r["high"] >= s["target"]:
+                    outcome = "target"
+                    break
+            else:
+                outcome = "undecided" if len(fwd) >= 5 else "open"
+            entries.append({"date": ddir.name, "ticker": s["ticker"], "score": s["score"],
+                             "close": s["close"], "target": s["target"], "invalidation": s["invalidation"],
+                             "outcome": outcome, "barsObserved": len(fwd)})
+    decided = [e for e in entries if e["outcome"] in ("target", "invalidated")]
+    hits = sum(1 for e in decided if e["outcome"] == "target")
+    return {"schemaVersion": 1, "asOf": current_date, "entries": entries[-200:],
+            "summary": {"total": len(entries), "decided": len(decided),
+                         "targetFirst": hits,
+                         "hitRate": round(hits / len(decided), 3) if decided else None},
+            "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."}
+
+
 def build_data_health(market_date: str, setup_stats: dict) -> dict:
     log = _load(DATA / "update-log.json") or {}
     manifest = _load(DATA / "manifest.json") or {}
@@ -467,6 +504,11 @@ def main() -> None:
     if args.backtest:
         stats["backtest"] = backtest(ohlcv_dir, args.backtest)
         print("backtest:", stats["backtest"])
+    history = build_setups_history(ohlcv_dir, market_date)
+    (DATA / "setups-history.json").write_text(json.dumps(history, indent=1, ensure_ascii=False), encoding="utf-8")
+    print(f"setups history: {history['summary']}")
+
+    stats["forwardOutcomes"] = history["summary"]
     health = build_data_health(market_date, stats)
     (DATA / "data-health.json").write_text(json.dumps(health, indent=1, ensure_ascii=False), encoding="utf-8")
     print(f"data health -> {DATA / 'data-health.json'}")
