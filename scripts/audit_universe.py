@@ -29,27 +29,49 @@ def main() -> None:
     tech = (_load(DATA / "dates" / md / "technical.json") or {}).get("records") or {}
     universe = set(tech.keys())
 
-    diff, reason = None, None
-    try:
-        import requests
-        r = requests.get(IDX_URL, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
-        r.raise_for_status()
-        payload = r.json()
-        rows = payload.get("data") or payload.get("Data") or []
-        # Structural sanity (§C.6.5): a changed layout must fail loud.
-        if not rows or not isinstance(rows, list):
-            raise ValueError("IDX roster response missing data rows")
-        live = {str(x.get("Code") or x.get("code") or "").strip().upper() for x in rows}
-        live.discard("")
+    diff, reason, roster_source = None, None, None
+    live, roster_asof = None, None
+
+    # Prefer the committed canonical roster (data_sources/idx-listed.json,
+    # from the official Daftar Saham export) — works offline and is the
+    # source of truth for "what is listed". Fall back to the live IDX endpoint.
+    roster_path = ROOT / "data_sources" / "idx-listed.json"
+    if roster_path.exists():
+        try:
+            payload = json.loads(roster_path.read_text(encoding="utf-8"))
+            recs = payload.get("records") or []
+            live = {str(r.get("ticker", "")).strip().upper() for r in recs}
+            live.discard("")
+            roster_source = f"data_sources/idx-listed.json ({payload.get('source')})"
+            roster_asof = payload.get("asOf")
+        except Exception as e:
+            reason = f"local roster unreadable: {type(e).__name__}: {e}"
+
+    if live is None:
+        try:
+            import requests
+            r = requests.get(IDX_URL, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
+            r.raise_for_status()
+            payload = r.json()
+            rows = payload.get("data") or payload.get("Data") or []
+            if not rows or not isinstance(rows, list):
+                raise ValueError("IDX roster response missing data rows")
+            live = {str(x.get("Code") or x.get("code") or "").strip().upper() for x in rows}
+            live.discard("")
+            roster_source = "live IDX endpoint"
+        except Exception as e:
+            reason = f"IDX roster unavailable (no local file, live fetch failed): {type(e).__name__}: {e}"
+
+    if live is not None:
         if len(live) < 700:
-            raise ValueError(f"IDX roster implausibly small ({len(live)})")
-        missing = sorted(live - universe)
-        delisted = sorted(universe - live)
-        diff = {"liveCount": len(live), "missingFromUniverse": missing[:50],
-                "missingCount": len(missing), "inUniverseNotListed": delisted[:50],
-                "delistedCount": len(delisted)}
-    except Exception as e:
-        reason = f"IDX roster fetch failed: {type(e).__name__}: {e}"
+            reason = f"IDX roster implausibly small ({len(live)})"
+        else:
+            missing = sorted(live - universe)
+            delisted = sorted(universe - live)
+            diff = {"rosterSource": roster_source, "rosterAsOf": roster_asof,
+                    "liveCount": len(live), "missingFromUniverse": missing[:50],
+                    "missingCount": len(missing), "inUniverseNotListed": delisted[:50],
+                    "delistedCount": len(delisted)}
 
     health = _load(DATA / "data-health.json") or {}
     health.setdefault("universe", {})

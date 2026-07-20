@@ -6573,6 +6573,47 @@ def _write_ohlcv_history_cache(rows_cache: dict, market_date: str) -> None:
             }, fh, separators=(",", ":"))
 
 
+def load_idx_listed_roster():
+    """Canonical IDX listed-companies roster (data_sources/idx-listed.json,
+    built from the official 'Daftar Saham' export). Returns [] if absent so the
+    pipeline still runs KSEI-only. Source of truth for 'what is listed'."""
+    import json
+    path = os.path.join(BASE_DIR, "data_sources", "idx-listed.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh).get("records", [])
+    except Exception:
+        return []
+
+
+def merge_idx_roster(ksei_df):
+    """Append rows for IDX-listed tickers missing from the KSEI source so the
+    FULL listed universe is scanned. Recent IPOs are not yet in KSEI; their
+    ownership columns stay NaN and degrade to N/A downstream exactly like any
+    KSEI ticker without a reported holder table."""
+    listed = load_idx_listed_roster()
+    if not listed:
+        return ksei_df
+    have = set(ksei_df["Ticker"].astype(str).str.upper().str.strip())
+    extra = []
+    for r in listed:
+        ticker = str(r.get("ticker", "")).upper().strip()
+        if not ticker or ticker in have:
+            continue
+        row = {col: np.nan for col in ksei_df.columns}
+        row["Ticker"] = ticker
+        if "Emiten" in row:
+            row["Emiten"] = r.get("name")
+        if "Shares Outstanding" in row and r.get("shares"):
+            row["Shares Outstanding"] = r["shares"]
+        extra.append(row)
+    if not extra:
+        return ksei_df
+    print(f"[OK] IDX roster: +{len(extra)} listed tickers absent from KSEI "
+          f"(recent IPOs) -> {[e['Ticker'] for e in extra]}")
+    return pd.concat([ksei_df, pd.DataFrame(extra)], ignore_index=True)
+
+
 def main():
     print("\n" + "=" * 110)
     print("  IDX Screener")
@@ -6609,7 +6650,10 @@ def main():
         print(f"[OK] KSEI: {TOTAL_SOURCE_TICKERS} tickers | BACKTEST mode: {len(ksei)} selected (as of {MARKET_DATE})")
     else:
         ksei = ksei_raw.drop(columns=["_ticker_norm"]).reset_index(drop=True)
-        print(f"[OK] KSEI: {TOTAL_SOURCE_TICKERS} tickers | Full universe (as of {MARKET_DATE})")
+        # Scan the FULL IDX listed universe: union in any listed ticker missing
+        # from KSEI (recent IPOs) so nothing listed is silently skipped.
+        ksei = merge_idx_roster(ksei)
+        print(f"[OK] KSEI: {TOTAL_SOURCE_TICKERS} tickers | Full universe + IDX roster = {len(ksei)} scanned (as of {MARKET_DATE})")
 
     shares_cache = load_shares_cache()
     results = []

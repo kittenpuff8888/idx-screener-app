@@ -410,25 +410,35 @@ def build_data_health(market_date: str, setup_stats: dict) -> dict:
     proc = _load(DATA / "dates" / market_date / "processing-results.json") or {}
     ksei_base = DATA / "ksei" / "dates"
     snaps = sorted([p.name for p in ksei_base.iterdir() if p.is_dir()]) if ksei_base.exists() else []
+    # Preserve contributions written earlier this run by audit_universe.py
+    # (roster diff) and parity_check.py (real verdict) so we don't clobber them.
+    prev_health = _load(DATA / "data-health.json") or {}
+    prev_universe = prev_health.get("universe") or {}
+    prev_parity = prev_health.get("parity")
+    universe = {"size": (proc.get("summary") or {}).get("total") or manifest.get("tickerCount") or setup_stats.get("scanned"),
+                "source": "KSEI workbook roster",
+                "liveIdxRosterDiff": None,
+                "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run"}
+    for key in ("liveIdxRosterDiff", "liveIdxRosterDiffReason", "auditedAt"):
+        if prev_universe.get(key) is not None:
+            universe[key] = prev_universe[key]
+    parity = prev_parity if prev_parity and prev_parity.get("lastChecked") else {
+        "status": "UNVERIFIED",
+        "method": "Dual-source agreement (yfinance vs Investing) approximates TradingView parity; true TV data needs a paid feed.",
+        "lastChecked": None,
+        "note": "Automated cross-check must run in networked CI; this sandbox cannot reach either source.",
+    }
     return {
         "schemaVersion": 1,
         "generatedAt": datetime.now(timezone(timedelta(hours=7))).isoformat(),
         "marketDate": market_date,
-        "universe": {"size": (proc.get("summary") or {}).get("total") or manifest.get("tickerCount") or setup_stats.get("scanned"),
-                      "source": "KSEI workbook roster",
-                      "liveIdxRosterDiff": None,
-                      "liveIdxRosterDiffReason": "IDX roster fetch requires a networked CI run; not yet automated"},
+        "universe": universe,
         "runLog": (log.get("entries") or [])[-8:],
         "qaSummary": qa.get("summary"),
         "processingSummary": proc.get("summary"),
         "ksei": {"snapshots": snaps, "latest": snaps[-1] if snaps else None,
                   "lagNote": "KSEI is monthly; ownership signals are context, never timing triggers."},
-        "parity": {
-            "status": "UNVERIFIED",
-            "method": "Dual-source agreement (yfinance vs Investing) approximates TradingView parity; true TV data needs a paid feed.",
-            "lastChecked": None,
-            "note": "Automated cross-check must run in networked CI; this sandbox cannot reach either source.",
-        },
+        "parity": parity,
         "setups": setup_stats,
         "manualSpotCheck": {
             "instructions": "Compare each close/volume below against TradingView (IDX:<ticker>, daily, unadjusted display) and tick off.",
