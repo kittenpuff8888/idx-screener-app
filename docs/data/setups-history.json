@@ -1,12 +1,73 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-07-10",
- "entries": [],
+ "asOf": "2026-07-17",
+ "entries": [
+  {
+   "date": "2026-07-10",
+   "ticker": "APLN",
+   "score": 75,
+   "close": 125.0,
+   "target": 160,
+   "invalidation": 115,
+   "outcome": "undecided",
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-10",
+   "ticker": "NTBK",
+   "score": 75,
+   "close": 106.0,
+   "target": 125,
+   "invalidation": 100,
+   "outcome": "invalidated",
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-13",
+   "ticker": "GPSO",
+   "score": 55,
+   "close": 314.0,
+   "target": 378,
+   "invalidation": 261.36,
+   "outcome": "open",
+   "barsObserved": 4
+  },
+  {
+   "date": "2026-07-14",
+   "ticker": "GPSO",
+   "score": 55,
+   "close": 336.0,
+   "target": 378,
+   "invalidation": 261.36,
+   "outcome": "open",
+   "barsObserved": 3
+  },
+  {
+   "date": "2026-07-15",
+   "ticker": "BUKA",
+   "score": 80,
+   "close": 106.0,
+   "target": 114,
+   "invalidation": 100,
+   "outcome": "target",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-07-15",
+   "ticker": "GPSO",
+   "score": 55,
+   "close": 328.0,
+   "target": 378,
+   "invalidation": 261.36,
+   "outcome": "open",
+   "barsObserved": 2
+  }
+ ],
  "summary": {
-  "total": 0,
-  "decided": 0,
-  "targetFirst": 0,
-  "hitRate": null
+  "total": 6,
+  "decided": 2,
+  "targetFirst": 1,
+  "hitRate": 0.5
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }

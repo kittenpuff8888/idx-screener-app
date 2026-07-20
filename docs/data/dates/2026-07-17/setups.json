@@ -1,7 +1,7 @@
 {
  "schemaVersion": 1,
  "marketDate": "2026-07-17",
- "generatedAt": "2026-07-17T20:47:35.907940+07:00",
+ "generatedAt": "2026-07-20T20:24:03.374254+07:00",
  "config": {
   "minMedianValueTraded": 1000000000,
   "minScore": 55,
@@ -41,7 +41,7 @@
    "isRecentIpo": false,
    "kseiFootprint": {
     "available": true,
-    "asOf": "2026-06-14",
+    "asOf": "2026-07-20",
     "netDeltaPP": 0.0,
     "accumulation": false,
     "changes": []
