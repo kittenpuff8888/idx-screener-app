@@ -74,6 +74,12 @@ jobs:
           git config user.email "idx-data-bot@users.noreply.github.com"
           git add docs/data/update-log.json
           git diff --cached --quiet || git commit -m "Log failed IDX data update"
+          # Retry on rejection: main may have moved while this run was working.
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            echo "push rejected (main moved); rebasing, attempt ${attempt}"
+            git pull --rebase origin main || exit 1
+          done
           git push
 
       - name: Stop after failed update
@@ -114,4 +120,16 @@ jobs:
             exit 0
           fi
           git commit -m "Update IDX data snapshot"
-          git push
+          # A run takes up to 3 hours. Any push to main in that window makes this
+          # push non-fast-forward, and a bare `git push` would fail the job and
+          # discard a full day of generated data. Rebase and retry instead.
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "pushed on attempt ${attempt}"
+              exit 0
+            fi
+            echo "push rejected (main moved); rebasing, attempt ${attempt}"
+            git pull --rebase origin main || exit 1
+          done
+          echo "push still failing after 3 attempts"
+          exit 1
