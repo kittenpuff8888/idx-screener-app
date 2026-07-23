@@ -18,8 +18,10 @@ snapshots exactly), never fabricated:
   Ownership Type           = f(cr1, cr3)   [rule below, 100% match on 2026-06-14]
   CCS Category             = f(ccs)         [rule below, 100% match]
 
-The only schema field the CSV cannot supply is IDX Sector Weight (a market-cap
-weight from fundamentals); it is left blank -> null, per the no-fabrication rule.
+Two schema fields the CSV cannot supply come from elsewhere: IDX Sector is joined
+by ticker from the newest fundamentals snapshot (the CSV's Yahoo-style "Sektor"
+cannot express IDXTRANS, so deriving from it would misclassify), and IDX Sector
+Weight (a market-cap weight) is left blank -> null, per the no-fabrication rule.
 
 An "Investor Changes" sheet is produced by diffing holder percentages against
 the previous snapshot, so the dashboard's "KSEI Latest Δ" and the swing
@@ -33,11 +35,17 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from rebuild_backend.sector_normalization import normalize_idx_sector
+
 SOURCE_DIR = ROOT / "data_sources" / "ksei"
 KSEI_DIR = ROOT / "docs" / "data" / "ksei"
 
@@ -78,8 +86,40 @@ def norm_name(name: str) -> str:
     return re.sub(r"\s+", " ", str(name or "").strip().upper())
 
 
+def load_idx_sectors() -> dict[str, str]:
+    """Authoritative per-ticker IDX sector code from the newest fundamentals snapshot.
+
+    The KSEI CSV carries no "IDX Sector" column, only a Yahoo-style "Sektor".
+    Deriving the IDX code from that cannot express IDXTRANS (Yahoo files those
+    issuers under Industrials), so it silently inflates IDXINDUST and drops a
+    whole sector. Join the real value instead; tickers absent from fundamentals
+    stay blank -> Others, per the no-fabrication rule.
+    """
+    dates_dir = ROOT / "docs" / "data" / "dates"
+    if not dates_dir.exists():
+        return {}
+    for day in sorted((p for p in dates_dir.iterdir() if p.is_dir()), reverse=True):
+        payload_path = day / "fundamental.json"
+        if not payload_path.exists():
+            continue
+        payload = json.loads(payload_path.read_text(encoding="utf-8"))
+        rows = next(
+            (v for v in payload.values() if isinstance(v, list) and v and isinstance(v[0], dict)),
+            [],
+        )
+        mapping = {
+            str(row.get("Ticker", "")).strip().upper(): row.get("IDX Sector")
+            for row in rows
+            if str(row.get("Ticker", "")).strip()
+        }
+        if mapping:
+            return mapping
+    return {}
+
+
 def aggregate(csv_path: Path) -> pd.DataFrame:
     df = pd.read_csv(csv_path, dtype=str, encoding="utf-8-sig").fillna("")
+    idx_sectors = load_idx_sectors()
     df.columns = [c.strip() for c in df.columns]
     issuers: dict[str, dict] = {}
     for _, row in df.iterrows():
@@ -114,7 +154,7 @@ def aggregate(csv_path: Path) -> pd.DataFrame:
             "Emiten": it["Emiten"],
             "Sektor": it["Sektor"],
             "Industri": it["Industri"],
-            "IDX Sector": "",
+            "IDX Sector": normalize_idx_sector(idx_sectors.get(code)),
             "Investors": "\n".join(lines),
             "Free Float": round(max(0.0, 100 - total), 2),
             "Classic HHI": classic_hhi,
