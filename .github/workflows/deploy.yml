@@ -3,6 +3,13 @@ name: Deploy Next.js Static Export to GitHub Pages
 on:
   push:
     branches: [main]
+  # GitHub does not start workflows from pushes made with the default
+  # GITHUB_TOKEN, so idx-data-bot's data commits never fire the `push` trigger
+  # above. Without this, a snapshot committed after the 10:30 UTC cron sat
+  # unpublished until the next weekday run -- on 2026-07-23 that was ~20 hours.
+  workflow_run:
+    workflows: ["Daily IDX Data Update"]
+    types: [completed]
   schedule:
     - cron: "30 10 * * 1-5"
   workflow_dispatch:
@@ -22,6 +29,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Only publish when the data run actually succeeded. A failed or cancelled
+    # run must not trigger a deploy of unchanged or partial data.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
