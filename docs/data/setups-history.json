@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-07-17",
+ "asOf": "2026-07-23",
  "entries": [
   {
    "date": "2026-07-10",
@@ -29,8 +29,8 @@
    "close": 314.0,
    "target": 378,
    "invalidation": 261.36,
-   "outcome": "open",
-   "barsObserved": 4
+   "outcome": "undecided",
+   "barsObserved": 5
   },
   {
    "date": "2026-07-14",
@@ -39,8 +39,8 @@
    "close": 336.0,
    "target": 378,
    "invalidation": 261.36,
-   "outcome": "open",
-   "barsObserved": 3
+   "outcome": "undecided",
+   "barsObserved": 5
   },
   {
    "date": "2026-07-15",
@@ -50,7 +50,7 @@
    "target": 114,
    "invalidation": 100,
    "outcome": "target",
-   "barsObserved": 2
+   "barsObserved": 5
   },
   {
    "date": "2026-07-15",
@@ -59,15 +59,25 @@
    "close": 328.0,
    "target": 378,
    "invalidation": 261.36,
-   "outcome": "open",
-   "barsObserved": 2
+   "outcome": "undecided",
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-17",
+   "ticker": "DGWG",
+   "score": 55,
+   "close": 282.0,
+   "target": 290,
+   "invalidation": 271.26,
+   "outcome": "target",
+   "barsObserved": 4
   }
  ],
  "summary": {
-  "total": 6,
-  "decided": 2,
-  "targetFirst": 1,
-  "hitRate": 0.5
+  "total": 7,
+  "decided": 3,
+  "targetFirst": 2,
+  "hitRate": 0.667
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }

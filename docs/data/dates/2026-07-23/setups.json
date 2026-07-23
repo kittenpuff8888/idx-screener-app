@@ -1,0 +1,331 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-07-23",
+ "generatedAt": "2026-07-23T22:05:45.593007+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 4,
+ "setups": [
+  {
+   "ticker": "TCPI",
+   "name": "TRANSCOAL PACIFIC Tbk",
+   "sector": "IDXENERGY",
+   "close": 5600.0,
+   "score": 75,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 25,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 5504,
+   "invalidation": 5395.5,
+   "target": 6475,
+   "medianValueTraded20": 36807680000,
+   "rvol": 1.178504062941527,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1205605165,
+    1200600065,
+    1198968932,
+    1195612103,
+    1189298194,
+    1186755069,
+    1184631609,
+    1193500594,
+    1191934706,
+    1195572206,
+    1202655594,
+    1196844587,
+    1196844587,
+    1194161851,
+    1195019486,
+    1194615139,
+    1196994173,
+    1197154142,
+    1198251362,
+    1194010262,
+    1189175062,
+    1189571056,
+    1192121156,
+    1189880623,
+    1182665423,
+    1187746523,
+    1184741232,
+    1189840632,
+    1189152570,
+    1193847428
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 18,
+    "hitRate": 0.5,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ATCPI"
+  },
+  {
+   "ticker": "MSIN",
+   "name": "MNC DIGITAL ENTERTAINMENT Tbk",
+   "sector": "IDXCYCLIC",
+   "close": 410.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 406,
+   "invalidation": 397.98,
+   "target": 466,
+   "medianValueTraded20": 11040092000,
+   "rvol": 1.790186704511874,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1548358967,
+    1573157567,
+    1594880924,
+    1614227980,
+    1635869197,
+    1557385947,
+    1534689597,
+    1529195214,
+    1519803675,
+    1526024742,
+    1521408496,
+    1534728096,
+    1511442217,
+    1519833490,
+    1531375315,
+    1545108640,
+    1558111840,
+    1605455388,
+    1588543574,
+    1586361738,
+    1589194656,
+    1577573856,
+    1548576978,
+    1552172398,
+    1564838158,
+    1559323225,
+    1559323225,
+    1575102625,
+    1564826025,
+    1546826679
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 17,
+    "hitRate": 0.59,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMSIN"
+  },
+  {
+   "ticker": "MTEL",
+   "name": "DAYAMITRA TELEKOMUNIKASI Tbk",
+   "sector": "IDXINFRA",
+   "close": 456.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 25,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 454,
+   "invalidation": 445.5,
+   "target": 495,
+   "medianValueTraded20": 20584107200,
+   "rvol": 0.9125070986070744,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    10111632,
+    26473432,
+    43740232,
+    46244341,
+    65918041,
+    148445141,
+    180949274,
+    225154374,
+    267182574,
+    206776374,
+    227440074,
+    302445574,
+    384992074,
+    363285956,
+    354278716,
+    346091396,
+    376115096,
+    384019636,
+    384019636,
+    418649436,
+    364525436,
+    364525436,
+    395647008,
+    409565474,
+    452248074,
+    460276174,
+    472454074,
+    454985141,
+    454985141,
+    499936541
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 8,
+    "hitRate": 0.62,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMTEL"
+  },
+  {
+   "ticker": "CYBR",
+   "name": "ITSEC ASIA Tbk",
+   "sector": "IDXTECHNO",
+   "close": 565.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 556,
+   "invalidation": 544.5,
+   "target": 605,
+   "medianValueTraded20": 15184358000,
+   "rvol": 0.9690415825946864,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    438849097,
+    445070880,
+    456779380,
+    477824824,
+    473448096,
+    473448096,
+    486999216,
+    491695276,
+    486983347,
+    490300347,
+    491748070,
+    468843770,
+    481995370,
+    481995370,
+    455477870,
+    424917470,
+    416885470,
+    402553670,
+    432648470,
+    432648470,
+    453457550,
+    435074550,
+    435074550,
+    443982716,
+    435694650,
+    443099050,
+    429174150,
+    419861083,
+    442298383,
+    430830883
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 13,
+    "hitRate": 0.62,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ACYBR"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 956
+}
