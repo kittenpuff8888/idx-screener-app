@@ -35,18 +35,17 @@ class KseiOwnershipTests(unittest.TestCase):
         self.assertEqual(result["changedTickers"], [])
         self.assertEqual(result["investorAdditions"], [])
 
-    def test_published_latest_snapshot_is_june_14(self):
-        manifest = json.loads(
-            (ROOT / "docs" / "data" / "ksei" / "manifest.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(manifest["latestAsOf"], "2026-06-14")
+    def test_published_latest_snapshot_is_consistent(self):
+        # Deliberately asserts invariants, not literal dates/counts: this test used
+        # to pin latestAsOf to a specific day, so every new snapshot broke CI and
+        # blocked the commit step that publishes data.
+        ksei = ROOT / "docs" / "data" / "ksei"
+        manifest = json.loads((ksei / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["latestAsOf"], max(manifest["availableDates"]))
         self.assertIn("2026-05-14", manifest["availableDates"])
-        latest = json.loads(
-            (ROOT / "docs" / "data" / "ksei" / "latest.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(latest["summary"]["totalIssuers"], 956)
-        self.assertEqual(latest["summary"]["sectors"]["Others"], 44)
-        self.assertEqual(len(latest["investorChanges"]), 8)
+        latest = json.loads((ksei / "latest.json").read_text(encoding="utf-8"))
+        self.assertEqual(latest["asOf"], manifest["latestAsOf"])
+        self.assertGreater(latest["summary"]["totalIssuers"], 900)
         self.assertGreater(len(latest["investorDirectory"]), 5000)
         self.assertEqual(latest["schemaVersion"], 3)
         self.assertIn("changesByTicker", latest)
@@ -57,6 +56,26 @@ class KseiOwnershipTests(unittest.TestCase):
                 "rank" in row and "originalLine" in row
                 for row in latest["records"][0]["investors"]
             )
+        )
+
+    def test_published_snapshot_has_real_sector_classification(self):
+        # Regression guard: the 2026-07-20 import shipped with no "IDX Sector"
+        # column, so all 955 issuers collapsed into Others and the dashboard's
+        # sector views went blank. Nothing asserted sector health directly, so
+        # this only surfaced as an unrelated hardcoded-date assertion failing.
+        latest = json.loads(
+            (ROOT / "docs" / "data" / "ksei" / "latest.json").read_text(encoding="utf-8")
+        )
+        sectors = latest["summary"]["sectors"]
+        official = {code: n for code, n in sectors.items() if code != "Others"}
+        self.assertGreaterEqual(
+            len(official), 8, f"expected most IDX sectors represented, got {sorted(official)}"
+        )
+        total = latest["summary"]["totalIssuers"]
+        self.assertLess(
+            sectors.get("Others", 0),
+            total * 0.25,
+            "more than a quarter of issuers are unclassified - sector join likely broke",
         )
 
 
