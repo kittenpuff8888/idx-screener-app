@@ -11,7 +11,8 @@ const KICKER: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: ".
 
 type Health = {
   generatedAt: string; marketDate: string;
-  universe: { size: number | null; source: string; liveIdxRosterDiffReason?: string };
+  universe: { size: number | null; source: string; liveIdxRosterDiffReason?: string;
+    liveIdxRosterDiff?: { rosterSource?: string; rosterAsOf?: string; liveCount?: number; missingCount?: number; missingFromUniverse?: string[]; delistedCount?: number; inUniverseNotListed?: string[] } | null };
   runLog: Array<{ timestamp: string; marketDate: string; status: string; message: string }>;
   qaSummary?: Record<string, unknown> | null;
   processingSummary?: Record<string, unknown> | null;
@@ -47,7 +48,20 @@ export function DataHealthPage() {
           <div style={KICKER}>UNIVERSE</div>
           <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700 }}>{health.universe.size === null ? "—" : formatNumber(health.universe.size, 0)}</div>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{health.universe.source}</div>
-          {health.universe.liveIdxRosterDiffReason ? <div style={{ fontSize: 10.5, color: "var(--warning)", marginTop: 8 }}>⚠ Live IDX roster diff: {health.universe.liveIdxRosterDiffReason}</div> : null}
+          {(() => {
+            const d = health.universe.liveIdxRosterDiff;
+            if (!d) return health.universe.liveIdxRosterDiffReason ? <div style={{ fontSize: 10.5, color: "var(--warning)", marginTop: 8 }}>⚠ {health.universe.liveIdxRosterDiffReason}</div> : null;
+            const gap = d.missingCount || 0;
+            return (
+              <div style={{ marginTop: 8, fontSize: 10.5, lineHeight: 1.5 }}>
+                <div style={{ color: "var(--muted)" }}>IDX listed: <b style={{ fontFamily: MONO, color: "var(--text)" }}>{d.liveCount}</b> ({d.rosterSource}, {d.rosterAsOf})</div>
+                {gap > 0
+                  ? <div style={{ color: "var(--warning)", marginTop: 4 }}>⚠ {gap} listed not yet scanned — added to universe, will appear after the next workbook regen: <span style={{ fontFamily: MONO }}>{(d.missingFromUniverse || []).join(", ")}</span></div>
+                  : <div style={{ color: "var(--up)", marginTop: 4 }}>✓ all listed tickers in universe</div>}
+                {d.delistedCount ? <div style={{ color: "var(--muted)", marginTop: 4 }}>scanned but not listed: {(d.inUniverseNotListed || []).join(", ")}</div> : null}
+              </div>
+            );
+          })()}
         </div>
         <div style={CARD}>
           <div style={KICKER}>TRADINGVIEW PARITY</div>
