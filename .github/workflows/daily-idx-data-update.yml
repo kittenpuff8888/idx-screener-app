@@ -52,10 +52,11 @@ jobs:
 
       - name: Backfill historical archive
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_backfill }}
-        # Fills the gap below the existing 2025-01+ archive, down to the stored
-        # OHLCV floor (~2023-08). Reaching further back would require re-fetching
-        # OHLCV at a deeper window first.
-        run: python scripts/backfill_history.py --start 2023-08-18 --end 2024-12-31
+        # WARNING: backfill_history.py REBUILDS the archive to exactly this range —
+        # it does NOT fill gaps additively. Any dated snapshot outside [start,end]
+        # is dropped. Do not change this range to extend history without first
+        # making build_archive() gap-filling; otherwise it destroys existing data.
+        run: python scripts/backfill_history.py --start 2025-01-01 --end 2026-06-10
 
       - name: Update daily IDX data
         id: daily_update
