@@ -17,6 +17,11 @@ def main() -> None:
     parser.add_argument("--start", default=DEFAULT_START)
     parser.add_argument("--end", default=DEFAULT_END)
     parser.add_argument("--source-date", default=DEFAULT_SOURCE_DATE)
+    # Additive by default: existing snapshots in range are PRESERVED and only
+    # missing dates are built. --clean forces a full wipe-and-rebuild of the
+    # dates archive (the old destructive behaviour) and must be explicit.
+    parser.add_argument("--clean", action="store_true",
+                        help="wipe the entire dates archive and rebuild only [start,end] (destructive)")
     args = parser.parse_args()
     subprocess.run(
         [
@@ -30,7 +35,7 @@ def main() -> None:
         cwd=ROOT,
         check=True,
     )
-    manifest = build_archive(start=args.start, end=args.end, source_date=args.source_date)
+    manifest = build_archive(start=args.start, end=args.end, source_date=args.source_date, clean=args.clean)
     print(
         f"Published {len(manifest['dates'])} real market sessions from "
         f"{manifest['availableMarketDates'][0]} through {manifest['latestMarketDate']}."
