@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-07-23",
+ "asOf": "2026-07-24",
  "entries": [
   {
    "date": "2026-07-10",
@@ -70,14 +70,54 @@
    "target": 290,
    "invalidation": 271.26,
    "outcome": "target",
-   "barsObserved": 4
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-23",
+   "ticker": "TCPI",
+   "score": 75,
+   "close": 5600.0,
+   "target": 6475,
+   "invalidation": 5395.5,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-23",
+   "ticker": "MSIN",
+   "score": 70,
+   "close": 410.0,
+   "target": 466,
+   "invalidation": 397.98,
+   "outcome": "invalidated",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-23",
+   "ticker": "MTEL",
+   "score": 70,
+   "close": 456.0,
+   "target": 495,
+   "invalidation": 445.5,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-23",
+   "ticker": "CYBR",
+   "score": 60,
+   "close": 565.0,
+   "target": 605,
+   "invalidation": 544.5,
+   "outcome": "open",
+   "barsObserved": 1
   }
  ],
  "summary": {
-  "total": 7,
-  "decided": 3,
+  "total": 11,
+  "decided": 4,
   "targetFirst": 2,
-  "hitRate": 0.667
+  "hitRate": 0.5
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }

@@ -1,0 +1,327 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-07-24",
+ "generatedAt": "2026-07-24T19:02:31.286711+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 4,
+ "setups": [
+  {
+   "ticker": "JGLE",
+   "name": "GRAHA ANDRASENTRA PROPERTINDO Tbk",
+   "sector": "IDXCYCLIC",
+   "close": 63.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 62,
+   "invalidation": 58,
+   "target": 72,
+   "medianValueTraded20": 3629645000,
+   "rvol": 2.251511070029618,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -2270778698,
+    -2918807913,
+    -3065423553,
+    -3065423553,
+    -3103895086,
+    -3240228086,
+    -3289004766,
+    -3377350666,
+    -3322331466,
+    -3322331466,
+    -3447484666,
+    -3668104266,
+    -3668104266,
+    -4031101366,
+    -4119906866,
+    -4119906866,
+    -3941139166,
+    -4013732066,
+    -4080392766,
+    -4097558766,
+    -4097558766,
+    -4097558766,
+    -4097558766,
+    -4097558766,
+    -4097558766,
+    -4097558766,
+    -1325177866,
+    545326120,
+    -654478198,
+    -1403595418
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI PrevQ VWAP; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": null,
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AJGLE"
+  },
+  {
+   "ticker": "TCPI",
+   "name": "TRANSCOAL PACIFIC Tbk",
+   "sector": "IDXENERGY",
+   "close": 5550.0,
+   "score": 75,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 25,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 5454,
+   "invalidation": 5346.0,
+   "target": 6450,
+   "medianValueTraded20": 36807680000,
+   "rvol": 1.288069115291642,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1201844143,
+    1200213010,
+    1196856181,
+    1190542272,
+    1187999147,
+    1185875687,
+    1194744672,
+    1193178784,
+    1196816284,
+    1203899672,
+    1198088665,
+    1198088665,
+    1195405929,
+    1196263563,
+    1195859217,
+    1198238251,
+    1198398220,
+    1199495440,
+    1195254340,
+    1190419140,
+    1190815134,
+    1193365234,
+    1191124701,
+    1183909501,
+    1188990601,
+    1185985310,
+    1191084710,
+    1190396648,
+    1195091505,
+    1198684255
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 13,
+    "hitRate": 0.46,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ATCPI"
+  },
+  {
+   "ticker": "MSIN",
+   "name": "MNC DIGITAL ENTERTAINMENT Tbk",
+   "sector": "IDXCYCLIC",
+   "close": 386.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 382,
+   "invalidation": 374.21999999999997,
+   "target": 449,
+   "medianValueTraded20": 11040092000,
+   "rvol": 1.051548315269927,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1573614367,
+    1595337724,
+    1614684780,
+    1636325997,
+    1557842747,
+    1535146397,
+    1529652014,
+    1520260475,
+    1526481542,
+    1521865296,
+    1535184896,
+    1511899017,
+    1520290290,
+    1531832115,
+    1545565440,
+    1558568640,
+    1605912188,
+    1589000374,
+    1586818538,
+    1589651456,
+    1578030656,
+    1549033778,
+    1552629198,
+    1565294958,
+    1559780025,
+    1559780025,
+    1575559425,
+    1565282825,
+    1547283479,
+    1532799279
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 24,
+    "hitRate": 0.58,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMSIN"
+  },
+  {
+   "ticker": "MTEL",
+   "name": "DAYAMITRA TELEKOMUNIKASI Tbk",
+   "sector": "IDXINFRA",
+   "close": 456.0,
+   "score": 65,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 450,
+   "invalidation": 441.54,
+   "target": 493,
+   "medianValueTraded20": 22247882800,
+   "rvol": 1.096020648941088,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -42399768,
+    -25132968,
+    -22628859,
+    -2955159,
+    79571941,
+    112076074,
+    156281174,
+    198309374,
+    137903174,
+    158566874,
+    233572374,
+    316118874,
+    294412756,
+    285405516,
+    277218196,
+    307241896,
+    315146436,
+    315146436,
+    349776236,
+    295652236,
+    295652236,
+    326773808,
+    340692274,
+    383374874,
+    391402974,
+    403580874,
+    386111941,
+    386111941,
+    431063341,
+    484207941
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 10,
+    "hitRate": 0.6,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMTEL"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 956
+}
