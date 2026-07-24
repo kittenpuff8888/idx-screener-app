@@ -52,10 +52,12 @@ jobs:
 
       - name: Backfill historical archive
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_backfill }}
-        # Additive (no --clean): existing snapshots are PRESERVED, only missing
-        # dates are built. The range covers the whole archive (OHLCV floor ~2023-08
-        # through today) so the manifest keeps every date. --clean would wipe and
-        # rebuild only the range — never add it here.
+        # Additive (no --clean) so it can never delete existing snapshots.
+        # KNOWN LIMITATION: build_archive rebuilds the manifest only for dates in
+        # its frozen source (DEFAULT_SOURCE_DATE=2026-06-10), so running this drops
+        # dates the daily pipeline added after that from the manifest and the tests
+        # (correctly) block the commit. Extending history needs build_archive to
+        # MERGE the existing manifest first. Left additive/safe; not functional yet.
         run: python scripts/backfill_history.py --start 2023-08-18 --end 2026-12-31
 
       - name: Update daily IDX data
