@@ -146,7 +146,15 @@ export type KseiIssuer = {
   ownershipType: string;
   ccsCategory: string;
   idxSectorWeight: number | null;
+  composition?: OwnershipComposition | null;
   raw: JsonRecord;
+};
+
+export type OwnershipComposition = {
+  retailPct: number;
+  institutionalPct: number;
+  corporatePct: number;
+  otherPct: number;
 };
 
 export type KseiChange = {

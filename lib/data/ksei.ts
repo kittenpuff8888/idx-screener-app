@@ -41,6 +41,7 @@ export async function loadKsei(): Promise<KseiPayload> {
         ownershipType: text(record.ownershipType, "Unclassified"),
         ccsCategory: text(record.ccsCategory, "Unclassified"),
         idxSectorWeight: asNumber(record.idxSectorWeight),
+        composition: (record.composition as KseiIssuer["composition"]) ?? null,
         raw: record,
       };
     }),

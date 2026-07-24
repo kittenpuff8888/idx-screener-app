@@ -9,6 +9,7 @@ import type { OhlcvPayload } from "@/lib/domain/types";
 import { FundamentalsPanel } from "./FundamentalsPanel";
 import { NewsPanel } from "./NewsPanel";
 import { OwnershipPanel } from "./OwnershipPanel";
+import { IndexPanel } from "./IndexPanel";
 import { ResearchSummary } from "./ResearchSummary";
 import { TechnicalsPanel } from "./TechnicalsPanel";
 import { TickerChart } from "./TickerChart";
@@ -17,10 +18,11 @@ import { SetupPanel } from "./SetupPanel";
 import { TradePlan } from "./TradePlan";
 
 export function TickerDrawer() {
-  const { selectedTicker, closeTicker, bundle, ksei, marketDate } = useApp();
+  const { selectedTicker, closeTicker, bundle, ksei, idxIndex, marketDate } = useApp();
   const [ohlcv, setOhlcv] = useState<OhlcvPayload | null>(null);
   const stock = selectedTicker ? bundle?.technical.get(selectedTicker) : undefined;
   const ownership = selectedTicker ? ksei?.records.find((item) => item.ticker === selectedTicker) : undefined;
+  const indexRecord = selectedTicker ? idxIndex?.records[selectedTicker] : undefined;
   const fundamental = selectedTicker ? bundle?.fundamentals.get(selectedTicker) : undefined;
   const news = selectedTicker ? bundle?.news.get(selectedTicker) : undefined;
 
@@ -56,6 +58,7 @@ export function TickerDrawer() {
                 <TradePlan plan={plan} />
                 <OwnershipPanel ownership={ownership} />
               </div>
+              <IndexPanel record={indexRecord} effective={idxIndex?.effective} />
               <TickerChart payload={ohlcv} stock={stock} />
               <div className="ticker-overview-grid">
                 <FundamentalsPanel row={fundamental} stock={stock} asOf={marketDate} />
