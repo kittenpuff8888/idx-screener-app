@@ -17,6 +17,22 @@ export function OwnershipPanel({ ownership }: { ownership?: KseiIssuer }) {
         <div className="metric-card"><span>CR1</span><strong>{formatPlainPercent(ownership.cr1, 2)}</strong></div>
         <div className="metric-card"><span>CR3</span><strong>{formatPlainPercent(ownership.cr3, 2)}</strong></div>
       </div>
+      {ownership.composition ? (
+        <div className="mt-4">
+          <p className="text-xs text-muted mb-2">Investor mix — <span className="text-accent">retail</span> is the month-over-month signal</p>
+          <div className="flex h-5 w-full overflow-hidden rounded-md border border-white/10">
+            <span style={{ width: `${ownership.composition.retailPct}%` }} className="bg-accent/70" title={`Retail ${ownership.composition.retailPct}%`} />
+            <span style={{ width: `${ownership.composition.institutionalPct}%` }} className="bg-emerald-500/60" title={`Institutional ${ownership.composition.institutionalPct}%`} />
+            <span style={{ width: `${ownership.composition.corporatePct}%` }} className="bg-orange-500/50" title={`Corporate ${ownership.composition.corporatePct}%`} />
+            <span style={{ width: `${ownership.composition.otherPct}%` }} className="bg-white/15" title={`Other ${ownership.composition.otherPct}%`} />
+          </div>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+            <span>Retail <strong className="text-text">{ownership.composition.retailPct}%</strong></span>
+            <span>Institutional <strong className="text-text">{ownership.composition.institutionalPct}%</strong></span>
+            <span>Corporate <strong className="text-text">{ownership.composition.corporatePct}%</strong></span>
+          </div>
+        </div>
+      ) : null}
       <div className="mt-5 grid gap-3">
         {ownership.investors.slice(0, 8).map((investor) => (
           <div key={`${investor.rank}-${investor.name}`} className="flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.03] p-3">

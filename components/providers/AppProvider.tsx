@@ -16,6 +16,7 @@ import { loadMarketContext, type MarketContextPayload } from "@/lib/data/marketC
 import { loadManifest, resolveMarketDate } from "@/lib/data/metadata";
 import { loadResearchBundle } from "@/lib/data/screener";
 import { fetchLive, isMarketOpen, LIVE_ENDPOINT, LIVE_POLL_MS, type LiveSnapshot } from "@/lib/data/live";
+import { loadIdxIndex, type IdxIndexPayload } from "@/lib/data/idxIndex";
 import type { IndexPayload, KseiPayload, Manifest, ResearchBundle } from "@/lib/domain/types";
 
 const WATCHLIST_KEY = "idx_watchlist_tickers";
@@ -28,6 +29,7 @@ type AppContextValue = {
   indexes: IndexPayload | null;
   marketContext: MarketContextPayload | null;
   ksei: KseiPayload | null;
+  idxIndex: IdxIndexPayload | null;
   live: LiveSnapshot | null;
   loading: boolean;
   error: string | null;
@@ -70,6 +72,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [indexes, setIndexes] = useState<IndexPayload | null>(null);
   const [marketContext, setMarketContext] = useState<MarketContextPayload | null>(null);
   const [ksei, setKsei] = useState<KseiPayload | null>(null);
+  const [idxIndex, setIdxIndex] = useState<IdxIndexPayload | null>(null);
   const [live, setLive] = useState<LiveSnapshot | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
@@ -87,13 +90,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       try {
-        const [nextManifest, nextIndexes, nextKsei, nextMarketContext] = await Promise.all([
+        const [nextManifest, nextIndexes, nextKsei, nextMarketContext, nextIdxIndex] = await Promise.all([
           loadManifest(),
           loadIndexes(),
           loadKsei(),
           loadMarketContext(),
+          loadIdxIndex(),
         ]);
         if (cancelled) return;
+        setIdxIndex(nextIdxIndex);
         const requested = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("date") : null;
         const resolved = resolveMarketDate(nextManifest, requested);
         setManifest(nextManifest);
@@ -218,6 +223,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       indexes,
       marketContext,
       ksei,
+      idxIndex,
       live,
       loading,
       error,
@@ -239,6 +245,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       indexes,
       marketContext,
       ksei,
+      idxIndex,
       live,
       loading,
       error,
