@@ -44,7 +44,9 @@ def fetch_ticker(ticker: str, market_date: str) -> tuple[str, list[dict]]:
             "close": clean_number(row.get("Close")),
             "volume": clean_number(row.get("Volume")),
         })
-    return ticker, rows[-700:]
+    # Keep ~5 years of daily bars for charts (yfinance is fetched from 1990;
+    # this is the retained window). 1250 trading days ≈ 5 years.
+    return ticker, rows[-1250:]
 
 
 def main() -> None:
