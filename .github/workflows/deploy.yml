@@ -21,6 +21,9 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Live quote overlay endpoint (public URL, not a secret). Inlined into the
+  # static build; if unset, fetchLive() no-ops and the UI uses archived closes.
+  NEXT_PUBLIC_LIVE_ENDPOINT: ${{ vars.LIVE_ENDPOINT || 'https://idx-live-quotes.vercel.app/api/live' }}
 
 concurrency:
   group: pages

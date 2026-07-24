@@ -22,7 +22,7 @@ const CHIPS: Chip[] = [
 ];
 
 export function ExplorerPage() {
-  const { bundle, indexes, marketDate, loading } = useApp();
+  const { bundle, indexes, marketDate, loading, live } = useApp();
   const rows = bundle?.screener || [];
   const [search, setSearch] = useState("");
   const [sector, setSector] = useState("all");
@@ -70,11 +70,19 @@ export function ExplorerPage() {
             <span style={{ fontFamily: MONO, fontWeight: 600, color: "var(--text)" }}>{filtered.length}</span> of {rows.length} tickers pass · sorted by change % ↓
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, background: "var(--softer)", border: "1px solid var(--border)", color: "var(--muted)", padding: "8px 13px", borderRadius: 10, fontSize: 11 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--accent)", fontWeight: 600 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />Filter gates
-          </span>
-          <span style={{ fontFamily: MONO }}>ADTV 20D ≥ Rp5B <span style={{ color: "var(--faint)" }}>or</span> ≥ 5M shares <span style={{ color: "var(--faint)" }}>and</span> RSI ≥ 50</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+          {live ? (
+            <span style={{ display: "flex", alignItems: "center", gap: 6, background: "var(--softer)", border: "1px solid var(--border)", padding: "8px 12px", borderRadius: 10, fontSize: 11, color: "var(--up)", fontWeight: 600 }} title={`Live prices from Yahoo · ${live.covered} tickers · updated ${new Date(live.fetchedAt).toLocaleTimeString()}`}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--up)" }} />
+              Live · {live.covered} tickers
+            </span>
+          ) : null}
+          <div style={{ display: "flex", alignItems: "center", gap: 9, background: "var(--softer)", border: "1px solid var(--border)", color: "var(--muted)", padding: "8px 13px", borderRadius: 10, fontSize: 11 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--accent)", fontWeight: 600 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />Filter gates
+            </span>
+            <span style={{ fontFamily: MONO }}>ADTV 20D ≥ Rp5B <span style={{ color: "var(--faint)" }}>or</span> ≥ 5M shares <span style={{ color: "var(--faint)" }}>and</span> RSI ≥ 50</span>
+          </div>
         </div>
       </div>
 

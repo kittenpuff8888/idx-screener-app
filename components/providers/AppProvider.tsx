@@ -15,6 +15,7 @@ import { loadKsei } from "@/lib/data/ksei";
 import { loadMarketContext, type MarketContextPayload } from "@/lib/data/marketContext";
 import { loadManifest, resolveMarketDate } from "@/lib/data/metadata";
 import { loadResearchBundle } from "@/lib/data/screener";
+import { fetchLive, isMarketOpen, LIVE_ENDPOINT, LIVE_POLL_MS, type LiveSnapshot } from "@/lib/data/live";
 import type { IndexPayload, KseiPayload, Manifest, ResearchBundle } from "@/lib/domain/types";
 
 const WATCHLIST_KEY = "idx_watchlist_tickers";
@@ -27,6 +28,7 @@ type AppContextValue = {
   indexes: IndexPayload | null;
   marketContext: MarketContextPayload | null;
   ksei: KseiPayload | null;
+  live: LiveSnapshot | null;
   loading: boolean;
   error: string | null;
   selectedTicker: string | null;
@@ -68,6 +70,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [indexes, setIndexes] = useState<IndexPayload | null>(null);
   const [marketContext, setMarketContext] = useState<MarketContextPayload | null>(null);
   const [ksei, setKsei] = useState<KseiPayload | null>(null);
+  const [live, setLive] = useState<LiveSnapshot | null>(null);
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,6 +136,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [marketDate, indexes]);
 
+  // Live quote overlay. Inert unless NEXT_PUBLIC_LIVE_ENDPOINT is configured.
+  // Polls only while the IDX session is open; outside hours the last snapshot
+  // stands and we stop hitting the endpoint. Failures leave `live` as-is, so
+  // the UI silently falls back to the archived close (never a fabricated price).
+  useEffect(() => {
+    if (!LIVE_ENDPOINT) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    async function tick() {
+      const snapshot = await fetchLive(controller.signal);
+      if (!cancelled && snapshot) setLive(snapshot);
+    }
+    tick();
+    const id = window.setInterval(() => {
+      if (isMarketOpen()) tick();
+    }, LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearInterval(id);
+    };
+  }, []);
+
   const setMarketDate = useCallback(
     (date: string) => {
       if (!manifest) return;
@@ -192,6 +218,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       indexes,
       marketContext,
       ksei,
+      live,
       loading,
       error,
       selectedTicker,
@@ -212,6 +239,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       indexes,
       marketContext,
       ksei,
+      live,
       loading,
       error,
       selectedTicker,

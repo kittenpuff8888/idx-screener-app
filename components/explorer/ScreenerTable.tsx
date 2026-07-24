@@ -18,7 +18,7 @@ const TH: CSSProperties = { padding: "4px 8px 11px", textAlign: "right", cursor:
 const TD: CSSProperties = { padding: "11px 8px", fontFamily: MONO, fontSize: 12 };
 
 export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
-  const { openTicker, toggleWatchlist, isWatched } = useApp();
+  const { openTicker, toggleWatchlist, isWatched, live } = useApp();
   const [sortKey, setSortKey] = useState<SortKey | null>("chg");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -80,6 +80,11 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
               const rs = rsOf(r);
               const watched = isWatched(r.ticker);
               const pick = () => openTicker(r.ticker);
+              const q = live?.quotes?.[r.ticker.toUpperCase()];
+              const showPrice = q ? q.p : r.price;
+              // formatPercent multiplies by 100 (changePct is a ratio), but the
+              // live feed's `c` is already a percent, so scale it back to a ratio.
+              const showChg = q && q.c !== null ? q.c / 100 : r.changePct;
               return (
                 <tr key={`${r.ticker}-${i}`} style={{ borderTop: "1px solid var(--hair)", cursor: "pointer", background: i % 2 ? "var(--softer)" : "transparent" }}>
                   <td style={{ padding: "11px 6px 11px 16px", textAlign: "center" }}>
@@ -90,8 +95,11 @@ export function ScreenerTable({ rows }: { rows: ScreenerRow[] }) {
                   <td onClick={pick} style={{ padding: "11px 8px" }}><span style={{ fontSize: 10, background: "var(--soft)", padding: "3px 7px", borderRadius: 6, color: "var(--muted)", whiteSpace: "nowrap" }}>{sectorShort(r.idxSectorRaw)}</span></td>
                   <td onClick={pick} style={{ padding: "11px 8px", fontSize: 11, color: "var(--muted)" }}>{r.industry}</td>
                   <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: rs === null ? "var(--muted)" : "var(--text)" }}>{rs === null ? "—" : formatNumber(rs, 0)}</span></td>
-                  <td onClick={pick} style={{ ...TD, textAlign: "right", borderLeft: "1px solid var(--hair)" }}>{r.price === null ? "—" : formatPrice(r.price)}</td>
-                  <td onClick={pick} style={{ ...TD, textAlign: "right", fontWeight: 600, color: chgColor(r.changePct) }}>{r.changePct === null ? "—" : formatPercent(r.changePct)}</td>
+                  <td onClick={pick} style={{ ...TD, textAlign: "right", borderLeft: "1px solid var(--hair)" }}>
+                    {q ? <span title={`Live · Yahoo`} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: "var(--up)", marginRight: 5, verticalAlign: "middle" }} /> : null}
+                    {showPrice === null || showPrice === undefined ? "—" : formatPrice(showPrice)}
+                  </td>
+                  <td onClick={pick} style={{ ...TD, textAlign: "right", fontWeight: 600, color: chgColor(showChg ?? null) }}>{showChg === null || showChg === undefined ? "—" : formatPercent(showChg)}</td>
                   <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right", fontFamily: MONO, fontSize: 11.5, color: "var(--muted)" }}>{r.beta === null ? "—" : formatNumber(r.beta, 2)}</td>
                   <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right", fontFamily: MONO, fontSize: 11.5, color: chgColor((r.rvol ?? 0) - 1) }}>{r.rvol === null ? "—" : formatNumber(r.rvol, 2)}</td>
                   <td onClick={pick} style={{ padding: "11px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)" }} title="Conviction score — no backing field in dataset (see DATA_GAPS.md)">—</span></td>
