@@ -195,7 +195,7 @@ export function DashboardPage() {
   }
 
   return (
-    <section style={{ maxWidth: 1320, margin: "0 auto" }}>
+    <section>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Research Dashboard</h1>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: 680, lineHeight: 1.5 }}>

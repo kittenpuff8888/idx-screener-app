@@ -104,7 +104,7 @@ export function SetupsPage() {
     .filter((s) => !kseiOnly || Boolean(s.kseiFootprint)), [payload, minScore, hideIpo, kseiOnly]);
 
   return (
-    <section style={{ maxWidth: 1320, margin: "0 auto" }}>
+    <section>
       <div style={{ marginBottom: 18 }}>
         <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Swing Setups</h1>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: 720, lineHeight: 1.5 }}>
