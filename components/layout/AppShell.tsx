@@ -22,8 +22,8 @@ function tradingDaysBehind(marketDate: string): number {
   return Math.max(0, days - 1);
 }
 
-// Frame ports the prototype shell (IDX Research.dc.html): an outer padded frame
-// wrapping a single rounded "app card" that holds the sidebar + main column.
+// Full-page layout: sidebar + main column filling the whole viewport, no outer
+// frame or centered "app card" (was the prototype shell, maxWidth 1560).
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { error, marketDate, manifest } = useApp();
   const latest = manifest?.latestMarketDate || marketDate;
@@ -32,23 +32,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div
       style={{
         fontFamily: "var(--sans, var(--font-body))",
-        background: "var(--frame)",
+        background: "var(--panel)",
         color: "var(--text)",
         minHeight: "100vh",
         WebkitFontSmoothing: "antialiased",
-        padding: 14,
       }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "stretch",
-          maxWidth: 1560,
-          margin: "0 auto",
+          minHeight: "100vh",
           background: "var(--panel)",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--shellR)",
-          boxShadow: "0 4px 24px rgba(11,14,20,.06)",
         }}
       >
         <Sidebar />
