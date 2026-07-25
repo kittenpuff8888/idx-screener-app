@@ -8,7 +8,7 @@ import { Provenance } from "@/components/shared/Metric";
 import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { MarketMap } from "./MarketMap";
 import { MarketRisk } from "./MarketRisk";
-import { MacroStrip } from "./MacroStrip";
+import { InstrumentCard, buildCard, type InstrumentSpec } from "./InstrumentCard";
 import { computeMarketRisk } from "@/lib/data/marketRisk";
 import { latestInstrumentValue } from "@/lib/data/marketContext";
 import { normalizeSector } from "@/lib/domain/sectors";
@@ -23,6 +23,26 @@ const CARD: CSSProperties = {
   boxShadow: "var(--sh, var(--shadow))",
 };
 const KICKER: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--faint)" };
+
+// Instruments grouped by context. VIX sits in the RISK section next to the risk gauge.
+const INSTRUMENT_GROUPS: Array<{ title: string; specs: InstrumentSpec[] }> = [
+  { title: "INDEX", specs: [
+    { code: "IHSG", keys: ["IHSG", "^JKSE"], tv: "IDX:COMPOSITE" },
+    { code: "EIDO", keys: ["EIDO"], tv: "AMEX:EIDO" },
+    { code: "S&P 500", keys: ["SPX", "^GSPC"], tv: "SP:SPX" },
+  ] },
+  { title: "COMMODITIES", specs: [
+    { code: "Coal", keys: ["COAL", "MTF=F"], tv: "NYMEX:MTF1!" },
+    { code: "Brent", keys: ["BRENT", "BZ=F"], tv: "TVC:UKOIL" },
+  ] },
+  { title: "MONEYFLOW", specs: [
+    { code: "US 10Y", keys: ["US10Y", "^TNX"], tv: "TVC:US10Y" },
+    { code: "USDIDR", keys: ["USDIDR", "IDR=X"], tv: "FX_IDC:USDIDR" },
+    { code: "DXY", keys: ["DXY", "DX-Y.NYB"], tv: "TVC:DXY" },
+    { code: "Gold (XAU)", keys: ["GOLD", "GC=F"], tv: "OANDA:XAUUSD" },
+    { code: "BTC", keys: ["BTC", "BTC-USD"], tv: "BINANCE:BTCUSDT" },
+  ] },
+];
 const MONO = "var(--mono, var(--font-mono))";
 
 function chgColor(v: number | null): string {
@@ -66,37 +86,12 @@ export function DashboardPage() {
   const overview = (bundle?.overview?.overview || {}) as JsonRecord;
   const summary = (bundle?.overview?.summary || {}) as JsonRecord;
 
-  // ---- Index strip (real market-context series) ----
-  const indices = useMemo(() => {
-    const want: Array<{ code: string; keys: string[]; symbol: string }> = [
-      { code: "IHSG", keys: ["IHSG", "^JKSE"], symbol: "IDX:COMPOSITE" },
-      { code: "EIDO", keys: ["EIDO"], symbol: "AMEX:EIDO" },
-      { code: "USDIDR", keys: ["USDIDR", "IDR=X"], symbol: "FX_IDC:USDIDR" },
-      { code: "VIX", keys: ["VIX", "^VIX"], symbol: "TVC:VIX" },
-      { code: "S&P 500", keys: ["SPX", "^GSPC"], symbol: "SP:SPX" },
-    ];
-    const map = new Map((marketContext?.instruments || []).map((i) => [i.label.toUpperCase(), i] as const));
-    const map2 = new Map((marketContext?.instruments || []).map((i) => [i.symbol.toUpperCase(), i] as const));
-    return want.map((w) => {
-      const inst = w.keys.map((k) => map.get(k.toUpperCase()) || map2.get(k.toUpperCase())).find(Boolean);
-      const v = inst ? latestInstrumentValue(inst) : { value: null, change: null, changePct: null, series: [] as number[] };
-      const up = (v.changePct ?? 0) >= 0;
-      return {
-        code: w.code,
-        tv: `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(w.symbol)}`,
-        value: v.value,
-        prev: v.value !== null && v.change !== null ? v.value - v.change : null,
-        changePct: v.changePct,
-        series: v.series,
-        up,
-        periods: [
-          { label: "1D", val: v.changePct },
-          { label: "5D", val: pctOver(v.series, 5) },
-          { label: "20D", val: pctOver(v.series, 19) },
-        ],
-      };
-    });
-  }, [marketContext]);
+  // ---- Instrument groups, by context (each a TV-linked chart card) ----
+  const groups = useMemo(() => INSTRUMENT_GROUPS.map((g) => ({
+    title: g.title,
+    cards: g.specs.map((s) => buildCard(marketContext, s)),
+  })), [marketContext]);
+  const vixCard = useMemo(() => buildCard(marketContext, { code: "VIX", keys: ["VIX", "^VIX"], tv: "TVC:VIX" }), [marketContext]);
 
   // ---- Breadth + risk ----
   const breadth = (overview.breadth || {}) as JsonRecord;
@@ -205,72 +200,65 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* index cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(232px,1fr))", gap: 14, marginBottom: 16 }}>
-        {indices.map((ix) => (
-          <div key={ix.code} style={{ ...CARD, padding: "15px 16px", display: "flex", flexDirection: "column", gap: 11 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 600, letterSpacing: ".04em" }}>{ix.code}</span>
-              <a href={ix.tv} target="_blank" rel="noreferrer" style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)", textDecoration: "none" }}>TV ↗</a>
-            </div>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
-              <div style={{ fontFamily: MONO, fontSize: 23, fontWeight: 600, lineHeight: 1 }}>{ix.value === null ? "—" : formatNumber(ix.value, 2)}</div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
-                <div style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 600, color: chgColor(ix.changePct) }}>{ix.changePct === null ? "—" : formatPercent(ix.changePct)}</div>
-                <div style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)" }}>Prev {ix.prev === null ? "—" : formatNumber(ix.prev, 2)}</div>
-              </div>
-            </div>
-            <div style={{ height: 34 }}><Spark series={ix.series} up={ix.up} /></div>
-            <div style={{ display: "flex", gap: 6 }}>
-              {ix.periods.map((p) => (
-                <div key={p.label} style={{ flex: 1, background: "var(--soft)", borderRadius: 8, padding: "6px 7px", textAlign: "center" }}>
-                  <div style={{ fontSize: 9, color: "var(--faint)", letterSpacing: ".06em", marginBottom: 2 }}>{p.label}</div>
-                  <div style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 600, color: chgColor(p.val) }}>{p.val === null ? "—" : formatPercent(p.val)}</div>
-                </div>
-              ))}
-            </div>
+      {/* INDEX */}
+      {(() => { const g = groups.find((x) => x.title === "INDEX"); return g ? (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ ...KICKER, marginBottom: 10 }}>{g.title}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(232px,1fr))", gap: 14 }}>
+            {g.cards.map((c) => <InstrumentCard key={c.code} card={c} />)}
           </div>
-        ))}
-      </div>
+        </div>
+      ) : null; })()}
 
-      <MacroStrip marketContext={marketContext} />
-
-      {/* market overview — risk gauge + sector rotation, with a compact signal strip */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ ...KICKER, marginBottom: 10 }}>MARKET OVERVIEW</div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1.2fr) minmax(260px, 1fr)", gap: 14 }}>
+      {/* RISK — VIX + the composite risk gauge */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ ...KICKER, marginBottom: 10 }}>RISK</div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(232px, 0.8fr) minmax(320px, 1.6fr)", gap: 14 }}>
+          <InstrumentCard card={vixCard} />
           <div style={CARD}>
             <MarketRisk risk={marketRisk} />
             <div style={{ marginTop: 10 }}><Provenance source="IHSG close + breadth" asOf={marketDate} /></div>
           </div>
+        </div>
+      </div>
 
-          <div style={CARD}>
-            <div style={{ ...KICKER, marginBottom: 12 }}>SECTOR MOMENTUM · TODAY</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {sectors.map((m) => {
-                const up = m.v >= 0;
-                const w = `${(Math.abs(m.v) / maxAbs) * 48}%`;
-                return (
-                  <div key={m.code} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ fontFamily: MONO, fontSize: 10.5, width: 74, color: "var(--muted)" }}>{m.code}</span>
-                    <div style={{ flex: 1, height: 7, background: "var(--soft)", borderRadius: 5, position: "relative", overflow: "hidden" }}>
-                      <div style={{ position: "absolute", top: 0, [up ? "left" : "right"]: "50%", width: w, height: "100%", background: up ? "var(--up)" : "var(--down)", borderRadius: 5 }} />
-                      <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "var(--border)" }} />
-                    </div>
-                    <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600, width: 48, textAlign: "right", color: up ? "var(--up)" : "var(--down)" }}>{formatPercent(m.v)}</span>
+      {/* COMMODITIES + MONEYFLOW */}
+      {["COMMODITIES", "MONEYFLOW"].map((title) => { const g = groups.find((x) => x.title === title); return g ? (
+        <div key={title} style={{ marginBottom: 18 }}>
+          <div style={{ ...KICKER, marginBottom: 10 }}>{g.title}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+            {g.cards.map((c) => <InstrumentCard key={c.code} card={c} />)}
+          </div>
+        </div>
+      ) : null; })}
+
+      {/* SECTOR ROTATION + signal strip */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ ...KICKER, marginBottom: 10 }}>SECTOR MOMENTUM · TODAY</div>
+        <div style={CARD}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: "8px 28px", marginBottom: 14 }}>
+            {sectors.map((m) => {
+              const up = m.v >= 0;
+              const w = `${(Math.abs(m.v) / maxAbs) * 48}%`;
+              return (
+                <div key={m.code} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                  <span style={{ fontFamily: MONO, fontSize: 10.5, width: 74, color: "var(--muted)" }}>{m.code}</span>
+                  <div style={{ flex: 1, height: 7, background: "var(--soft)", borderRadius: 5, position: "relative", overflow: "hidden" }}>
+                    <div style={{ position: "absolute", top: 0, [up ? "left" : "right"]: "50%", width: w, height: "100%", background: up ? "var(--up)" : "var(--down)", borderRadius: 5 }} />
+                    <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "var(--border)" }} />
                   </div>
-                );
-              })}
-            </div>
-            {/* compact signal-summary strip (folded in from the old box) */}
-            <div style={{ display: "flex", gap: 8, borderTop: "1px solid var(--hair)", paddingTop: 12 }}>
-              {signalStats.map((s) => (
-                <div key={s.label} style={{ flex: 1, textAlign: "center" }}>
-                  <div style={{ fontFamily: MONO, fontSize: 17, fontWeight: 600, color: s.color }}>{formatNumber(s.count, 0)}</div>
-                  <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 1 }}>{s.label}</div>
+                  <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600, width: 48, textAlign: "right", color: up ? "var(--up)" : "var(--down)" }}>{formatPercent(m.v)}</span>
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 8, borderTop: "1px solid var(--hair)", paddingTop: 12 }}>
+            {signalStats.map((s) => (
+              <div key={s.label} style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ fontFamily: MONO, fontSize: 17, fontWeight: 600, color: s.color }}>{formatNumber(s.count, 0)}</div>
+                <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 1 }}>{s.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
