@@ -66,6 +66,24 @@ export function computeMarketRisk(
   const flowScore = clamp01(0.5 + flowGap * 12);
   const flowLabel = eido.length < 6 ? "n/a" : flowGap > 0.005 ? "Supportive" : flowGap < -0.005 ? "Draining" : "Neutral";
 
+  // --- extra display metrics (comprehensive), all from close ---
+  // Momentum: IHSG 5-day change
+  const mom5 = chg5(ihsg);
+  const momLabel = mom5 > 0.005 ? "Positive" : mom5 < -0.005 ? "Negative" : "Flat";
+  // VIX regime (global fear gauge)
+  const vix = seriesOf(mc, "VIX", "^VIX");
+  const vixLast = vix.at(-1);
+  const vixLabel = vixLast == null ? "n/a" : vixLast < 15 ? "Calm" : vixLast > 25 ? "Fear" : "Normal";
+  // Drawdown from the recent (90d) high
+  const win = ihsg.slice(-90);
+  const hi = Math.max(...win);
+  const dd = hi ? last / hi - 1 : 0;
+  const ddLabel = dd > -0.03 ? "Near highs" : dd > -0.1 ? `${(dd * 100).toFixed(1)}% off high` : `${(dd * 100).toFixed(0)}% correction`;
+  // Global backdrop: S&P 500 20-day trend
+  const spx = seriesOf(mc, "SPX", "^GSPC");
+  const spx20 = spx.length >= 21 ? spx.at(-1)! / spx[spx.length - 21] - 1 : 0;
+  const spxLabel = spx.length < 21 ? "n/a" : spx20 > 0.005 ? "Risk-on" : spx20 < -0.005 ? "Risk-off" : "Flat";
+
   const score = Math.round(100 * (0.30 * trendScore + 0.30 * breadthScore + 0.20 * volScore + 0.20 * flowScore));
   const label = score >= 55 ? "RISK-ON" : score <= 45 ? "RISK-OFF" : "NEUTRAL";
   const tone: RiskTone = score >= 55 ? "up" : score <= 45 ? "down" : "neutral";
@@ -83,6 +101,10 @@ export function computeMarketRisk(
       { name: "Volatility", value: volLabel, hint: "How choppy prices are vs their norm", tone: vol > 0.018 ? "down" : vol < 0.008 ? "up" : "neutral" },
       { name: "Breadth", value: `${breadthPct}% up`, hint: "Share of directional stocks advancing", tone: breadthPct >= 55 ? "up" : breadthPct <= 45 ? "down" : "neutral" },
       { name: "Foreign flow", value: flowLabel, hint: "EIDO vs IHSG — foreign sentiment proxy", tone: flowGap > 0.005 ? "up" : flowGap < -0.005 ? "down" : "neutral" },
+      { name: "Momentum", value: momLabel, hint: "IHSG 5-day price push", tone: mom5 > 0.005 ? "up" : mom5 < -0.005 ? "down" : "neutral" },
+      { name: "Volatility gauge", value: vixLabel + (vixLast != null ? ` (${vixLast.toFixed(1)})` : ""), hint: "VIX — global fear gauge", tone: vixLast == null ? "neutral" : vixLast < 15 ? "up" : vixLast > 25 ? "down" : "neutral" },
+      { name: "Drawdown", value: ddLabel, hint: "IHSG distance from its 90-day high", tone: dd > -0.03 ? "up" : dd < -0.1 ? "down" : "neutral" },
+      { name: "Global backdrop", value: spxLabel, hint: "S&P 500 20-day trend — risk appetite abroad", tone: spx20 > 0.005 ? "up" : spx20 < -0.005 ? "down" : "neutral" },
     ],
   };
 }
