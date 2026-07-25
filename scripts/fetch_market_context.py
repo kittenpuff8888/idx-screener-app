@@ -20,6 +20,15 @@ INSTRUMENTS = (
     {"label": "BTC", "symbol": "BTC-USD"},
     {"label": "SPX", "symbol": "^GSPC"},
     {"label": "KOSPI", "symbol": "^KS11"},
+    # IHSG-relevant macro drivers (added 2026-07): dollar strength and global
+    # rates move EM/IDR flows; coal is Indonesia's top export; oil + gold round
+    # out the commodity/safe-haven picture. Indonesia's own 10Y is not on Yahoo,
+    # so US 10Y stands in as the global-rates proxy.
+    {"label": "DXY", "symbol": "DX-Y.NYB"},
+    {"label": "US10Y", "symbol": "^TNX"},
+    {"label": "COAL", "symbol": "MTF=F"},
+    {"label": "BRENT", "symbol": "BZ=F"},
+    {"label": "GOLD", "symbol": "GC=F"},
 )
 
 

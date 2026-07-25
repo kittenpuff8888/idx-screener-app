@@ -7,6 +7,9 @@ import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { Provenance } from "@/components/shared/Metric";
 import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { MarketMap } from "./MarketMap";
+import { MarketRisk } from "./MarketRisk";
+import { MacroStrip } from "./MacroStrip";
+import { computeMarketRisk } from "@/lib/data/marketRisk";
 import { latestInstrumentValue } from "@/lib/data/marketContext";
 import { normalizeSector } from "@/lib/domain/sectors";
 import type { JsonRecord } from "@/lib/domain/types";
@@ -82,6 +85,7 @@ export function DashboardPage() {
         code: w.code,
         tv: `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(w.symbol)}`,
         value: v.value,
+        prev: v.value !== null && v.change !== null ? v.value - v.change : null,
         changePct: v.changePct,
         series: v.series,
         up,
@@ -101,9 +105,7 @@ export function DashboardPage() {
   const unc = asNumber(breadth.unchanged) ?? 0;
   const total = adv + dec + unc || 1;
   const ratio = adv + dec ? adv / (adv + dec) : 0;
-  const risk = ratio >= 0.55 ? { label: "RISK-ON", color: "var(--up)", bg: "var(--upSoft)" }
-    : ratio <= 0.45 ? { label: "RISK-OFF", color: "var(--down)", bg: "var(--downSoft)" }
-      : { label: "NEUTRAL", color: "var(--muted)", bg: "var(--soft)" };
+  const marketRisk = useMemo(() => computeMarketRisk(marketContext, ratio, marketDate), [marketContext, ratio, marketDate]);
 
   // ---- KSEI latest changes ----
   // KSEI percentages are already in percent points (e.g. 5.71), not ratios —
@@ -213,7 +215,10 @@ export function DashboardPage() {
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
               <div style={{ fontFamily: MONO, fontSize: 23, fontWeight: 600, lineHeight: 1 }}>{ix.value === null ? "—" : formatNumber(ix.value, 2)}</div>
-              <div style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 600, color: chgColor(ix.changePct) }}>{ix.changePct === null ? "—" : formatPercent(ix.changePct)}</div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 1 }}>
+                <div style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 600, color: chgColor(ix.changePct) }}>{ix.changePct === null ? "—" : formatPercent(ix.changePct)}</div>
+                <div style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)" }}>Prev {ix.prev === null ? "—" : formatNumber(ix.prev, 2)}</div>
+              </div>
             </div>
             <div style={{ height: 34 }}><Spark series={ix.series} up={ix.up} /></div>
             <div style={{ display: "flex", gap: 6 }}>
@@ -228,93 +233,44 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* four boxes */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14, marginBottom: 16 }}>
-        {/* market risk + breadth */}
-        <div style={CARD}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
-            <div style={KICKER}>MARKET RISK</div>
-            <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, padding: "4px 9px", borderRadius: 7, background: risk.bg, color: risk.color }}>{risk.label}</span>
-          </div>
-          <div style={{ fontSize: 12.5, color: "var(--muted)", lineHeight: 1.45, marginBottom: 13 }}>
-            Advancers / (advancers + decliners) = {(ratio * 100).toFixed(0)}% of directional tickers.
-          </div>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, marginBottom: 9 }}>
-            <div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 600, color: "var(--up)" }}>{formatNumber(adv, 0)}</div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>Advancing</div>
-            <div style={{ flex: 1 }} />
-            <div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 600, color: "var(--down)" }}>{formatNumber(dec, 0)}</div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>Declining</div>
-          </div>
-          <div style={{ display: "flex", height: 8, borderRadius: 6, overflow: "hidden", gap: 2, marginBottom: 13 }}>
-            <div style={{ width: `${(adv / total) * 100}%`, background: "var(--up)" }} />
-            <div style={{ width: `${(unc / total) * 100}%`, background: "var(--border)" }} />
-            <div style={{ width: `${(dec / total) * 100}%`, background: "var(--down)" }} />
-          </div>
-          <Provenance source="Overview breadth" asOf={marketDate} />
-        </div>
+      <MacroStrip marketContext={marketContext} />
 
-        {/* ksei change */}
-        <div style={CARD}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={KICKER}>KSEI OWNERSHIP · LATEST Δ</div>
-            <span style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)" }}>{ksei?.asOf ?? "—"}</span>
+      {/* market overview — risk gauge + sector rotation, with a compact signal strip */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ ...KICKER, marginBottom: 10 }}>MARKET OVERVIEW</div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 1.2fr) minmax(260px, 1fr)", gap: 14 }}>
+          <div style={CARD}>
+            <MarketRisk risk={marketRisk} />
+            <div style={{ marginTop: 10 }}><Provenance source="IHSG close + breadth" asOf={marketDate} /></div>
           </div>
-          {kseiChanges.length ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {kseiChanges.map((k, i) => (
-                <button key={`${k.ticker}-${i}`} type="button" onClick={() => openTicker(k.ticker)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, background: "transparent", border: "none", padding: 0, cursor: "pointer", textAlign: "left", color: "var(--text)" }}>
-                  <span style={{ fontFamily: MONO, fontWeight: 600, width: 46 }}>{k.ticker}</span>
-                  <span style={{ color: "var(--muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k.label}</span>
-                  <span style={{ fontFamily: MONO, fontWeight: 600, color: chgColor(k.delta) }}>{k.delta > 0 ? "+" : ""}{formatPlainPercent(k.delta)} pp</span>
-                </button>
+
+          <div style={CARD}>
+            <div style={{ ...KICKER, marginBottom: 12 }}>SECTOR MOMENTUM · TODAY</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              {sectors.map((m) => {
+                const up = m.v >= 0;
+                const w = `${(Math.abs(m.v) / maxAbs) * 48}%`;
+                return (
+                  <div key={m.code} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                    <span style={{ fontFamily: MONO, fontSize: 10.5, width: 74, color: "var(--muted)" }}>{m.code}</span>
+                    <div style={{ flex: 1, height: 7, background: "var(--soft)", borderRadius: 5, position: "relative", overflow: "hidden" }}>
+                      <div style={{ position: "absolute", top: 0, [up ? "left" : "right"]: "50%", width: w, height: "100%", background: up ? "var(--up)" : "var(--down)", borderRadius: 5 }} />
+                      <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "var(--border)" }} />
+                    </div>
+                    <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600, width: 48, textAlign: "right", color: up ? "var(--up)" : "var(--down)" }}>{formatPercent(m.v)}</span>
+                  </div>
+                );
+              })}
+            </div>
+            {/* compact signal-summary strip (folded in from the old box) */}
+            <div style={{ display: "flex", gap: 8, borderTop: "1px solid var(--hair)", paddingTop: 12 }}>
+              {signalStats.map((s) => (
+                <div key={s.label} style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontFamily: MONO, fontSize: 17, fontWeight: 600, color: s.color }}>{formatNumber(s.count, 0)}</div>
+                  <div style={{ fontSize: 9.5, color: "var(--muted)", marginTop: 1 }}>{s.label}</div>
+                </div>
               ))}
             </div>
-          ) : (
-            <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No reported holder changes in the latest snapshot.</div>
-          )}
-        </div>
-
-        {/* signal summary */}
-        <div style={CARD}>
-          <div style={{ ...KICKER, marginBottom: 14 }}>SIGNAL SUMMARY</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            {signalStats.map((s) => (
-              <div key={s.label} style={{ flex: 1, background: "var(--soft)", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
-                <div style={{ fontFamily: MONO, fontSize: 20, fontWeight: 600, color: s.color }}>{formatNumber(s.count, 0)}</div>
-                <div style={{ fontSize: 10, color: "var(--muted)", marginTop: 2 }}>{s.label}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {topSignals.map((t) => (
-              <button key={`${t.ticker}-${t.signalLabel}`} type="button" onClick={() => openTicker(t.ticker)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, cursor: "pointer", background: "transparent", border: "none", padding: 0, textAlign: "left", color: "var(--text)" }}>
-                <span style={{ fontFamily: MONO, fontWeight: 600, width: 46 }}>{t.ticker}</span>
-                <span style={{ background: "var(--accentSoft)", color: "var(--accent)", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 6 }}>{t.signalLabel}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11, color: chgColor(t.changePct), marginLeft: "auto" }}>{formatPercent(t.changePct)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* sector momentum */}
-        <div style={CARD}>
-          <div style={{ ...KICKER, marginBottom: 14 }}>SECTOR MOMENTUM · TODAY</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {sectors.map((m) => {
-              const up = m.v >= 0;
-              const w = `${(Math.abs(m.v) / maxAbs) * 48}%`;
-              return (
-                <div key={m.code} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 10.5, width: 74, color: "var(--muted)" }}>{m.code}</span>
-                  <div style={{ flex: 1, height: 7, background: "var(--soft)", borderRadius: 5, position: "relative", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", top: 0, [up ? "left" : "right"]: "50%", width: w, height: "100%", background: up ? "var(--up)" : "var(--down)", borderRadius: 5 }} />
-                    <div style={{ position: "absolute", left: "50%", top: 0, width: 1, height: "100%", background: "var(--border)" }} />
-                  </div>
-                  <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600, width: 48, textAlign: "right", color: up ? "var(--up)" : "var(--down)" }}>{formatPercent(m.v)}</span>
-                </div>
-              );
-            })}
           </div>
         </div>
       </div>
