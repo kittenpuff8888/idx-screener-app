@@ -2,7 +2,6 @@
 
 import { useApp } from "@/components/providers/AppProvider";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { TickerDrawer } from "@/components/ticker/TickerDrawer";
 import { Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -64,7 +63,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
-      <TickerDrawer />
     </div>
   );
 }

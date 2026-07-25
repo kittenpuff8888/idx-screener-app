@@ -58,14 +58,13 @@ export function TopBar() {
     <header
       style={{
         position: "sticky",
-        top: 14,
+        top: 0,
         zIndex: 40,
         background: "var(--panel)",
         borderBottom: "1px solid var(--hair)",
-        borderRadius: "0 var(--shellR) 0 0",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 22px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 22px", minHeight: 42 }}>
         {/* search */}
         <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 380 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 10, padding: "7px 11px" }}>
