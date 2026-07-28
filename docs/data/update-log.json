@@ -389,6 +389,18 @@
       "marketDate": "2026-07-28",
       "status": "FAILED",
       "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/run_backfill.py', '--date', '2026-07-28']' returned non-zero exit status 1."
+    },
+    {
+      "timestamp": "2026-07-28T20:08:21.138178+07:00",
+      "marketDate": "2026-07-28",
+      "status": "STARTED",
+      "message": "Daily update pipeline started."
+    },
+    {
+      "timestamp": "2026-07-28T20:08:24.391288+07:00",
+      "marketDate": "2026-07-28",
+      "status": "FAILED",
+      "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/run_backfill.py', '--date', '2026-07-28']' returned non-zero exit status 1."
     }
   ]
 }
