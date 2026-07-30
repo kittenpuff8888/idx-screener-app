@@ -10,20 +10,22 @@ import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
 
 const MONO = "var(--mono, var(--font-mono))";
 const KICKER: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--faint)" };
-const CAT = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => `var(--cat-${i})`);
+// Exact multi-line palette from the Claude Design prototype (11 fixed hues, never cycled).
+const CAT = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e34948", "#7048e8", "#0891b2", "#be185d", "#65a30d", "#db2777", "#0d9488"];
+const X_TITLE: Record<string, string> = { "1W": "TRADING SESSIONS · LAST WEEK", "1M": "TRADING SESSIONS · LAST MONTH", "3M": "TRADING SESSIONS · LAST 3 MONTHS", "1Y": "TRADING SESSIONS · LAST YEAR" };
 
 type Range = { key: string; steps: number };
 const RANGES: Range[] = [
-  { key: "1D", steps: 1 },
   { key: "1W", steps: 5 },
-  { key: "1M", steps: 21 },
-  { key: "1Y", steps: 251 },
+  { key: "1M", steps: 22 },
+  { key: "3M", steps: 63 },
+  { key: "1Y", steps: 252 },
 ];
 
 type Pt = { date: string; value: number };
 export type CompareEntry = { id: string; label: string; series: Pt[]; group?: IndexGroup };
 
-/** % -return series over the last `steps` sessions, normalized to the range start. */
+/** % -return series over the last `steps` sessions, normalized to the range start (starts at 0). */
 function windowPct(series: Pt[], steps: number): number[] | null {
   const pts = series.map((p) => p.value).filter(Number.isFinite);
   if (pts.length < steps + 1) return null;
@@ -32,12 +34,29 @@ function windowPct(series: Pt[], steps: number): number[] | null {
   if (!base) return null;
   return win.map((v) => (v / base - 1) * 100);
 }
+function windowDates(series: Pt[], steps: number): string[] {
+  const pts = series.filter((p) => Number.isFinite(p.value));
+  if (pts.length < steps + 1) return [];
+  return pts.slice(-(steps + 1)).map((p) => p.date);
+}
+const relFmt = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}%`;
 
-function linePath(vals: number[], min: number, spread: number, w = 100, h = 40): string {
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtTick(iso: string, rangeKey: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  if (!y || !m) return "";
+  if (rangeKey === "1W") return `${String(d).padStart(2, "0")} ${MONTHS[m - 1]}`;
+  if (rangeKey === "1Y") return `${MONTHS[m - 1]} '${String(y).slice(2)}`;
+  return MONTHS[m - 1];
+}
+
+function linePath(vals: number[], min: number, spread: number, w = 100, h = 60): string {
+  const pT = 7, pB = 6;
   return vals
-    .map((v, i) => `${i === 0 ? "M" : "L"} ${((i / (vals.length - 1)) * w).toFixed(2)} ${(h - 2 - ((v - min) / spread) * (h - 4)).toFixed(2)}`)
+    .map((v, i) => `${i === 0 ? "M" : "L"} ${((i / (vals.length - 1)) * w).toFixed(2)} ${(pT + (1 - (v - min) / spread) * (h - pT - pB)).toFixed(2)}`)
     .join(" ");
 }
+const yPct = (v: number, min: number, spread: number, h = 60) => { const pT = 7, pB = 6; return (pT + (1 - (v - min) / spread) * (h - pT - pB)) / h * 100; };
 
 /** Detail modal: range area chart + top constituents joined against fundamentals. */
 function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntry; steps: number; marketDate: string; onClose: () => void }) {
@@ -48,12 +67,7 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
   const constituents = useMemo(() => {
     const rows = (entry.group?.constituents || []).map((c) => {
       const raw = bundle?.fundamentals.get(c.ticker.toUpperCase()) as JsonRecord | undefined;
-      return {
-        ticker: c.ticker.toUpperCase(),
-        mcap: asNumber(raw?.["Market Cap"]) ?? 0,
-        price: asNumber(raw?.["Price"]),
-        chg: asNumber(raw?.["Price Change %"]),
-      };
+      return { ticker: c.ticker.toUpperCase(), mcap: asNumber(raw?.["Market Cap"]) ?? 0, price: asNumber(raw?.["Price"]), chg: asNumber(raw?.["Price Change %"]) };
     }).filter((r) => r.mcap > 0);
     rows.sort((a, b) => b.mcap - a.mcap);
     return rows.slice(0, 10);
@@ -62,12 +76,12 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
 
   let area: React.ReactNode = <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No data for this range.</div>;
   if (pct) {
-    const min = Math.min(...pct);
-    const spread = Math.max(...pct) - min || 1;
+    const min = Math.min(...pct, 0);
+    const spread = Math.max(...pct, 0) - min || 1;
     const d = linePath(pct, min, spread);
     area = (
-      <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: "100%", height: 120 }} aria-label={`${entry.label} % return, last ${steps} sessions`}>
-        <path d={`${d} L 100 40 L 0 40 Z`} fill={(chg ?? 0) >= 0 ? "var(--upSoft)" : "var(--downSoft)"} />
+      <svg viewBox="0 0 100 60" preserveAspectRatio="none" style={{ width: "100%", height: 120 }} aria-label={`${entry.label} % return`}>
+        <path d={`${d} L 100 60 L 0 60 Z`} fill={(chg ?? 0) >= 0 ? "var(--upSoft)" : "var(--downSoft)"} />
         <path d={d} fill="none" stroke={(chg ?? 0) >= 0 ? "var(--up)" : "var(--down)"} strokeWidth={2} vectorEffect="non-scaling-stroke" />
       </svg>
     );
@@ -76,9 +90,7 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
   return (
     <Modal title={entry.label} kicker="INDEX DETAIL" onClose={onClose} maxWidth={680}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-        <span style={{ fontFamily: MONO, fontSize: 20, fontWeight: 600, color: chg === null ? "var(--muted)" : chg >= 0 ? "var(--up)" : "var(--down)" }}>
-          {chg === null ? "—" : formatPercent(chg)}
-        </span>
+        <span style={{ fontFamily: MONO, fontSize: 20, fontWeight: 600, color: chg === null ? "var(--muted)" : chg >= 0 ? "var(--up)" : "var(--down)" }}>{chg === null ? "—" : formatPercent(chg)}</span>
         <span style={{ fontSize: 11.5, color: "var(--faint)" }}>% return over the selected range</span>
       </div>
       {area}
@@ -87,130 +99,143 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
           <div style={{ ...KICKER, marginBottom: 9 }}>TOP CONSTITUENTS · BY MARKET CAP</div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {constituents.map((c) => (
-              <button
-                key={c.ticker}
-                type="button"
-                onClick={() => { onClose(); openTicker(c.ticker); }}
-                style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", background: "transparent", border: "none", borderTop: "1px solid var(--hair)", cursor: "pointer", color: "var(--text)", textAlign: "left" }}
-              >
+              <button key={c.ticker} type="button" onClick={() => { onClose(); openTicker(c.ticker); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", background: "transparent", border: "none", borderTop: "1px solid var(--hair)", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
                 <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 12.5, width: 52 }}>{c.ticker}</span>
-                <div style={{ flex: 1, height: 6, background: "var(--soft)", borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{ width: `${(c.mcap / mcapMax) * 100}%`, height: "100%", background: "var(--accent)", borderRadius: 4 }} />
-                </div>
+                <div style={{ flex: 1, height: 6, background: "var(--soft)", borderRadius: 4, overflow: "hidden" }}><div style={{ width: `${(c.mcap / mcapMax) * 100}%`, height: "100%", background: "var(--accent)", borderRadius: 4 }} /></div>
                 <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 58, textAlign: "right" }}>{c.price === null ? "—" : formatPrice(c.price)}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 600, width: 60, textAlign: "right", color: c.chg === null ? "var(--muted)" : c.chg >= 0 ? "var(--up)" : "var(--down)" }}>
-                  {c.chg === null ? "—" : formatPercent(c.chg)}
-                </span>
+                <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 600, width: 60, textAlign: "right", color: c.chg === null ? "var(--muted)" : c.chg >= 0 ? "var(--up)" : "var(--down)" }}>{c.chg === null ? "—" : formatPercent(c.chg)}</span>
               </button>
             ))}
           </div>
         </div>
       ) : null}
-      <div style={{ marginTop: 12 }}>
-        <Provenance source="Local research index · fundamentals" asOf={marketDate} />
-      </div>
+      <div style={{ marginTop: 12 }}><Provenance source="Local research index · fundamentals" asOf={marketDate} /></div>
     </Modal>
   );
 }
 
-export function IndexCompareSection({ title, badge, hint, entries, ihsg, defaultRange = "1M" }: {
-  title: string;
-  badge: string;
-  hint: string;
-  entries: CompareEntry[];
-  ihsg: Pt[];
-  defaultRange?: string;
+// Grey-by-default multi-line chart, every series indexed to 100 at the window start —
+// the y-axis reads directly as "% return since the start of the window". Click a series
+// (line or legend row) to toggle it; IHSG is the dashed benchmark.
+export function IndexCompareSection({ title, badge, hint, entries, ihsg, defaultRange = "1W" }: {
+  title: string; badge: string; hint: string; entries: CompareEntry[]; ihsg: Pt[]; defaultRange?: string;
 }) {
   const { marketDate } = useApp();
   const [rangeKey, setRangeKey] = useState(defaultRange);
+  const [off, setOff] = useState<Set<string>>(new Set());
   const [detail, setDetail] = useState<CompareEntry | null>(null);
-  const range = RANGES.find((r) => r.key === rangeKey) || RANGES[2];
+  const range = RANGES.find((r) => r.key === rangeKey) || RANGES[0];
+  const toggle = (id: string) => setOff((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const lines = useMemo(() => {
-    const out: Array<{ entry: CompareEntry; color: string; pct: number[]; isIhsg: boolean }> = [];
+  const model = useMemo(() => {
+    const series = entries.map((entry, i) => ({ entry, color: CAT[i % CAT.length], pct: windowPct(entry.series, range.steps) }))
+      .filter((s): s is { entry: CompareEntry; color: string; pct: number[] } => s.pct !== null);
     const ihsgPct = windowPct(ihsg, range.steps);
-    if (ihsgPct) out.push({ entry: { id: "IHSG", label: "IHSG", series: ihsg }, color: "var(--text)", pct: ihsgPct, isIhsg: true });
-    entries.forEach((entry, i) => {
-      const pct = windowPct(entry.series, range.steps);
-      if (pct) out.push({ entry, color: CAT[i % CAT.length], pct, isIhsg: false });
-    });
-    return out;
-  }, [entries, ihsg, range]);
+    const onVals = series.filter((s) => !off.has(s.entry.id)).flatMap((s) => s.pct);
+    const allVals = [...onVals, ...(ihsgPct || []), 0];
+    const min = Math.min(...allVals), max = Math.max(...allVals);
+    const spread = max - min || 1;
+    const dates = windowDates(ihsg, range.steps) || (series[0] ? windowDates(series[0].entry.series, range.steps) : []);
+    return { series, ihsgPct, min, max, spread, dates };
+  }, [entries, ihsg, range, off]);
 
   if (!entries.length) return null;
+  const { series, ihsgPct, min, max, spread, dates } = model;
+  const selCount = series.filter((s) => !off.has(s.entry.id)).length;
 
-  const all = lines.flatMap((l) => l.pct);
-  const min = all.length ? Math.min(...all) : 0;
-  const spread = all.length ? Math.max(...all) - min || 1 : 1;
+  // y gridlines (5) labelled as % vs the 0 start
+  const yTicks = Array.from({ length: 5 }, (_, i) => { const v = max - (spread) * i / 4; return { v, top: yPct(v, min, spread) }; });
+  // x ticks — ~4 evenly spaced dates, de-duplicated month labels
+  const nX = rangeKey === "1W" ? 3 : rangeKey === "1Y" ? 5 : 4;
+  const xIdx = dates.length ? [...new Set(Array.from({ length: nX }, (_, i) => Math.round(i * (dates.length - 1) / (nX - 1))))] : [];
+  let lastLabel = "";
+  const xTicks = xIdx.map((idx) => { let lab = fmtTick(dates[idx], rangeKey); if (rangeKey !== "1W" && lab === lastLabel) lab = ""; else lastLabel = lab; return { left: (idx / (dates.length - 1)) * 100, lab }; });
 
   return (
     <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "16px 18px", boxShadow: "var(--shadow)", marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 13, flexWrap: "wrap" }}>
-        <span style={KICKER}>{title}</span>
-        <span style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "2px 7px" }}>{badge}</span>
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 10.5, color: "var(--faint)" }}>{hint}</span>
-        <div style={{ display: "flex", gap: 3 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 11 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+            <span style={KICKER}>{title}</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "2px 7px" }}>{badge}</span>
+          </div>
+          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 4 }}>{hint}</div>
+        </div>
+        <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
           {RANGES.map((r) => {
             const enabled = windowPct(ihsg, r.steps) !== null || entries.some((e) => windowPct(e.series, r.steps) !== null);
             const active = r.key === rangeKey;
             return (
-              <button
-                key={r.key}
-                type="button"
-                disabled={!enabled}
-                onClick={() => setRangeKey(r.key)}
-                style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 600, padding: "4px 9px", borderRadius: 7, border: "none", cursor: enabled ? "pointer" : "default", opacity: enabled ? 1 : 0.4, background: active ? "var(--accentSoft)" : "var(--soft)", color: active ? "var(--accent)" : "var(--muted)" }}
-              >
-                {r.key}
-              </button>
+              <button key={r.key} type="button" disabled={!enabled} onClick={() => setRangeKey(r.key)} style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, padding: "4px 10px", borderRadius: 7, border: "none", cursor: enabled ? "pointer" : "default", opacity: enabled ? 1 : 0.4, background: active ? "var(--accent)" : "var(--soft)", color: active ? "#fff" : "var(--muted)" }}>{r.key}</button>
             );
           })}
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 18, alignItems: "stretch", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 460px", minWidth: 300 }}>
-          {lines.length ? (
-            <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: "100%", height: "100%", minHeight: 240 }} aria-label={`${title}: % return comparison`}>
-              {lines.filter((l) => !l.isIhsg).map((l) => (
-                <path key={l.entry.id} d={linePath(l.pct, min, spread)} fill="none" stroke={l.color} strokeWidth={1.3} vectorEffect="non-scaling-stroke" opacity={0.85} />
-              ))}
-              {lines.filter((l) => l.isIhsg).map((l) => (
-                <path key="IHSG" d={linePath(l.pct, min, spread)} fill="none" stroke={l.color} strokeWidth={2.2} vectorEffect="non-scaling-stroke" />
-              ))}
-            </svg>
-          ) : (
-            <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "40px 0", textAlign: "center" }}>No series available for this range.</div>
-          )}
+      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 460px", minWidth: 300, display: "flex", gap: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", flex: "none" }}>
+            <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: ".14em", color: "var(--faint)", writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap" }}>% RETURN SINCE START</span>
+          </div>
+          <div style={{ position: "relative", width: 34, flex: "none" }}>
+            {yTicks.map((t, i) => (
+              <div key={i} style={{ position: "absolute", right: 0, top: `${t.top}%`, transform: "translateY(-50%)", fontFamily: MONO, fontSize: 9, fontWeight: Math.abs(t.v) < 1e-6 ? 700 : 500, color: Math.abs(t.v) < 1e-6 ? "var(--muted)" : "var(--faint)" }}>{relFmt(t.v)}</div>
+            ))}
+          </div>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <div style={{ position: "relative", flex: 1, minHeight: 250 }}>
+              {yTicks.map((t, i) => <div key={i} style={{ position: "absolute", left: 0, right: 0, top: `${t.top}%`, borderTop: "1px solid var(--hair)" }} />)}
+              <div style={{ position: "absolute", left: 0, right: 0, top: `${yPct(0, min, spread)}%`, borderTop: "1.5px dashed var(--muted)", opacity: 0.75 }} />
+              <svg viewBox="0 0 100 60" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }} aria-label={`${title}: % return`}>
+                {series.map((s) => {
+                  const on = !off.has(s.entry.id);
+                  return <path key={s.entry.id} d={linePath(s.pct, min, spread)} fill="none" stroke={on ? s.color : "var(--faint)"} strokeWidth={on ? 2.4 : 1.2} opacity={on ? 1 : 0.28} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />;
+                })}
+                {ihsgPct ? <path d={linePath(ihsgPct, min, spread)} fill="none" stroke="var(--text)" strokeWidth={2} strokeDasharray="3 2" vectorEffect="non-scaling-stroke" opacity={0.8} /> : null}
+              </svg>
+              {/* end labels + dots for selected series */}
+              {series.filter((s) => !off.has(s.entry.id)).map((s) => {
+                const v = s.pct[s.pct.length - 1];
+                return <div key={s.entry.id}>
+                  <div style={{ position: "absolute", left: "calc(100% - 3px)", top: `${yPct(v, min, spread)}%`, width: 7, height: 7, borderRadius: "50%", background: s.color, transform: "translate(-50%,-50%)", boxShadow: "0 0 0 2px var(--panel)" }} />
+                  <div style={{ position: "absolute", right: 0, top: `${yPct(v, min, spread)}%`, transform: "translate(calc(100% + 4px),-50%)", fontFamily: MONO, fontSize: 9, fontWeight: 700, color: s.color, whiteSpace: "nowrap" }}>{relFmt(v)}</div>
+                </div>;
+              })}
+            </div>
+            <div style={{ position: "relative", height: 13, marginTop: 5 }}>
+              {xTicks.map((t, i) => <div key={i} style={{ position: "absolute", left: `${t.left}%`, transform: t.left <= 2 ? "translateX(0)" : t.left >= 98 ? "translateX(-100%)" : "translateX(-50%)", fontFamily: MONO, fontSize: 9, color: "var(--faint)", whiteSpace: "nowrap" }}>{t.lab}</div>)}
+            </div>
+            <div style={{ textAlign: "center", fontFamily: MONO, fontSize: 8.5, letterSpacing: ".12em", color: "var(--faint)", marginTop: 2 }}>{X_TITLE[rangeKey] || "TRADING SESSIONS"}</div>
+          </div>
+          <div style={{ width: 28, flex: "none" }} />
         </div>
 
-        <div style={{ flex: "0 0 240px", display: "flex", flexDirection: "column", gap: 2 }}>
-          {lines.map((l) => {
-            const chg = l.pct[l.pct.length - 1] / 100;
-            const row = (
-              <>
-                <span style={{ width: 14, height: 2.5, borderRadius: 2, background: l.color, flexShrink: 0 }} />
-                <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: l.isIhsg ? 700 : 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "left" }}>{l.entry.label}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 600, color: chg >= 0 ? "var(--up)" : "var(--down)" }}>{formatPercent(chg)}</span>
-                {!l.isIhsg ? <span style={{ color: "var(--faint)", fontSize: 10 }}>›</span> : null}
-              </>
-            );
-            return l.isIhsg ? (
-              <div key="IHSG" style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 7px", borderBottom: "1px solid var(--hair)", marginBottom: 3 }}>{row}</div>
-            ) : (
-              <button
-                key={l.entry.id}
-                type="button"
-                onClick={() => setDetail(l.entry)}
-                style={{ display: "flex", alignItems: "center", gap: 8, padding: "4.5px 7px", borderRadius: 7, border: "none", background: "transparent", cursor: "pointer", color: "var(--text)" }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--soft)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              >
-                {row}
-              </button>
-            );
-          })}
+        <div style={{ width: 200, flex: "none", display: "flex", flexDirection: "column", borderLeft: "1px solid var(--hair)", paddingLeft: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>SERIES</span>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 5, padding: "1px 7px" }}>{selCount}/{series.length}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: "1px solid var(--hair)", marginBottom: 4 }}>
+            <span style={{ width: 15, height: 0, borderTop: "2px dashed var(--text)", flexShrink: 0 }} />
+            <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>IHSG</span>
+            <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)" }}>bench</span>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2, maxHeight: 250 }}>
+            {series.map((s) => {
+              const on = !off.has(s.entry.id);
+              const v = s.pct[s.pct.length - 1] / 100;
+              return (
+                <div key={s.entry.id} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button type="button" onClick={() => toggle(s.entry.id)} style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, padding: "5px 6px", border: "none", borderRadius: 8, background: on ? "var(--soft)" : "transparent", cursor: "pointer", textAlign: "left" }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: on ? s.color : "var(--faint)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: 500, color: on ? "var(--text)" : "var(--muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.entry.label}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: on ? (v >= 0 ? "var(--up)" : "var(--down)") : "var(--faint)" }}>{formatPercent(v)}</span>
+                  </button>
+                  <button type="button" onClick={() => setDetail(s.entry)} title={`${s.entry.label} detail`} style={{ border: "none", background: "transparent", color: "var(--faint)", cursor: "pointer", fontSize: 12, padding: "0 2px" }}>›</button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
