@@ -50,6 +50,9 @@
   --accentSoft: rgba(37, 99, 235, 0.1);
   --accentLine: rgba(37, 99, 235, 0.28);
   --downSoft: rgba(229, 72, 77, 0.1);
+  /* Neutral polarity + sequential blue ramp (validated, redesign tokens) */
+  --flat: #5b6472;
+  --seq1: #cde2fb; --seq2: #9ec8f7; --seq3: #5ea2ef; --seq4: #2a78d6; --seq5: #0d366b;
   --sidebar: 246px;
   --radius-sm: 12px;
   --radius-md: 16px;
@@ -100,6 +103,8 @@
   --accentSoft: rgba(91, 140, 255, 0.12);
   --accentLine: rgba(91, 140, 255, 0.32);
   --downSoft: rgba(255, 92, 97, 0.12);
+  --flat: #8a93a3;
+  --seq1: #16324f; --seq2: #1f4f7a; --seq3: #2f74b0; --seq4: #5ea2ef; --seq5: #9ec8f7;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   --sh: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
