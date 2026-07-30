@@ -7,7 +7,9 @@ import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { Provenance } from "@/components/shared/Metric";
 import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { MarketMap } from "./MarketMap";
-import { MarketRisk } from "./MarketRisk";
+import { TradingViewChart } from "./TradingViewChart";
+import { RiskGauge } from "./RiskGauge";
+import { MarketReadHero } from "./MarketReadHero";
 import { InstrumentCard, buildCard, type InstrumentSpec } from "./InstrumentCard";
 import { computeMarketRisk } from "@/lib/data/marketRisk";
 import { latestInstrumentValue } from "@/lib/data/marketContext";
@@ -26,10 +28,12 @@ const KICKER: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: ".
 
 // Instruments grouped by context. VIX sits in the RISK section next to the risk gauge.
 const INSTRUMENT_GROUPS: Array<{ title: string; specs: InstrumentSpec[] }> = [
+  // IHSG lives in the hero (live chart + Market Read + Risk gauge), so it is not
+  // duplicated here — see RECOMMENDATIONS.md §1.
   { title: "INDEX", specs: [
-    { code: "IHSG", keys: ["IHSG", "^JKSE"], tv: "IDX:COMPOSITE" },
     { code: "EIDO", keys: ["EIDO"], tv: "AMEX:EIDO" },
     { code: "S&P 500", keys: ["SPX", "^GSPC"], tv: "SP:SPX" },
+    { code: "KOSPI", keys: ["KOSPI", "^KS11"], tv: "KRX:KOSPI" },
   ] },
   { title: "COMMODITIES", specs: [
     { code: "Coal", keys: ["COAL", "MTF=F"], tv: "NYMEX:MTF1!" },
@@ -91,7 +95,6 @@ export function DashboardPage() {
     title: g.title,
     cards: g.specs.map((s) => buildCard(marketContext, s)),
   })), [marketContext]);
-  const vixCard = useMemo(() => buildCard(marketContext, { code: "VIX", keys: ["VIX", "^VIX"], tv: "TVC:VIX" }), [marketContext]);
 
   // ---- Breadth + risk ----
   const breadth = (overview.breadth || {}) as JsonRecord;
@@ -200,6 +203,22 @@ export function DashboardPage() {
         </p>
       </div>
 
+      {/* HERO — IHSG live chart + Market Read | Market Risk gauge (§6.1/§6.2) */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(340px,1.35fr) minmax(300px,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
+        <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div style={{ ...KICKER, fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em" }}>IHSG · LIVE CHART</div>
+            <a href="https://www.tradingview.com/chart/?symbol=IDX%3ACOMPOSITE" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "4px 9px", textDecoration: "none" }}>TradingView ↗</a>
+          </div>
+          <TradingViewChart symbol="IDX:COMPOSITE" range="YTD" minHeight={500} />
+          <MarketReadHero risk={marketRisk} mc={marketContext} />
+        </div>
+        <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column" }}>
+          <RiskGauge risk={marketRisk} />
+          <div style={{ marginTop: 10 }}><Provenance source="IHSG close + breadth" asOf={marketDate} /></div>
+        </div>
+      </div>
+
       {/* INDEX */}
       {(() => { const g = groups.find((x) => x.title === "INDEX"); return g ? (
         <div style={{ marginBottom: 18 }}>
@@ -209,18 +228,6 @@ export function DashboardPage() {
           </div>
         </div>
       ) : null; })()}
-
-      {/* RISK — VIX + the composite risk gauge */}
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ ...KICKER, marginBottom: 10 }}>RISK</div>
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(232px, 0.8fr) minmax(320px, 1.6fr)", gap: 14 }}>
-          <InstrumentCard card={vixCard} />
-          <div style={CARD}>
-            <MarketRisk risk={marketRisk} />
-            <div style={{ marginTop: 10 }}><Provenance source="IHSG close + breadth" asOf={marketDate} /></div>
-          </div>
-        </div>
-      </div>
 
       {/* COMMODITIES + MONEYFLOW */}
       {["COMMODITIES", "MONEYFLOW"].map((title) => { const g = groups.find((x) => x.title === title); return g ? (
