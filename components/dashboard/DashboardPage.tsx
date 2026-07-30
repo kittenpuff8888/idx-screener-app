@@ -5,12 +5,11 @@ import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { Provenance } from "@/components/shared/Metric";
-import { type CompareEntry } from "./IndexCompare";
+import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { TradingViewChart } from "./TradingViewChart";
 import { RiskGauge } from "./RiskGauge";
 import { MarketReadHero } from "./MarketReadHero";
 import { MarketsCarousel } from "./MarketsCarousel";
-import { SectorRotation } from "./SectorRotation";
 import { MarketMapTreemap } from "./MarketMapTreemap";
 import { computeMarketRisk } from "@/lib/data/marketRisk";
 import { normalizeSector } from "@/lib/domain/sectors";
@@ -166,9 +165,9 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* ROTATION — relative strength + RRG (replaces the uninformative % return lines) */}
-      {sectoralEntries.length ? <SectorRotation sectors={sectoralEntries} ihsg={ihsgSeries} /> : null}
-      {kongloEntries.length ? <SectorRotation sectors={kongloEntries} ihsg={ihsgSeries} title="KONGLO ROTATION vs IHSG" subtitle="conglomerate baskets — relative strength vs the index" /> : null}
+      {/* SECTORAL / KONGLO vs IHSG — interactive multi-line % return (matches Claude Design) */}
+      <IndexCompareSection title="SECTORAL INDICES vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={sectoralEntries} ihsg={ihsgSeries} />
+      <IndexCompareSection title="KONGLO INDEX vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={kongloEntries} ihsg={ihsgSeries} />
 
       {/* MARKET MAP — squarified, cap-weighted treemap */}
       <MarketMapTreemap />
