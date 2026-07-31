@@ -31,6 +31,16 @@ function chgColor(v: number | null): string {
   return v > 0 ? "var(--up)" : "var(--down)";
 }
 
+// Parse counts that may carry a K/M/B/T suffix (e.g. "7.79 B" shares outstanding).
+const COUNT_SUFFIX: Record<string, number> = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
+function parseCount(v: unknown): number | null {
+  if (v == null) return null;
+  const m = String(v).replace(/,/g, "").trim().match(/^(-?[\d.]+)\s*([KMBT])?/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n * (m[2] ? COUNT_SUFFIX[m[2].toUpperCase()] : 1) : null;
+}
+
 const KONGLO_FEATURED = ["Barito", "Salim", "Sinarmas", "Astra", "Djarum", "Saratoga", "Bakrie", "Lippo"];
 
 export function DashboardPage() {
@@ -68,17 +78,25 @@ export function DashboardPage() {
   const movers = (list: JsonRecord[] | undefined) => (list || []).map((r) => {
     const ticker = String(r.ticker ?? "").toUpperCase();
     const chg = asNumber(r.change) ?? 0;
-    const mcap = asNumber((bundle?.fundamentals.get(ticker) as JsonRecord | undefined)?.["Market Cap"]);
+    const raw = bundle?.fundamentals.get(ticker) as JsonRecord | undefined;
+    const price = asNumber(r.price) ?? asNumber(raw?.["Price"]);
+    // Market cap in Rp bn; fall back to price × shares ÷ 1e9 when the field is blank
+    // (empirically Market Cap = price × shares ÷ 1e9) so POINTS/%IDX MV compute for all.
+    let mcap = asNumber(raw?.["Market Cap"]);
+    if (mcap === null && price !== null) {
+      const sh = parseCount(raw?.["Current Share Outstanding"]) ?? parseCount(raw?.["Shares Outstanding"]);
+      if (sh !== null) mcap = (price * sh) / 1e9;
+    }
     const points = ihsgPrev !== null && mcap !== null && totalMcap > 0 ? ihsgPrev * (mcap / totalMcap) * chg : null;
     return {
       ticker,
       name: bundle?.technical.get(ticker)?.companyName || normalizeSector(String(r.sector ?? "Others")),
-      price: asNumber(r.price),
+      price,
       chg,
       points,
       pctIdxMv: points !== null && idxMove ? points / Math.abs(idxMove) : null,
     };
-  }).filter((m) => m.ticker).slice(0, 8);
+  }).filter((m) => m.ticker).slice(0, 30);
   const leaders = movers(overview.topGainers as JsonRecord[] | undefined);
   const laggards = movers(overview.topDecliners as JsonRecord[] | undefined);
   const leadMax = Math.max(1e-4, ...leaders.map((m) => Math.abs(m.chg)));
@@ -126,24 +144,28 @@ export function DashboardPage() {
       {/* MARKETS — cross-asset carousel (INDEX / MACRO / MONEYFLOW) */}
       <MarketsCarousel marketContext={marketContext} />
 
-      {/* LEADERS / LAGGARDS — END PRC / %CHG / POINTS / %IDX MV */}
+      {/* LEADERS / LAGGARDS — top 30, box scrolls (≈10 visible); # / END PRC / %CHG / POINTS / %IDX MV */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(400px,1fr))", gap: 14, marginBottom: 16 }}>
         {([["TOP LEADERS · TODAY", leaders, leadMax, "var(--up)"], ["TOP LAGGARDS · TODAY", laggards, lagMax, "var(--down)"]] as const).map(([title, rows, mx, color]) => (
           <div key={title} style={{ ...CARD, padding: "16px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 11 }}>
               <span style={{ width: 8, height: 8, borderRadius: 2, background: color }} />
               <span style={KICKER}>{title}</span>
+              <div style={{ flex: 1 }} />
+              <span style={{ fontSize: 9.5, color: "var(--faint)" }}>{rows.length} names · scroll</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 0 6px", borderBottom: "1px solid var(--hair)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px 6px 0", borderBottom: "1px solid var(--hair)" }}>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 20, textAlign: "right" }}>#</span>
               <span style={{ fontSize: 9.5, color: "var(--faint)", letterSpacing: ".06em", flex: 1 }}>TICKER</span>
               <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 56, textAlign: "right" }}>END PRC</span>
               <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 58, textAlign: "right" }}>% CHG</span>
               <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 48, textAlign: "right" }}>POINTS</span>
               <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 56, textAlign: "right" }}>%IDX MV</span>
             </div>
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", flexDirection: "column", maxHeight: 440, overflowY: "auto" }}>
               {rows.map((m, i) => (
-                <button key={m.ticker} type="button" onClick={() => openTicker(m.ticker)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", background: "transparent", border: "none", borderTop: i === 0 ? "none" : "1px solid var(--hair)", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
+                <button key={m.ticker} type="button" onClick={() => openTicker(m.ticker)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 8px 7px 0", background: "transparent", border: "none", borderTop: i === 0 ? "none" : "1px solid var(--hair)", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
+                  <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 600, color: "var(--faint)", width: 20, flexShrink: 0, textAlign: "right" }}>{i + 1}</span>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 12.5, width: 48, flexShrink: 0 }}>{m.ticker}</span>
