@@ -5,18 +5,19 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useApp } from "@/components/providers/AppProvider";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { buildResearchSummary, loadOhlcv, tradePlanFromTechnical } from "@/lib/data/ticker";
+import { buildResearchSummary, loadOhlcv } from "@/lib/data/ticker";
 import type { OhlcvPayload } from "@/lib/domain/types";
 import { FundamentalsPanel } from "./FundamentalsPanel";
 import { NewsPanel } from "./NewsPanel";
 import { OwnershipPanel } from "./OwnershipPanel";
 import { ResearchSummary } from "./ResearchSummary";
 import { TechnicalsPanel } from "./TechnicalsPanel";
-import { TickerChart } from "./TickerChart";
-import { TickerHeader } from "./TickerHeader";
+import { TickerHeaderHero } from "./TickerHeaderHero";
+import { TradePlanLadder } from "./TradePlanLadder";
+import { TradingViewChart } from "@/components/dashboard/TradingViewChart";
 import { IndexPanel } from "./IndexPanel";
 import { SetupPanel } from "./SetupPanel";
-import { TradePlan } from "./TradePlan";
+import { asNumber } from "@/lib/format/number";
 
 export function TickerResearch() {
   const params = useSearchParams();
@@ -42,7 +43,10 @@ export function TickerResearch() {
   }, [ticker, marketDate]);
 
   const summary = useMemo(() => buildResearchSummary(stock, ownership), [stock, ownership]);
-  const plan = tradePlanFromTechnical(stock);
+  const price = stock?.lastPrice ?? asNumber(fundamental?.["Price"]);
+  const low52 = asNumber(fundamental?.["52 Week Low"]);
+  const high52 = asNumber(fundamental?.["52 Week High"]);
+  const CARD = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))", padding: "16px 18px" } as const;
 
   return (
     <section>
@@ -65,20 +69,35 @@ export function TickerResearch() {
         <EmptyState title="Ticker not found" body="This ticker is not available in the selected research session or latest ownership snapshot." />
       ) : (
         <div id="tickerContent">
-          <TickerHeader stock={stock} ownership={ownership} />
-          <SetupPanel ticker={ticker} />
-          <article className="ticker-conclusion-card">
-            <ResearchSummary summary={summary} />
-          </article>
-          <div className="ticker-overview-grid">
-            <TradePlan plan={plan} />
-            <OwnershipPanel ownership={ownership} />
+          {/* Identity + 52-week range + key stats */}
+          <TickerHeaderHero ticker={ticker} stock={stock} fundamental={fundamental} marketDate={marketDate || ""} />
+
+          {/* Verdict / context  |  Trade-plan price ladder (R:R for every ticker) */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
+            <div style={CARD}>
+              <SetupPanel ticker={ticker} />
+              <ResearchSummary summary={summary} />
+            </div>
+            <div style={CARD}>
+              <TradePlanLadder ticker={ticker} price={price ?? null} stock={stock} ohlcv={ohlcv} low52={low52} high52={high52} />
+            </div>
           </div>
-          <IndexPanel record={indexRecord} effective={idxIndex?.effective} />
-          <TickerChart payload={ohlcv} stock={stock} />
+
+          {/* Live price chart */}
+          <div style={{ ...CARD, marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>{ticker} · LIVE CHART</div>
+            <TradingViewChart symbol={`IDX:${ticker}`} range="3M" minHeight={420} />
+          </div>
+
+          {/* Fundamentals + technicals */}
           <div className="ticker-overview-grid">
             <FundamentalsPanel row={fundamental} stock={stock} asOf={marketDate} />
             <TechnicalsPanel stock={stock} />
+          </div>
+          {/* Ownership + index membership */}
+          <div className="ticker-overview-grid">
+            <OwnershipPanel ownership={ownership} />
+            <IndexPanel record={indexRecord} effective={idxIndex?.effective} />
           </div>
           <NewsPanel ticker={ticker} row={news} />
 
