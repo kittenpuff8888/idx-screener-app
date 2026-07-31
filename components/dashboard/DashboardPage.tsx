@@ -65,42 +65,42 @@ export function DashboardPage() {
       .filter((p) => Number.isFinite(p.value));
   }, [marketContext, marketDate]);
 
-  // ---- Leaders / laggards — POINTS ≈ index-point contribution: IHSG_prev × (mcap/Σmcap) × chg ----
-  const totalMcap = useMemo(() => {
-    let sum = 0;
-    bundle?.fundamentals.forEach((raw) => { sum += asNumber(raw["Market Cap"]) ?? 0; });
-    return sum;
-  }, [bundle]);
+  // ---- Leaders / laggards — top 30 movers computed from the FULL universe (fundamentals),
+  // since overview.topGainers/Decliners only carry ~8. POINTS ≈ index-point contribution:
+  // IHSG_prev × (mcap/Σmcap) × chg; market cap falls back to price × shares ÷ 1e9.
   const ihsgLast = ihsgSeries.at(-1)?.value ?? null;
   const ihsgPrev = ihsgSeries.at(-2)?.value ?? null;
   const idxMove = ihsgLast !== null && ihsgPrev !== null ? ihsgLast - ihsgPrev : null;
 
-  const movers = (list: JsonRecord[] | undefined) => (list || []).map((r) => {
-    const ticker = String(r.ticker ?? "").toUpperCase();
-    const chg = asNumber(r.change) ?? 0;
-    const raw = bundle?.fundamentals.get(ticker) as JsonRecord | undefined;
-    const price = asNumber(r.price) ?? asNumber(raw?.["Price"]);
-    // Market cap in Rp bn; fall back to price × shares ÷ 1e9 when the field is blank
-    // (empirically Market Cap = price × shares ÷ 1e9) so POINTS/%IDX MV compute for all.
-    let mcap = asNumber(raw?.["Market Cap"]);
-    if (mcap === null && price !== null) {
-      const sh = parseCount(raw?.["Current Share Outstanding"]) ?? parseCount(raw?.["Shares Outstanding"]);
-      if (sh !== null) mcap = (price * sh) / 1e9;
-    }
-    const points = ihsgPrev !== null && mcap !== null && totalMcap > 0 ? ihsgPrev * (mcap / totalMcap) * chg : null;
-    return {
-      ticker,
-      name: bundle?.technical.get(ticker)?.companyName || normalizeSector(String(r.sector ?? "Others")),
-      price,
-      chg,
-      points,
-      pctIdxMv: points !== null && idxMove ? points / Math.abs(idxMove) : null,
+  const { leaders, laggards, leadMax, lagMax } = useMemo(() => {
+    type Mv = { ticker: string; name: string; price: number | null; chg: number; mcap: number | null; points: number | null; pctIdxMv: number | null };
+    const universe: Array<Omit<Mv, "points" | "pctIdxMv">> = [];
+    let totalMcap = 0;
+    bundle?.fundamentals.forEach((raw, ticker) => {
+      const chg = asNumber(raw["Price Change %"]);
+      const price = asNumber(raw["Price"]);
+      if (chg === null || price === null) return;
+      let mcap = asNumber(raw["Market Cap"]);
+      if (mcap === null) {
+        const sh = parseCount(raw["Current Share Outstanding"]) ?? parseCount(raw["Shares Outstanding"]);
+        if (sh !== null) mcap = (price * sh) / 1e9;
+      }
+      if (mcap !== null) totalMcap += mcap;
+      universe.push({ ticker, name: bundle.technical.get(ticker)?.companyName || normalizeSector(String(raw["IDX Sector"] ?? "Others")), price, chg, mcap });
+    });
+    const withPoints = (m: Omit<Mv, "points" | "pctIdxMv">): Mv => {
+      const points = ihsgPrev !== null && m.mcap !== null && totalMcap > 0 ? ihsgPrev * (m.mcap / totalMcap) * m.chg : null;
+      return { ...m, points, pctIdxMv: points !== null && idxMove ? points / Math.abs(idxMove) : null };
     };
-  }).filter((m) => m.ticker).slice(0, 30);
-  const leaders = movers(overview.topGainers as JsonRecord[] | undefined);
-  const laggards = movers(overview.topDecliners as JsonRecord[] | undefined);
-  const leadMax = Math.max(1e-4, ...leaders.map((m) => Math.abs(m.chg)));
-  const lagMax = Math.max(1e-4, ...laggards.map((m) => Math.abs(m.chg)));
+    const sorted = [...universe].sort((a, b) => b.chg - a.chg);
+    const lead = sorted.slice(0, 30).map(withPoints);
+    const lag = sorted.slice(-30).reverse().map(withPoints);
+    return {
+      leaders: lead, laggards: lag,
+      leadMax: Math.max(1e-4, ...lead.map((m) => Math.abs(m.chg))),
+      lagMax: Math.max(1e-4, ...lag.map((m) => Math.abs(m.chg))),
+    };
+  }, [bundle, ihsgPrev, idxMove]);
 
   // ---- Sectoral & konglo local research indexes (for the rotation views) ----
   const sectoralEntries = useMemo<CompareEntry[]>(() => (indexes?.groups || [])
