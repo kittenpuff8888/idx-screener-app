@@ -69,7 +69,7 @@ export function TickerHeaderHero({ ticker, stock, fundamental, marketDate }: {
         <div style={{ marginTop: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
             <span style={KICKER}>52-WEEK RANGE</span>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted)" }}>{Math.round(pos * 100)}% of range · {Math.round(pos * 100)}% off low</span>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--muted)" }}>{Math.round(pos * 100)}% of range{low != null && price != null ? ` · ${Math.round((price / low - 1) * 100)}% off low` : ""}</span>
           </div>
           <div style={{ position: "relative", height: 8, background: "linear-gradient(90deg,var(--downSoft),var(--soft),var(--upSoft))", borderRadius: 5, border: "1px solid var(--border)" }}>
             <div style={{ position: "absolute", top: "50%", left: `${Math.max(0, Math.min(100, pos * 100))}%`, transform: "translate(-50%,-50%)", width: 4, height: 18, background: "var(--text)", borderRadius: 3 }} />
@@ -85,9 +85,9 @@ export function TickerHeaderHero({ ticker, stock, fundamental, marketDate }: {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(96px,1fr))", gap: "12px 20px", marginTop: 16, borderTop: "1px solid var(--hair)", paddingTop: 14 }}>
         <Stat label="MKT CAP" value={mcap} />
         <Stat label="PE (TTM)" value={pe == null ? "—" : `${formatNumber(pe, 1)}×`} />
-        <Stat label="ROE" value={roe == null ? "—" : formatPercent(roe)} />
-        <Stat label="DIV YIELD" value={dy == null ? "—" : `${formatNumber(dy, 2)}%`} />
-        <Stat label="FREE FLOAT" value={ff == null ? "—" : formatPercent(ff)} />
+        <Stat label="ROE" value={roe == null ? "—" : formatPercent(roe).replace("+", "")} />
+        <Stat label="DIV YIELD" value={dy == null ? "—" : formatPercent(dy).replace("+", "")} />
+        <Stat label="FREE FLOAT" value={ff == null ? "—" : formatPercent(ff).replace("+", "")} />
         <Stat label="RVOL" value={rvol == null ? "—" : `${formatNumber(rvol, 1)}×`} />
       </div>
     </div>
