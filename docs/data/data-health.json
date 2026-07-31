@@ -1,61 +1,78 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-07-24T20:11:32.974407+07:00",
+ "generatedAt": "2026-08-01T01:13:46.135879+07:00",
  "marketDate": "2026-07-24",
  "universe": {
   "size": 956,
   "source": "KSEI workbook roster",
-  "liveIdxRosterDiff": null,
-  "liveIdxRosterDiffReason": "IDX roster fetch requires a networked CI run; not yet automated"
+  "liveIdxRosterDiff": {
+   "rosterSource": "data_sources/idx-listed.json (IDX Daftar Saham)",
+   "rosterAsOf": "2026-07-20",
+   "liveCount": 963,
+   "missingFromUniverse": [
+    "BACH",
+    "EMMI",
+    "JECX",
+    "JELI",
+    "PRDL",
+    "RANS",
+    "WBSA"
+   ],
+   "missingCount": 7,
+   "inUniverseNotListed": [],
+   "delistedCount": 0
+  },
+  "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
+  "auditedAt": "2026-08-01T01:13:36.584677+07:00"
  },
  "runLog": [
   {
-   "timestamp": "2026-07-17T18:04:32.849541+07:00",
-   "marketDate": "2026-07-17",
+   "timestamp": "2026-07-31T18:52:08.542239+07:00",
+   "marketDate": "2026-07-31",
    "status": "STARTED",
    "message": "Daily update pipeline started."
   },
   {
-   "timestamp": "2026-07-17T19:20:33.082890+07:00",
-   "marketDate": "2026-07-17",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
+   "timestamp": "2026-07-31T18:52:12.623018+07:00",
+   "marketDate": "2026-07-31",
+   "status": "FAILED",
+   "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/run_backfill.py', '--date', '2026-07-31']' returned non-zero exit status 1."
   },
   {
-   "timestamp": "2026-07-17T20:46:56.846922+07:00",
-   "marketDate": "2026-07-17",
-   "status": "NO_CHANGE",
-   "message": "Dataset already published; last successful snapshot preserved."
-  },
-  {
-   "timestamp": "2026-07-23T21:09:00.914884+07:00",
-   "marketDate": "2026-07-23",
+   "timestamp": "2026-07-31T19:27:10.511403+07:00",
+   "marketDate": "2026-07-31",
    "status": "STARTED",
    "message": "Daily update pipeline started."
   },
   {
-   "timestamp": "2026-07-23T22:05:11.259686+07:00",
-   "marketDate": "2026-07-23",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
+   "timestamp": "2026-07-31T19:27:13.473911+07:00",
+   "marketDate": "2026-07-31",
+   "status": "FAILED",
+   "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/run_backfill.py', '--date', '2026-07-31']' returned non-zero exit status 1."
   },
   {
-   "timestamp": "2026-07-24T18:16:29.043525+07:00",
-   "marketDate": "2026-07-24",
+   "timestamp": "2026-07-31T20:13:24.519205+07:00",
+   "marketDate": "2026-07-31",
    "status": "STARTED",
    "message": "Daily update pipeline started."
   },
   {
-   "timestamp": "2026-07-24T19:01:57.848431+07:00",
-   "marketDate": "2026-07-24",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
+   "timestamp": "2026-07-31T20:13:28.068639+07:00",
+   "marketDate": "2026-07-31",
+   "status": "FAILED",
+   "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/run_backfill.py', '--date', '2026-07-31']' returned non-zero exit status 1."
   },
   {
-   "timestamp": "2026-07-24T20:10:59.718989+07:00",
-   "marketDate": "2026-07-24",
-   "status": "NO_CHANGE",
-   "message": "Dataset already published; last successful snapshot preserved."
+   "timestamp": "2026-07-31T23:59:12.503494+07:00",
+   "marketDate": "2026-07-31",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-08-01T01:13:16.602174+07:00",
+   "marketDate": "2026-07-31",
+   "status": "NO_DATA",
+   "message": "No valid IDX session was available for 2026-07-31; latest observed OHLCV date was 2026-07-30. The last successful snapshot was preserved."
   }
  ],
  "qaSummary": {
@@ -81,10 +98,70 @@
   "lagNote": "KSEI is monthly; ownership signals are context, never timing triggers."
  },
  "parity": {
-  "status": "UNVERIFIED",
-  "method": "Dual-source agreement (yfinance vs Investing) approximates TradingView parity; true TV data needs a paid feed.",
-  "lastChecked": null,
-  "note": "Automated cross-check must run in networked CI; this sandbox cannot reach either source."
+  "status": "OK",
+  "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
+  "lastChecked": "2026-08-01T01:13:39.022129+07:00",
+  "checked": 14,
+  "failures": [],
+  "results": [
+   {
+    "ticker": "ANTM",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "ASII",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "BBCA",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "BBRI",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "DFAM",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "DKHH",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "FIRE",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "HADE",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "JGLE",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "MKTR",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "MSIN",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "MTEL",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "TCPI",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "TLKM",
+    "status": "ERROR: TypeError"
+   }
+  ],
+  "note": "Price exact-match required (discrete IDX ticks); volume tolerance 0.5%. PARITY_FAIL tickers are excluded from swing setups this run."
  },
  "setups": {
   "count": 4,
