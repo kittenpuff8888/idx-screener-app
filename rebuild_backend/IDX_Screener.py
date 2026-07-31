@@ -3482,9 +3482,25 @@ if "FONT_HEADER" not in globals():
 # =========================
 # SOURCE LOAD
 # =========================
+# Full KSEI schema (the columns load_ksei() builds). Kept so that when the local
+# Raw folder is absent — e.g. the cloud daily runner has no local KSEI workbook —
+# we can return an empty frame with the right columns instead of crashing.
+KSEI_SCHEMA_COLUMNS = [
+    "Ticker", "Emiten", "idx_sector", "idx_sector_weight", "Sector", "Industry",
+    "Investors", "Free Float", "Classic HHI", "CR1", "CR3", "Holder", "CCS",
+    "Ownership Type", "CCS Category", "Shares Outstanding", "PE TTM", "PE Mean",
+    "PE +1", "PE +2", "PE -1", "PE -2", "PBV Current", "PBV Mean", "PBV +1",
+    "PBV +2", "PBV -1", "PBV -2", "Source Sector",
+]
+
+
 def find_ksei_file():
+    """Return the newest KSEI source file in the Raw folder, or None if the Raw
+    folder / a KSEI file is absent (e.g. CI has no local workbook). Non-fatal:
+    load_ksei() falls back to an empty schema so the committed IDX roster is
+    still scanned."""
     if not os.path.isdir(RAW_DIR):
-        raise FileNotFoundError("Raw folder not found.")
+        return None
     candidates = []
     for fn in os.listdir(RAW_DIR):
         if "ksei" in fn.lower() and (fn.lower().endswith(".xlsx") or fn.lower().endswith(".csv")):
@@ -3494,12 +3510,22 @@ def find_ksei_file():
             if fn.lower().endswith(".xlsx") or fn.lower().endswith(".csv"):
                 candidates.append(os.path.join(RAW_DIR, fn))
     if not candidates:
-        raise FileNotFoundError("No KSEI source file found in Raw folder.")
+        return None
     candidates.sort(key=lambda p: os.path.getmtime(p), reverse=True)
     return candidates[0]
 
 def load_ksei():
     path = find_ksei_file()
+    if path is None:
+        # No local Raw/KSEI workbook (the cloud daily runner has no Raw folder).
+        # Return an empty frame with the full KSEI schema so the pipeline still
+        # scans the committed IDX roster (merge_idx_roster) and carries blank
+        # ownership/valuation — exactly like a listed ticker with no reported
+        # holder table. No crash, no fabricated data; the frontend keeps the
+        # last committed KSEI snapshot (exported separately from data_sources/ksei).
+        print("[WARN] KSEI Raw folder/file not found -> scanning the committed IDX "
+              "roster only; ownership/PBV-source columns blank (last committed KSEI kept).")
+        return pd.DataFrame(columns=KSEI_SCHEMA_COLUMNS)
     df = pd.read_csv(path) if path.lower().endswith(".csv") else pd.read_excel(path)
     cols_map = {str(c).strip().lower(): c for c in df.columns}
 
@@ -14039,6 +14065,11 @@ if __name__ == "__main__":
         main()
     except Exception:
         import traceback
+        import sys as _sys
         print("\n[FATAL ERROR]")
         traceback.print_exc()
-        input("\nPress Enter to exit...")
+        # Only wait for a keypress when running interactively; in CI (no TTY) an
+        # input() prompt raises EOFError and masks the real error. Always exit 1.
+        if _sys.stdin is not None and _sys.stdin.isatty():
+            input("\nPress Enter to exit...")
+        _sys.exit(1)
