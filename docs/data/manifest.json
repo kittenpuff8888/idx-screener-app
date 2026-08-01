@@ -1,9 +1,9 @@
 {
   "schemaVersion": 5,
-  "latestMarketDate": "2026-07-24",
-  "latest": "2026-07-24",
-  "generatedAt": "2026-07-24T16:30:00+07:00",
-  "lastSuccessfulDatasetLoad": "2026-07-24T16:30:00+07:00",
+  "latestMarketDate": "2026-07-31",
+  "latest": "2026-07-31",
+  "generatedAt": "2026-07-31T16:30:00+07:00",
+  "lastSuccessfulDatasetLoad": "2026-07-31T16:30:00+07:00",
   "updateSchedule": {
     "timezone": "Asia/Jakarta",
     "localTime": "16:30",
@@ -11,7 +11,7 @@
   },
   "historyRange": {
     "start": "2025-01-01",
-    "end": "2026-07-24"
+    "end": "2026-07-31"
   },
   "availableMarketDates": [
     "2025-01-02",
@@ -383,7 +383,12 @@
     "2026-07-21",
     "2026-07-22",
     "2026-07-23",
-    "2026-07-24"
+    "2026-07-24",
+    "2026-07-27",
+    "2026-07-28",
+    "2026-07-29",
+    "2026-07-30",
+    "2026-07-31"
   ],
   "sourceVersions": {
     "archive": "schema-v5",
@@ -5621,6 +5626,76 @@
       "snapshotMode": "full_workbook",
       "workbook": "downloads/2026-07-24.xlsx",
       "ohlcv": "data/ohlcv/2026-07-24"
+    },
+    {
+      "marketDate": "2026-07-27",
+      "path": "data/dates/2026-07-27/",
+      "totalScanned": 963,
+      "okTickers": 923,
+      "partialTickers": 0,
+      "noDataTickers": 40,
+      "signalRows": 72,
+      "uniqueSignalTickers": 66,
+      "status": "ok",
+      "snapshotMode": "historical_ohlcv_reconstruction",
+      "workbook": null,
+      "ohlcv": "data/ohlcv/2026-07-31"
+    },
+    {
+      "marketDate": "2026-07-28",
+      "path": "data/dates/2026-07-28/",
+      "totalScanned": 963,
+      "okTickers": 923,
+      "partialTickers": 0,
+      "noDataTickers": 40,
+      "signalRows": 65,
+      "uniqueSignalTickers": 60,
+      "status": "ok",
+      "snapshotMode": "historical_ohlcv_reconstruction",
+      "workbook": null,
+      "ohlcv": "data/ohlcv/2026-07-31"
+    },
+    {
+      "marketDate": "2026-07-29",
+      "path": "data/dates/2026-07-29/",
+      "totalScanned": 963,
+      "okTickers": 923,
+      "partialTickers": 0,
+      "noDataTickers": 40,
+      "signalRows": 75,
+      "uniqueSignalTickers": 70,
+      "status": "ok",
+      "snapshotMode": "historical_ohlcv_reconstruction",
+      "workbook": null,
+      "ohlcv": "data/ohlcv/2026-07-31"
+    },
+    {
+      "marketDate": "2026-07-30",
+      "path": "data/dates/2026-07-30/",
+      "totalScanned": 963,
+      "okTickers": 923,
+      "partialTickers": 0,
+      "noDataTickers": 40,
+      "signalRows": 102,
+      "uniqueSignalTickers": 96,
+      "status": "ok",
+      "snapshotMode": "historical_ohlcv_reconstruction",
+      "workbook": null,
+      "ohlcv": "data/ohlcv/2026-07-31"
+    },
+    {
+      "marketDate": "2026-07-31",
+      "path": "data/dates/2026-07-31/",
+      "totalScanned": 963,
+      "okTickers": 912,
+      "partialTickers": 5,
+      "noDataTickers": 46,
+      "signalRows": 310,
+      "uniqueSignalTickers": 213,
+      "status": "ok",
+      "snapshotMode": "full_workbook",
+      "workbook": "downloads/2026-07-31.xlsx",
+      "ohlcv": "data/ohlcv/2026-07-31"
     }
   ]
 }

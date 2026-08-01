@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-07-24",
+ "asOf": "2026-07-31",
  "entries": [
   {
    "date": "2026-07-10",
@@ -79,8 +79,8 @@
    "close": 5600.0,
    "target": 6475,
    "invalidation": 5395.5,
-   "outcome": "open",
-   "barsObserved": 1
+   "outcome": "invalidated",
+   "barsObserved": 5
   },
   {
    "date": "2026-07-23",
@@ -90,7 +90,7 @@
    "target": 466,
    "invalidation": 397.98,
    "outcome": "invalidated",
-   "barsObserved": 1
+   "barsObserved": 5
   },
   {
    "date": "2026-07-23",
@@ -99,8 +99,8 @@
    "close": 456.0,
    "target": 495,
    "invalidation": 445.5,
-   "outcome": "open",
-   "barsObserved": 1
+   "outcome": "invalidated",
+   "barsObserved": 5
   },
   {
    "date": "2026-07-23",
@@ -109,15 +109,55 @@
    "close": 565.0,
    "target": 605,
    "invalidation": 544.5,
-   "outcome": "open",
-   "barsObserved": 1
+   "outcome": "invalidated",
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-24",
+   "ticker": "JGLE",
+   "score": 75,
+   "close": 63.0,
+   "target": 72,
+   "invalidation": 58,
+   "outcome": "invalidated",
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-24",
+   "ticker": "TCPI",
+   "score": 75,
+   "close": 5550.0,
+   "target": 6450,
+   "invalidation": 5346.0,
+   "outcome": "invalidated",
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-24",
+   "ticker": "MSIN",
+   "score": 70,
+   "close": 386.0,
+   "target": 449,
+   "invalidation": 374.21999999999997,
+   "outcome": "invalidated",
+   "barsObserved": 5
+  },
+  {
+   "date": "2026-07-24",
+   "ticker": "MTEL",
+   "score": 65,
+   "close": 456.0,
+   "target": 493,
+   "invalidation": 441.54,
+   "outcome": "undecided",
+   "barsObserved": 5
   }
  ],
  "summary": {
-  "total": 11,
-  "decided": 4,
+  "total": 15,
+  "decided": 10,
   "targetFirst": 2,
-  "hitRate": 0.5
+  "hitRate": 0.2
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
