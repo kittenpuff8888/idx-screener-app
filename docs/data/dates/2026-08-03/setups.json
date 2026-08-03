@@ -1,0 +1,398 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-03",
+ "generatedAt": "2026-08-03T20:33:22.666987+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 5,
+ "setups": [
+  {
+   "ticker": "MAPI",
+   "name": "Mitra Adiperkasa Tbk.",
+   "sector": "Others",
+   "close": 1895.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 1885,
+   "invalidation": 1699,
+   "target": 1925,
+   "medianValueTraded20": 9263058000,
+   "rvol": 1.240456832458758,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -907549621,
+    -959699721,
+    -897512921,
+    -897512921,
+    -936311421,
+    -864505021,
+    -778887921,
+    -778887921,
+    -778887921,
+    -805140721,
+    -725797721,
+    -1035910721,
+    -993442921,
+    -989292654,
+    -1059781404,
+    -1027556904,
+    -1045813804,
+    -1047704224,
+    -1043036024,
+    -1043264053,
+    -1042433053,
+    -1040966653,
+    -1040321013,
+    -1038293513,
+    -1041046613,
+    -1039652890,
+    -1037947648,
+    -1028295048,
+    -1025581048,
+    -985325424
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI OB Bear Low; bullish CHoCH (Internal Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 6,
+    "hitRate": 1.0,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMAPI"
+  },
+  {
+   "ticker": "SRSN",
+   "name": "Indo Acidatama Tbk",
+   "sector": "Others",
+   "close": 70.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 69,
+   "invalidation": 67,
+   "target": 74,
+   "medianValueTraded20": 2967296200,
+   "rvol": 0.98461227814026,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -1000886420,
+    -1019108120,
+    -1019108120,
+    -1013144320,
+    -1021216686,
+    -1021216686,
+    -1044671986,
+    -1044671986,
+    -1033234036,
+    -1006635936,
+    -1062269796,
+    -1078948496,
+    -1070782363,
+    -1070782363,
+    -1065222230,
+    -1065222230,
+    -1065222230,
+    -1065222230,
+    -1054178730,
+    -1028827930,
+    -1008670830,
+    -1018865730,
+    -1067371830,
+    -1043188730,
+    -1062343296,
+    -1031075736,
+    -1079719936,
+    -1034294936,
+    -979833136,
+    -994656870
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI PrevQ VWAP; bullish CHoCH (Internal Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 6,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ASRSN"
+  },
+  {
+   "ticker": "DGWG",
+   "name": "Delta Giri Wacana Tbk.",
+   "sector": "Others",
+   "close": 290.0,
+   "score": 65,
+   "components": {
+    "location": 25,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 287,
+   "invalidation": 278,
+   "target": 336,
+   "medianValueTraded20": 2769060000,
+   "rvol": 1.459761032399384,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    461604174,
+    456480774,
+    461235740,
+    459875507,
+    465831007,
+    459215347,
+    468271447,
+    475669207,
+    481206507,
+    496119607,
+    488498607,
+    483633157,
+    478566957,
+    472680824,
+    472680824,
+    470863104,
+    470863104,
+    474984670,
+    479891637,
+    475053704,
+    472133637,
+    474955270,
+    474955270,
+    477889937,
+    477889937,
+    474593437,
+    471273437,
+    478529737,
+    486829417,
+    494306667
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI EMA25; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 3,
+    "hitRate": 0.33,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ADGWG"
+  },
+  {
+   "ticker": "MTEL",
+   "name": "Dayamitra Telekomunikasi Tbk.",
+   "sector": "Others",
+   "close": 452.0,
+   "score": 65,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 448,
+   "invalidation": 439.56,
+   "target": 472,
+   "medianValueTraded20": 22665600000,
+   "rvol": 1.186166623520475,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    233533424,
+    275561624,
+    215155424,
+    235819124,
+    310824624,
+    393371124,
+    371665006,
+    362657766,
+    354470446,
+    384494146,
+    392398686,
+    392398686,
+    427028486,
+    372904486,
+    372904486,
+    404026058,
+    417944524,
+    460627124,
+    468655224,
+    480833124,
+    463364191,
+    463364191,
+    508315591,
+    561460191,
+    536276191,
+    587958391,
+    617223691,
+    617223691,
+    663527491,
+    626260824
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 10,
+    "hitRate": 0.5,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMTEL"
+  },
+  {
+   "ticker": "AMRT",
+   "name": "Sumber Alfaria Trijaya Tbk.",
+   "sector": "Others",
+   "close": 1325.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 1308,
+   "invalidation": 1282.05,
+   "target": 1368,
+   "medianValueTraded20": 48425702500,
+   "rvol": 1.229456077161536,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -1970528875,
+    -2017209266,
+    -1997434302,
+    -2043268802,
+    -2051183717,
+    -2091521024,
+    -2085878144,
+    -2103477008,
+    -2103477008,
+    -2112383083,
+    -2084552158,
+    -2084552158,
+    -2081437469,
+    -2081437469,
+    -2068357755,
+    -2068357755,
+    -2091400355,
+    -2140628755,
+    -2145702944,
+    -2159788982,
+    -2144894197,
+    -2128897463,
+    -2124091263,
+    -2144807930,
+    -2189927730,
+    -2178452363,
+    -2200338979,
+    -2152947479,
+    -2165130045,
+    -2182613085
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 11,
+    "hitRate": 0.64,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AAMRT"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 963
+}

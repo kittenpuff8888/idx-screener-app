@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-07-31",
+ "asOf": "2026-08-03",
  "entries": [
   {
    "date": "2026-07-10",
@@ -151,13 +151,83 @@
    "invalidation": 441.54,
    "outcome": "undecided",
    "barsObserved": 5
+  },
+  {
+   "date": "2026-07-31",
+   "ticker": "MAPI",
+   "score": 75,
+   "close": 1555.0,
+   "target": 1617,
+   "invalidation": 1538,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-31",
+   "ticker": "SRSN",
+   "score": 75,
+   "close": 71.0,
+   "target": 79,
+   "invalidation": 69,
+   "outcome": "invalidated",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-31",
+   "ticker": "TCPI",
+   "score": 70,
+   "close": 5050.0,
+   "target": 6072,
+   "invalidation": 4920.3,
+   "outcome": "invalidated",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-31",
+   "ticker": "MTEL",
+   "score": 65,
+   "close": 462.0,
+   "target": 472,
+   "invalidation": 439.56,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-31",
+   "ticker": "NICL",
+   "score": 65,
+   "close": 476.0,
+   "target": 508,
+   "invalidation": 455.4,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-31",
+   "ticker": "DGWG",
+   "score": 60,
+   "close": 284.0,
+   "target": 289,
+   "invalidation": 269.28,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-07-31",
+   "ticker": "MSIN",
+   "score": 55,
+   "close": 400.0,
+   "target": 446,
+   "invalidation": 368.28,
+   "outcome": "open",
+   "barsObserved": 1
   }
  ],
  "summary": {
-  "total": 15,
-  "decided": 10,
-  "targetFirst": 2,
-  "hitRate": 0.2
+  "total": 22,
+  "decided": 14,
+  "targetFirst": 4,
+  "hitRate": 0.286
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
