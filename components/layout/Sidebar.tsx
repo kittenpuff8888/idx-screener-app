@@ -11,8 +11,10 @@ const ICON = { width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Research", match: (p) => p === "/" || p.startsWith("/dashboard"),
     icon: <svg {...ICON}><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></svg> },
-  { href: "/explorer", label: "Screener", match: (p) => p.startsWith("/explorer"),
+  { href: "/screener", label: "Screener", match: (p) => p.startsWith("/screener"),
     icon: <svg {...ICON}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg> },
+  { href: "/explorer", label: "Explorer", match: (p) => p.startsWith("/explorer"),
+    icon: <svg {...ICON}><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 21V9" /></svg> },
   { href: "/setups", label: "Setups", match: (p) => p.startsWith("/setups"),
     icon: <svg {...ICON}><path d="M3 17l6-6 4 4 7-8" /><path d="M21 7h-4" /><path d="M21 7v4" /></svg> },
   { href: "/ksei", label: "KSEI", match: (p) => p.startsWith("/ksei"),
