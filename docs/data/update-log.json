@@ -581,6 +581,12 @@
       "marketDate": "2026-08-03",
       "status": "SUCCESS",
       "message": "Created and validated a new dated snapshot."
+    },
+    {
+      "timestamp": "2026-08-03T23:35:28.153014+07:00",
+      "marketDate": "2026-08-03",
+      "status": "NO_CHANGE",
+      "message": "Dataset already published; last successful snapshot preserved."
     }
   ]
 }
