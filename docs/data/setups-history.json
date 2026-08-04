@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-08-03",
+ "asOf": "2026-08-04",
  "entries": [
   {
    "date": "2026-07-10",
@@ -160,7 +160,7 @@
    "target": 1617,
    "invalidation": 1538,
    "outcome": "target",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-07-31",
@@ -170,7 +170,7 @@
    "target": 79,
    "invalidation": 69,
    "outcome": "invalidated",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-07-31",
@@ -180,7 +180,7 @@
    "target": 6072,
    "invalidation": 4920.3,
    "outcome": "invalidated",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-07-31",
@@ -190,7 +190,7 @@
    "target": 472,
    "invalidation": 439.56,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-07-31",
@@ -199,8 +199,8 @@
    "close": 476.0,
    "target": 508,
    "invalidation": 455.4,
-   "outcome": "open",
-   "barsObserved": 1
+   "outcome": "invalidated",
+   "barsObserved": 2
   },
   {
    "date": "2026-07-31",
@@ -210,7 +210,7 @@
    "target": 289,
    "invalidation": 269.28,
    "outcome": "target",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-07-31",
@@ -220,14 +220,64 @@
    "target": 446,
    "invalidation": 368.28,
    "outcome": "open",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-03",
+   "ticker": "MAPI",
+   "score": 75,
+   "close": 1895.0,
+   "target": 1925,
+   "invalidation": 1699,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-03",
+   "ticker": "SRSN",
+   "score": 75,
+   "close": 70.0,
+   "target": 74,
+   "invalidation": 67,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-03",
+   "ticker": "DGWG",
+   "score": 65,
+   "close": 290.0,
+   "target": 336,
+   "invalidation": 278,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-03",
+   "ticker": "MTEL",
+   "score": 65,
+   "close": 452.0,
+   "target": 472,
+   "invalidation": 439.56,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-03",
+   "ticker": "AMRT",
+   "score": 60,
+   "close": 1325.0,
+   "target": 1368,
+   "invalidation": 1282.05,
+   "outcome": "open",
    "barsObserved": 1
   }
  ],
  "summary": {
-  "total": 22,
-  "decided": 14,
+  "total": 27,
+  "decided": 15,
   "targetFirst": 4,
-  "hitRate": 0.286
+  "hitRate": 0.267
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }

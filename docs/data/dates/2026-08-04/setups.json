@@ -1,0 +1,394 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-04",
+ "generatedAt": "2026-08-04T19:33:42.458597+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 5,
+ "setups": [
+  {
+   "ticker": "WMUU",
+   "name": "Widodo Makmur Unggas Tbk.",
+   "sector": "Others",
+   "close": 54.0,
+   "score": 80,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 54,
+   "invalidation": 52,
+   "target": 57,
+   "medianValueTraded20": 5234619200,
+   "rvol": 0.9053076058882973,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -9153530676,
+    -8050869276,
+    -8543375256,
+    -8666204136,
+    -8729093986,
+    -8767345753,
+    -8651091153,
+    -8870563473,
+    -8870563473,
+    -8926334873,
+    -9030683373
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI EMA50; bullish CHoCH (Swing Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": null,
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AWMUU"
+  },
+  {
+   "ticker": "DGWG",
+   "name": "Delta Giri Wacana Tbk.",
+   "sector": "Others",
+   "close": 300.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 301,
+   "invalidation": 288,
+   "target": 336,
+   "medianValueTraded20": 2841422800,
+   "rvol": 1.463194215031296,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    456480774,
+    461235740,
+    459875507,
+    465831007,
+    459215347,
+    468271447,
+    475669207,
+    481206507,
+    496119607,
+    488498607,
+    483633157,
+    478566957,
+    472680824,
+    472680824,
+    470863104,
+    470863104,
+    474984670,
+    479891637,
+    475053704,
+    472133637,
+    474955270,
+    474955270,
+    477889937,
+    477889937,
+    474593437,
+    471273437,
+    478529737,
+    486829417,
+    494306667,
+    509299367
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI EMA50; bullish CHoCH (Internal Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 3,
+    "hitRate": 0.33,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ADGWG"
+  },
+  {
+   "ticker": "SRSN",
+   "name": "Indo Acidatama Tbk",
+   "sector": "Others",
+   "close": 69.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 69,
+   "invalidation": 67,
+   "target": 74,
+   "medianValueTraded20": 2381307300,
+   "rvol": 0.7492793074056239,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -1019108120,
+    -1019108120,
+    -1013144320,
+    -1021216686,
+    -1021216686,
+    -1044671986,
+    -1044671986,
+    -1033234036,
+    -1006635936,
+    -1062269796,
+    -1078948496,
+    -1070782363,
+    -1070782363,
+    -1065222230,
+    -1065222230,
+    -1065222230,
+    -1065222230,
+    -1054178730,
+    -1028827930,
+    -1008670830,
+    -1018865730,
+    -1067371830,
+    -1043188730,
+    -1062343296,
+    -1031075736,
+    -1079719936,
+    -1034294936,
+    -979833136,
+    -994656870,
+    -994656870
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI PrevQ VWAP; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 3,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ASRSN"
+  },
+  {
+   "ticker": "KLBF",
+   "name": "Kalbe Farma Tbk.",
+   "sector": "Others",
+   "close": 735.0,
+   "score": 70,
+   "components": {
+    "location": 25,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 730,
+   "invalidation": 720,
+   "target": 759,
+   "medianValueTraded20": 56375789000,
+   "rvol": 0.5903932876192994,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -3949178385,
+    -3918017039,
+    -3875091719,
+    -3915439069,
+    -3955895055,
+    -3970936355,
+    -4022628069,
+    -4064380969,
+    -4043563903,
+    -4063455136,
+    -4074149236,
+    -4101336436,
+    -4118261236,
+    -4133227836,
+    -4144989716,
+    -4256854930,
+    -4237167290,
+    -4122418690,
+    -4071478450,
+    -4125530022,
+    -4166799022,
+    -4248777822,
+    -4232678988,
+    -4232678988,
+    -4276463088,
+    -4276463088,
+    -4298738122,
+    -4200474765,
+    -4258175915,
+    -4212796315
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI EMA25; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 8,
+    "hitRate": 0.38,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AKLBF"
+  },
+  {
+   "ticker": "MGRO",
+   "name": "Mahkota Group Tbk.",
+   "sector": "Others",
+   "close": 665.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 646,
+   "invalidation": 633.6,
+   "target": 675,
+   "medianValueTraded20": 2664921000,
+   "rvol": 1.182091660821371,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1353103336,
+    1349535536,
+    1352789536,
+    1356505236,
+    1354509996,
+    1358833296,
+    1361910196,
+    1365807396,
+    1372336996,
+    1370790746,
+    1372453479,
+    1371117679,
+    1372836379,
+    1372836379,
+    1376336879,
+    1379838379,
+    1383147879,
+    1379806279,
+    1380883112,
+    1382694962,
+    1385611662,
+    1389996762,
+    1394003362,
+    1396627112,
+    1392827412,
+    1388414112,
+    1390817912,
+    1397106412,
+    1391760412,
+    1396546512
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 14,
+    "hitRate": 0.86,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMGRO"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 963
+}
