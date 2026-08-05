@@ -12,7 +12,7 @@
   --cat-1: #2563eb; --cat-2: #e5484d; --cat-3: #0891b2; --cat-4: #7c3aed;
   --cat-5: #ea580c; --cat-6: #0f766e; --cat-7: #be185d; --cat-8: #475569;
   --cat-9: #ca8a04; --cat-10: #1d4ed8; --cat-11: #9333ea;
-  --bg: #eef0f3;
+  --bg: #ffffff;
   --bg-soft: #f4f6f9;
   --surface: #ffffff;
   --surface-2: #f4f6f9;
@@ -36,7 +36,7 @@
   --neutral: #5b6472;
   --cyan: #0891b2;
   /* Token aliases (light) */
-  --frame: #eef0f3;
+  --frame: #ffffff;
   --panel: #ffffff;
   --ink: #0b0e14;
   --muted: #5b6472;
