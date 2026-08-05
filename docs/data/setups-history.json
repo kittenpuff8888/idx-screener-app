@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-08-04",
+ "asOf": "2026-08-05",
  "entries": [
   {
    "date": "2026-07-10",
@@ -160,7 +160,7 @@
    "target": 1617,
    "invalidation": 1538,
    "outcome": "target",
-   "barsObserved": 2
+   "barsObserved": 3
   },
   {
    "date": "2026-07-31",
@@ -170,7 +170,7 @@
    "target": 79,
    "invalidation": 69,
    "outcome": "invalidated",
-   "barsObserved": 2
+   "barsObserved": 3
   },
   {
    "date": "2026-07-31",
@@ -180,7 +180,7 @@
    "target": 6072,
    "invalidation": 4920.3,
    "outcome": "invalidated",
-   "barsObserved": 2
+   "barsObserved": 3
   },
   {
    "date": "2026-07-31",
@@ -190,7 +190,7 @@
    "target": 472,
    "invalidation": 439.56,
    "outcome": "open",
-   "barsObserved": 2
+   "barsObserved": 3
   },
   {
    "date": "2026-07-31",
@@ -200,7 +200,7 @@
    "target": 508,
    "invalidation": 455.4,
    "outcome": "invalidated",
-   "barsObserved": 2
+   "barsObserved": 3
   },
   {
    "date": "2026-07-31",
@@ -210,7 +210,7 @@
    "target": 289,
    "invalidation": 269.28,
    "outcome": "target",
-   "barsObserved": 2
+   "barsObserved": 3
   },
   {
    "date": "2026-07-31",
@@ -220,7 +220,7 @@
    "target": 446,
    "invalidation": 368.28,
    "outcome": "open",
-   "barsObserved": 2
+   "barsObserved": 3
   },
   {
    "date": "2026-08-03",
@@ -229,8 +229,8 @@
    "close": 1895.0,
    "target": 1925,
    "invalidation": 1699,
-   "outcome": "open",
-   "barsObserved": 1
+   "outcome": "invalidated",
+   "barsObserved": 2
   },
   {
    "date": "2026-08-03",
@@ -240,7 +240,7 @@
    "target": 74,
    "invalidation": 67,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-08-03",
@@ -250,7 +250,7 @@
    "target": 336,
    "invalidation": 278,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-08-03",
@@ -260,7 +260,7 @@
    "target": 472,
    "invalidation": 439.56,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-08-03",
@@ -269,15 +269,65 @@
    "close": 1325.0,
    "target": 1368,
    "invalidation": 1282.05,
+   "outcome": "target",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-04",
+   "ticker": "WMUU",
+   "score": 80,
+   "close": 54.0,
+   "target": 57,
+   "invalidation": 52,
    "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-04",
+   "ticker": "DGWG",
+   "score": 75,
+   "close": 300.0,
+   "target": 336,
+   "invalidation": 288,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-04",
+   "ticker": "SRSN",
+   "score": 75,
+   "close": 69.0,
+   "target": 74,
+   "invalidation": 67,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-04",
+   "ticker": "KLBF",
+   "score": 70,
+   "close": 735.0,
+   "target": 759,
+   "invalidation": 720,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-08-04",
+   "ticker": "MGRO",
+   "score": 60,
+   "close": 665.0,
+   "target": 675,
+   "invalidation": 633.6,
+   "outcome": "target",
    "barsObserved": 1
   }
  ],
  "summary": {
-  "total": 27,
-  "decided": 15,
-  "targetFirst": 4,
-  "hitRate": 0.267
+  "total": 32,
+  "decided": 19,
+  "targetFirst": 7,
+  "hitRate": 0.368
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }

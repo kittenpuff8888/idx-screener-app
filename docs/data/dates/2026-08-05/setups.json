@@ -1,0 +1,264 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-05",
+ "generatedAt": "2026-08-05T21:35:49.866230+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 3,
+ "setups": [
+  {
+   "ticker": "KLBF",
+   "name": "Kalbe Farma Tbk.",
+   "sector": "Others",
+   "close": 800.0,
+   "score": 80,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 809,
+   "invalidation": 760,
+   "target": 935,
+   "medianValueTraded20": 59434630000,
+   "rvol": 3.342283154517478,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -3934816868,
+    -3891891548,
+    -3932238898,
+    -3972694884,
+    -3987736184,
+    -4039427898,
+    -4081180798,
+    -4060363731,
+    -4080254965,
+    -4090949065,
+    -4118136265,
+    -4135061065,
+    -4150027665,
+    -4161789545,
+    -4273654759,
+    -4253967119,
+    -4139218519,
+    -4088278279,
+    -4142329850,
+    -4183598850,
+    -4265577650,
+    -4249478817,
+    -4249478817,
+    -4293262917,
+    -4293262917,
+    -4315537950,
+    -4217274593,
+    -4274975743,
+    -4229596143,
+    -4038713418
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI PrevQ VWAP; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 11,
+    "hitRate": 0.45,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AKLBF"
+  },
+  {
+   "ticker": "DGWG",
+   "name": "Delta Giri Wacana Tbk.",
+   "sector": "Others",
+   "close": 308.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 305,
+   "invalidation": 301,
+   "target": 336,
+   "medianValueTraded20": 2918131200,
+   "rvol": 2.03825856276978,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    461235740,
+    459875507,
+    465831007,
+    459215347,
+    468271447,
+    475669207,
+    481206507,
+    496119607,
+    488498607,
+    483633157,
+    478566957,
+    472680824,
+    472680824,
+    470863104,
+    470863104,
+    474984670,
+    479891637,
+    475053704,
+    472133637,
+    474955270,
+    474955270,
+    477889937,
+    477889937,
+    474593437,
+    471273437,
+    478529737,
+    486829417,
+    494306667,
+    509299367,
+    509299367
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI PrevQ -1SD; bullish CHoCH (Internal Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 3,
+    "hitRate": 0.33,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ADGWG"
+  },
+  {
+   "ticker": "SRSN",
+   "name": "Indo Acidatama Tbk",
+   "sector": "Others",
+   "close": 70.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 69,
+   "invalidation": 67,
+   "target": 74,
+   "medianValueTraded20": 2967296200,
+   "rvol": 1.529343820025776,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -1019658020,
+    -1013694220,
+    -1021766586,
+    -1021766586,
+    -1045221886,
+    -1045221886,
+    -1033783936,
+    -1007185836,
+    -1062819696,
+    -1079498396,
+    -1071332263,
+    -1071332263,
+    -1065772130,
+    -1065772130,
+    -1065772130,
+    -1065772130,
+    -1054728630,
+    -1029377830,
+    -1009220730,
+    -1019415630,
+    -1067921730,
+    -1043738630,
+    -1062893196,
+    -1031625636,
+    -1080269836,
+    -1034844836,
+    -980383036,
+    -995206770,
+    -995206770,
+    -995206770
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI PrevQ VWAP; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 6,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ASRSN"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 963
+}

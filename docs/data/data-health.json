@@ -1,7 +1,7 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-04T20:41:33.739920+07:00",
- "marketDate": "2026-08-04",
+ "generatedAt": "2026-08-05T21:35:49.896329+07:00",
+ "marketDate": "2026-08-05",
  "universe": {
   "size": 963,
   "source": "KSEI workbook roster",
@@ -15,33 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-04T20:41:19.656326+07:00"
+  "auditedAt": "2026-08-05T21:35:39.167631+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-01T08:47:57.073430+07:00",
-   "marketDate": "2026-07-31",
-   "status": "STARTED",
-   "message": "Daily update pipeline started."
-  },
-  {
-   "timestamp": "2026-08-01T09:33:46.871123+07:00",
-   "marketDate": "2026-07-31",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
-  },
-  {
-   "timestamp": "2026-08-03T19:42:23.721032+07:00",
-   "marketDate": "2026-08-03",
-   "status": "STARTED",
-   "message": "Daily update pipeline started."
-  },
-  {
-   "timestamp": "2026-08-03T20:32:48.490368+07:00",
-   "marketDate": "2026-08-03",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
-  },
   {
    "timestamp": "2026-08-03T23:35:28.153014+07:00",
    "marketDate": "2026-08-03",
@@ -65,6 +41,30 @@
    "marketDate": "2026-08-04",
    "status": "NO_CHANGE",
    "message": "Dataset already published; last successful snapshot preserved."
+  },
+  {
+   "timestamp": "2026-08-05T18:36:48.142205+07:00",
+   "marketDate": "2026-08-05",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-08-05T19:31:20.439280+07:00",
+   "marketDate": "2026-08-05",
+   "status": "FAILED",
+   "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/validate_data.py']' returned non-zero exit status 1."
+  },
+  {
+   "timestamp": "2026-08-05T20:25:14.690903+07:00",
+   "marketDate": "2026-08-05",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-08-05T21:35:23.123938+07:00",
+   "marketDate": "2026-08-05",
+   "status": "SUCCESS",
+   "message": "Created and validated a new dated snapshot."
   }
  ],
  "qaSummary": {
@@ -92,16 +92,12 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-04T20:41:23.745165+07:00",
+  "lastChecked": "2026-08-05T21:35:43.145468+07:00",
   "checked": 15,
   "failures": [],
   "results": [
    {
     "ticker": "ANTM",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "ARTI",
     "status": "ERROR: TypeError"
    },
    {
@@ -117,7 +113,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "BIKE",
+    "ticker": "BWPT",
     "status": "ERROR: TypeError"
    },
    {
@@ -125,7 +121,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "JARR",
+    "ticker": "GJTL",
     "status": "ERROR: TypeError"
    },
    {
@@ -137,15 +133,19 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "PTIS",
+    "ticker": "MTEL",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "SOSS",
+    "ticker": "MTMH",
     "status": "ERROR: TypeError"
    },
    {
     "ticker": "SRSN",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "SSTM",
     "status": "ERROR: TypeError"
    },
    {
@@ -160,86 +160,72 @@
   "note": "Price exact-match required (discrete IDX ticks); volume tolerance 0.5%. PARITY_FAIL tickers are excluded from swing setups this run."
  },
  "setups": {
-  "count": 5,
+  "count": 3,
   "scanned": 963,
   "quarantined": 5,
   "spotCheckSample": [
    {
     "ticker": "ANTM",
-    "date": "2026-08-04",
-    "close": 2890.0,
-    "volume": 70023600.0,
+    "date": "2026-08-05",
+    "close": 3070.0,
+    "volume": 187572000.0,
     "source": "yfinance"
    },
    {
     "ticker": "ASII",
-    "date": "2026-08-04",
-    "close": 5125.0,
-    "volume": 39489500.0,
+    "date": "2026-08-05",
+    "close": 5025.0,
+    "volume": 49014700.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBCA",
-    "date": "2026-08-04",
-    "close": 6500.0,
-    "volume": 138953100.0,
+    "date": "2026-08-05",
+    "close": 6450.0,
+    "volume": 101666100.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBRI",
-    "date": "2026-08-04",
-    "close": 3060.0,
-    "volume": 191121700.0,
+    "date": "2026-08-05",
+    "close": 3020.0,
+    "volume": 111460100.0,
     "source": "yfinance"
    },
    {
     "ticker": "TLKM",
-    "date": "2026-08-04",
-    "close": 2790.0,
-    "volume": 90753600.0,
+    "date": "2026-08-05",
+    "close": 2710.0,
+    "volume": 109494500.0,
     "source": "yfinance"
    },
    {
-    "ticker": "WMUU",
-    "date": "2026-08-04",
-    "close": 54.0,
+    "ticker": "KLBF",
+    "date": "2026-08-05",
+    "close": 800.0,
     "volume": null,
     "source": "yfinance"
    },
    {
     "ticker": "DGWG",
-    "date": "2026-08-04",
-    "close": 300.0,
+    "date": "2026-08-05",
+    "close": 308.0,
     "volume": null,
     "source": "yfinance"
    },
    {
     "ticker": "SRSN",
-    "date": "2026-08-04",
-    "close": 69.0,
-    "volume": null,
-    "source": "yfinance"
-   },
-   {
-    "ticker": "KLBF",
-    "date": "2026-08-04",
-    "close": 735.0,
-    "volume": null,
-    "source": "yfinance"
-   },
-   {
-    "ticker": "MGRO",
-    "date": "2026-08-04",
-    "close": 665.0,
+    "date": "2026-08-05",
+    "close": 70.0,
     "volume": null,
     "source": "yfinance"
    }
   ],
   "forwardOutcomes": {
-   "total": 27,
-   "decided": 15,
-   "targetFirst": 4,
-   "hitRate": 0.267
+   "total": 32,
+   "decided": 19,
+   "targetFirst": 7,
+   "hitRate": 0.368
   }
  },
  "manualSpotCheck": {
@@ -247,71 +233,57 @@
   "tickers": [
    {
     "ticker": "ANTM",
-    "date": "2026-08-04",
-    "close": 2890.0,
-    "volume": 70023600.0,
+    "date": "2026-08-05",
+    "close": 3070.0,
+    "volume": 187572000.0,
     "source": "yfinance"
    },
    {
     "ticker": "ASII",
-    "date": "2026-08-04",
-    "close": 5125.0,
-    "volume": 39489500.0,
+    "date": "2026-08-05",
+    "close": 5025.0,
+    "volume": 49014700.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBCA",
-    "date": "2026-08-04",
-    "close": 6500.0,
-    "volume": 138953100.0,
+    "date": "2026-08-05",
+    "close": 6450.0,
+    "volume": 101666100.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBRI",
-    "date": "2026-08-04",
-    "close": 3060.0,
-    "volume": 191121700.0,
+    "date": "2026-08-05",
+    "close": 3020.0,
+    "volume": 111460100.0,
     "source": "yfinance"
    },
    {
     "ticker": "TLKM",
-    "date": "2026-08-04",
-    "close": 2790.0,
-    "volume": 90753600.0,
+    "date": "2026-08-05",
+    "close": 2710.0,
+    "volume": 109494500.0,
     "source": "yfinance"
    },
    {
-    "ticker": "WMUU",
-    "date": "2026-08-04",
-    "close": 54.0,
+    "ticker": "KLBF",
+    "date": "2026-08-05",
+    "close": 800.0,
     "volume": null,
     "source": "yfinance"
    },
    {
     "ticker": "DGWG",
-    "date": "2026-08-04",
-    "close": 300.0,
+    "date": "2026-08-05",
+    "close": 308.0,
     "volume": null,
     "source": "yfinance"
    },
    {
     "ticker": "SRSN",
-    "date": "2026-08-04",
-    "close": 69.0,
-    "volume": null,
-    "source": "yfinance"
-   },
-   {
-    "ticker": "KLBF",
-    "date": "2026-08-04",
-    "close": 735.0,
-    "volume": null,
-    "source": "yfinance"
-   },
-   {
-    "ticker": "MGRO",
-    "date": "2026-08-04",
-    "close": 665.0,
+    "date": "2026-08-05",
+    "close": 70.0,
     "volume": null,
     "source": "yfinance"
    }
