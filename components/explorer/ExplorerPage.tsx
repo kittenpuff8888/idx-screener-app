@@ -207,7 +207,7 @@ export function ExplorerPage() {
       </div>
 
       <p style={{ marginTop: 14, fontSize: 12 }}>
-        <a href="/setups" style={{ color: "var(--accent)", textDecoration: "none" }}>Past Setups · Forward Outcomes →</a>
+        <a href="/setups/history" style={{ color: "var(--accent)", textDecoration: "none" }}>Past Setups · Forward Outcomes →</a>
       </p>
     </section>
   );
