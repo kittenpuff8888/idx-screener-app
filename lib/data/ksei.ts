@@ -57,6 +57,30 @@ export async function loadKsei(): Promise<KseiPayload> {
   };
 }
 
+export type KseiTrendSnapshot = {
+  asOf: string;
+  totalIssuers: number;
+  avgFreeFloat: number | null;
+  avgHHI: number | null;
+  highConcentrationIssuers: number | null;
+  ownershipTypes: Record<string, number> | null;
+  investorTypeShare: Record<string, number>;
+  proxyForeignPct: number;
+  proxyLocalPct: number;
+  coverageIssuers: number;
+};
+export type KseiTrend = { generatedAt?: string; note?: string; snapshots: KseiTrendSnapshot[] };
+
+/** Small precomputed multi-snapshot aggregate (docs/data/ksei/trend.json). */
+export async function loadKseiTrend(): Promise<KseiTrend | null> {
+  try {
+    const raw = await fetchJson<KseiTrend>("/data/ksei/trend.json");
+    return raw && Array.isArray(raw.snapshots) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 export function buildInvestorDirectory(ksei: KseiPayload | null) {
   const directory = new Map<string, Array<{ issuer: KseiIssuer; rank: number; type: string; percentage: number }>>();
   (ksei?.records || []).forEach((issuer) => {

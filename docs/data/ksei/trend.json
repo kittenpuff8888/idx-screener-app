@@ -1,0 +1,118 @@
+{
+  "generatedFrom": "docs/data/ksei/dates/*/ownership.json",
+  "generatedAt": "2026-08-05T14:29:07.514Z",
+  "note": "Investor-type composition is real (KSEI category); foreign/local is a labelled name-proxy, not authoritative.",
+  "snapshots": [
+    {
+      "asOf": "2026-05-14",
+      "totalIssuers": 956,
+      "avgFreeFloat": 15.64,
+      "avgHHI": 3623.6,
+      "highConcentrationIssuers": 610,
+      "ownershipTypes": {
+        "Mayoritas": 522,
+        "Terkonsentrasi": 141,
+        "Moderat": 133,
+        "Oligopoli": 89,
+        "Tersebar": 70,
+        "Unclassified": 1
+      },
+      "investorTypeShare": {
+        "Individual": 19.04,
+        "Corporate": 63.95,
+        "Bank": 3.89,
+        "Insurance": 1.44,
+        "Securities": 1.75,
+        "Mutual Fund": 1.06,
+        "Pension Fund": 0.27,
+        "Other": 8.58
+      },
+      "proxyForeignPct": 15.84,
+      "proxyLocalPct": 84.16,
+      "coverageIssuers": 955
+    },
+    {
+      "asOf": "2026-06-06",
+      "totalIssuers": 956,
+      "avgFreeFloat": 15.64,
+      "avgHHI": 3623.6,
+      "highConcentrationIssuers": 610,
+      "ownershipTypes": {
+        "Mayoritas": 522,
+        "Terkonsentrasi": 141,
+        "Moderat": 133,
+        "Oligopoli": 89,
+        "Tersebar": 70,
+        "Unclassified": 1
+      },
+      "investorTypeShare": {
+        "Individual": 19.04,
+        "Corporate": 63.95,
+        "Bank": 3.89,
+        "Insurance": 1.44,
+        "Securities": 1.75,
+        "Mutual Fund": 1.06,
+        "Pension Fund": 0.27,
+        "Other": 8.58
+      },
+      "proxyForeignPct": 15.84,
+      "proxyLocalPct": 84.16,
+      "coverageIssuers": 955
+    },
+    {
+      "asOf": "2026-06-14",
+      "totalIssuers": 956,
+      "avgFreeFloat": 15.64,
+      "avgHHI": 3623.6,
+      "highConcentrationIssuers": 610,
+      "ownershipTypes": {
+        "Mayoritas": 522,
+        "Terkonsentrasi": 141,
+        "Moderat": 133,
+        "Oligopoli": 89,
+        "Tersebar": 70,
+        "Unclassified": 1
+      },
+      "investorTypeShare": {
+        "Individual": 19.01,
+        "Corporate": 63.97,
+        "Bank": 3.89,
+        "Insurance": 1.44,
+        "Securities": 1.75,
+        "Mutual Fund": 1.06,
+        "Pension Fund": 0.27,
+        "Other": 8.6
+      },
+      "proxyForeignPct": 15.84,
+      "proxyLocalPct": 84.16,
+      "coverageIssuers": 955
+    },
+    {
+      "asOf": "2026-07-20",
+      "totalIssuers": 955,
+      "avgFreeFloat": 15.64,
+      "avgHHI": 3623.6,
+      "highConcentrationIssuers": 610,
+      "ownershipTypes": {
+        "Mayoritas": 522,
+        "Terkonsentrasi": 141,
+        "Moderat": 133,
+        "Oligopoli": 89,
+        "Tersebar": 70
+      },
+      "investorTypeShare": {
+        "Individual": 19.04,
+        "Corporate": 63.95,
+        "Bank": 3.89,
+        "Insurance": 1.44,
+        "Securities": 1.75,
+        "Mutual Fund": 1.06,
+        "Pension Fund": 0.27,
+        "Other": 8.58
+      },
+      "proxyForeignPct": 15.84,
+      "proxyLocalPct": 84.16,
+      "coverageIssuers": 955
+    }
+  ]
+}

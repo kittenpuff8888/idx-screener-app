@@ -6,6 +6,7 @@ import { useApp } from "@/components/providers/AppProvider";
 import { formatAsOf, formatNumber, formatPlainPercent } from "@/lib/format/number";
 import { IDX_SECTOR_MAP, normalizeSector } from "@/lib/domain/sectors";
 import type { InvestorEntry, KseiIssuer } from "@/lib/domain/types";
+import { KseiMarketOverview } from "./KseiMarketOverview";
 
 const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))" };
@@ -91,6 +92,9 @@ export function KseiPage() {
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 10, color: "var(--faint)" }}>Source: KSEI · as of {formatAsOf(ksei?.asOf) || ksei?.asOf || "—"}</span>
       </div>
+
+      {/* market-ownership overview (real aggregates + snapshot health) */}
+      <KseiMarketOverview ksei={ksei} />
 
       {/* tab bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, borderBottom: "1px solid var(--border)", marginBottom: 16, flexWrap: "wrap" }}>
