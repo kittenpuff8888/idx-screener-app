@@ -1,0 +1,197 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-07",
+ "generatedAt": "2026-08-07T18:10:20.061549+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 2,
+ "setups": [
+  {
+   "ticker": "MSIN",
+   "name": "MNC Digital Entertainment Tbk.",
+   "sector": "Others",
+   "close": 376.0,
+   "score": 65,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 368,
+   "invalidation": 360.36,
+   "target": 420,
+   "medianValueTraded20": 11181802400,
+   "rvol": 0.9761607940741069,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1522715151,
+    1499429272,
+    1507820545,
+    1519362370,
+    1533095695,
+    1546098895,
+    1593442443,
+    1576530629,
+    1574348793,
+    1577181711,
+    1565560911,
+    1536564033,
+    1540159453,
+    1552825213,
+    1547310280,
+    1547310280,
+    1563089680,
+    1552813080,
+    1534813733,
+    1520329533,
+    1535029922,
+    1535029922,
+    1538437830,
+    1522724330,
+    1539919330,
+    1539919330,
+    1535013570,
+    1554412303,
+    1543372853,
+    1558346303
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 24,
+    "hitRate": 0.58,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMSIN"
+  },
+  {
+   "ticker": "MGRO",
+   "name": "Mahkota Group Tbk.",
+   "sector": "Others",
+   "close": 670.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 646,
+   "invalidation": 633.6,
+   "target": 675,
+   "medianValueTraded20": 2724488000,
+   "rvol": 1.066350508572983,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1343371486,
+    1341376246,
+    1345699546,
+    1348776446,
+    1352673646,
+    1359203246,
+    1357656996,
+    1359319729,
+    1357983929,
+    1359702629,
+    1359702629,
+    1363203129,
+    1366704629,
+    1370014129,
+    1366672529,
+    1367749362,
+    1369561212,
+    1372477912,
+    1376863012,
+    1380869612,
+    1383493362,
+    1379693662,
+    1375280362,
+    1377684162,
+    1383972662,
+    1378626662,
+    1383412762,
+    1385608462,
+    1389526562,
+    1385155362
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 19,
+    "hitRate": 0.68,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMGRO"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 963
+}
