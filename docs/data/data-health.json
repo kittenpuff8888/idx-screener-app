@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-07T18:10:20.109418+07:00",
+ "generatedAt": "2026-08-07T18:55:39.743823+07:00",
  "marketDate": "2026-08-07",
  "universe": {
   "size": 963,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-07T18:10:08.232065+07:00"
+  "auditedAt": "2026-08-07T18:55:27.193247+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-05T19:31:20.439280+07:00",
-   "marketDate": "2026-08-05",
-   "status": "FAILED",
-   "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/validate_data.py']' returned non-zero exit status 1."
-  },
   {
    "timestamp": "2026-08-05T20:25:14.690903+07:00",
    "marketDate": "2026-08-05",
@@ -65,6 +59,12 @@
    "marketDate": "2026-08-07",
    "status": "SUCCESS",
    "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-08-07T18:55:04.154950+07:00",
+   "marketDate": "2026-08-07",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
   }
  ],
  "qaSummary": {
@@ -92,8 +92,8 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-07T18:10:09.872646+07:00",
-  "checked": 10,
+  "lastChecked": "2026-08-07T18:55:29.942752+07:00",
+  "checked": 12,
   "failures": [],
   "results": [
    {
@@ -113,27 +113,35 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "EPMT",
+    "ticker": "BRAM",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "JIHD",
+    "ticker": "DUTI",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "LCGP",
-    "status": "NO_FRESH_DATA"
+    "ticker": "HRME",
+    "status": "ERROR: TypeError"
    },
    {
-    "ticker": "MDKA",
+    "ticker": "KOPI",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "MGRO",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "MSIN",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "PANS",
     "status": "ERROR: TypeError"
    },
    {
     "ticker": "TLKM",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "TMAS",
     "status": "ERROR: TypeError"
    }
   ],
