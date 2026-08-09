@@ -19,10 +19,11 @@ import { IndexPanel } from "./IndexPanel";
 import { SetupPanel } from "./SetupPanel";
 import { asNumber } from "@/lib/format/number";
 
-export function TickerResearch() {
+export function TickerResearch({ symbol }: { symbol?: string } = {}) {
   const params = useSearchParams();
   const router = useRouter();
-  const ticker = (params.get("symbol") || "").trim().toUpperCase().replace(".JK", "");
+  // Path route (/v2/ticker/[code]) passes `symbol`; legacy route uses ?symbol=.
+  const ticker = (symbol ?? params.get("symbol") ?? "").trim().toUpperCase().replace(".JK", "");
   const { bundle, ksei, idxIndex, marketDate } = useApp();
   const [ohlcv, setOhlcv] = useState<OhlcvPayload | null>(null);
 
