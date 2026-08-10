@@ -20,7 +20,7 @@ const NAV: Array<{ key: NavKey; label: string; href: string; icon: ReactNode }> 
   {
     key: "research",
     label: "Research",
-    href: "/v2",
+    href: "/",
     icon: (
       <>
         <rect x="3" y="3" width="7" height="9" rx="1" />
@@ -33,7 +33,7 @@ const NAV: Array<{ key: NavKey; label: string; href: string; icon: ReactNode }> 
   {
     key: "screener",
     label: "Screener",
-    href: "/v2/screener",
+    href: "/screener",
     icon: (
       <>
         <circle cx="11" cy="11" r="7" />
@@ -44,7 +44,7 @@ const NAV: Array<{ key: NavKey; label: string; href: string; icon: ReactNode }> 
   {
     key: "ksei",
     label: "KSEI",
-    href: "/v2/ksei",
+    href: "/ksei",
     icon: (
       <>
         <path d="M3 21h18" />
@@ -56,13 +56,13 @@ const NAV: Array<{ key: NavKey; label: string; href: string; icon: ReactNode }> 
   {
     key: "watchlist",
     label: "Watchlist",
-    href: "/v2/watchlist",
+    href: "/watchlist",
     icon: <path d="M12 3l2.7 5.4 6 .9-4.3 4.2 1 6L12 17l-5.4 2.8 1-6L3.3 9.3l6-.9z" />,
   },
   {
     key: "news",
     label: "News",
-    href: "/v2/news",
+    href: "/news",
     icon: (
       <>
         <path d="M4 4h12v16H4z" />
@@ -165,7 +165,7 @@ export function V2Shell({
             padding: "20px 14px",
           }}
         >
-          <Link href="/v2" style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 6px 20px", textDecoration: "none", color: "var(--text)" }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 11, padding: "2px 6px 20px", textDecoration: "none", color: "var(--text)" }}>
             <div style={{ width: 36, height: 36, borderRadius: 11, background: "var(--text)", display: "grid", placeItems: "center" }}>
               <span style={{ fontFamily: "var(--font-mono)", fontSize: 13, fontWeight: 700, color: "var(--bg)" }}>88</span>
             </div>

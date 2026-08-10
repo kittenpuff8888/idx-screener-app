@@ -1,5 +1,7 @@
-import { PastSetupsPage } from "@/components/screener/PastSetupsPage";
+"use client";
+
+import { PastSetupsFaithful } from "@/components/v2/pages/PastSetupsFaithful";
 
 export default function Page() {
-  return <PastSetupsPage />;
+  return <PastSetupsFaithful />;
 }
