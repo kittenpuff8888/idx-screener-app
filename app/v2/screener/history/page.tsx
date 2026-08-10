@@ -1,17 +1,9 @@
 "use client";
 
-import { V2Shell } from "@/components/v2/V2Shell";
-import { SetupsPage } from "@/components/setups/SetupsPage";
+import { PastSetupsFaithful } from "@/components/v2/pages/PastSetupsFaithful";
 
-// Past Setups (/screener/history) — faithful real-data realization of
-// "2.2 Past Setups.dc.html": expectancy (hit-rate + CI, avg R, equity curve),
-// sample-size/survivorship notes, per-setup + per-sector breakdown vs IHSG.
+// Past Setups (/screener/history) — pixel-faithful port of "2.2 Past
+// Setups.dc.html", wired to the real setups-history.json.
 export default function V2PastSetupsPage() {
-  return (
-    <V2Shell active="screener" title="Past Setups">
-      <main style={{ flex: 1, minWidth: 0, padding: "24px 30px 64px", background: "var(--bg)" }}>
-        <SetupsPage />
-      </main>
-    </V2Shell>
-  );
+  return <PastSetupsFaithful />;
 }
