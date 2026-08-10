@@ -43,7 +43,7 @@ function parseCount(v: unknown): number | null {
 
 const KONGLO_FEATURED = ["Barito", "Salim", "Sinarmas", "Astra", "Djarum", "Saratoga", "Bakrie", "Lippo"];
 
-export function DashboardPage() {
+export function DashboardPage({ hideIntro = false }: { hideIntro?: boolean } = {}) {
   const { loading, bundle, indexes, marketContext, marketDate, openTicker } = useApp();
 
   const overview = (bundle?.overview?.overview || {}) as JsonRecord;
@@ -118,12 +118,14 @@ export function DashboardPage() {
 
   return (
     <section>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Research Dashboard</h1>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: 720, lineHeight: 1.5 }}>
-          Read top-down — <strong style={{ color: "var(--text)", fontWeight: 700 }}>regime → tape → rotation → names</strong>. Every mark is validated blue-up / red-down, always with a sign and glyph.
-        </p>
-      </div>
+      {!hideIntro && (
+        <div style={{ marginBottom: 18 }}>
+          <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Research Dashboard</h1>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: 720, lineHeight: 1.5 }}>
+            Read top-down — <strong style={{ color: "var(--text)", fontWeight: 700 }}>regime → tape → rotation → names</strong>. Every mark is validated blue-up / red-down, always with a sign and glyph.
+          </p>
+        </div>
+      )}
 
       {/* HERO — IHSG live chart + Market Read | Market Risk gauge */}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(340px,1.35fr) minmax(300px,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
