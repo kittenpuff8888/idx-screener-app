@@ -179,12 +179,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const openTicker = useCallback((ticker: string) => {
     const clean = ticker.trim().toUpperCase().replace(".JK", "");
-    if (!clean) return;
-    // Route-aware: inside the flag'd v2 namespace, deep-link to the path route
-    // /v2/ticker/[code]; legacy chrome keeps the ?symbol query route.
-    if (pathname?.startsWith("/v2")) router.push(`/v2/ticker/${clean}`);
-    else router.push(`/ticker?symbol=${clean}`);
-  }, [router, pathname]);
+    if (clean) router.push(`/ticker?symbol=${clean}`);
+  }, [router]);
 
   const closeTicker = useCallback(() => setSelectedTicker(null), []);
 

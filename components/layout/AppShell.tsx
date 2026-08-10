@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useApp } from "@/components/providers/AppProvider";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { Sidebar } from "./Sidebar";
@@ -25,17 +24,6 @@ function tradingDaysBehind(marketDate: string): number {
 // Full-page layout: sidebar + main column filling the whole viewport, no outer
 // frame or centered "app card" (was the prototype shell, maxWidth 1560).
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  // The v2 redesign namespace ships behind a feature flag with its own prototype
-  // shell (sidebar + header). Bypass the legacy chrome but keep AppProvider so
-  // v2 pages read the same real-data feeds. Existing routes are untouched.
-  if (pathname?.startsWith("/v2")) {
-    return <>{children}</>;
-  }
-  return <AppShellChrome>{children}</AppShellChrome>;
-}
-
-function AppShellChrome({ children }: { children: React.ReactNode }) {
   const { error, marketDate, manifest } = useApp();
   const latest = manifest?.latestMarketDate || marketDate;
   const behind = tradingDaysBehind(latest || "");
