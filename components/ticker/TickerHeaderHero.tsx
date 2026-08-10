@@ -4,7 +4,6 @@ import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import type { JsonRecord, TechnicalRecord } from "@/lib/domain/types";
 import { asNumber, formatNumber, formatPercent, formatPrice } from "@/lib/format/number";
-import { betaOf } from "@/lib/v2/screenerData";
 
 const MONO = "var(--font-mono)";
 const chgColor = (v: number | null | undefined) => (v == null || v === 0 ? "var(--flat)" : v > 0 ? "var(--up)" : "var(--down)");
@@ -43,7 +42,6 @@ export function TickerHeaderHero({ ticker, stock, fundamental, marketDate }: {
   const dy = asNumber(f?.["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]);
   const ff = asNumber(f?.["Free Float (%)"]);
   const rvol = stock?.rvol ?? asNumber(f?.["RVOL"]);
-  const beta = betaOf(ticker); // modelled: 1-yr daily regression vs IHSG
 
   return (
     <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))", padding: "18px 20px", marginBottom: 14 }}>
@@ -91,10 +89,6 @@ export function TickerHeaderHero({ ticker, stock, fundamental, marketDate }: {
         <Stat label="DIV YIELD" value={dy == null ? "—" : formatPercent(dy).replace("+", "")} />
         <Stat label="FREE FLOAT" value={ff == null ? "—" : formatPercent(ff).replace("+", "")} />
         <Stat label="RVOL" value={rvol == null ? "—" : `${formatNumber(rvol, 1)}×`} />
-        <div style={{ minWidth: 0 }} title="Beta vs IHSG · modelled (1-yr daily regression)">
-          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)" }}>β IHSG <span style={{ fontSize: 7.5, color: "var(--warn)" }}>MODELLED</span></div>
-          <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 700, marginTop: 3, whiteSpace: "nowrap", color: beta >= 1.2 ? "var(--warn)" : "var(--text)" }}>{beta.toFixed(2)}</div>
-        </div>
       </div>
     </div>
   );

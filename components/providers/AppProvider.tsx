@@ -179,9 +179,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const openTicker = useCallback((ticker: string) => {
     const clean = ticker.trim().toUpperCase().replace(".JK", "");
-    if (!clean) return;
-    // The redesign is the site now: deep-link to the path route /ticker/[code].
-    router.push(`/ticker/${clean}`);
+    if (clean) router.push(`/ticker?symbol=${clean}`);
   }, [router]);
 
   const closeTicker = useCallback(() => setSelectedTicker(null), []);

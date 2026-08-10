@@ -1,7 +1,5 @@
-"use client";
-
-import { NewsFaithful } from "@/components/v2/pages/NewsFaithful";
+import { NewsPage } from "@/components/news/NewsPage";
 
 export default function Page() {
-  return <NewsFaithful />;
+  return <NewsPage />;
 }
