@@ -1,5 +1,7 @@
-import { KseiPage } from "@/components/ksei/KseiPage";
+"use client";
+
+import { KseiFaithful } from "@/components/v2/pages/KseiFaithful";
 
 export default function Page() {
-  return <KseiPage />;
+  return <KseiFaithful />;
 }

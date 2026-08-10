@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AppProvider } from "@/components/providers/AppProvider";
 import { AppShell } from "@/components/layout/AppShell";
 import "@/styles/globals.css";
+import "@/styles/v2.css";
 
 export const metadata: Metadata = {
   title: "8888 Screener",

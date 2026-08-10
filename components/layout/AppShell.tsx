@@ -25,11 +25,14 @@ function tradingDaysBehind(marketDate: string): number {
 // Full-page layout: sidebar + main column filling the whole viewport, no outer
 // frame or centered "app card" (was the prototype shell, maxWidth 1560).
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  // The v2 redesign namespace ships behind a feature flag with its own prototype
-  // shell (sidebar + header). Bypass the legacy chrome but keep AppProvider so
-  // v2 pages read the same real-data feeds. Existing routes are untouched.
-  if (pathname?.startsWith("/v2")) {
+  const pathname = usePathname() || "/";
+  // The redesign pages bring their own prototype shell (V2Shell). Bypass the
+  // legacy chrome for them (root faithful routes + the /v2 namespace) while
+  // keeping AppProvider so they read the same real feeds. Legacy tool routes
+  // (/dashboard, /setups, /advanced, /explorer, /health) keep the old chrome.
+  const FAITHFUL = ["/screener", "/watchlist", "/news", "/ksei", "/ticker", "/v2"];
+  const isFaithful = pathname === "/" || FAITHFUL.some((p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p));
+  if (isFaithful) {
     return <>{children}</>;
   }
   return <AppShellChrome>{children}</AppShellChrome>;
