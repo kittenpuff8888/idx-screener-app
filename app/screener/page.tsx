@@ -1,7 +1,5 @@
-"use client";
-
-import { ScreenerFaithful } from "@/components/v2/pages/ScreenerFaithful";
+import { ScreenerPage } from "@/components/screener/ScreenerPage";
 
 export default function Page() {
-  return <ScreenerFaithful />;
+  return <ScreenerPage />;
 }

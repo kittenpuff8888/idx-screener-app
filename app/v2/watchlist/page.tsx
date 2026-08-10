@@ -103,7 +103,7 @@ function TradingViewChart({ symbol }: { symbol: string }) {
 
 const chip = (color: string) => ({ color });
 
-export function WatchlistFaithful() {
+export default function V2WatchlistPage() {
   const { watchlist, bundle, marketDate, openTicker } = useApp();
   const [setups, setSetups] = useState<Record<string, SetupRecord>>({});
   const [selected, setSelected] = useState<string | null>(null);

@@ -89,7 +89,7 @@ export function PastSetupsFaithful() {
   const meta = (
     <>
       <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 9px" }}>FORWARD OUTCOMES</span>
-      <a href="/screener" style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>‹ Screener</a>
+      <a href="/v2/screener" style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>‹ Screener</a>
     </>
   );
 

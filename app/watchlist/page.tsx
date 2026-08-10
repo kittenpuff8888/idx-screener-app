@@ -1,7 +1,5 @@
-"use client";
-
-import { WatchlistFaithful } from "@/components/v2/pages/WatchlistFaithful";
+import { WatchlistPage } from "@/components/watchlist/WatchlistPage";
 
 export default function Page() {
-  return <WatchlistFaithful />;
+  return <WatchlistPage />;
 }
