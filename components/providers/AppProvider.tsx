@@ -214,7 +214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const openTicker = useCallback((ticker: string) => {
     const clean = ticker.trim().toUpperCase().replace(".JK", "");
-    if (clean) router.push(`/ticker?symbol=${clean}`);
+    if (clean) router.push(`/ticker?ticker=${clean}`);
   }, [router]);
 
   const closeTicker = useCallback(() => setSelectedTicker(null), []);

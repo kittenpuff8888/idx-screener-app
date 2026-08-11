@@ -22,7 +22,9 @@ import { asNumber } from "@/lib/format/number";
 export function TickerResearch() {
   const params = useSearchParams();
   const router = useRouter();
-  const ticker = (params.get("symbol") || "").trim().toUpperCase().replace(".JK", "");
+  // DESIGN_SPEC §3.1 deep-links as ?ticker=; ?symbol= was the pre-redesign
+  // param and stays readable so existing links keep working.
+  const ticker = (params.get("ticker") || params.get("symbol") || "").trim().toUpperCase().replace(".JK", "");
   const { bundle, ksei, idxIndex, marketDate } = useApp();
   const [ohlcv, setOhlcv] = useState<OhlcvPayload | null>(null);
 

@@ -102,13 +102,47 @@ Everything else in the brief is confirmed against the code.
 
 ## Order of work
 
-1. ~~Audit + this file~~ — done.
-2. **Shared shell** — sidebar (5 items + 2 support cards), fixed-height scroll model, theme key, snapshot date, content width. Everything else depends on it.
-3. Screener → Ticker page.
-4. Dashboard.
-5. Watchlist, KSEI.
-6. News, Data Health, Help & Guide.
-7. Delete `/explorer/`, add redirects, run the §9 acceptance checklist.
+1. ~~Audit + this file~~
+2. ~~Shared shell~~ — 5 menu items + 2 support cards, fixed-height scroll model, `idxr:theme`, 1360px content width.
+3. ~~Screener → Ticker page~~ — Screener already met most of §3.3; gaps closed were the EXACT/INFERRED badge and the base-path-broken footer link. Ticker gained VWAP + EMA studies and the `?ticker=` deep link.
+4. ~~Dashboard~~ — reordered to macro → breadth → hero; Market Read moved into the Risk panel base.
+5. ~~Watchlist, KSEI~~ — Watchlist rebuilt from scratch; KSEI Conglomerates converted to master-detail.
+6. ~~News, Data Health, Help & Guide~~
+7. ~~Delete `/explorer/`, add redirects, run the §9 acceptance checklist~~
+
+## §9 acceptance checklist
+
+| Item | State |
+|---|---|
+| `/explorer/` removed + redirected; 5 menu items + 2 support cards | done |
+| One shell component; sidebar/header/theme/reload identical everywhere | done (was already shared; contents rebuilt) |
+| One snapshot date printed on every page, sourced from data | done via the shell's `DatePicker`, fed by `AppProvider.marketDate` |
+| Theme persists across navigation; dark mode on all routes | done — `idxr:theme` on `documentElement`, legacy key migrated |
+| Every TradingView chart opens on daily bars, interval toolbar hidden | done — single embed component, `interval:"1D"` + `hide_top_toolbar` + `allow_symbol_change:false` |
+| Watchlist starts empty; New group / Add ticker first; groups persist | done |
+| KSEI five tabs; Conglomerates master-detail; labels English | done (labels were already English) |
+| Every ticker cell links to `?ticker=SYMBOL` and that page loads | done — `openTicker` emits `?ticker=`, page reads `?ticker=` then legacy `?symbol=` |
+| No `NaN`, `undefined`, unresolved holes, dead CSS variables | swept; §6 status tokens (`--good/--warn/--serious/--critical`) were referenced but undefined, now added to `styles/globals.css` |
+| Every number traces to a real field; gaps say `no data` | done — see the deviation note below |
+
+## Deviation from the spec, on purpose
+
+§3.4 and §3.7 describe the Watchlist's multi-period returns, ATH and
+since-added as **modelled**, and ask Data Health to list them as such. They are
+not modelled in this build. 1W/1M/3M/YTD and HIGH are measured off the
+published daily bars, and SINCE ADDED is measured against the close recorded
+when the row was added. Where coverage does not reach back far enough the cell
+reads `no data`.
+
+This is a deliberate departure: shipping modelled numbers in those columns
+would have violated the repo's no-fabricated-data rule, and real ones were
+derivable. The known-gaps list on Data Health states what is actually true —
+coverage starts 2026-01-01, so long lookbacks read `no data`, and HIGH is the
+high since coverage began rather than an all-time high.
+
+The same reasoning applies to two of the four breadth tiles: only
+advances/declines/unchanged are published, so new highs/lows is counted from
+52-week bounds and up/down volume from per-ticker volume and change.
 
 ## Non-negotiable
 
