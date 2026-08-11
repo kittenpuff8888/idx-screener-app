@@ -7,6 +7,7 @@ import { formatAsOf, formatNumber, formatPlainPercent } from "@/lib/format/numbe
 import { IDX_SECTOR_MAP, normalizeSector } from "@/lib/domain/sectors";
 import type { InvestorEntry, KseiIssuer } from "@/lib/domain/types";
 import { KseiMarketOverview } from "./KseiMarketOverview";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))" };
@@ -86,12 +87,10 @@ export function KseiPage() {
 
   return (
     <section>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>KSEI Ownership</h1>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 9px" }}>WHO OWNS WHAT</span>
+      <PageHeader title="KSEI Ownership" pill="WHO OWNS WHAT">
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 10, color: "var(--faint)" }}>Source: KSEI · as of {formatAsOf(ksei?.asOf) || ksei?.asOf || "—"}</span>
-      </div>
+      </PageHeader>
 
       {/* market-ownership overview (real aggregates + snapshot health) */}
       <KseiMarketOverview ksei={ksei} />
@@ -163,21 +162,7 @@ export function KseiPage() {
       {/* ── CONGLOMERATES ── */}
       {ksei && tab === "konglo" ? (
         <>
-          <div style={{ ...KICKER, marginBottom: 10 }}>CONGLOMERATES · INVESTORS SPANNING ≥3 STOCKS — click for the network</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(320px,1fr))", gap: 12 }}>
-            {konglo.map((r) => (
-              <button key={r.name} type="button" onClick={() => setFocus(r.name)} style={{ ...CARD, borderRadius: 12, padding: "14px 16px", cursor: "pointer", textAlign: "left", color: "var(--text)" }}>
-                <div style={{ fontSize: 13, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 6 }}>{r.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 7px" }}>{r.type}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, color: "var(--accent)" }}>{r.holdings.length} stocks</span>
-                </div>
-                <div style={{ fontFamily: MONO, fontSize: 10.5, color: "var(--muted)", lineHeight: 1.5 }}>{r.holdings.slice(0, 14).map((h) => h.code).join(" · ")}{r.holdings.length > 14 ? " …" : ""}</div>
-              </button>
-            ))}
-            {!konglo.length ? <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No investor spans ≥3 issuers in this snapshot.</div> : null}
-          </div>
-          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10 }}>Proxy for conglomerate footprints: the same investor name holding stakes across multiple stocks (real KSEI holder lists).</div>
+          <ConglomerateMasterDetail groups={konglo} onTicker={openTicker} />
         </>
       ) : null}
 
@@ -317,7 +302,9 @@ function MetricsTab({ summary }: { summary: Record<string, unknown> }) {
   );
 }
 
-function NetworkModal({ investor, onClose, onTicker }: { investor: Investor; onClose: () => void; onTicker: (t: string) => void }) {
+/** Connection network anchored on the group's lead stake (DESIGN_SPEC §3.5).
+    Shared by the modal and the Conglomerates master-detail panel. */
+export function NetworkGraph({ investor }: { investor: Investor }) {
   const hs = investor.holdings.slice(0, 16);
   const cx = 210;
   const cy = 150;
@@ -327,6 +314,25 @@ function NetworkModal({ investor, onClose, onTicker }: { investor: Investor; onC
     const r = 26 + Math.min(22, h.pct * 0.9);
     return { code: h.code, x: cx + R * Math.cos(a), y: cy + R * Math.sin(a), r, fs: r > 34 ? 11 : 9 };
   });
+  return (
+    <>
+      <svg viewBox="0 0 420 300" style={{ width: "100%", height: "auto", display: "block" }} role="img" aria-label="Holdings network">
+        {nodes.map((d, i) => (<line key={`l${i}`} x1={cx} y1={cy} x2={d.x} y2={d.y} stroke="var(--border)" strokeWidth={1.5} />))}
+        {nodes.map((d, i) => (
+          <g key={`n${i}`}>
+            <circle cx={d.x} cy={d.y} r={d.r} fill="var(--accentSoft)" stroke="var(--accent)" strokeWidth={1.5} />
+            <text x={d.x} y={d.y} textAnchor="middle" dominantBaseline="central" fontFamily="var(--font-mono)" fontSize={d.fs} fontWeight={800} fill="var(--accent)">{d.code}</text>
+          </g>
+        ))}
+        <circle cx={cx} cy={cy} r={30} fill="var(--accent)" />
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={800} fill="#fff">INVESTOR</text>
+      </svg>
+      <div style={{ fontSize: 10, color: "var(--faint)", textAlign: "center", marginTop: 6 }}>Node size = stake %. Lines link the investor to every stock it holds.</div>
+    </>
+  );
+}
+
+function NetworkModal({ investor, onClose, onTicker }: { investor: Investor; onClose: () => void; onTicker: (t: string) => void }) {
   return (
     <div onClick={onClose} role="dialog" aria-modal aria-label={`${investor.name} holdings network`} style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(11,14,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...CARD, borderRadius: 16, boxShadow: "0 24px 60px rgba(0,0,0,.35)", width: "min(860px,96vw)", maxHeight: "90vh", overflow: "auto" }}>
@@ -342,18 +348,7 @@ function NetworkModal({ investor, onClose, onTicker }: { investor: Investor; onC
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,1.3fr) minmax(180px,1fr)" }}>
           <div style={{ padding: "14px 18px", borderRight: "1px solid var(--hair)" }}>
-            <svg viewBox="0 0 420 300" style={{ width: "100%", height: "auto", display: "block" }} role="img" aria-label="Holdings network">
-              {nodes.map((d, i) => (<line key={`l${i}`} x1={cx} y1={cy} x2={d.x} y2={d.y} stroke="var(--border)" strokeWidth={1.5} />))}
-              {nodes.map((d, i) => (
-                <g key={`n${i}`}>
-                  <circle cx={d.x} cy={d.y} r={d.r} fill="var(--accentSoft)" stroke="var(--accent)" strokeWidth={1.5} />
-                  <text x={d.x} y={d.y} textAnchor="middle" dominantBaseline="central" fontFamily="var(--font-mono)" fontSize={d.fs} fontWeight={800} fill="var(--accent)">{d.code}</text>
-                </g>
-              ))}
-              <circle cx={cx} cy={cy} r={30} fill="var(--accent)" />
-              <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={800} fill="#fff">INVESTOR</text>
-            </svg>
-            <div style={{ fontSize: 10, color: "var(--faint)", textAlign: "center", marginTop: 6 }}>Node size = stake %. Lines link the investor to every stock it holds.</div>
+            <NetworkGraph investor={investor} />
           </div>
           <div style={{ padding: "10px 8px", overflow: "auto" }}>
             <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", padding: "4px 10px" }}>LINKED STOCKS</div>
@@ -368,5 +363,130 @@ function NetworkModal({ investor, onClose, onTicker }: { investor: Investor; onC
         </div>
       </div>
     </div>
+  );
+}
+
+/** Conglomerates as master-detail (DESIGN_SPEC §3.5): searchable group list on
+    the left; on the right the group header, its stock buckets, the controlling
+    stakes table, and the connection network anchored on its lead stake.
+
+    Buckets are derived, not invented:
+      Main        — the group's largest stakes (top third by stake %)
+      Small-Micro — the remainder it holds alone
+      Sharing     — stocks another ≥3-stock investor also holds
+    "Sharing" needs the full group list to compute, so it is passed in. */
+function ConglomerateMasterDetail({ groups, onTicker }: { groups: Investor[]; onTicker: (t: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const shownGroups = groups.filter((g) => g.name.toLowerCase().includes(query.trim().toLowerCase()));
+  const active = groups.find((g) => g.name === picked) || shownGroups[0] || null;
+
+  // A stock is "shared" when more than one conglomerate-scale investor holds it.
+  const holdersByCode = new Map<string, number>();
+  groups.forEach((g) => g.holdings.forEach((h) => holdersByCode.set(h.code, (holdersByCode.get(h.code) || 0) + 1)));
+
+  const buckets = (() => {
+    if (!active) return { Main: [], "Small-Micro": [], Sharing: [] } as Record<string, Investor["holdings"]>;
+    const sorted = [...active.holdings].sort((a, b) => b.pct - a.pct);
+    const shared = sorted.filter((h) => (holdersByCode.get(h.code) || 0) > 1);
+    const solo = sorted.filter((h) => (holdersByCode.get(h.code) || 0) <= 1);
+    const cut = Math.max(1, Math.ceil(solo.length / 3));
+    return { Main: solo.slice(0, cut), "Small-Micro": solo.slice(cut), Sharing: shared };
+  })();
+
+  if (!groups.length) {
+    return <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No investor spans ≥3 issuers in this snapshot.</div>;
+  }
+
+  return (
+    <>
+      <div style={{ ...KICKER, marginBottom: 10 }}>CONGLOMERATES · INVESTORS SPANNING ≥3 STOCKS</div>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,1fr) minmax(320px,2.2fr)", gap: 14, alignItems: "start" }}>
+        {/* master */}
+        <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: 10, borderBottom: "1px solid var(--hair)" }}>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search groups…"
+              aria-label="Search conglomerate groups"
+              style={{ width: "100%", fontSize: 12, color: "var(--text)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 8, padding: "7px 10px", outline: "none" }}
+            />
+          </div>
+          <div style={{ maxHeight: 520, overflowY: "auto" }}>
+            {shownGroups.map((g) => {
+              const on = g.name === active?.name;
+              return (
+                <button
+                  key={g.name}
+                  type="button"
+                  onClick={() => setPicked(g.name)}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 12px", border: "none", borderBottom: "1px solid var(--hair)", background: on ? "var(--soft)" : "transparent", cursor: "pointer", color: "var(--text)" }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: "var(--muted)" }}>{g.holdings.length} stocks · {g.type}</div>
+                </button>
+              );
+            })}
+            {!shownGroups.length ? <div style={{ padding: 16, fontSize: 12, color: "var(--faint)" }}>No group matches that search.</div> : null}
+          </div>
+        </div>
+
+        {/* detail */}
+        {active ? (
+          <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
+            <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--hair)" }}>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>{active.name}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{active.type} · holds {active.holdings.length} stocks</div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10, padding: "14px 18px" }}>
+              {(["Main", "Small-Micro", "Sharing"] as const).map((name) => (
+                <div key={name} style={{ background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 12px" }}>
+                  <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)" }}>{name.toUpperCase()}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 18, fontWeight: 800, marginTop: 2 }}>{buckets[name].length}</div>
+                  <div style={{ fontFamily: MONO, fontSize: 10, color: "var(--muted)", lineHeight: 1.5, marginTop: 4 }}>
+                    {buckets[name].length ? buckets[name].slice(0, 8).map((h) => h.code).join(" · ") : "no data"}
+                    {buckets[name].length > 8 ? " …" : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ padding: "0 18px 14px" }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", marginBottom: 6 }}>CONTROLLING STAKES</div>
+              <div style={{ maxHeight: 240, overflowY: "auto" }}>
+                {[...active.holdings].sort((a, b) => b.pct - a.pct).map((h, i) => (
+                  <button
+                    key={h.code + i}
+                    type="button"
+                    onClick={() => onTicker(h.code)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "7px 0", background: "transparent", border: "none", borderTop: i ? "1px solid var(--hair)" : "none", cursor: "pointer", color: "var(--text)", textAlign: "left" }}
+                  >
+                    <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, color: "var(--accent)", width: 56, flex: "none" }}>{h.code}</span>
+                    <span style={{ fontSize: 11, color: "var(--muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.name}</span>
+                    {(holdersByCode.get(h.code) || 0) > 1 ? (
+                      <span style={{ fontSize: 8.5, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "1px 6px" }}>SHARED</span>
+                    ) : null}
+                    <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700 }}>{h.pct.toFixed(2)}%</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: "14px 18px", borderTop: "1px solid var(--hair)" }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", marginBottom: 6 }}>CONNECTION NETWORK</div>
+              <NetworkGraph investor={active} />
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10 }}>
+        Proxy for conglomerate footprints: the same investor name holding stakes across multiple stocks (real KSEI holder
+        lists). Buckets are derived from stake size and from whether another ≥3-stock investor also holds the name — they
+        are not an official IDX board classification.
+      </div>
+    </>
   );
 }

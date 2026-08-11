@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers/AppProvider";
 import { formatPercent, formatPrice } from "@/lib/format/number";
 import {
@@ -297,8 +298,8 @@ export function ScreenerPage() {
       {/* title */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Setups Screener</h1>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 9px" }}>CONFLUENCE</span>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>Setups Screener</h1>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 9px" }}>CONFLUENCE</span>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
             Matching <strong style={{ color: "var(--text)", fontFamily: MONO }}>{matchCount}</strong> of {total} · scanned {universe?.scanned ?? 0} · {universe?.marketDate || marketDate}
@@ -355,7 +356,7 @@ export function ScreenerPage() {
       </div>
 
       {/* Past Setups card → dedicated page */}
-      <a href="/screener/history" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...CARD, padding: "14px 18px", marginBottom: 16, textDecoration: "none", color: "var(--text)" }}>
+      <Link href="/screener/history" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...CARD, padding: "14px 18px", marginBottom: 16, textDecoration: "none", color: "var(--text)" }}>
         <span style={{ width: 34, height: 34, flex: "none", borderRadius: 9, background: "var(--accentSoft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }} aria-hidden>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M7 14l4-4 3 3 5-6" /></svg>
         </span>
@@ -367,7 +368,7 @@ export function ScreenerPage() {
         </div>
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "6px 12px" }}>Open full history →</span>
-      </a>
+      </Link>
 
       {/* (A) preset library */}
       {mode === "preset" ? (
@@ -398,7 +399,16 @@ export function ScreenerPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}>
                     <span style={{ width: 30, height: 30, flex: "none", borderRadius: 9, background: on ? "var(--accent)" : "var(--soft)", color: on ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }} aria-hidden>{s.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-.01em" }}>{s.label}{s.inferred ? <span title="Inferred — no dedicated workbook column" style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 700, color: "var(--faint)" }}>≈</span> : null}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-.01em" }}>{s.label}</span>
+                        {/* DESIGN_SPEC §3.3: evidence strength is explicit, not a glyph. */}
+                        <span
+                          title={s.inferred ? "INFERRED — reconstructed from other fields, no dedicated column" : "EXACT — reads a real column directly"}
+                          style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".06em", padding: "1px 6px", borderRadius: 5, background: s.inferred ? "var(--warnSoft)" : "var(--upSoft)", color: s.inferred ? "var(--warning)" : "var(--up)" }}
+                        >
+                          {s.inferred ? "INFERRED" : "EXACT"}
+                        </span>
+                      </div>
                       <div style={{ fontFamily: MONO, fontSize: 10, color: cnt ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>{cnt} {cnt === 1 ? "ticker" : "tickers"} today</div>
                     </div>
                     <span style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }} aria-hidden>{on ? "✓" : ""}</span>

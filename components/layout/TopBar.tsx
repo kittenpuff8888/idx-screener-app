@@ -4,7 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { DatePicker } from "./DatePicker";
 
-const THEME_KEY = "idx-research-theme";
+// DESIGN_SPEC §5: one key app-wide. LEGACY_THEME_KEY is the pre-redesign key —
+// read once so an existing user's choice survives the rename, then drop it.
+const THEME_KEY = "idxr:theme";
+const LEGACY_THEME_KEY = "idx-research-theme";
 type Theme = "dark" | "light";
 
 const ICTRL: React.CSSProperties = {
@@ -27,7 +30,16 @@ export function TopBar() {
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(THEME_KEY);
+    let stored = window.localStorage.getItem(THEME_KEY);
+    if (stored !== "light" && stored !== "dark") {
+      const legacy = window.localStorage.getItem(LEGACY_THEME_KEY);
+      if (legacy === "light" || legacy === "dark") {
+        stored = legacy;
+        window.localStorage.setItem(THEME_KEY, legacy);
+      }
+      window.localStorage.removeItem(LEGACY_THEME_KEY);
+    }
+    // Default light on first visit (DESIGN_SPEC §5).
     const initial: Theme = stored === "light" || stored === "dark" ? stored : "light";
     setTheme(initial);
     document.documentElement.dataset.theme = initial;
@@ -64,7 +76,7 @@ export function TopBar() {
         borderBottom: "1px solid var(--hair)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 22px", minHeight: 42 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 22px", minHeight: 42, maxWidth: 1360, margin: "0 auto" }}>
         {/* search */}
         <div style={{ position: "relative", flex: 1, minWidth: 200, maxWidth: 380 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 10, padding: "7px 11px" }}>

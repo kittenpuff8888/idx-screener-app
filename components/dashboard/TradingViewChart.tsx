@@ -7,8 +7,12 @@ type Props = {
   /** One of the TradingView range presets. */
   range?: "1D" | "5D" | "1M" | "3M" | "YTD" | "12M" | "60M" | "ALL";
   interval?: string;
+  /** TradingView study ids. Ticker pages ship VWAP + EMA (DESIGN_SPEC §3.1). */
+  studies?: string[];
   minHeight?: number;
 };
+
+const DEFAULT_STUDIES = ["MAExp@tv-basicstudies"];
 
 const CURRENT_THEME = (): "light" | "dark" =>
   (typeof document !== "undefined" && document.documentElement.dataset.theme === "dark") ? "dark" : "light";
@@ -19,7 +23,7 @@ const CURRENT_THEME = (): "light" | "dark" =>
  * and falls back to a static "snapshot" note if the external script is blocked.
  * No fabricated data — this is the live vendor chart or an honest unavailable state.
  */
-export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", interval = "D", minHeight = 520 }: Props) {
+export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", interval = "1D", minHeight = 520, studies = DEFAULT_STUDIES }: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -54,12 +58,16 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", inte
         theme: dark ? "dark" : "light",
         style: "1",
         locale: "en",
-        allow_symbol_change: true,
+        // DESIGN_SPEC §4: force daily bars. Without hide_top_toolbar +
+        // allow_symbol_change:false, TradingView restores a saved intraday
+        // interval from the visitor's own session and the chart stops being EOD.
+        allow_symbol_change: false,
+        hide_top_toolbar: true,
         withdateranges: true,
         hide_side_toolbar: false,
         hide_volume: true,
         details: false,
-        studies: ["MAExp@tv-basicstudies"],
+        studies,
         backgroundColor: dark ? "#11151b" : "#ffffff",
         gridColor: dark ? "rgba(255,255,255,0.06)" : "rgba(11,14,20,0.06)",
         support_host: "https://www.tradingview.com",
@@ -82,7 +90,9 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", inte
       obs.disconnect();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [symbol, range, interval]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- key on contents,
+    // not identity: a caller passing an inline array must not remount the widget.
+  }, [symbol, range, interval, studies.join(",")]);
 
   return (
     <div style={{ position: "relative", flex: "1 1 auto", minHeight, borderRadius: 12, overflow: "hidden", background: "var(--panel)", border: "1px solid var(--border)" }}>

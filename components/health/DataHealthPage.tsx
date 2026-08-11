@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { fetchJson } from "@/lib/data/client";
 import { formatNumber } from "@/lib/format/number";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "16px 18px", boxShadow: "var(--sh, var(--shadow))" };
@@ -24,6 +25,73 @@ type Health = {
 
 const STATUS_COLOR: Record<string, string> = { SUCCESS: "var(--up)", NO_CHANGE: "var(--muted)", NO_DATA: "var(--warning)", FAILURE: "var(--down)" };
 
+/** Per-source status pill (DESIGN_SPEC §3.7). Tones map to the spec's four
+    levels: good / warn / serious / critical. */
+type Tone = "good" | "warn" | "serious" | "critical";
+const TONE: Record<Tone, { bg: string; fg: string }> = {
+  good: { bg: "var(--upSoft)", fg: "var(--good, var(--up))" },
+  warn: { bg: "var(--warnSoft)", fg: "var(--warn, var(--warning))" },
+  serious: { bg: "var(--downSoft)", fg: "var(--serious, var(--down))" },
+  critical: { bg: "var(--downSoft)", fg: "var(--critical, var(--down))" },
+};
+
+function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return (
+    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".06em", padding: "2px 7px", borderRadius: 5, background: TONE[tone].bg, color: TONE[tone].fg, whiteSpace: "nowrap" }}>
+      {children}
+    </span>
+  );
+}
+
+function SourceHead({ label, tone, status }: { label: string; tone: Tone; status: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--faint)" }}>{label}</span>
+      <div style={{ flex: 1 }} />
+      <Pill tone={tone}>{status}</Pill>
+    </div>
+  );
+}
+
+/** Gaps that are a property of how this app is built, not of a given run, so
+    they are stated here rather than inferred from the payload. */
+const KNOWN_GAPS: Array<{ area: string; detail: string; tone: Tone }> = [
+  {
+    area: "Watchlist lookbacks",
+    tone: "warn",
+    detail:
+      "1W/1M/3M/YTD and HIGH are measured from published daily bars, but published coverage starts 2026-01-01. Any lookback longer than coverage renders `no data` rather than an estimate, and HIGH is the highest high since coverage began — not an all-time high.",
+  },
+  {
+    area: "Watchlist SINCE ADDED",
+    tone: "warn",
+    detail:
+      "Measured against the close recorded when the row was added, so rows added before that field existed (or added while the close was unavailable) read `no data`.",
+  },
+  {
+    area: "Ticker detail coverage",
+    tone: "warn",
+    detail: "Ticker pages exist only for symbols present in the workbook. A symbol outside it resolves to an explicit not-available state.",
+  },
+  {
+    area: "KSEI flow",
+    tone: "serious",
+    detail:
+      "KSEI publishes monthly registry snapshots. Anything labelled flow is a proxy derived from the change between two snapshots — it is not broker data and must not be read as a timing signal.",
+  },
+  {
+    area: "CVD",
+    tone: "serious",
+    detail:
+      "Estimated from daily candles because tick and footprint data is not available for IDX retail. It is an approximation, always labelled `(approx.)`.",
+  },
+  {
+    area: "Staleness banner",
+    tone: "warn",
+    detail: "Weekend-aware but does not model IDX public holidays, so it over-reports staleness after a long holiday until the next run publishes.",
+  },
+];
+
 export function DataHealthPage() {
   const [health, setHealth] = useState<Health | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,16 +104,35 @@ export function DataHealthPage() {
 
   return (
     <section>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Data Health</h1>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5 }}>
-          Run report for <b style={{ fontFamily: MONO, color: "var(--text)" }}>{health.marketDate}</b> · generated {health.generatedAt?.slice(0, 16).replace("T", " ")} WIB
-        </p>
+      <PageHeader
+        title="Data Health"
+        pill="SOURCES & FRESHNESS"
+        meta={<>Run report for <b style={{ fontFamily: MONO, color: "var(--text)" }}>{health.marketDate}</b> · generated {health.generatedAt?.slice(0, 16).replace("T", " ")} WIB</>}
+      />
+
+      {/* Sources-tracked KPI row (DESIGN_SPEC §3.7) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14, marginBottom: 14 }}>
+        {([
+          ["SOURCES TRACKED", "4", "universe · parity · KSEI · setups"],
+          ["SNAPSHOT", health.marketDate || "no data", "one date app-wide"],
+          ["KNOWN GAPS", String(KNOWN_GAPS.length), "listed below"],
+          ["RUN ENTRIES", String(health.runLog.length), "most recent first"],
+        ] as const).map(([label, value, sub]) => (
+          <div key={label} style={CARD}>
+            <div style={KICKER}>{label}</div>
+            <div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 700 }}>{value}</div>
+            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 4 }}>{sub}</div>
+          </div>
+        ))}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14, marginBottom: 14 }}>
         <div style={CARD}>
-          <div style={KICKER}>UNIVERSE</div>
+          <SourceHead
+            label="UNIVERSE"
+            tone={health.universe.size === null ? "critical" : (health.universe.liveIdxRosterDiff?.missingCount || 0) > 0 ? "warn" : "good"}
+            status={health.universe.size === null ? "NO DATA" : (health.universe.liveIdxRosterDiff?.missingCount || 0) > 0 ? "PARTIAL" : "COMPLETE"}
+          />
           <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700 }}>{health.universe.size === null ? "—" : formatNumber(health.universe.size, 0)}</div>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{health.universe.source}</div>
           {(() => {
@@ -64,13 +151,13 @@ export function DataHealthPage() {
           })()}
         </div>
         <div style={CARD}>
-          <div style={KICKER}>TRADINGVIEW PARITY</div>
+          <SourceHead label="TRADINGVIEW PARITY" tone={health.parity.status === "UNVERIFIED" ? "warn" : "good"} status={health.parity.status} />
           <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 700, color: health.parity.status === "UNVERIFIED" ? "var(--warning)" : "var(--up)" }}>{health.parity.status}</div>
           <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>{health.parity.method}</div>
           <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 6 }}>{health.parity.note}</div>
         </div>
         <div style={CARD}>
-          <div style={KICKER}>SWING ENGINE</div>
+          <SourceHead label="SWING ENGINE" tone={health.setups.count ? "good" : "warn"} status={health.setups.count ? `${health.setups.count} SETUPS` : "NO SETUPS"} />
           <div style={{ display: "flex", gap: 8 }}>
             {([["Setups", health.setups.count], ["Scanned", health.setups.scanned], ["Quarantined", health.setups.quarantined]] as const).map(([l, v]) => (
               <div key={l} style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "9px 6px", textAlign: "center" }}>
@@ -82,10 +169,29 @@ export function DataHealthPage() {
           {health.setups.backtest ? <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>Backtest sanity: {String(health.setups.backtest["signals"])} signals · hit-rate (decided) {String(health.setups.backtest["hitRateDecided"])} · {String(health.setups.backtest["undecidedIn5Bars"])} undecided in 5 bars.</div> : null}
         </div>
         <div style={CARD}>
-          <div style={KICKER}>KSEI SNAPSHOTS</div>
+          <SourceHead label="KSEI SNAPSHOTS" tone={health.ksei.latest ? "warn" : "critical"} status={health.ksei.latest ? `MONTHLY · ${health.ksei.latest}` : "NO DATA"} />
           <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 600 }}>{health.ksei.snapshots.join(" · ") || "—"}</div>
           <div style={{ fontSize: 10.5, color: "var(--warning)", marginTop: 8 }}>{health.ksei.lagNote}</div>
         </div>
+      </div>
+
+      {/* Known gaps (DESIGN_SPEC §3.7 + the no-fabricated-data rule): anything
+          the UI renders as `no data` should be explainable from this list. */}
+      <div style={{ ...CARD, marginBottom: 14 }}>
+        <div style={KICKER}>KNOWN GAPS · {KNOWN_GAPS.length}</div>
+        <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--muted)" }}>
+          Where the app shows <b style={{ color: "var(--text)" }}>no data</b> or labels a figure a proxy, the reason is here.
+          Nothing in these areas is estimated to fill the gap.
+        </p>
+        {KNOWN_GAPS.map((g, i) => (
+          <div key={g.area} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "9px 0", borderTop: i ? "1px solid var(--hair)" : "none" }}>
+            <span style={{ width: 150, flexShrink: 0, display: "flex", alignItems: "center", gap: 7 }}>
+              <Pill tone={g.tone}>{g.tone.toUpperCase()}</Pill>
+              <span style={{ fontSize: 11.5, fontWeight: 700 }}>{g.area}</span>
+            </span>
+            <span style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5 }}>{g.detail}</span>
+          </div>
+        ))}
       </div>
 
       <div style={{ ...CARD, marginBottom: 14 }}>

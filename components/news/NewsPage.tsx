@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { formatAsOf } from "@/lib/format/number";
 import { newsStories, newsDisclosures, type NewsStory, type NewsTone } from "@/lib/data/news";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))" };
@@ -70,8 +71,7 @@ export function NewsPage() {
 
   return (
     <section>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>News &amp; Catalysts</h1>
+      <PageHeader title="News & Catalysts" pill="TAPE & DISCLOSURES">
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10, fontWeight: 700, letterSpacing: ".04em", color: "var(--up)", background: "var(--upSoft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 10px" }}>
           <span aria-hidden style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--up)" }} /> Feed live · {formatAsOf(marketDate) || marketDate}
         </span>
@@ -80,7 +80,7 @@ export function NewsPage() {
           <span style={{ color: "var(--faint)", fontSize: 13 }}>⌕</span>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search news, ticker, sector…" aria-label="Search news" style={{ border: "none", outline: "none", background: "transparent", fontSize: 12.5, color: "var(--text)", width: "100%" }} />
         </div>
-      </div>
+      </PageHeader>
 
       {/* filters: sentiment + time range */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
@@ -105,7 +105,11 @@ export function NewsPage() {
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-        <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>{items.length} stories</span>
+        {/* DESIGN_SPEC §3.6: the counter reports the filtered set against the
+            whole feed, so a narrow filter is visible as such. */}
+        <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>
+          <strong style={{ color: "var(--text)" }}>{items.length}</strong> of {all.length} stories
+        </span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)", gap: 16 }}>

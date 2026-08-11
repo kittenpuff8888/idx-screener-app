@@ -22,7 +22,9 @@ import { asNumber } from "@/lib/format/number";
 export function TickerResearch() {
   const params = useSearchParams();
   const router = useRouter();
-  const ticker = (params.get("symbol") || "").trim().toUpperCase().replace(".JK", "");
+  // DESIGN_SPEC §3.1 deep-links as ?ticker=; ?symbol= was the pre-redesign
+  // param and stays readable so existing links keep working.
+  const ticker = (params.get("ticker") || params.get("symbol") || "").trim().toUpperCase().replace(".JK", "");
   const { bundle, ksei, idxIndex, marketDate } = useApp();
   const [ohlcv, setOhlcv] = useState<OhlcvPayload | null>(null);
 
@@ -58,7 +60,7 @@ export function TickerResearch() {
         >
           ← Back
         </button>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: "-.01em" }}>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>
           {ticker ? `${ticker} research` : "Ticker research"}
         </h1>
       </div>
@@ -86,7 +88,14 @@ export function TickerResearch() {
           {/* Live price chart */}
           <div style={{ ...CARD, marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>{ticker} · LIVE CHART</div>
-            <TradingViewChart symbol={`IDX:${ticker}`} range="3M" minHeight={420} />
+            {/* DESIGN_SPEC §3.1: ticker charts carry VWAP + EMA. */}
+            <TradingViewChart
+              symbol={`IDX:${ticker}`}
+              range="3M"
+              interval="1D"
+              studies={["VWAP@tv-basicstudies", "MAExp@tv-basicstudies"]}
+              minHeight={420}
+            />
           </div>
 
           {/* Fundamentals + technicals */}
@@ -102,7 +111,7 @@ export function TickerResearch() {
           <NewsPanel ticker={ticker} row={news} />
 
           <p style={{ marginTop: 22 }}>
-            <Link href="/explorer" style={{ fontSize: 13, color: "var(--accent)" }}>← Back to Screener</Link>
+            <Link href="/screener" style={{ fontSize: 13, color: "var(--accent)" }}>← Back to Screener</Link>
           </p>
         </div>
       )}

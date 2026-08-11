@@ -65,7 +65,9 @@ class V13NextContractTests(unittest.TestCase):
     def test_advanced_is_only_next_primary_place_for_forbidden_terms(self):
         primary_files = [
             "components/dashboard/DashboardPage.tsx",
-            "components/explorer/ExplorerPage.tsx",
+            # /explorer was removed as a duplicate of the Screener; the Screener
+            # is the surviving primary surface and carries the same contract.
+            "components/screener/ScreenerPage.tsx",
             "components/watchlist/WatchlistPage.tsx",
             "components/ksei/KseiPage.tsx",
             "components/news/NewsPage.tsx",

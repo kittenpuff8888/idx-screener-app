@@ -50,6 +50,11 @@
   --accentSoft: rgba(37, 99, 235, 0.1);
   --accentLine: rgba(37, 99, 235, 0.28);
   --downSoft: rgba(229, 72, 77, 0.1);
+  /* Status ramp (DESIGN_SPEC §6) — Data Health pills and freshness states. */
+  --good: #0ca30c;
+  --warn: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
   /* Neutral polarity + sequential blue ramp (validated, redesign tokens) */
   --flat: #5b6472;
   --seq1: #cde2fb; --seq2: #9ec8f7; --seq3: #5ea2ef; --seq4: #2a78d6; --seq5: #0d366b;

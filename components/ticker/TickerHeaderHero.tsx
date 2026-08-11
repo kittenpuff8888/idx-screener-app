@@ -48,7 +48,7 @@ export function TickerHeaderHero({ ticker, stock, fundamental, marketDate }: {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: MONO, fontSize: 26, fontWeight: 800, letterSpacing: "-.01em" }}>{ticker}</span>
+            <span style={{ fontFamily: MONO, fontSize: 30, fontWeight: 800, letterSpacing: "-.01em" }}>{ticker}</span>
             {stock?.sector ? <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 999, padding: "3px 9px" }}>{stock.sector}</span> : null}
           </div>
           <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>{stock?.companyName || "Company profile unavailable"}</div>

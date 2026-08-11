@@ -106,7 +106,7 @@ export function SetupsPage() {
   return (
     <section>
       <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Swing Setups</h1>
+        <h1 style={{ margin: "0 0 6px", fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>Swing Setups</h1>
         <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: 720, lineHeight: 1.5 }}>
           Ranked long-reversal candidates for 2–5 day holds — location + structure + CVD (approx.) confirmation.
           Screening analytics, not trade advice. {payload ? `${payload.count} of ${formatNumber(payload.scanned, 0)} scanned.` : ""}

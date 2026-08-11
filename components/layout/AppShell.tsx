@@ -33,36 +33,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         fontFamily: "var(--sans, var(--font-body))",
         background: "var(--panel)",
         color: "var(--text)",
-        minHeight: "100vh",
+        // The shell itself never scrolls — only <main> does (DESIGN_SPEC §2).
+        height: "100vh",
+        overflow: "hidden",
+        display: "flex",
+        alignItems: "stretch",
         WebkitFontSmoothing: "antialiased",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          minHeight: "100vh",
-          background: "var(--panel)",
-        }}
-      >
-        <Sidebar />
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-          <TopBar />
+      <Sidebar />
+      <main style={{ flex: 1, minWidth: 0, height: "100vh", overflow: "auto" }}>
+        <TopBar />
+        <div style={{ maxWidth: 1360, margin: "0 auto", padding: "22px 22px 60px" }}>
           {behind > 1 ? (
-            <div style={{ margin: "12px 30px 0", padding: "9px 14px", borderRadius: 10, background: "var(--warnSoft)", color: "var(--warning)", fontSize: 12, fontWeight: 600 }}>
+            <div style={{ marginBottom: 14, padding: "9px 14px", borderRadius: 10, background: "var(--warnSoft)", color: "var(--warning)", fontSize: 12, fontWeight: 600 }}>
               ⚠ Data is {behind} trading days old (latest snapshot {latest}). Treat signals as stale until the daily pipeline publishes a new session.
             </div>
           ) : null}
-          <main style={{ flex: 1, minWidth: 0, padding: "26px 30px 60px" }}>
-            {error ? (
-              <div className="error-banner" style={{ marginBottom: 16 }}>
-                <ErrorState message={error} />
-              </div>
-            ) : null}
-            {children}
-          </main>
+          {error ? (
+            <div className="error-banner" style={{ marginBottom: 14 }}>
+              <ErrorState message={error} />
+            </div>
+          ) : null}
+          {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
