@@ -105,7 +105,11 @@ export function NewsPage() {
       </div>
 
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
-        <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>{items.length} stories</span>
+        {/* DESIGN_SPEC §3.6: the counter reports the filtered set against the
+            whole feed, so a narrow filter is visible as such. */}
+        <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: "var(--muted)" }}>
+          <strong style={{ color: "var(--text)" }}>{items.length}</strong> of {all.length} stories
+        </span>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)", gap: 16 }}>

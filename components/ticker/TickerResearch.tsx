@@ -86,7 +86,14 @@ export function TickerResearch() {
           {/* Live price chart */}
           <div style={{ ...CARD, marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>{ticker} · LIVE CHART</div>
-            <TradingViewChart symbol={`IDX:${ticker}`} range="3M" minHeight={420} />
+            {/* DESIGN_SPEC §3.1: ticker charts carry VWAP + EMA. */}
+            <TradingViewChart
+              symbol={`IDX:${ticker}`}
+              range="3M"
+              interval="1D"
+              studies={["VWAP@tv-basicstudies", "MAExp@tv-basicstudies"]}
+              minHeight={420}
+            />
           </div>
 
           {/* Fundamentals + technicals */}

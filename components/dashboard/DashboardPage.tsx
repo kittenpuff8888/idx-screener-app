@@ -10,6 +10,7 @@ import { TradingViewChart } from "./TradingViewChart";
 import { RiskGauge } from "./RiskGauge";
 import { MarketReadHero } from "./MarketReadHero";
 import { MarketsCarousel } from "./MarketsCarousel";
+import { BreadthTiles } from "./BreadthTiles";
 import { MarketMapTreemap } from "./MarketMapTreemap";
 import { computeMarketRisk } from "@/lib/data/marketRisk";
 import { normalizeSector } from "@/lib/domain/sectors";
@@ -125,24 +126,33 @@ export function DashboardPage() {
         </p>
       </div>
 
-      {/* HERO — IHSG live chart + Market Read | Market Risk gauge */}
+      {/* MACRO STRIP — cross-asset context reads first (DESIGN_SPEC §3.2) */}
+      <MarketsCarousel marketContext={marketContext} />
+
+      {/* BREADTH — four tiles */}
+      <BreadthTiles />
+
+      {/* HERO — IHSG live chart | Market Risk with the market read pinned to
+          its base. The read block is what makes the two columns equal height,
+          so it lives in the right card, not under the chart. */}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(340px,1.35fr) minmax(300px,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <div style={{ ...KICKER, fontSize: 10.5 }}>IHSG · LIVE CHART</div>
             <a href="https://www.tradingview.com/chart/?symbol=IDX%3ACOMPOSITE" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "4px 9px", textDecoration: "none" }}>TradingView ↗</a>
           </div>
-          <TradingViewChart symbol="IDX:COMPOSITE" range="YTD" minHeight={500} />
-          <MarketReadHero risk={marketRisk} mc={marketContext} />
+          <div style={{ flex: "1 1 auto", minHeight: 620, borderRadius: 12, overflow: "hidden" }}>
+            <TradingViewChart symbol="IDX:COMPOSITE" range="YTD" minHeight={620} />
+          </div>
         </div>
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column" }}>
           <RiskGauge risk={marketRisk} />
           <div style={{ marginTop: 10 }}><Provenance source="IHSG close + breadth" asOf={marketDate} /></div>
+          <div style={{ marginTop: "auto", paddingTop: 14 }}>
+            <MarketReadHero risk={marketRisk} mc={marketContext} />
+          </div>
         </div>
       </div>
-
-      {/* MARKETS — cross-asset carousel (INDEX / MACRO / MONEYFLOW) */}
-      <MarketsCarousel marketContext={marketContext} />
 
       {/* LEADERS / LAGGARDS — top 30, box scrolls (≈10 visible); # / END PRC / %CHG / POINTS / %IDX MV */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(400px,1fr))", gap: 14, marginBottom: 16 }}>
