@@ -102,7 +102,7 @@ export function IndexStrip() {
             <Link
               key={group.id}
               data-testid="index-card"
-              href="/explorer?tab=indexes"
+              href="/screener"
                   className="index-card"
             >
                   <div className="index-card-head">

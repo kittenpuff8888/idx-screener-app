@@ -102,7 +102,7 @@ export function TickerResearch() {
           <NewsPanel ticker={ticker} row={news} />
 
           <p style={{ marginTop: 22 }}>
-            <Link href="/explorer" style={{ fontSize: 13, color: "var(--accent)" }}>← Back to Screener</Link>
+            <Link href="/screener" style={{ fontSize: 13, color: "var(--accent)" }}>← Back to Screener</Link>
           </p>
         </div>
       )}

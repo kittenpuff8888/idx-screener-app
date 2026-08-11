@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils/classNames";
 
 const items = [
   { href: "/dashboard", label: "Dashboard" },
-  { href: "/explorer", label: "Explorer" },
+  { href: "/screener", label: "Screener" },
   { href: "/watchlist", label: "Watchlist" },
   { href: "/ksei", label: "More" },
 ];

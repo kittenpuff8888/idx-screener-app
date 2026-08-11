@@ -1,28 +1,32 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useApp } from "@/components/providers/AppProvider";
 import { Badge } from "@/components/shared/Badge";
 import { Card, CardHeader } from "@/components/shared/Card";
 import { formatNumber } from "@/lib/format/number";
 
-const tabs = ["Data Quality", "Workbook Explorer", "Guide & Methodology"] as const;
+const tabs = ["Data Quality", "Workbook Explorer"] as const;
 
-// Sidebar deep-links use ?tab=quality|explorer|guide.
+// Deep-links use ?tab=quality|explorer. ?tab=guide is kept as a redirect to the
+// standalone /guide page, which replaced this tab (BRIEF §1 UPGRADE).
 const tabByParam: Record<string, (typeof tabs)[number]> = {
   quality: "Data Quality",
   explorer: "Workbook Explorer",
-  guide: "Guide & Methodology",
 };
 
 export function AdvancedPage() {
   const { manifest, bundle, ksei, indexes, marketDate } = useApp();
   const [tab, setTab] = useState<(typeof tabs)[number]>("Data Quality");
+  const router = useRouter();
 
   useEffect(() => {
     const param = new URLSearchParams(window.location.search).get("tab");
+    // The Guide moved to its own route; keep the old query-string URL working.
+    if (param === "guide") { router.replace("/guide"); return; }
     if (param && tabByParam[param]) setTab(tabByParam[param]);
-  }, []);
+  }, [router]);
   return (
     <section className="view active" data-view-panel="advanced">
       <div className="view-intro">
@@ -62,19 +66,6 @@ export function AdvancedPage() {
                 <tr><td>indexes.json</td><td>{formatNumber(indexes?.groups.length, 0)} groups</td><td>Local research index series and constituents.</td></tr>
               </tbody>
             </table>
-          </div>
-        </Card>
-      ) : null}
-      {tab === "Guide & Methodology" ? (
-        <Card>
-          <CardHeader kicker="Guide" title="How to read the platform" />
-          <div className="guide-grid">
-            <article><h3>Dashboard</h3><p>Start with market tone, breadth, sector leadership, and ownership changes before drilling down.</p></article>
-            <article><h3>Screener</h3><p>Use the screener and index views to discover what deserves deeper ticker research.</p></article>
-            <article><h3>Ticker Drawer</h3><p>Read the quote header, summary, trade plan, chart, ownership, fundamentals, technicals, and news in order.</p></article>
-            <article><h3>Swing Setups &amp; CVD (approx.)</h3><p>Setups are 2–5 day long-reversal candidates requiring location (POI or 20-day low band), structure (bullish CHoCH or a swept-and-reclaimed low), and orderflow confirmation. &ldquo;CVD (approx.)&rdquo; is estimated from daily candles — per-bar delta = volume × (2·(close−low)/(high−low) − 1) — because true tick/footprint data is unavailable for IDX retail. It is an approximation, never footprint data. Scores are 0–100 with weights location 25 / structure 25 / orderflow 25 / ownership 15 / liquidity 10. Outputs are screening analytics, not trade advice.</p></article>
-            <article><h3>KSEI ownership lag</h3><p>KSEI snapshots are monthly. Ownership accumulation is a conviction bonus and context only — never a timing trigger. The snapshot date is shown wherever ownership data appears.</p></article>
-            <article><h3>Parity &amp; data limits</h3><p>&ldquo;TradingView parity&rdquo; is approximated by agreement between two independent sources that mirror the IDX feed (a literal TradingView feed requires a paid subscription). Prices are split-adjusted, dividend-unadjusted. Tickers failing the dual-source check are flagged PARITY_FAIL and excluded from setups for that run. Recent IPOs (&lt;90 bars) are flagged; under 30 bars they are excluded rather than computed on partial windows. The stale-data banner is weekend-aware but does not model IDX holidays. See the Data Health page for the current run report.</p></article>
           </div>
         </Card>
       ) : null}

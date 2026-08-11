@@ -19,7 +19,7 @@ const CURRENT_THEME = (): "light" | "dark" =>
  * and falls back to a static "snapshot" note if the external script is blocked.
  * No fabricated data — this is the live vendor chart or an honest unavailable state.
  */
-export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", interval = "D", minHeight = 520 }: Props) {
+export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", interval = "1D", minHeight = 520 }: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -54,7 +54,11 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", inte
         theme: dark ? "dark" : "light",
         style: "1",
         locale: "en",
-        allow_symbol_change: true,
+        // DESIGN_SPEC §4: force daily bars. Without hide_top_toolbar +
+        // allow_symbol_change:false, TradingView restores a saved intraday
+        // interval from the visitor's own session and the chart stops being EOD.
+        allow_symbol_change: false,
+        hide_top_toolbar: true,
         withdateranges: true,
         hide_side_toolbar: false,
         hide_volume: true,

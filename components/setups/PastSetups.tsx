@@ -66,7 +66,7 @@ export function PastSetups() {
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Past Setups</h1>
         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>Forward outcomes · as of {doc.asOf || marketDate || "—"}</span>
         <div style={{ flex: 1 }} />
-        <Link href="/explorer" style={{ fontSize: 12, color: "var(--accent)" }}>← Setups Screener</Link>
+        <Link href="/screener" style={{ fontSize: 12, color: "var(--accent)" }}>← Setups Screener</Link>
       </div>
 
       {/* EXPECTANCY */}
