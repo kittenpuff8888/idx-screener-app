@@ -17,6 +17,7 @@ import { loadManifest, resolveMarketDate } from "@/lib/data/metadata";
 import { loadResearchBundle } from "@/lib/data/screener";
 import { fetchLive, isMarketOpen, LIVE_ENDPOINT, LIVE_POLL_MS, type LiveSnapshot } from "@/lib/data/live";
 import { loadIdxIndex, type IdxIndexPayload } from "@/lib/data/idxIndex";
+import { loadWatchlist, newGroupId, saveWatchlist } from "@/lib/data/watchlistStore";
 import type { IndexPayload, KseiPayload, Manifest, ResearchBundle } from "@/lib/domain/types";
 
 const WATCHLIST_KEY = "idx_watchlist_tickers";
@@ -46,20 +47,54 @@ type AppContextValue = {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+/** The Watchlist board (DESIGN_SPEC §3.4) owns the persisted model: named
+    groups of rows under `idxr:watchlist`. The ticker page's Watch button is a
+    second door into that same model, so both read and write it here rather
+    than keeping a parallel flat list that the board would silently ignore.
+    WATCHLIST_KEY below is the pre-redesign flat array, migrated once. */
+const STARRED_GROUP = "Starred";
+
 function readWatchlist(): string[] {
   if (typeof window === "undefined") return [];
+  const state = loadWatchlist();
+  const fromGroups = state.groups.flatMap((g) => g.rows.map((r) => r.symbol));
+  if (fromGroups.length || state.groups.length) return fromGroups;
+  // One-time migration off the old flat key.
   try {
     const parsed = JSON.parse(window.localStorage.getItem(WATCHLIST_KEY) || "[]");
-    return Array.isArray(parsed) ? parsed.map((item) => String(item).toUpperCase()) : [];
+    const legacy = Array.isArray(parsed) ? parsed.map((item) => String(item).toUpperCase()) : [];
+    if (legacy.length) {
+      saveWatchlist({
+        groups: [{ id: newGroupId(), name: STARRED_GROUP, rows: legacy.map((s) => ({ symbol: s, addedAt: "", addedClose: null })) }],
+        activeGroupId: null,
+        selectedSymbol: null,
+      });
+      window.localStorage.removeItem(WATCHLIST_KEY);
+    }
+    return legacy;
   } catch {
     return [];
   }
 }
 
-function writeWatchlist(values: string[]) {
-  if (typeof window !== "undefined") {
-    window.localStorage.setItem(WATCHLIST_KEY, JSON.stringify(values));
+/** Add or remove a symbol, keeping it in whichever group already holds it and
+    falling back to a "Starred" group when the board is still empty. */
+function writeWatchlistSymbol(symbol: string, add: boolean) {
+  if (typeof window === "undefined") return;
+  const state = loadWatchlist();
+  if (!add) {
+    saveWatchlist({ ...state, groups: state.groups.map((g) => ({ ...g, rows: g.rows.filter((r) => r.symbol !== symbol) })) });
+    return;
   }
+  if (state.groups.some((g) => g.rows.some((r) => r.symbol === symbol))) return;
+  const target = state.groups.find((g) => g.id === state.activeGroupId) || state.groups[0];
+  const row = { symbol, addedAt: new Date().toISOString().slice(0, 10), addedClose: null };
+  if (target) {
+    saveWatchlist({ ...state, groups: state.groups.map((g) => (g.id === target.id ? { ...g, rows: [...g.rows, row] } : g)) });
+    return;
+  }
+  const id = newGroupId();
+  saveWatchlist({ groups: [{ id, name: STARRED_GROUP, rows: [row] }], activeGroupId: id, selectedSymbol: symbol });
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -187,11 +222,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const toggleWatchlist = useCallback((ticker: string) => {
     const clean = ticker.trim().toUpperCase().replace(".JK", "");
     setWatchlist((current) => {
-      const next = current.includes(clean)
-        ? current.filter((item) => item !== clean)
-        : [...current, clean].sort();
-      writeWatchlist(next);
-      return next;
+      const adding = !current.includes(clean);
+      writeWatchlistSymbol(clean, adding);
+      return adding ? [...current, clean].sort() : current.filter((item) => item !== clean);
     });
   }, []);
 

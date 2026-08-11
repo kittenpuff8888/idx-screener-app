@@ -399,7 +399,16 @@ export function ScreenerPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}>
                     <span style={{ width: 30, height: 30, flex: "none", borderRadius: 9, background: on ? "var(--accent)" : "var(--soft)", color: on ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }} aria-hidden>{s.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-.01em" }}>{s.label}{s.inferred ? <span title="Inferred — no dedicated workbook column" style={{ marginLeft: 5, fontSize: 8.5, fontWeight: 700, color: "var(--faint)" }}>≈</span> : null}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-.01em" }}>{s.label}</span>
+                        {/* DESIGN_SPEC §3.3: evidence strength is explicit, not a glyph. */}
+                        <span
+                          title={s.inferred ? "INFERRED — reconstructed from other fields, no dedicated column" : "EXACT — reads a real column directly"}
+                          style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".06em", padding: "1px 6px", borderRadius: 5, background: s.inferred ? "var(--warnSoft)" : "var(--upSoft)", color: s.inferred ? "var(--warning)" : "var(--up)" }}
+                        >
+                          {s.inferred ? "INFERRED" : "EXACT"}
+                        </span>
+                      </div>
                       <div style={{ fontFamily: MONO, fontSize: 10, color: cnt ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>{cnt} {cnt === 1 ? "ticker" : "tickers"} today</div>
                     </div>
                     <span style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }} aria-hidden>{on ? "✓" : ""}</span>
