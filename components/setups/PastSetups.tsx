@@ -55,7 +55,7 @@ export function PastSetups() {
     return { entries, decided, wins, hitRate, ci, avgR, curve, total: entries.length };
   }, [doc]);
 
-  if (!doc) return <section><h1 style={{ fontSize: 24, fontWeight: 700 }}>Past Setups</h1><p style={{ color: "var(--muted)" }}>Loading forward-outcome history…</p></section>;
+  if (!doc) return <section><h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>Past Setups</h1><p style={{ color: "var(--muted)" }}>Loading forward-outcome history…</p></section>;
 
   const { entries, decided, wins, hitRate, ci, avgR, curve, total } = model;
   const cMin = Math.min(0, ...curve), cMax = Math.max(0, ...curve), cRange = cMax - cMin || 1;
@@ -63,7 +63,7 @@ export function PastSetups() {
   return (
     <section>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Past Setups</h1>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>Past Setups</h1>
         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>Forward outcomes · as of {doc.asOf || marketDate || "—"}</span>
         <div style={{ flex: 1 }} />
         <Link href="/screener" style={{ fontSize: 12, color: "var(--accent)" }}>← Setups Screener</Link>

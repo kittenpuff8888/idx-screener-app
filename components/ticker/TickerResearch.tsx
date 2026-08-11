@@ -60,7 +60,7 @@ export function TickerResearch() {
         >
           ← Back
         </button>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: "-.01em" }}>
+        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>
           {ticker ? `${ticker} research` : "Ticker research"}
         </h1>
       </div>

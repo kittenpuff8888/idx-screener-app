@@ -7,6 +7,7 @@ import { formatAsOf, formatNumber, formatPlainPercent } from "@/lib/format/numbe
 import { IDX_SECTOR_MAP, normalizeSector } from "@/lib/domain/sectors";
 import type { InvestorEntry, KseiIssuer } from "@/lib/domain/types";
 import { KseiMarketOverview } from "./KseiMarketOverview";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))" };
@@ -86,12 +87,10 @@ export function KseiPage() {
 
   return (
     <section>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14, flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>KSEI Ownership</h1>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 9px" }}>WHO OWNS WHAT</span>
+      <PageHeader title="KSEI Ownership" pill="WHO OWNS WHAT">
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 10, color: "var(--faint)" }}>Source: KSEI · as of {formatAsOf(ksei?.asOf) || ksei?.asOf || "—"}</span>
-      </div>
+      </PageHeader>
 
       {/* market-ownership overview (real aggregates + snapshot health) */}
       <KseiMarketOverview ksei={ksei} />

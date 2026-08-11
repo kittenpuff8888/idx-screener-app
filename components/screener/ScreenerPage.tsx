@@ -298,8 +298,8 @@ export function ScreenerPage() {
       {/* title */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Setups Screener</h1>
-          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 9px" }}>CONFLUENCE</span>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>Setups Screener</h1>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 999, padding: "3px 9px" }}>CONFLUENCE</span>
           <div style={{ flex: 1 }} />
           <span style={{ fontSize: 11.5, color: "var(--faint)" }}>
             Matching <strong style={{ color: "var(--text)", fontFamily: MONO }}>{matchCount}</strong> of {total} · scanned {universe?.scanned ?? 0} · {universe?.marketDate || marketDate}

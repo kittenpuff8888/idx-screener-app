@@ -16,6 +16,7 @@ import { computeMarketRisk } from "@/lib/data/marketRisk";
 import { normalizeSector } from "@/lib/domain/sectors";
 import type { JsonRecord } from "@/lib/domain/types";
 import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const CARD: CSSProperties = {
   background: "var(--panel)",
@@ -119,12 +120,11 @@ export function DashboardPage() {
 
   return (
     <section>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Research Dashboard</h1>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5, maxWidth: 720, lineHeight: 1.5 }}>
-          Read top-down — <strong style={{ color: "var(--text)", fontWeight: 700 }}>regime → tape → rotation → names</strong>. Every mark is validated blue-up / red-down, always with a sign and glyph.
-        </p>
-      </div>
+      <PageHeader
+        title="Research Dashboard"
+        pill="REGIME → TAPE → ROTATION"
+        meta={<>Read top-down — <strong style={{ color: "var(--text)", fontWeight: 700 }}>regime → tape → rotation → names</strong>. Every mark is validated blue-up / red-down, always with a sign and glyph.</>}
+      />
 
       {/* MACRO STRIP — cross-asset context reads first (DESIGN_SPEC §3.2) */}
       <MarketsCarousel marketContext={marketContext} />

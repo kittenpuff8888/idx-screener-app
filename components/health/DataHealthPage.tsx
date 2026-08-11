@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { fetchJson } from "@/lib/data/client";
 import { formatNumber } from "@/lib/format/number";
+import { PageHeader } from "@/components/shared/PageHeader";
 
 const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "16px 18px", boxShadow: "var(--sh, var(--shadow))" };
@@ -103,12 +104,11 @@ export function DataHealthPage() {
 
   return (
     <section>
-      <div style={{ marginBottom: 18 }}>
-        <h1 style={{ margin: "0 0 6px", fontSize: 24, fontWeight: 700, letterSpacing: "-.01em" }}>Data Health</h1>
-        <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5 }}>
-          Run report for <b style={{ fontFamily: MONO, color: "var(--text)" }}>{health.marketDate}</b> · generated {health.generatedAt?.slice(0, 16).replace("T", " ")} WIB
-        </p>
-      </div>
+      <PageHeader
+        title="Data Health"
+        pill="SOURCES & FRESHNESS"
+        meta={<>Run report for <b style={{ fontFamily: MONO, color: "var(--text)" }}>{health.marketDate}</b> · generated {health.generatedAt?.slice(0, 16).replace("T", " ")} WIB</>}
+      />
 
       {/* Sources-tracked KPI row (DESIGN_SPEC §3.7) */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14, marginBottom: 14 }}>
