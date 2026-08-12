@@ -6,13 +6,11 @@
 
 import type { JsonRecord, ScreenerRow } from "@/lib/domain/types";
 import { asNumber, formatNumber } from "@/lib/format/number";
+import { IDX_SECTOR_MAP } from "@/lib/domain/sectors";
 
-export const SECTOR_LABEL: Record<string, string> = {
-  IDXHEALTH: "Healthcare", IDXENERGY: "Energy", IDXNONCYC: "Consumer Non-Cyclicals",
-  IDXINFRA: "Infrastructure", IDXINDUST: "Industrials", IDXPROPERT: "Properties",
-  IDXCYCLIC: "Consumer Cyclicals", IDXTRANS: "Transportation", IDXFINANCE: "Financials",
-  IDXBASIC: "Basic Materials", IDXTECHNO: "Technology", Others: "Others",
-};
+// Single source of truth for sector names (GAP_ANALYSIS §8): derive from the
+// canonical IDX-IC map in lib/domain/sectors, not a second hardcoded list.
+export const SECTOR_LABEL: Record<string, string> = { ...IDX_SECTOR_MAP, Others: "Others" };
 
 export type Cell = { available: boolean; label?: string; tone?: "up" | "down" | "flat"; val?: string; raw?: string; proxy?: boolean; sort?: number };
 export type Tone = "up" | "down" | "flat";
