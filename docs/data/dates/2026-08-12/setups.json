@@ -1,0 +1,331 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-12",
+ "generatedAt": "2026-08-12T20:19:53.047608+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 4,
+ "setups": [
+  {
+   "ticker": "MSIN",
+   "name": "MNC Digital Entertainment Tbk.",
+   "sector": "Others",
+   "close": 380.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 368,
+   "invalidation": 360.36,
+   "target": 413,
+   "medianValueTraded20": 11260034400,
+   "rvol": 1.026729924019471,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1512360259,
+    1526093584,
+    1539096784,
+    1586440332,
+    1569528518,
+    1567346681,
+    1570179600,
+    1558558800,
+    1529561922,
+    1533157342,
+    1545823102,
+    1540308168,
+    1540308168,
+    1556087568,
+    1545810968,
+    1527811622,
+    1513327422,
+    1528027811,
+    1528027811,
+    1531435719,
+    1515722219,
+    1532917219,
+    1532917219,
+    1528011459,
+    1547410192,
+    1536370742,
+    1551344192,
+    1559500972,
+    1549708306,
+    1572515948
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 17,
+    "hitRate": 0.59,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMSIN"
+  },
+  {
+   "ticker": "MNCN",
+   "name": "Media Nusantara Citra Tbk.",
+   "sector": "Others",
+   "close": 200.0,
+   "score": 65,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 200,
+   "invalidation": 196.02,
+   "target": 210,
+   "medianValueTraded20": 6834177000,
+   "rvol": 0.7289259505771185,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -1041892086,
+    -1041892086,
+    -1036698686,
+    -1014620486,
+    -1032423586,
+    -998558686,
+    -998558686,
+    -998558686,
+    -958691386,
+    -996867686,
+    -954420386,
+    -954420386,
+    -920707186,
+    -864206386,
+    -890416426,
+    -890416426,
+    -931150326,
+    -895207626,
+    -895207626,
+    -895207626,
+    -884729826,
+    -852199726,
+    -870014276,
+    -854587576,
+    -854587576,
+    -828150876,
+    -795579876,
+    -806754543,
+    -813211309,
+    -813211309
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 17,
+    "hitRate": 0.59,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMNCN"
+  },
+  {
+   "ticker": "KPIG",
+   "name": "MNC Tourism Indonesia Tbk.",
+   "sector": "Others",
+   "close": 74.0,
+   "score": 55,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 10,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 73,
+   "invalidation": 71.28,
+   "target": 81,
+   "medianValueTraded20": 12751708200,
+   "rvol": 1.1736872739133,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1238077322,
+    1209655089,
+    1388619289,
+    1523807889,
+    1400705364,
+    1536454764,
+    1660518864,
+    1785678064,
+    1785678064,
+    1887832464,
+    2038143364,
+    2038143364,
+    2156656564,
+    2269457264,
+    2164916264,
+    2119699197,
+    2041113947,
+    2121162347,
+    2121162347,
+    2100209827,
+    2131149361,
+    2131149361,
+    2204033761,
+    2142414794,
+    1982108994,
+    1833623894,
+    1833623894,
+    1833623894,
+    1668997894,
+    1732188094
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 9,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AKPIG"
+  },
+  {
+   "ticker": "TRIN",
+   "name": "Perintis Triniti Properti Tbk.",
+   "sector": "Others",
+   "close": 306.0,
+   "score": 55,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 10,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 303,
+   "invalidation": 294.0,
+   "target": 343,
+   "medianValueTraded20": 2116634800,
+   "rvol": 1.110347198349948,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -43536361,
+    -44351995,
+    -37163738,
+    -38429138,
+    -41106791,
+    -37840719,
+    -38577519,
+    -38304055,
+    -42627130,
+    -42627130,
+    -43224018,
+    -45658590,
+    -44044847,
+    -33779086,
+    -46168461,
+    -45353656,
+    -48346043,
+    -51979510,
+    -52920810,
+    -58006881,
+    -55981615,
+    -58377148,
+    -60547723,
+    -60061037,
+    -60061037,
+    -60061037,
+    -65319757,
+    -69544557,
+    -72522129,
+    -72522129
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Internal Bullish CHoCH); absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 20,
+    "hitRate": 0.5,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ATRIN"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 963
+}
