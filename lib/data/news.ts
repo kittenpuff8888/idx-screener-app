@@ -4,6 +4,23 @@ import { tradingViewUrl } from "./client";
 
 export type NewsTone = "up" | "down" | "flat";
 
+// The design filters news by TOPIC (Earnings/Flow/Company/Sector/Macro), not by
+// sentiment. The real feed has no topic field, so we DERIVE it from the headline
+// text (keyword heuristic) and label it as derived (Data Health + the News
+// footnote). Sentiment stays in the tape-sentiment rail, where it is a labelled
+// model read — filtering the feed by it would invite reading it as a signal.
+export type NewsTopic = "earnings" | "flow" | "company" | "sector" | "macro";
+
+/** Derive a topic tag from the headline (no such field in the feed — labelled). */
+export function deriveTopic(title: string, ticker: string, sector: string): NewsTopic {
+  const t = `${title} ${sector}`.toLowerCase();
+  if (!ticker || /bank indonesia|\bbi\b|inflation|inflasi|\bcpi\b|rupiah|\bidr\b|\bgdp\b|\bfed\b|yield|suku bunga|rate (cut|hike|hold)|central bank|makro|kurs/.test(t)) return "macro";
+  if (/earnings|revenue|profit|laba|net income|kuartal|quarter|\bq[1-4]\b|yoy|guidance|\beps\b|dividend|dividen|kinerja|pendapatan|margin/.test(t)) return "earnings";
+  if (/foreign|inflow|outflow|net (buy|sell)|asing|dana asing|\bflow\b|fund|akumulas|distribus|capital/.test(t)) return "flow";
+  if (/sector|sektor|complex|industry|industri|miners|coal|batu ?bara|metals|logam|commodit|komoditas|banks sector/.test(t)) return "sector";
+  return "company";
+}
+
 /** A single parsed story from the real workbook "Sentiment News" feed. */
 export type NewsStory = {
   ticker: string;
@@ -11,6 +28,7 @@ export type NewsStory = {
   sector: string;
   tone: NewsTone;
   toneWord: string;
+  topic: NewsTopic;
   title: string;
   source: string;
   when: string;
@@ -81,12 +99,14 @@ export function newsStories(bundle: ResearchBundle | null): NewsStory[] {
     if (!parsed) return;
     const stock = bundle.technical.get(ticker);
     const sectorRaw = row.Sector || stock?.sector;
+    const sector = sectorRaw ? normalizeSector(String(sectorRaw)) : "—";
     out.push({
       ticker,
       company: String(row.Company || stock?.companyName || ticker),
-      sector: sectorRaw ? normalizeSector(String(sectorRaw)) : "—",
+      sector,
       tone: toneFrom(String(row.Sentiment ?? "")),
       toneWord: String(row.Sentiment || "Neutral"),
+      topic: deriveTopic(parsed.title, ticker, sector),
       title: parsed.title,
       source: parsed.source,
       when: parsed.when,

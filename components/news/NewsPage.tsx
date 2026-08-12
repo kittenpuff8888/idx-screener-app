@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { formatAsOf } from "@/lib/format/number";
-import { newsStories, newsDisclosures, type NewsStory, type NewsTone } from "@/lib/data/news";
+import { newsStories, newsDisclosures, type NewsStory, type NewsTone, type NewsTopic } from "@/lib/data/news";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 const MONO = "var(--mono, var(--font-mono))";
@@ -33,27 +33,29 @@ function ageLabel(d: number | null, when: string): string {
   return `${Math.round(d / 30)} mo ago`;
 }
 
-type Cat = "all" | "up" | "flat" | "down";
-const CATS: Array<[Cat, string]> = [["all", "All"], ["up", "Bullish"], ["flat", "Neutral"], ["down", "Bearish"]];
+// Design filters by TOPIC (what a story is about), not sentiment. Sentiment
+// stays in the tape-sentiment rail as a labelled model read.
+type Cat = "all" | NewsTopic;
+const CATS: Array<[Cat, string]> = [["all", "All"], ["earnings", "Earnings"], ["flow", "Flow"], ["company", "Company"], ["sector", "Sector"], ["macro", "Macro"]];
 
-type Range = 0 | 3 | 7 | 14 | 999;
-const RANGES: Array<[Range, string]> = [[999, "All"], [14, "≤ 2 weeks"], [7, "≤ 1 week"], [3, "≤ 3 days"], [0, "Today"]];
+type Range = 7 | 14 | 31 | 93;
+const RANGES: Array<[Range, string]> = [[7, "Last 1 week"], [14, "Last 2 weeks"], [31, "Last 1 month"], [93, "Last 3 months"]];
 
 export function NewsPage() {
   const { bundle, marketDate, openTicker } = useApp();
   const [cat, setCat] = useState<Cat>("all");
-  const [range, setRange] = useState<Range>(999);
+  const [range, setRange] = useState<Range>(93);
   const [q, setQ] = useState("");
 
   const all = useMemo(() => newsStories(bundle), [bundle]);
   const disclosures = useMemo(() => newsDisclosures(bundle), [bundle]);
 
-  const inRange = (n: NewsStory) => range === 999 || (n.ageDays != null && n.ageDays <= range);
-  const catCount = (k: Cat) => all.filter((n) => (k === "all" || n.tone === k) && inRange(n)).length;
+  const inRange = (n: NewsStory) => n.ageDays == null || n.ageDays <= range;
+  const catCount = (k: Cat) => all.filter((n) => (k === "all" || n.topic === k) && inRange(n)).length;
 
   const needle = q.trim().toLowerCase();
   const items = all
-    .filter((n) => (cat === "all" || n.tone === cat) && inRange(n) && (!needle || `${n.title} ${n.ticker} ${n.company} ${n.sector} ${n.source}`.toLowerCase().includes(needle)))
+    .filter((n) => (cat === "all" || n.topic === cat) && inRange(n) && (!needle || `${n.title} ${n.ticker} ${n.company} ${n.sector} ${n.source}`.toLowerCase().includes(needle)))
     .sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
 
   // tape sentiment (real, over all parsed headlines)
@@ -193,7 +195,7 @@ export function NewsPage() {
       </div>
 
       <div style={{ fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, maxWidth: 820, marginTop: 16 }}>
-        Real workbook news feed · {marketDate}. {all.length} headlines parsed from the source snapshot; each links to the ticker detail page. Sentiment (▲/▼/•) is a <strong>labelled model</strong> read, not a price signal. Age is the source-reported recency. Records without a headline are omitted (never fabricated); no external article URLs are published because the feed stores none.
+        Real workbook news feed · {marketDate}. {all.length} headlines parsed from the source snapshot; each links to the ticker detail page. Sentiment (▲/▼/•) is a <strong>labelled model</strong> read, not a price signal. Topic categories (Earnings / Flow / Company / Sector / Macro) are <strong>derived from the headline text</strong> — the feed carries no topic field (see Data Health). Age is the source-reported recency. Records without a headline are omitted (never fabricated); no external article URLs are published because the feed stores none.
       </div>
     </section>
   );
