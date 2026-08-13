@@ -17,6 +17,7 @@ import { TradePlanLadder } from "./TradePlanLadder";
 import { TradingViewChart } from "@/components/dashboard/TradingViewChart";
 import { IndexPanel } from "./IndexPanel";
 import { SetupPanel } from "./SetupPanel";
+import { DividendPanel, ReturnsPanel, PeersPanel, FilingsPanel } from "./TickerBlocks";
 import { asNumber } from "@/lib/format/number";
 
 export function TickerResearch() {
@@ -25,7 +26,15 @@ export function TickerResearch() {
   // DESIGN_SPEC §3.1 deep-links as ?ticker=; ?symbol= was the pre-redesign
   // param and stays readable so existing links keep working.
   const ticker = (params.get("ticker") || params.get("symbol") || "").trim().toUpperCase().replace(".JK", "");
-  const { bundle, ksei, idxIndex, marketDate } = useApp();
+  const { bundle, ksei, idxIndex, marketDate, marketContext, openTicker } = useApp();
+
+  const ihsgRows = useMemo(() => {
+    const inst = (marketContext?.instruments || []).find((i) => i.label.toUpperCase() === "IHSG" || i.symbol.toUpperCase() === "^JKSE");
+    return (inst?.rows || [])
+      .filter((r) => !marketDate || String(r.date) <= marketDate)
+      .map((r) => ({ date: String(r.date), close: Number(r.close ?? r.value) }))
+      .filter((r) => isFinite(r.close));
+  }, [marketContext, marketDate]);
   const [ohlcv, setOhlcv] = useState<OhlcvPayload | null>(null);
 
   const stock = ticker ? bundle?.technical.get(ticker) : undefined;
@@ -108,6 +117,18 @@ export function TickerResearch() {
             <OwnershipPanel ownership={ownership} />
             <IndexPanel record={indexRecord} effective={idxIndex?.effective} />
           </div>
+
+          {/* RETURNS vs IHSG | DIVIDEND  (design/0. Ticker Page blocks) */}
+          <div className="ticker-overview-grid">
+            <ReturnsPanel ohlcv={ohlcv} ihsg={ihsgRows} sectorLabel={ownership?.sector} />
+            <DividendPanel row={fundamental} />
+          </div>
+          {/* PEERS | FILINGS & DISCLOSURES */}
+          <div className="ticker-overview-grid">
+            <PeersPanel ticker={ticker} ownership={ownership} bundle={bundle} kseiRecords={ksei?.records || []} onOpen={openTicker} />
+            <FilingsPanel ticker={ticker} bundle={bundle} />
+          </div>
+
           <NewsPanel ticker={ticker} row={news} />
 
           <p style={{ marginTop: 22 }}>
