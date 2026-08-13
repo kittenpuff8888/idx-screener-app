@@ -10,6 +10,7 @@ import { TradingViewChart } from "./TradingViewChart";
 import { RiskGauge } from "./RiskGauge";
 import { MarketReadHero } from "./MarketReadHero";
 import { MarketsCarousel } from "./MarketsCarousel";
+import { MacroStrip } from "./MacroStrip";
 import { BreadthTiles } from "./BreadthTiles";
 import { MarketMapTreemap } from "./MarketMapTreemap";
 import { computeMarketRisk } from "@/lib/data/marketRisk";
@@ -122,11 +123,14 @@ export function DashboardPage() {
     <section>
       <PageHeader
         title="Research Dashboard"
-        pill="REGIME → TAPE → ROTATION"
+        pill="MARKET OVERVIEW"
         meta={<>Read top-down — <strong style={{ color: "var(--text)", fontWeight: 700 }}>regime → tape → rotation → names</strong>. Every mark is validated blue-up / red-down, always with a sign and glyph.</>}
       />
 
-      {/* MACRO STRIP — cross-asset context reads first (DESIGN_SPEC §3.2) */}
+      {/* MACRO STRIP — compact rates row (DESIGN_SPEC §3.2), above the cross-asset carousel */}
+      <MacroStrip />
+
+      {/* MARKETS · CROSS-ASSET carousel */}
       <MarketsCarousel marketContext={marketContext} />
 
       {/* BREADTH — four tiles */}
