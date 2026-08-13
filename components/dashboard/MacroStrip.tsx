@@ -52,7 +52,7 @@ export function MacroStrip() {
         </span>
       ))}
       <div style={{ flex: 1 }} />
-      <span style={{ fontSize: 9.5, color: "var(--faint)" }}>rates &amp; policy calendar not in feed — see Data Health</span>
+      <span style={{ fontSize: 9.5, color: "var(--faint)" }}>next: BI-rate &amp; CPI calendar — not in feed (see Data Health)</span>
     </div>
   );
 }
