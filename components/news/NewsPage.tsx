@@ -65,11 +65,14 @@ export function NewsPage() {
   const tot = all.length || 1;
   const pct = (n: number) => `${((n / tot) * 100).toFixed(1)}%`;
 
-  // most-active: freshest directional headlines (honest — no mention-frequency corpus exists)
-  const active = all
-    .filter((n) => n.tone !== "flat")
-    .sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999))
-    .slice(0, 8);
+  // most-mentioned tickers: real mention frequency across all parsed headlines
+  const mentioned = (() => {
+    const counts: Record<string, { ticker: string; count: number; tone: NewsTone }> = {};
+    all.forEach((n) => { if (!n.ticker) return; counts[n.ticker] = counts[n.ticker] || { ticker: n.ticker, count: 0, tone: n.tone }; counts[n.ticker].count++; });
+    const arr = Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 8);
+    const mx = Math.max(1, ...arr.map((t) => t.count));
+    return arr.map((t) => ({ ...t, barW: `${((t.count / mx) * 100).toFixed(0)}%` }));
+  })();
 
   return (
     <section>
@@ -140,9 +143,9 @@ export function NewsPage() {
               <div style={{ width: pct(down), background: "var(--down)" }} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11.5 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--up)", fontWeight: 700 }}>▲ Bullish</span><span style={{ fontFamily: MONO }}>{up}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--up)", fontWeight: 700 }}>▲ Positive</span><span style={{ fontFamily: MONO }}>{up}</span></div>
               <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)", fontWeight: 700 }}>• Neutral</span><span style={{ fontFamily: MONO }}>{flat}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--down)", fontWeight: 700 }}>▼ Bearish</span><span style={{ fontFamily: MONO }}>{down}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--down)", fontWeight: 700 }}>▼ Negative</span><span style={{ fontFamily: MONO }}>{down}</span></div>
             </div>
             <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.45 }}>Sentiment is a labelled model read on {all.length} headlines in this snapshot — not a price signal.</div>
           </div>
@@ -167,26 +170,25 @@ export function NewsPage() {
             )}
           </div>
 
-          {/* most-active directional headlines */}
+          {/* most-mentioned tickers (design/5. News.dc.html) — real mention frequency */}
           <div style={{ ...CARD, padding: "16px 18px" }}>
-            <div style={{ ...KICKER, marginBottom: 4 }}>MOST-ACTIVE · DIRECTIONAL HEADLINES</div>
-            <div style={{ fontSize: 10, color: "var(--faint)", marginBottom: 10 }}>Freshest non-neutral headlines (one per ticker — no mention-frequency feed).</div>
-            {active.length ? (
-              active.map((t, i) => (
+            <div style={{ ...KICKER, marginBottom: 10 }}>MOST-MENTIONED TICKERS</div>
+            {mentioned.length ? (
+              mentioned.map((t, i) => (
                 <button key={`${t.ticker}-${i}`} type="button" onClick={() => t.ticker && openTicker(t.ticker)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i ? "1px solid var(--hair)" : "none", background: "transparent", border: "none", width: "100%", textAlign: "left", cursor: "pointer", color: "var(--text)" }}>
-                  <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: toneColor(t.tone), flex: "none" }} />
-                  <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, width: 52, flex: "none" }}>{t.ticker}</span>
-                  <span style={{ fontSize: 11, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.title}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 12.5, fontWeight: 800, width: 52, flex: "none" }}>{t.ticker}</span>
+                  <span style={{ flex: 1, height: 6, background: "var(--soft)", borderRadius: 4, overflow: "hidden" }}><span style={{ display: "block", width: t.barW, height: "100%", background: toneColor(t.tone), borderRadius: 4 }} /></span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: "var(--muted)", width: 20, textAlign: "right" }}>{t.count}</span>
                 </button>
               ))
             ) : (
-              <div style={{ fontSize: 11.5, color: "var(--faint)" }}>No directional headlines in this snapshot.</div>
+              <div style={{ fontSize: 11.5, color: "var(--faint)" }}>No ticker-tagged headlines in this snapshot.</div>
             )}
           </div>
 
-          {/* schedule — honest: no forward calendar in the feed */}
+          {/* economic & events calendar — honest: no forward calendar in the feed */}
           <div style={{ ...CARD, padding: "16px 18px" }}>
-            <div style={{ ...KICKER, marginBottom: 10 }}>SCHEDULE · UPCOMING EVENTS</div>
+            <div style={{ ...KICKER, marginBottom: 10 }}>ECONOMIC &amp; EVENTS CALENDAR</div>
             <div style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
               No forward-dated event calendar in this snapshot. The workbook flags corporate actions after the fact — see DISCLOSURE above ({disclosures.length} flagged). A dated calendar is not fabricated here.
             </div>
