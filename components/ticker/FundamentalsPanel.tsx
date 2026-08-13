@@ -6,14 +6,22 @@ import { cell } from "@/lib/dataReady";
 import type { JsonRecord, TechnicalRecord } from "@/lib/domain/types";
 import { asNumber, formatCompact, formatNumber, formatPercent, formatPrice } from "@/lib/format/number";
 
-type StatDef = { label: string; key?: string; raw?: unknown; kind: "price" | "compact" | "ratio" | "percent" | "int" };
+type StatDef = { label: string; key?: string; raw?: unknown; kind: "price" | "compact" | "rpbn" | "ratio" | "percent" | "int" };
+
+// Market Cap / Enterprise Value / FCF / Cash are stored in Rp BILLION (e.g.
+// 471,300 = Rp 471.3 T). Plain compact mislabels them "rb" (thousand), so format
+// as Rp trillions/billions the same way the header hero does.
+function fmtRpBn(bn: number): string {
+  if (!isFinite(bn)) return "—";
+  return bn >= 1000 ? `Rp ${formatNumber(bn / 1000, 1)} T` : `Rp ${formatNumber(bn, 1)} B`;
+}
 
 const SECTIONS: Array<{ title: string; rows: Array<{ label: string; key: string; kind: StatDef["kind"] }> }> = [
   {
     title: "Key Statistics",
     rows: [
-      { label: "Market Cap", key: "Market Cap", kind: "compact" },
-      { label: "Enterprise Value", key: "Enterprise Value", kind: "compact" },
+      { label: "Market Cap", key: "Market Cap", kind: "rpbn" },
+      { label: "Enterprise Value", key: "Enterprise Value", kind: "rpbn" },
       { label: "Shares Outstanding", key: "Shares Outstanding", kind: "compact" },
       { label: "Free Float %", key: "Free Float (%)", kind: "percent" },
       { label: "52W High", key: "52 Week High", kind: "price" },
@@ -44,8 +52,8 @@ const SECTIONS: Array<{ title: string; rows: Array<{ label: string; key: string;
     rows: [
       { label: "Current Ratio (Q)", key: "Current Ratio (Quarter)", kind: "ratio" },
       { label: "Debt/Equity (Q)", key: "Debt to Equity Ratio (Quarter)", kind: "ratio" },
-      { label: "Free Cash Flow (TTM)", key: "Free cash flow (TTM)", kind: "compact" },
-      { label: "Cash (Q)", key: "Cash (Quarter)", kind: "compact" },
+      { label: "Free Cash Flow (TTM)", key: "Free cash flow (TTM)", kind: "rpbn" },
+      { label: "Cash (Q)", key: "Cash (Quarter)", kind: "rpbn" },
     ],
   },
 ];
@@ -54,6 +62,7 @@ function formatBy(kind: StatDef["kind"]): (v: number) => string {
   switch (kind) {
     case "price": return (v) => formatPrice(v);
     case "compact": return (v) => formatCompact(v);
+    case "rpbn": return (v) => fmtRpBn(v);
     // Workbook percent fields (Free Float, ROE, margins, yields) are stored as
     // fractions (0.4597 = 45.97%), matching how the header hero renders them.
     // formatPlainPercent skipped the ×100 → "0.46%"; use formatPercent, sign-free.
