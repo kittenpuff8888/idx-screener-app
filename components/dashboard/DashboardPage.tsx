@@ -127,6 +127,12 @@ export function DashboardPage() {
         meta={<>Read top-down — <strong style={{ color: "var(--text)", fontWeight: 700 }}>regime → tape → rotation → names</strong>. Every mark is validated blue-up / red-down, always with a sign and glyph.</>}
       />
 
+      {/* Source provenance line (design/1. Research Dashboard.dc.html) */}
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: "-2px 0 14px", fontSize: 10.5, fontWeight: 600, color: "var(--muted)" }}>
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--flat)" }} />
+        src: IDX close · as of {marketDate} 16:00:00 WIB · EOD (delayed)
+      </div>
+
       {/* MACRO STRIP — compact rates row (DESIGN_SPEC §3.2), above the cross-asset carousel */}
       <MacroStrip />
 
@@ -207,6 +213,11 @@ export function DashboardPage() {
 
       {/* MARKET MAP — squarified, cap-weighted treemap */}
       <MarketMapTreemap />
+
+      {/* CVD palette / no-fabrication footnote (design/1. Research Dashboard.dc.html) */}
+      <div style={{ fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, maxWidth: 820, marginTop: 14 }}>
+        Palette validated for CVD &amp; contrast (OKLab ΔE ≥ 8 on every adjacent pair; blue-up/red-down protan ΔE 23.8). Polarity always ships with a sign + ▲/▼/• glyph; multi-series always carries a legend. Real snapshot {marketDate} — no fabricated data.
+      </div>
     </section>
   );
 }
