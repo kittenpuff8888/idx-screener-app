@@ -1,5 +1,5 @@
 import type { KseiIssuer, OhlcvPayload, TechnicalRecord, TradePlan } from "@/lib/domain/types";
-import { asNumber, formatPercent, sentenceJoin } from "@/lib/format/number";
+import { asNumber, formatPercent, formatPlainPercent, sentenceJoin } from "@/lib/format/number";
 import { fetchJson } from "./client";
 
 export function tradePlanFromTechnical(stock?: TechnicalRecord): TradePlan | undefined {
@@ -28,7 +28,7 @@ export function buildResearchSummary(stock?: TechnicalRecord, ownership?: KseiIs
     : stock.movingAverages?.zone;
   const liquidity = stock.liquidityCategory || "liquidity is not classified";
   const ownershipText = ownership
-    ? `Ownership is ${ownership.ownershipType.toLowerCase()} with CR1 at ${formatPercent(ownership.cr1, 1)} and free float at ${formatPercent(ownership.freeFloat, 1)}.`
+    ? `Ownership is ${ownership.ownershipType.toLowerCase()} with CR1 at ${formatPlainPercent(ownership.cr1, 1)} and free float at ${formatPlainPercent(ownership.freeFloat, 1)}.`
     : "Ownership context is not available in the latest KSEI snapshot.";
   const trade = stock.riskReward
     ? `The mapped plan shows ${formatPercent(stock.upsidePercent, 1)} upside versus ${formatPercent(stock.downsidePercent, 1).replace("+", "")} downside.`

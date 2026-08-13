@@ -4,7 +4,7 @@ import { Card, CardHeader } from "@/components/shared/Card";
 import { Provenance, Stat } from "@/components/shared/Metric";
 import { cell } from "@/lib/dataReady";
 import type { JsonRecord, TechnicalRecord } from "@/lib/domain/types";
-import { asNumber, formatCompact, formatNumber, formatPlainPercent, formatPrice } from "@/lib/format/number";
+import { asNumber, formatCompact, formatNumber, formatPercent, formatPrice } from "@/lib/format/number";
 
 type StatDef = { label: string; key?: string; raw?: unknown; kind: "price" | "compact" | "ratio" | "percent" | "int" };
 
@@ -54,7 +54,10 @@ function formatBy(kind: StatDef["kind"]): (v: number) => string {
   switch (kind) {
     case "price": return (v) => formatPrice(v);
     case "compact": return (v) => formatCompact(v);
-    case "percent": return (v) => formatPlainPercent(v, 2);
+    // Workbook percent fields (Free Float, ROE, margins, yields) are stored as
+    // fractions (0.4597 = 45.97%), matching how the header hero renders them.
+    // formatPlainPercent skipped the ×100 → "0.46%"; use formatPercent, sign-free.
+    case "percent": return (v) => formatPercent(v, 2).replace("+", "");
     case "int": return (v) => formatNumber(v, 0);
     default: return (v) => formatNumber(v, 2);
   }
