@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-14T18:59:45.966160+07:00",
+ "generatedAt": "2026-08-14T19:52:37.652223+07:00",
  "marketDate": "2026-08-14",
  "universe": {
   "size": 950,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-14T18:59:32.482143+07:00"
+  "auditedAt": "2026-08-14T19:52:24.632076+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-12T17:34:51.440242+07:00",
-   "marketDate": "2026-08-12",
-   "status": "STARTED",
-   "message": "Daily update pipeline started."
-  },
   {
    "timestamp": "2026-08-12T20:19:10.654305+07:00",
    "marketDate": "2026-08-12",
@@ -65,6 +59,12 @@
    "marketDate": "2026-08-14",
    "status": "SUCCESS",
    "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-08-14T19:51:59.762814+07:00",
+   "marketDate": "2026-08-14",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
   }
  ],
  "qaSummary": {
@@ -92,8 +92,8 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-14T18:59:34.867105+07:00",
-  "checked": 14,
+  "lastChecked": "2026-08-14T19:52:27.512186+07:00",
+  "checked": 12,
   "failures": [],
   "results": [
    {
@@ -121,15 +121,11 @@
     "status": "ERROR: TypeError"
    },
    {
+    "ticker": "CLEO",
+    "status": "ERROR: TypeError"
+   },
+   {
     "ticker": "FIMP",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "KPIG",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "MNCN",
     "status": "ERROR: TypeError"
    },
    {
@@ -142,10 +138,6 @@
    },
    {
     "ticker": "TLKM",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "TRIN",
     "status": "ERROR: TypeError"
    },
    {
