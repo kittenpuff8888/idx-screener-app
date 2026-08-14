@@ -1,0 +1,197 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-14",
+ "generatedAt": "2026-08-14T18:59:45.904035+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 2,
+ "setups": [
+  {
+   "ticker": "CLEO",
+   "name": "Sariguna Primatirta Tbk.",
+   "sector": "Others",
+   "close": 376.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 25,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 374,
+   "invalidation": 362.59999999999997,
+   "target": 382,
+   "medianValueTraded20": 2453774000,
+   "rvol": 1.191088895475735,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -830139301,
+    -826958851,
+    -830868051,
+    -828316701,
+    -833470801,
+    -828957401,
+    -832130001,
+    -828674001,
+    -829840267,
+    -829840267,
+    -828369401,
+    -824560801,
+    -820010601,
+    -818550101,
+    -820685801,
+    -820206601,
+    -822723401,
+    -815878601,
+    -813795101,
+    -810052701,
+    -813281351,
+    -813281351,
+    -810594276,
+    -806995642,
+    -809285809,
+    -820570109,
+    -825375869,
+    -819952069,
+    -821522219,
+    -817986019
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 4,
+    "hitRate": 0.5,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ACLEO"
+  },
+  {
+   "ticker": "MSIN",
+   "name": "MNC Digital Entertainment Tbk.",
+   "sector": "Others",
+   "close": 370.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 360,
+   "invalidation": 352.44,
+   "target": 407,
+   "medianValueTraded20": 11406455200,
+   "rvol": 1.030623099325826,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1532155784,
+    1579499332,
+    1562587518,
+    1560405681,
+    1563238600,
+    1551617800,
+    1522620922,
+    1526216342,
+    1538882102,
+    1533367168,
+    1533367168,
+    1549146568,
+    1538869968,
+    1520870622,
+    1506386422,
+    1521086811,
+    1521086811,
+    1524494719,
+    1508781219,
+    1525976219,
+    1525976219,
+    1521070459,
+    1540469192,
+    1529429742,
+    1544403192,
+    1552559972,
+    1542767306,
+    1565574948,
+    1545593748,
+    1558884748
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 17,
+    "hitRate": 0.59,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMSIN"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 950
+}

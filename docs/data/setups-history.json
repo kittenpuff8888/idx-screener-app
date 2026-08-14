@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-08-12",
+ "asOf": "2026-08-14",
  "entries": [
   {
    "date": "2026-07-10",
@@ -359,8 +359,8 @@
    "close": 376.0,
    "target": 420,
    "invalidation": 360.36,
-   "outcome": "open",
-   "barsObserved": 3
+   "outcome": "invalidated",
+   "barsObserved": 5
   },
   {
    "date": "2026-08-07",
@@ -370,7 +370,7 @@
    "target": 675,
    "invalidation": 633.6,
    "outcome": "target",
-   "barsObserved": 3
+   "barsObserved": 5
   },
   {
    "date": "2026-08-10",
@@ -379,8 +379,8 @@
    "close": 390.0,
    "target": 420,
    "invalidation": 360.36,
-   "outcome": "open",
-   "barsObserved": 2
+   "outcome": "invalidated",
+   "barsObserved": 4
   },
   {
    "date": "2026-08-11",
@@ -389,15 +389,55 @@
    "close": 380.0,
    "target": 414,
    "invalidation": 360.36,
+   "outcome": "invalidated",
+   "barsObserved": 3
+  },
+  {
+   "date": "2026-08-12",
+   "ticker": "MSIN",
+   "score": 70,
+   "close": 380.0,
+   "target": 413,
+   "invalidation": 360.36,
+   "outcome": "invalidated",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-12",
+   "ticker": "MNCN",
+   "score": 65,
+   "close": 200.0,
+   "target": 210,
+   "invalidation": 196.02,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-12",
+   "ticker": "KPIG",
+   "score": 55,
+   "close": 74.0,
+   "target": 81,
+   "invalidation": 71.28,
+   "outcome": "invalidated",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-12",
+   "ticker": "TRIN",
+   "score": 55,
+   "close": 306.0,
+   "target": 343,
+   "invalidation": 294.0,
+   "outcome": "invalidated",
+   "barsObserved": 2
   }
  ],
  "summary": {
-  "total": 39,
-  "decided": 27,
+  "total": 43,
+  "decided": 33,
   "targetFirst": 11,
-  "hitRate": 0.407
+  "hitRate": 0.333
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
