@@ -92,9 +92,6 @@ export function KseiPage() {
         <span style={{ fontSize: 10, color: "var(--faint)" }}>Source: KSEI · as of {formatAsOf(ksei?.asOf) || ksei?.asOf || "—"}</span>
       </PageHeader>
 
-      {/* market-ownership overview (real aggregates + snapshot health) */}
-      <KseiMarketOverview ksei={ksei} />
-
       {/* tab bar */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, borderBottom: "1px solid var(--border)", marginBottom: 16, flexWrap: "wrap" }}>
         {TABS.map(([key, label]) => {
@@ -166,8 +163,13 @@ export function KseiPage() {
         </>
       ) : null}
 
-      {/* ── METRICS (real summary distributions) ── */}
-      {ksei && tab === "metrik" ? <MetricsTab summary={ksei.summary} /> : null}
+      {/* ── METRICS (market-ownership overview + real summary distributions) ── */}
+      {ksei && tab === "metrik" ? (
+        <>
+          <KseiMarketOverview ksei={ksei} />
+          <MetricsTab summary={ksei.summary} />
+        </>
+      ) : null}
 
       {/* ── CHANGELOG ── */}
       {ksei && tab === "changelog" ? (
