@@ -28,9 +28,9 @@ const CARD: CSSProperties = {
   padding: "18px 20px",
 };
 
-const COLS = "120px 100px 84px 84px 84px 84px 84px 110px 120px 46px";
+const COLS = "120px 100px 84px 84px 84px 84px 84px 110px 100px 120px 46px";
 
-const HEADERS = ["SYMBOL", "CLOSE", "1D%", "1W%", "1M%", "3M%", "YTD%", "HIGH", "SINCE ADDED", ""];
+const HEADERS = ["SYMBOL", "CLOSE", "1D%", "1W%", "1M%", "3M%", "YTD%", "HIGH", "FROM HIGH%", "SINCE ADDED", ""];
 
 function pct(v: number | null): { text: string; color: string } {
   if (v === null || !Number.isFinite(v)) return { text: "no data", color: "var(--faint)" };
@@ -225,6 +225,7 @@ export function WatchlistPage() {
                   visibleRows.map((row) => {
                     const m = metrics[row.symbol];
                     const since = m?.close != null && row.addedClose ? ((m.close - row.addedClose) / row.addedClose) * 100 : null;
+                    const fromHigh = m?.close != null && m?.high != null && m.high > 0 ? ((m.close - m.high) / m.high) * 100 : null;
                     const cells: Array<{ text: string; color: string; mono?: boolean }> = [
                       { text: num(m?.close ?? null), color: "var(--text)", mono: true },
                       pct(m?.d1 ?? null),
@@ -233,6 +234,7 @@ export function WatchlistPage() {
                       pct(m?.m3 ?? null),
                       pct(m?.ytd ?? null),
                       { text: num(m?.high ?? null), color: "var(--muted)", mono: true },
+                      pct(fromHigh),
                       pct(since),
                     ];
                     const on = selected === row.symbol;
@@ -273,7 +275,7 @@ export function WatchlistPage() {
               CLOSE, 1D%, 1W%, 1M%, 3M% and HIGH are measured from the published daily bars. SINCE ADDED is
               measured against the close recorded when you added the row. HIGH is the highest high in
               published coverage{metrics[visibleRows[0]?.symbol || ""]?.highSince ? ` (from ${metrics[visibleRows[0]!.symbol].highSince})` : ""}, not an
-              all-time high. YTD% uses the prior year&apos;s final close where coverage holds it, otherwise the
+              all-time high, and FROM HIGH% is the pullback from it. YTD% uses the prior year&apos;s final close where coverage holds it, otherwise the
               first bar of the year. Cells read <strong>no data</strong> when coverage does not reach back far
               enough — never an estimate.
             </div>
