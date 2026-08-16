@@ -44,7 +44,7 @@ const RANGES: Array<[Range, string]> = [[7, "Last 1 week"], [14, "Last 2 weeks"]
 export function NewsPage() {
   const { bundle, marketDate, openTicker } = useApp();
   const [cat, setCat] = useState<Cat>("all");
-  const [range, setRange] = useState<Range>(93);
+  const [range, setRange] = useState<Range>(7);
   const [q, setQ] = useState("");
 
   const all = useMemo(() => newsStories(bundle), [bundle]);

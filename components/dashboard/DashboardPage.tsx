@@ -133,13 +133,10 @@ export function DashboardPage() {
         src: IDX close · as of {marketDate} 16:00:00 WIB · EOD (delayed)
       </div>
 
-      {/* MACRO STRIP — compact rates row (DESIGN_SPEC §3.2), above the cross-asset carousel */}
+      {/* MACRO STRIP — compact rates row (DESIGN_SPEC §3.2) */}
       <MacroStrip />
 
-      {/* MARKETS · CROSS-ASSET carousel */}
-      <MarketsCarousel marketContext={marketContext} />
-
-      {/* BREADTH — four tiles */}
+      {/* BREADTH — four tiles (prototype: breadth before the cross-asset row) */}
       <BreadthTiles />
 
       {/* HERO — IHSG live chart | Market Risk with the market read pinned to
@@ -163,6 +160,10 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* MARKETS · CROSS-ASSET carousel (prototype: below the hero, in the
+          lower "what else moved" band, not above breadth) */}
+      <MarketsCarousel marketContext={marketContext} />
 
       {/* LEADERS / LAGGARDS — top 30, box scrolls (≈10 visible); # / END PRC / %CHG / POINTS / %IDX MV */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(400px,1fr))", gap: 14, marginBottom: 16 }}>
