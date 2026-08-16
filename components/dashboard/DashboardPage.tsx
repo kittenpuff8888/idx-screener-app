@@ -95,13 +95,17 @@ export function DashboardPage() {
       const points = ihsgPrev !== null && m.mcap !== null && totalMcap > 0 ? ihsgPrev * (m.mcap / totalMcap) * m.chg : null;
       return { ...m, points, pctIdxMv: points !== null && idxMove ? points / Math.abs(idxMove) : null };
     };
-    const sorted = [...universe].sort((a, b) => b.chg - a.chg);
-    const lead = sorted.slice(0, 30).map(withPoints);
-    const lag = sorted.slice(-30).reverse().map(withPoints);
+    // Rank by IDX index-move (points contributed), not raw %change: the names
+    // that actually moved the index most. Gainers desc, losers asc; a name with
+    // no market cap (no points) falls back to |%change| so it still ranks.
+    const all = universe.map(withPoints);
+    const rankVal = (m: Mv) => (m.points !== null ? m.points : m.chg * 1e-9); // tiny fallback keeps mcap-less names below real movers
+    const lead = all.filter((m) => m.chg > 0).sort((a, b) => rankVal(b) - rankVal(a)).slice(0, 30);
+    const lag = all.filter((m) => m.chg < 0).sort((a, b) => rankVal(a) - rankVal(b)).slice(0, 30);
     return {
       leaders: lead, laggards: lag,
-      leadMax: Math.max(1e-4, ...lead.map((m) => Math.abs(m.chg))),
-      lagMax: Math.max(1e-4, ...lag.map((m) => Math.abs(m.chg))),
+      leadMax: Math.max(1e-4, ...lead.map((m) => Math.abs(m.points ?? m.chg))),
+      lagMax: Math.max(1e-4, ...lag.map((m) => Math.abs(m.points ?? m.chg))),
     };
   }, [bundle, ihsgPrev, idxMove]);
 
@@ -142,7 +146,7 @@ export function DashboardPage() {
       {/* HERO — IHSG live chart | Market Risk with the market read pinned to
           its base. The read block is what makes the two columns equal height,
           so it lives in the right card, not under the chart. */}
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(340px,1.35fr) minmax(300px,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
             <div style={{ ...KICKER, fontSize: 10.5 }}>IHSG · LIVE CHART</div>
@@ -191,7 +195,7 @@ export function DashboardPage() {
                     <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 12.5, width: 48, flexShrink: 0 }}>{m.ticker}</span>
                       <span style={{ flex: 1, height: 5, background: "var(--soft)", borderRadius: 4, overflow: "hidden", minWidth: 30 }}>
-                        <span style={{ display: "block", width: `${(Math.abs(m.chg) / mx) * 100}%`, height: "100%", background: color, borderRadius: 4 }} />
+                        <span style={{ display: "block", width: `${(Math.abs(m.points ?? m.chg) / mx) * 100}%`, height: "100%", background: color, borderRadius: 4 }} />
                       </span>
                     </span>
                     <span style={{ display: "block", fontSize: 9.5, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{m.name}</span>
@@ -208,9 +212,11 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* SECTORAL / KONGLO vs IHSG — interactive multi-line % return (matches Claude Design) */}
-      <IndexCompareSection title="SECTORAL INDICES vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={sectoralEntries} ihsg={ihsgSeries} />
-      <IndexCompareSection title="KONGLO INDEX vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={kongloEntries} ihsg={ihsgSeries} />
+      {/* SECTORAL | KONGLO vs IHSG — side by side (design/1), interactive multi-line % return */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(420px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
+        <IndexCompareSection title="SECTORAL INDICES vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={sectoralEntries} ihsg={ihsgSeries} />
+        <IndexCompareSection title="KONGLO INDEX vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={kongloEntries} ihsg={ihsgSeries} />
+      </div>
 
       {/* MARKET MAP — squarified, cap-weighted treemap */}
       <MarketMapTreemap />
