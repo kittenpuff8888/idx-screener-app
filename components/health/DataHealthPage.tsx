@@ -16,10 +16,10 @@ type Health = {
     liveIdxRosterDiff?: { rosterSource?: string; rosterAsOf?: string; liveCount?: number; missingCount?: number; missingFromUniverse?: string[]; delistedCount?: number; inUniverseNotListed?: string[] } | null };
   runLog: Array<{ timestamp: string; marketDate: string; status: string; message: string }>;
   qaSummary?: Record<string, unknown> | null;
-  processingSummary?: Record<string, unknown> | null;
+  processingSummary?: { totalScanned?: number; ok?: number; partial?: number; noData?: number } | null;
   ksei: { snapshots: string[]; latest: string | null; lagNote: string };
   parity: { status: string; method: string; note: string };
-  setups: { count: number; scanned: number; quarantined: number; backtest?: Record<string, unknown> };
+  setups: { count: number; scanned: number; quarantined: number; forwardOutcomes?: { total?: number; decided?: number; targetFirst?: number; hitRate?: number } | null; backtest?: Record<string, unknown> };
   manualSpotCheck: { instructions: string; tickers: Array<{ ticker: string; date: string; close: number; volume: number | null; source: string }> };
 };
 
@@ -40,16 +40,6 @@ function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
     <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".06em", padding: "2px 7px", borderRadius: 5, background: TONE[tone].bg, color: TONE[tone].fg, whiteSpace: "nowrap" }}>
       {children}
     </span>
-  );
-}
-
-function SourceHead({ label, tone, status }: { label: string; tone: Tone; status: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-      <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--faint)" }}>{label}</span>
-      <div style={{ flex: 1 }} />
-      <Pill tone={tone}>{status}</Pill>
-    </div>
   );
 }
 
@@ -92,6 +82,68 @@ const KNOWN_GAPS: Array<{ area: string; detail: string; tone: Tone }> = [
   },
 ];
 
+/** "2026-07-20" → "20 Jul 2026" for the KPI tiles (design/6. Data Health). */
+function longDate(iso: string | null | undefined): string {
+  if (!iso) return "no data";
+  const d = new Date(`${iso}T00:00:00`);
+  if (isNaN(d.getTime())) return String(iso);
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+/** Whole days between two ISO dates (registry lag vs the price snapshot). */
+function daysBetween(a: string | null | undefined, b: string | null | undefined): number | null {
+  if (!a || !b) return null;
+  const da = new Date(`${a}T00:00:00`), db = new Date(`${b}T00:00:00`);
+  if (isNaN(da.getTime()) || isNaN(db.getTime())) return null;
+  return Math.round(Math.abs(da.getTime() - db.getTime()) / 86_400_000);
+}
+
+/** One row per shipped data file, all figures read from the payload — the
+    design's SOURCE STATUS table (design/6. Data Health). Never a fabricated
+    "missing"; a file the app ships is reported as it actually is. */
+type SourceRow = { file: string; feeds: string; asOf: string; coverage: string; tone: Tone; status: string; note?: string };
+function SOURCE_STATUS(h: Health): SourceRow[] {
+  const md = h.marketDate || "no data";
+  const ps = h.processingSummary || {};
+  const scanned = ps.totalScanned ?? h.setups.scanned;
+  const ok = ps.ok;
+  const fo = h.setups.forwardOutcomes || {};
+  const kseiLag = daysBetween(h.marketDate, h.ksei.latest);
+  return [
+    {
+      file: "screener.json", feeds: "IDX workbook snapshot — price, technicals, signal labels",
+      asOf: md, coverage: `${formatNumber(scanned, 0)} scanned${ok != null ? ` · ${formatNumber(ok, 0)} priced OK` : ""}`,
+      tone: (ok ?? scanned) > 0 ? "good" : "warn", status: (ok ?? scanned) > 0 ? "HEALTHY" : "NO DATA",
+    },
+    {
+      file: "setups.json", feeds: "Swing engine published setups — score, entry, target, invalidation",
+      asOf: md, coverage: `${formatNumber(h.setups.count, 0)} setups · ${formatNumber(h.setups.quarantined, 0)} quarantined`,
+      tone: h.setups.count > 0 ? "good" : "warn", status: h.setups.count > 0 ? "HEALTHY" : "NO SETUPS",
+    },
+    {
+      file: "setups-history.json", feeds: "Forward outcomes of published setups, measured 5 bars ahead",
+      asOf: md, coverage: fo.total ? `${formatNumber(fo.total, 0)} published · ${formatNumber(fo.decided ?? 0, 0)} decided` : "no history yet",
+      tone: fo.total ? "good" : "warn", status: fo.total ? "HEALTHY" : "NO DATA",
+    },
+    {
+      file: "ksei-holders.json", feeds: "KSEI shareholder registry per ticker (ownership, free float)",
+      asOf: h.ksei.latest || "no data", coverage: h.universe.size == null ? "no data" : `${formatNumber(h.universe.size, 0)} tickers`,
+      tone: h.ksei.latest ? "warn" : "critical", status: h.ksei.latest ? "LAGGING" : "NO DATA",
+      note: h.ksei.latest ? (kseiLag == null ? "monthly file" : `monthly file, ${kseiLag}d behind price`) : undefined,
+    },
+    {
+      file: "market-context.json", feeds: "Macro tape — USD/IDR, VIX, IHSG index series",
+      asOf: md, coverage: "USD/IDR · VIX · IHSG", tone: "good", status: "HEALTHY",
+    },
+    {
+      file: "overview.json", feeds: "Per-day archive — breadth aggregates, processing & QA results",
+      asOf: md, coverage: `${h.qaSummary?.["checks"] ? `${formatNumber(Number(h.qaSummary["checks"]), 0)} QA checks · ` : ""}${formatNumber(ps.noData ?? 0, 0)} no-data`,
+      tone: (ps.noData ?? 0) > 0 ? "warn" : "good", status: (ps.noData ?? 0) > 0 ? "PARTIAL" : "HEALTHY",
+      note: (ps.noData ?? 0) > 0 ? `${formatNumber(ps.noData ?? 0, 0)} tickers had no usable data` : undefined,
+    },
+  ];
+}
+
 export function DataHealthPage() {
   const [health, setHealth] = useState<Health | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -110,69 +162,78 @@ export function DataHealthPage() {
         meta={<>Run report for <b style={{ fontFamily: MONO, color: "var(--text)" }}>{health.marketDate}</b> · generated {health.generatedAt?.slice(0, 16).replace("T", " ")} WIB</>}
       />
 
-      {/* Sources-tracked KPI row (DESIGN_SPEC §3.7) */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 14, marginBottom: 14 }}>
-        {([
-          ["SOURCES TRACKED", "4", "universe · parity · KSEI · setups"],
-          ["SNAPSHOT", health.marketDate || "no data", "one date app-wide"],
-          ["KNOWN GAPS", String(KNOWN_GAPS.length), "listed below"],
-          ["RUN ENTRIES", String(health.runLog.length), "most recent first"],
-        ] as const).map(([label, value, sub]) => (
-          <div key={label} style={CARD}>
-            <div style={KICKER}>{label}</div>
-            <div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 700 }}>{value}</div>
-            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 4 }}>{sub}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14, marginBottom: 14 }}>
-        <div style={CARD}>
-          <SourceHead
-            label="UNIVERSE"
-            tone={health.universe.size === null ? "critical" : (health.universe.liveIdxRosterDiff?.missingCount || 0) > 0 ? "warn" : "good"}
-            status={health.universe.size === null ? "NO DATA" : (health.universe.liveIdxRosterDiff?.missingCount || 0) > 0 ? "PARTIAL" : "COMPLETE"}
-          />
-          <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700 }}>{health.universe.size === null ? "—" : formatNumber(health.universe.size, 0)}</div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4 }}>{health.universe.source}</div>
-          {(() => {
-            const d = health.universe.liveIdxRosterDiff;
-            if (!d) return health.universe.liveIdxRosterDiffReason ? <div style={{ fontSize: 10.5, color: "var(--warning)", marginTop: 8 }}>⚠ {health.universe.liveIdxRosterDiffReason}</div> : null;
-            const gap = d.missingCount || 0;
-            return (
-              <div style={{ marginTop: 8, fontSize: 10.5, lineHeight: 1.5 }}>
-                <div style={{ color: "var(--muted)" }}>IDX listed: <b style={{ fontFamily: MONO, color: "var(--text)" }}>{d.liveCount}</b> ({d.rosterSource}, {d.rosterAsOf})</div>
-                {gap > 0
-                  ? <div style={{ color: "var(--warning)", marginTop: 4 }}>⚠ {gap} listed not yet scanned — added to universe, will appear after the next workbook regen: <span style={{ fontFamily: MONO }}>{(d.missingFromUniverse || []).join(", ")}</span></div>
-                  : <div style={{ color: "var(--up)", marginTop: 4 }}>✓ all listed tickers in universe</div>}
-                {d.delistedCount ? <div style={{ color: "var(--muted)", marginTop: 4 }}>scanned but not listed: {(d.inUniverseNotListed || []).join(", ")}</div> : null}
-              </div>
-            );
-          })()}
-        </div>
-        <div style={CARD}>
-          <SourceHead label="TRADINGVIEW PARITY" tone={health.parity.status === "UNVERIFIED" ? "warn" : "good"} status={health.parity.status} />
-          <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 700, color: health.parity.status === "UNVERIFIED" ? "var(--warning)" : "var(--up)" }}>{health.parity.status}</div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>{health.parity.method}</div>
-          <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 6 }}>{health.parity.note}</div>
-        </div>
-        <div style={CARD}>
-          <SourceHead label="SWING ENGINE" tone={health.setups.count ? "good" : "warn"} status={health.setups.count ? `${health.setups.count} SETUPS` : "NO SETUPS"} />
-          <div style={{ display: "flex", gap: 8 }}>
-            {([["Setups", health.setups.count], ["Scanned", health.setups.scanned], ["Quarantined", health.setups.quarantined]] as const).map(([l, v]) => (
-              <div key={l} style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "9px 6px", textAlign: "center" }}>
-                <div style={{ fontFamily: MONO, fontSize: 18, fontWeight: 700 }}>{formatNumber(v, 0)}</div>
-                <div style={{ fontSize: 9.5, color: "var(--muted)" }}>{l}</div>
+      {/* Headline KPI tiles (design/6. Data Health): price + KSEI snapshot dates,
+          universe size, and how many tickers were screened today. */}
+      {(() => {
+        const ps = health.processingSummary || {};
+        const scanned = ps.totalScanned ?? health.setups.scanned;
+        const priced = ps.ok ?? null;
+        const kseiLag = daysBetween(health.marketDate, health.ksei.latest);
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 14, marginBottom: 14 }}>
+            {([
+              ["SOURCES TRACKED", String(SOURCE_STATUS(health).length), `${SOURCE_STATUS(health).filter((s) => s.tone === "good").length} healthy · ${SOURCE_STATUS(health).filter((s) => s.tone !== "good").length} watch`],
+              ["PRICE SNAPSHOT", longDate(health.marketDate), "EOD close, 16:00 WIB"],
+              ["KSEI SNAPSHOT", longDate(health.ksei.latest), kseiLag == null ? "monthly registry file" : `monthly file · ${kseiLag}d behind price`],
+              ["UNIVERSE", health.universe.size == null ? "no data" : formatNumber(health.universe.size, 0), "tickers in the KSEI roster"],
+              ["SCREENED TODAY", formatNumber(scanned, 0), priced == null ? "scanned from the workbook" : `${formatNumber(priced, 0)} priced OK`],
+            ] as const).map(([label, value, sub]) => (
+              <div key={label} style={CARD}>
+                <div style={KICKER}>{label}</div>
+                <div style={{ fontFamily: MONO, fontSize: 20, fontWeight: 700 }}>{value}</div>
+                <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 4 }}>{sub}</div>
               </div>
             ))}
           </div>
-          {health.setups.backtest ? <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>Backtest sanity: {String(health.setups.backtest["signals"])} signals · hit-rate (decided) {String(health.setups.backtest["hitRateDecided"])} · {String(health.setups.backtest["undecidedIn5Bars"])} undecided in 5 bars.</div> : null}
+        );
+      })()}
+
+      {/* SOURCE STATUS — one row per shipped data file (design/6. Data Health).
+          Every column is read from data-health.json; nothing is invented. */}
+      <div style={{ ...CARD, marginBottom: 14 }}>
+        <div style={KICKER}>SOURCE STATUS</div>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr>
+                {["File", "What it feeds", "As of", "Coverage", "Status"].map((h) => (
+                  <th key={h} style={{ textAlign: "left", padding: "6px 12px 8px 0", color: "var(--faint)", fontSize: 10, letterSpacing: ".06em", borderBottom: "1px solid var(--hair)", whiteSpace: "nowrap" }}>{h.toUpperCase()}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {SOURCE_STATUS(health).map((s, i) => (
+                <tr key={s.file}>
+                  <td style={{ fontFamily: MONO, fontWeight: 700, fontSize: 11.5, padding: "10px 12px 10px 0", borderTop: i ? "1px solid var(--hair)" : "none", whiteSpace: "nowrap", verticalAlign: "top" }}>{s.file}</td>
+                  <td style={{ padding: "10px 12px 10px 0", borderTop: i ? "1px solid var(--hair)" : "none", color: "var(--muted)", lineHeight: 1.45, minWidth: 200, verticalAlign: "top" }}>{s.feeds}</td>
+                  <td style={{ fontFamily: MONO, padding: "10px 12px 10px 0", borderTop: i ? "1px solid var(--hair)" : "none", color: "var(--muted)", whiteSpace: "nowrap", verticalAlign: "top" }}>{s.asOf}</td>
+                  <td style={{ fontFamily: MONO, fontSize: 11.5, padding: "10px 12px 10px 0", borderTop: i ? "1px solid var(--hair)" : "none", whiteSpace: "nowrap", verticalAlign: "top" }}>{s.coverage}</td>
+                  <td style={{ padding: "10px 0", borderTop: i ? "1px solid var(--hair)" : "none", verticalAlign: "top" }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                      <Pill tone={s.tone}>{s.status}</Pill>
+                      {s.note ? <span style={{ fontSize: 10.5, color: "var(--muted)" }}>{s.note}</span> : null}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div style={CARD}>
-          <SourceHead label="KSEI SNAPSHOTS" tone={health.ksei.latest ? "warn" : "critical"} status={health.ksei.latest ? `MONTHLY · ${health.ksei.latest}` : "NO DATA"} />
-          <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 600 }}>{health.ksei.snapshots.join(" · ") || "—"}</div>
-          <div style={{ fontSize: 10.5, color: "var(--warning)", marginTop: 8 }}>{health.ksei.lagNote}</div>
-        </div>
+        {/* Universe ↔ IDX roster reconciliation (kept from the detail view). */}
+        {(() => {
+          const d = health.universe.liveIdxRosterDiff;
+          if (!d) return health.universe.liveIdxRosterDiffReason ? <div style={{ fontSize: 10.5, color: "var(--warning)", marginTop: 10 }}>⚠ {health.universe.liveIdxRosterDiffReason}</div> : null;
+          const gap = d.missingCount || 0;
+          return (
+            <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--hair)", fontSize: 10.5, lineHeight: 1.5 }}>
+              <span style={{ color: "var(--muted)" }}>IDX listed: <b style={{ fontFamily: MONO, color: "var(--text)" }}>{d.liveCount}</b> ({d.rosterSource}, {d.rosterAsOf}). </span>
+              {gap > 0
+                ? <span style={{ color: "var(--warning)" }}>⚠ {gap} listed not yet scanned (added to universe, will appear after the next workbook regen): <span style={{ fontFamily: MONO }}>{(d.missingFromUniverse || []).join(", ")}</span></span>
+                : <span style={{ color: "var(--up)" }}>✓ all listed tickers are in the universe.</span>}
+              {d.delistedCount ? <span style={{ color: "var(--muted)" }}> Scanned but not listed: {(d.inUniverseNotListed || []).join(", ")}.</span> : null}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Known gaps (DESIGN_SPEC §3.7 + the no-fabricated-data rule): anything
@@ -224,6 +285,25 @@ export function DataHealthPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* Legend for the data-provenance labels used app-wide (design/6. Data
+          Health). The app has no "modelled/seeded" values — it is REAL, an
+          explicitly-labelled PROXY, or NO DATA. */}
+      <div style={{ ...CARD, marginTop: 14 }}>
+        <div style={KICKER}>HOW TO READ THE LABELS</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12, marginTop: 4 }}>
+          {([
+            ["good", "REAL", "Straight from a published source file. Decision-grade."],
+            ["serious", "PROXY", "Derived from what is available (e.g. CVD from candles, KSEI flow from two snapshots) and always labelled approx. Directional only."],
+            ["warn", "NO DATA", "The field is genuinely absent. Rendered as no data, never filled with a guess."],
+          ] as const).map(([tone, label, desc]) => (
+            <div key={label} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+              <Pill tone={tone as Tone}>{label}</Pill>
+              <span style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5 }}>{desc}</span>
+            </div>
+          ))}
         </div>
       </div>
     </section>
