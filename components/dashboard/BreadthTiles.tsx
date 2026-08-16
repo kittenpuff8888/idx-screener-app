@@ -22,7 +22,11 @@ const CARD: CSSProperties = {
 const KICKER: CSSProperties = { fontSize: 10, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" };
 const MONO = "var(--font-mono)";
 
-type Tile = { label: string; up: number | null; down: number | null; upLabel: string; downLabel: string; note: string };
+// Design/1 breadth tiles: a headline (a two-part "up / down" pair, a single
+// count, or a single ratio) plus a compact stat sub. No progress bar — the
+// prototype conveys the split through the sub text ("34.7% up"), not a bar.
+type Kind = "pair" | "single" | "ratio";
+type Tile = { label: string; kind: Kind; up: number | null; down: number | null; ratio: number | null; sub: string; title?: string };
 
 function compact(n: number): string {
   if (Math.abs(n) >= 1e12) return `${(n / 1e12).toFixed(2)}T`;
@@ -31,6 +35,7 @@ function compact(n: number): string {
   if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
   return formatNumber(n, 0);
 }
+const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}`;
 
 export function BreadthTiles() {
   const { bundle } = useApp();
@@ -72,38 +77,32 @@ export function BreadthTiles() {
       });
     }
 
+    const advDec = advances !== null && declines !== null ? advances + declines : null;
+    const total = advDec !== null && unchanged !== null ? advDec + unchanged : null;
+    const netHL = newHigh !== null && newLow !== null ? newHigh - newLow : null;
+    const volRatio = upVol !== null && downVol !== null && downVol > 0 ? upVol / downVol : null;
+
     return [
       {
         label: "ADVANCERS / DECLINERS",
-        up: advances,
-        down: declines,
-        upLabel: "advancing",
-        downLabel: "declining",
-        note: "counted across the scanned universe",
+        kind: "pair", up: advances, down: declines, ratio: null,
+        sub: advDec && advDec > 0 ? `${((advances! / advDec) * 100).toFixed(1)}% up` : "counted across the scanned universe",
       },
       {
         label: "NEW HIGHS / LOWS",
-        up: newHigh,
-        down: newLow,
-        upLabel: "at 52w high",
-        downLabel: "at 52w low",
-        note: "price at or through its 52-week bound",
+        kind: "pair", up: newHigh, down: newLow, ratio: null,
+        sub: netHL !== null ? `net ${signed(netHL)}` : "price at or through its 52-week bound",
       },
       {
         label: "UP / DOWN VOLUME",
-        up: upVol,
-        down: downVol,
-        upLabel: "on advancers",
-        downLabel: "on decliners",
-        note: "shares traded, not value",
+        kind: "ratio", up: upVol, down: downVol, ratio: volRatio,
+        sub: volRatio === null ? "shares traded, not value" : volRatio >= 1.05 ? "buy-skewed" : volRatio <= 0.95 ? "sell-skewed" : "balanced",
+        title: upVol !== null && downVol !== null ? `${compact(upVol)} up vs ${compact(downVol)} down (shares)` : undefined,
       },
       {
         label: "UNCHANGED",
-        up: unchanged,
-        down: null,
-        upLabel: "flat on the session",
-        downLabel: "",
-        note: "no move recorded at the close",
+        kind: "single", up: unchanged, down: null, ratio: null,
+        sub: total !== null ? `of ${formatNumber(total, 0)}` : "no move recorded at the close",
       },
     ];
   }, [bundle]);
@@ -111,33 +110,30 @@ export function BreadthTiles() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14, marginBottom: 14 }}>
       {tiles.map((t) => {
-        const isVolume = t.label.startsWith("UP /");
-        const fmt = (v: number) => (isVolume ? compact(v) : formatNumber(v, 0));
-        const both = t.up !== null && t.down !== null ? t.up + t.down : null;
-        const upShare = both && both > 0 ? (t.up! / both) * 100 : null;
+        const noData = t.kind === "ratio" ? t.ratio === null : t.up === null;
+        // ratio tiles lean on the sub for polarity; count tiles stay neutral ink.
+        const headColor = t.kind === "ratio"
+          ? (t.ratio !== null && t.ratio >= 1.05 ? "var(--up)" : t.ratio !== null && t.ratio <= 0.95 ? "var(--down)" : "var(--flat)")
+          : t.kind === "single" ? "var(--flat)" : "var(--up)";
         return (
-          <div key={t.label} style={CARD}>
+          <div key={t.label} style={CARD} title={t.title}>
             <div style={KICKER}>{t.label}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 8 }}>
-              <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: t.up === null ? "var(--faint)" : "var(--up)" }}>
-                {t.up === null ? "no data" : fmt(t.up)}
-              </span>
-              {t.down !== null ? (
+              {noData ? (
+                <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--faint)" }}>no data</span>
+              ) : t.kind === "ratio" ? (
+                <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: headColor }}>{t.ratio!.toFixed(2)}×</span>
+              ) : t.kind === "single" ? (
+                <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: headColor }}>{formatNumber(t.up!, 0)}</span>
+              ) : (
                 <>
+                  <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--up)" }}>{formatNumber(t.up!, 0)}</span>
                   <span style={{ color: "var(--faint)", fontSize: 13 }}>/</span>
-                  <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--down)" }}>{fmt(t.down)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--down)" }}>{t.down === null ? "—" : formatNumber(t.down, 0)}</span>
                 </>
-              ) : null}
+              )}
             </div>
-            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 3 }}>
-              {t.up === null ? t.note : t.down === null ? t.upLabel : `${t.upLabel} · ${t.downLabel}`}
-            </div>
-            {upShare !== null ? (
-              <div style={{ display: "flex", height: 5, borderRadius: 4, overflow: "hidden", background: "var(--soft)", marginTop: 9 }} aria-hidden>
-                <span style={{ width: `${upShare}%`, background: "var(--up)" }} />
-                <span style={{ flex: 1, background: "var(--down)" }} />
-              </div>
-            ) : null}
+            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 3 }}>{t.sub}</div>
           </div>
         );
       })}
