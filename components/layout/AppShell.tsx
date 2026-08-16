@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <main style={{ flex: 1, minWidth: 0, height: "100vh", overflow: "auto" }}>
         <TopBar />
-        <div style={{ maxWidth: 1360, margin: "0 auto", padding: "22px 22px 60px" }}>
+        <div style={{ padding: "22px 22px 60px" }}>
           {behind > 1 ? (
             <div style={{ marginBottom: 14, padding: "9px 14px", borderRadius: 10, background: "var(--warnSoft)", color: "var(--warning)", fontSize: 12, fontWeight: 600 }}>
               ⚠ Data is {behind} trading days old (latest snapshot {latest}). Treat signals as stale until the daily pipeline publishes a new session.
