@@ -171,8 +171,46 @@ export function GuidePage() {
       ),
     },
     {
+      id: "news",
+      title: "7 · News & Catalysts",
+      body: (
+        <>
+          <p style={P}>
+            The event stream behind the price moves — disclosures, earnings, flow and macro
+            items, tagged by ticker and sector. The rail ranks the{" "}
+            <span style={TERM}>most-mentioned tickers</span> over the window and lists the
+            economic &amp; events calendar alongside.
+          </p>
+          <p style={P}>
+            Category chips filter to earnings, flow, company, sector or macro; the time range runs
+            from the last week to the last three months. Tape sentiment is labelled{" "}
+            <span style={TERM}>Positive / Neutral / Negative</span> and marked a proxy — it is
+            derived from headline text, not reported, so read it as direction, not fact.
+          </p>
+        </>
+      ),
+    },
+    {
+      id: "ticker",
+      title: "8 · Ticker page",
+      body: (
+        <>
+          <p style={P}>
+            Everything known about one name on a single page: identity and price, the 52-week
+            range, the published setup and its trade-plan ladder, the chart with level markers,
+            valuation and quality, ownership, returns vs IHSG, dividends, peers, filings and news.
+          </p>
+          <p style={P}>
+            Rows in the Screener and Watchlist open this page. Any section whose source has no
+            value for that ticker states so explicitly — <span style={TERM}>no data</span> —
+            rather than showing a number.
+          </p>
+        </>
+      ),
+    },
+    {
       id: "freshness",
-      title: "7 · Data freshness",
+      title: "9 · Data freshness",
       body: (
         <>
           <p style={P}>
@@ -197,37 +235,82 @@ export function GuidePage() {
       ),
     },
     {
+      id: "health",
+      title: "10 · Data Health",
+      body: (
+        <>
+          <p style={P}>
+            The honest status of every source behind the app — what loaded, how fresh it is, what
+            it covers, and what is missing. Read it before trusting anything that looks
+            surprising.
+          </p>
+          <p style={P}>
+            The SOURCE STATUS table lists each shipped data file with its as-of date, coverage and
+            a status pill; KNOWN GAPS explains every place the app renders{" "}
+            <span style={TERM}>no data</span> or labels a figure a proxy; and the label legend
+            defines <span style={TERM}>REAL / PROXY / NO DATA</span>. Nothing is estimated to fill
+            a gap.
+          </p>
+        </>
+      ),
+    },
+    {
       id: "glossary",
-      title: "8 · Glossary",
+      title: "11 · Glossary",
       body: (
         <>
           <Term word="Breadth">
             how many names participate in a move — advancers vs decliners, new highs vs lows, up
             vs down volume. Narrow breadth on a rising index means few names are carrying it.
           </Term>
-          <Term word="CHoCH">
-            change of character — the first structural break against the prevailing swing
-            direction, used here as an early reversal cue.
+          <Term word="RVOL">
+            relative volume — today&apos;s volume against its own recent average. Above 1 means
+            unusual participation.
+          </Term>
+          <Term word="ADR %">
+            average daily range as a percentage of price — how much room the stock typically
+            travels in a session.
+          </Term>
+          <Term word="VWAP">
+            volume-weighted average price. Used here as a session-anchored reference for whether
+            price is trading rich or cheap against the day&apos;s traded volume. The σ bands
+            express where price sits versus the quarter/year VWAP in standard deviations —
+            location, not direction.
+          </Term>
+          <Term word="EMA25 / EMA50">
+            exponential moving averages. The EMA Trend filter asks for close above EMA25 and
+            EMA25 above EMA50.
+          </Term>
+          <Term word="RSI">
+            momentum oscillator. Above 50 is treated as confirming positive momentum.
           </Term>
           <Term word="POI">
             point of interest — a price zone where the prior move originated and where reaction
             is more likely on a revisit.
+          </Term>
+          <Term word="R:R">
+            reward-to-risk — distance to target divided by distance to invalidation, measured
+            from the stated entry.
+          </Term>
+          <Term word="CHoCH / BOS">
+            change of character and break of structure — market-structure events used by the
+            setup engine; CHoCH is the first break against the prevailing swing, BOS a
+            continuation break.
+          </Term>
+          <Term word="CVD (approx.)">
+            cumulative volume delta, approximated from candle structure and volume rather than
+            tick data — always labelled approx.
           </Term>
           <Term word="Free float">
             the share of a company&apos;s stock available to trade, excluding locked-in
             strategic holdings. Low float amplifies both directions.
           </Term>
           <Term word="CCS">
-            the count of distinct controlling shareholders recorded against an issuer in the KSEI
-            snapshot.
+            concentration score — how tightly the register is held by its largest holders.
           </Term>
-          <Term word="R:R">
-            reward-to-risk — distance to target divided by distance to invalidation, measured
-            from the stated entry.
-          </Term>
-          <Term word="VWAP">
-            volume-weighted average price. Used here as a session-anchored reference for whether
-            price is trading rich or cheap against the day&apos;s traded volume.
+          <Term word="Local / Foreign">
+            KSEI&apos;s classification of the shareholder&apos;s domicile, not the currency of the
+            trade. In this app it is a labelled name-heuristic proxy.
           </Term>
           <Term word="Parity">
             agreement between two independent sources mirroring the IDX feed. A literal

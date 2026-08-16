@@ -51,20 +51,27 @@ export function KseiMarketOverview({ ksei }: { ksei: KseiPayload | null }) {
   const model = useMemo(() => {
     const typeSum: Record<string, number> = {}; TYPE_ORDER.forEach((t) => (typeSum[t] = 0));
     let foreign = 0, local = 0, covered = 0;
+    // Aggregate each holder across every issuer they appear in — breadth
+    // (# of stocks held) is real from KSEI alone, no price join needed.
+    const inv: Record<string, { name: string; type: string; stocks: number; foreign: boolean }> = {};
     for (const t of records) {
-      const inv = (t.investors || []) as InvestorEntry[];
-      if (!inv.length) continue;
+      const holders = (t.investors || []) as InvestorEntry[];
+      if (!holders.length) continue;
       covered++;
-      for (const h of inv) {
+      for (const h of holders) {
         const pct = Number(h.percentage) || 0;
         typeSum[normType(h.type)] = (typeSum[normType(h.type)] || 0) + pct;
         if (isForeignProxy(h.name)) foreign += pct; else local += pct;
+        const key = String(h.name || "").trim().toUpperCase();
+        if (!key) continue;
+        (inv[key] ||= { name: String(h.name).trim(), type: normType(h.type), stocks: 0, foreign: isForeignProxy(h.name) }).stocks += 1;
       }
     }
     const totalType = Object.values(typeSum).reduce((a, b) => a + b, 0) || 1;
     const typeShare = TYPE_ORDER.map((t) => ({ type: t, pct: (typeSum[t] / totalType) * 100 }));
     const totalFL = foreign + local || 1;
-    return { typeShare, foreignPct: (foreign / totalFL) * 100, localPct: (local / totalFL) * 100, covered };
+    const topInvestors = Object.values(inv).sort((a, b) => b.stocks - a.stocks).slice(0, 20);
+    return { typeShare, foreignPct: (foreign / totalFL) * 100, localPct: (local / totalFL) * 100, covered, topInvestors };
   }, [records]);
 
   if (!ksei) return null;
@@ -149,6 +156,30 @@ export function KseiMarketOverview({ ksei }: { ksei: KseiPayload | null }) {
           ) : null}
         </div>
       </div>
+
+      {/* TOP 20 investors by breadth (design/4 Metrics · "TOP 20 INVESTOR
+          TERBANYAK"). Ranked by how many issuers each holder appears in —
+          real from the registry, no price join. */}
+      {model.topInvestors.length ? (
+        <div style={{ ...CARD, marginTop: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <span style={KICKER}>TOP 20 INVESTORS · MOST POSITIONS</span>
+            <span style={{ fontSize: 10, color: "var(--faint)" }}>by number of issuers held in the registry</span>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(300px,1fr))", gap: "2px 20px" }}>
+            {model.topInvestors.map((v, i) => (
+              <div key={v.name} style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", borderTop: i === 0 ? "none" : "1px solid var(--hair)", fontSize: 11.5 }}>
+                <span style={{ fontFamily: MONO, fontSize: 10.5, color: "var(--faint)", width: 20, textAlign: "right" }}>{i + 1}</span>
+                <span style={{ color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={v.name}>{v.name}</span>
+                {v.foreign ? <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: ".06em", color: "var(--cat-4)", background: "var(--soft)", borderRadius: 4, padding: "1px 5px" }}>FGN</span> : null}
+                <span style={{ fontSize: 10, color: "var(--muted)", width: 74, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.type}</span>
+                <span style={{ fontFamily: MONO, fontWeight: 800, width: 52, textAlign: "right" }}>{formatNumber(v.stocks, 0)}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 12, lineHeight: 1.45 }}>Count of issuers each holder appears in across the latest KSEI snapshot — a breadth ranking, not by value (KSEI carries no market value). Foreign (FGN) is the same labelled-name proxy used above.</div>
+        </div>
+      ) : null}
 
       {/* data health — real snapshots */}
       <div style={{ ...CARD, marginTop: 14 }}>
