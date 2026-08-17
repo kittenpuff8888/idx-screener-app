@@ -295,9 +295,9 @@ export function DataHealthPage() {
         <div style={KICKER}>HOW TO READ THE LABELS</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12, marginTop: 4 }}>
           {([
-            ["good", "REAL", "Straight from a published source file. Decision-grade."],
-            ["serious", "PROXY", "Derived from what is available (e.g. CVD from candles, KSEI flow from two snapshots) and always labelled approx. Directional only."],
-            ["warn", "NO DATA", "The field is genuinely absent. Rendered as no data, never filled with a guess."],
+            ["good", "REAL", "Straight from a source file. Decision-grade."],
+            ["serious", "MODELLED", "Derived from what is available (e.g. CVD from candles, KSEI flow from two snapshots) and always labelled approx. Directional only."],
+            ["warn", "NO DATA", "The field is genuinely absent. Never filled with a guess."],
           ] as const).map(([tone, label, desc]) => (
             <div key={label} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
               <Pill tone={tone as Tone}>{label}</Pill>

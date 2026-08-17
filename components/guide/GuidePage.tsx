@@ -344,35 +344,37 @@ export function GuidePage() {
         What the numbers mean, where they come from, and where they stop being reliable.
       </p>
 
-      {/* Anchor nav */}
-      <nav style={{ ...CARD, display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-        {sections.map((s) => (
-          <a
-            key={s.id}
-            href={`#${s.id}`}
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "var(--muted)",
-              textDecoration: "none",
-              background: "var(--soft)",
-              border: "1px solid var(--border)",
-              borderRadius: 999,
-              padding: "5px 11px",
-            }}
-          >
-            {s.title}
-          </a>
-        ))}
-      </nav>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {sections.map((s) => (
-          <article key={s.id} id={s.id} style={{ ...CARD, scrollMarginTop: 70 }}>
-            <h2 style={H3}>{s.title}</h2>
-            {s.body}
-          </article>
-        ))}
+      {/* Content column + sticky "ON THIS PAGE" rail (design/7). */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 210px", gap: 24, alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+          {sections.map((s, i) => {
+            const parts = s.title.split(" · ");
+            const num = String(i + 1).padStart(2, "0");
+            const heading = parts.length > 1 ? parts.slice(1).join(" · ") : s.title;
+            return (
+              <article key={s.id} id={s.id} style={{ ...CARD, scrollMarginTop: 70 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 800, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 6, padding: "3px 7px" }}>{num}</span>
+                  <h2 style={{ ...H3, marginBottom: 0 }}>{heading}</h2>
+                </div>
+                {s.body}
+              </article>
+            );
+          })}
+        </div>
+        <nav style={{ position: "sticky", top: 16, alignSelf: "start", display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)", marginBottom: 8 }}>ON THIS PAGE</div>
+          {sections.map((s, i) => {
+            const parts = s.title.split(" · ");
+            const heading = parts.length > 1 ? parts.slice(1).join(" · ") : s.title;
+            return (
+              <a key={s.id} href={`#${s.id}`} style={{ fontSize: 12, color: "var(--muted)", textDecoration: "none", padding: "5px 8px", borderRadius: 7, display: "flex", gap: 8 }}>
+                <span style={{ fontFamily: "var(--font-mono)", color: "var(--faint)" }}>{String(i + 1).padStart(2, "0")}</span>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{heading}</span>
+              </a>
+            );
+          })}
+        </nav>
       </div>
     </section>
   );

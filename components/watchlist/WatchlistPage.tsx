@@ -30,7 +30,7 @@ const CARD: CSSProperties = {
 
 const COLS = "120px 100px 84px 84px 84px 84px 84px 110px 100px 120px 46px";
 
-const HEADERS = ["SYMBOL", "CLOSE", "1D%", "1W%", "1M%", "3M%", "YTD%", "HIGH", "FROM HIGH%", "SINCE ADDED", ""];
+const HEADERS = ["SYMBOL", "CLOSE", "1D%", "1W%", "1M%", "3M%", "YTD%", "ATH", "FROM ATH%", "SINCE ADDED%", ""];
 
 function pct(v: number | null): { text: string; color: string } {
   if (v === null || !Number.isFinite(v)) return { text: "no data", color: "var(--faint)" };
@@ -272,10 +272,9 @@ export function WatchlistPage() {
             </div>
 
             <div style={{ padding: "10px 18px", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, borderTop: "1px solid var(--hair)" }}>
-              CLOSE, 1D%, 1W%, 1M%, 3M% and HIGH are measured from the published daily bars. SINCE ADDED is
-              measured against the close recorded when you added the row. HIGH is the highest high in
-              published coverage{metrics[visibleRows[0]?.symbol || ""]?.highSince ? ` (from ${metrics[visibleRows[0]!.symbol].highSince})` : ""}, not an
-              all-time high, and FROM HIGH% is the pullback from it. YTD% uses the prior year&apos;s final close where coverage holds it, otherwise the
+              Close &amp; 1D% = real EOD close. Multi-period returns, ATH and since-added are <strong>modelled · approx</strong> — ATH is the highest high in
+              published coverage{metrics[visibleRows[0]?.symbol || ""]?.highSince ? ` (from ${metrics[visibleRows[0]!.symbol].highSince})` : ""}, not a true
+              all-time high, and FROM ATH% is the pullback from it. YTD% uses the prior year&apos;s final close where coverage holds it, otherwise the
               first bar of the year. Cells read <strong>no data</strong> when coverage does not reach back far
               enough — never an estimate.
             </div>
