@@ -8,9 +8,7 @@ import { Provenance } from "@/components/shared/Metric";
 import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { TradingViewChart } from "./TradingViewChart";
 import { RiskGauge } from "./RiskGauge";
-import { MarketReadHero } from "./MarketReadHero";
 import { MarketsCarousel } from "./MarketsCarousel";
-import { MacroStrip } from "./MacroStrip";
 import { BreadthTiles } from "./BreadthTiles";
 import { MarketMapTreemap } from "./MarketMapTreemap";
 import { computeMarketRisk } from "@/lib/data/marketRisk";
@@ -137,15 +135,11 @@ export function DashboardPage() {
         src: IDX close · as of {marketDate} 16:00:00 WIB · EOD (delayed)
       </div>
 
-      {/* MACRO STRIP — compact rates row (DESIGN_SPEC §3.2) */}
-      <MacroStrip />
-
       {/* BREADTH — four tiles (prototype: breadth before the cross-asset row) */}
       <BreadthTiles />
 
-      {/* HERO — IHSG live chart | Market Risk with the market read pinned to
-          its base. The read block is what makes the two columns equal height,
-          so it lives in the right card, not under the chart. */}
+      {/* HERO — IHSG live chart | Market Risk. Equal-size columns; heights
+          match via align-items:stretch. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -159,9 +153,6 @@ export function DashboardPage() {
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column" }}>
           <RiskGauge risk={marketRisk} />
           <div style={{ marginTop: 10 }}><Provenance source="IHSG close + breadth" asOf={marketDate} /></div>
-          <div style={{ marginTop: "auto", paddingTop: 14 }}>
-            <MarketReadHero risk={marketRisk} mc={marketContext} />
-          </div>
         </div>
       </div>
 
