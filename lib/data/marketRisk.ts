@@ -35,7 +35,9 @@ function seriesOf(mc: MarketContextPayload | null, ...keys: string[]): number[] 
 // Everything is computed from close, per the spec.
 export function computeMarketRisk(
   mc: MarketContextPayload | null,
-  breadthRatio: number,        // advancers / (advancers + decliners), 0..1
+  breadthRatio: number,        // advancers / (advancers + decliners), 0..1 (daily A/D, fallback only)
+  above200: number | null,     // share of stocks above their 200-day SMA, 0..1 (structural breadth)
+  above50: number | null,      // share above their 50-day/EMA, 0..1 (short-term breadth)
   asOf?: string,
 ): MarketRisk | null {
   const ihsg = seriesOf(mc, "IHSG", "^JKSE");
@@ -54,9 +56,19 @@ export function computeMarketRisk(
   const volScore = clamp01(1 - vol / 0.022);
   const volLabel = vol > 0.018 ? "Elevated" : vol < 0.008 ? "Calm" : "Normal";
 
-  // 3) Breadth — share of directional tickers advancing
-  const breadthScore = clamp01(breadthRatio);
-  const breadthPct = Math.round(breadthRatio * 100);
+  // 3) Breadth — share of stocks above their 200-day MA (structural market health,
+  //    per the IDX-breadth study), with % above 50-day as the faster read. The
+  //    daily advancers/decliners ratio is a poor, IDX-biased measure and is used
+  //    only as a fallback when MA breadth is unavailable.
+  //    Recalibrated to IDX's own distribution (structurally low breadth): map
+  //    ~15% → 0 and ~55% → 1, so ~35% above-200d reads neutral rather than
+  //    forcing a US-style 50% neutral line that IDX rarely reaches.
+  const pct200 = above200 == null ? null : Math.round(above200 * 100);
+  const pct50 = above50 == null ? null : Math.round(above50 * 100);
+  const breadthScore = above200 != null ? clamp01((above200 - 0.15) / 0.40) : clamp01(breadthRatio);
+  const breadthPct = pct200 ?? Math.round(breadthRatio * 100); // headline breadth % for the driver text
+  const longTone: RiskTone = pct200 == null ? "neutral" : pct200 >= 45 ? "up" : pct200 <= 25 ? "down" : "neutral";
+  const shortTone: RiskTone = pct50 == null ? "neutral" : pct50 >= 55 ? "up" : pct50 <= 35 ? "down" : "neutral";
 
   // 4) Foreign proxy — EIDO (US-listed Indonesia ETF) vs IHSG over 5d. EIDO
   //    leading IHSG implies foreign bid; lagging implies foreign supply.
@@ -88,9 +100,11 @@ export function computeMarketRisk(
   const label = score >= 55 ? "RISK-ON" : score <= 45 ? "RISK-OFF" : "NEUTRAL";
   const tone: RiskTone = score >= 55 ? "up" : score <= 45 ? "down" : "neutral";
 
-  const driver = trendUp && breadthPct >= 55 ? "trend up, breadth broad"
-    : !trendUp && breadthPct <= 45 ? "trend down, breadth thin"
-    : trendUp ? "trend up, breadth mixed" : "trend soft";
+  // Driver text uses IDX-calibrated breadth bands (200-day): broad ≥45%, thin ≤25%.
+  const broad = breadthPct >= 45, thin = breadthPct <= 25;
+  const driver = trendUp && broad ? "trend up, breadth broad"
+    : !trendUp && thin ? "trend down, breadth thin"
+    : trendUp ? "trend up, breadth still narrow" : "trend soft";
 
   return {
     score, label, tone, asOf,
@@ -99,7 +113,8 @@ export function computeMarketRisk(
     metrics: [
       { name: "Trend", value: trendLabel, hint: "Which way IHSG has been heading (vs its 20-day average)", tone: chg20 > 0.005 ? "up" : chg20 < -0.005 ? "down" : "neutral" },
       { name: "Volatility", value: volLabel, hint: "How choppy prices are vs their norm", tone: vol > 0.018 ? "down" : vol < 0.008 ? "up" : "neutral" },
-      { name: "Breadth", value: `${breadthPct}% up`, hint: "Share of directional stocks advancing", tone: breadthPct >= 55 ? "up" : breadthPct <= 45 ? "down" : "neutral" },
+      { name: "Breadth · long", value: pct200 == null ? "no data" : `${pct200}% > 200d MA`, hint: "Share of stocks above their 200-day average — structural market health. Descriptive context, not a timing signal (near-zero forward correlation on IDX).", tone: longTone },
+      { name: "Breadth · short", value: pct50 == null ? "no data" : `${pct50}% > 50d MA`, hint: "Share above their 50-day average — faster, near-term participation. Short and long breadth can honestly disagree.", tone: shortTone },
       { name: "Foreign flow", value: flowLabel, hint: "EIDO vs IHSG — foreign sentiment proxy", tone: flowGap > 0.005 ? "up" : flowGap < -0.005 ? "down" : "neutral" },
       { name: "Momentum", value: momLabel, hint: "IHSG 5-day price push", tone: mom5 > 0.005 ? "up" : mom5 < -0.005 ? "down" : "neutral" },
       { name: "Volatility gauge", value: vixLabel + (vixLast != null ? ` (${vixLast.toFixed(1)})` : ""), hint: "VIX — global fear gauge", tone: vixLast == null ? "neutral" : vixLast < 15 ? "up" : vixLast > 25 ? "down" : "neutral" },
