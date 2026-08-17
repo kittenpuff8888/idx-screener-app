@@ -17,7 +17,7 @@ type Tab = "ringkasan" | "investor" | "konglo" | "metrik" | "changelog";
 const TABS: Array<[Tab, string]> = [
   ["ringkasan", "Stock Summary"],
   ["investor", "By Investor"],
-  ["konglo", "Conglomerates"],
+  ["konglo", "Conglomerate Stocks"],
   ["metrik", "Metrics"],
   ["changelog", "Changelog"],
 ];
