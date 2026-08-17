@@ -97,10 +97,14 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", inte
       s.type = "text/javascript";
       s.async = true;
       s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+      // TradingView's daily code is "D" — "1D" is NOT valid and makes the widget
+      // fall back to the session's intraday interval (e.g. 1h), which IDX
+      // small-caps don't offer ("Only D, W, M intervals are available"). Normalise.
+      const tvInterval = /^1?d$/i.test(interval) ? "D" : /^1?w$/i.test(interval) ? "W" : /^1?m(o|onth)?$/i.test(interval) ? "M" : interval;
       s.innerHTML = JSON.stringify({
         autosize: true,
         symbol,
-        interval,
+        interval: tvInterval,
         range,
         timezone: "Asia/Jakarta",
         theme: dark ? "dark" : "light",
