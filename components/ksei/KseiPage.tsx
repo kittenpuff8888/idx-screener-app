@@ -5,8 +5,9 @@ import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { formatAsOf, formatNumber, formatPlainPercent } from "@/lib/format/number";
 import { IDX_SECTOR_MAP, normalizeSector } from "@/lib/domain/sectors";
-import type { InvestorEntry, KseiIssuer } from "@/lib/domain/types";
+import type { InvestorEntry, KseiIssuer, KseiPayload } from "@/lib/domain/types";
 import { KseiMarketOverview } from "./KseiMarketOverview";
+import { KseiNetwork } from "./KseiNetwork";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 const MONO = "var(--mono, var(--font-mono))";
@@ -198,7 +199,7 @@ export function KseiPage() {
       ) : null}
 
       {/* connection network modal */}
-      {focusInvestor ? <NetworkModal investor={focusInvestor} onClose={() => setFocus(null)} onTicker={(t) => { setFocus(null); openTicker(t); }} /> : null}
+      {focusInvestor ? <NetworkModal investor={focusInvestor} ksei={ksei} onClose={() => setFocus(null)} onTicker={(t) => { setFocus(null); openTicker(t); }} /> : null}
     </section>
   );
 }
@@ -334,7 +335,7 @@ export function NetworkGraph({ investor }: { investor: Investor }) {
   );
 }
 
-function NetworkModal({ investor, onClose, onTicker }: { investor: Investor; onClose: () => void; onTicker: (t: string) => void }) {
+function NetworkModal({ investor, ksei, onClose, onTicker }: { investor: Investor; ksei: KseiPayload | null; onClose: () => void; onTicker: (t: string) => void }) {
   return (
     <div onClick={onClose} role="dialog" aria-modal aria-label={`${investor.name} holdings network`} style={{ position: "fixed", inset: 0, zIndex: 150, background: "rgba(11,14,20,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ ...CARD, borderRadius: 16, boxShadow: "0 24px 60px rgba(0,0,0,.35)", width: "min(860px,96vw)", maxHeight: "90vh", overflow: "auto" }}>
@@ -350,7 +351,7 @@ function NetworkModal({ investor, onClose, onTicker }: { investor: Investor; onC
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,1.3fr) minmax(180px,1fr)" }}>
           <div style={{ padding: "14px 18px", borderRight: "1px solid var(--hair)" }}>
-            <NetworkGraph investor={investor} />
+            <KseiNetwork ksei={ksei} anchor={{ type: "inv", id: investor.name }} />
           </div>
           <div style={{ padding: "10px 8px", overflow: "auto" }}>
             <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", padding: "4px 10px" }}>LINKED STOCKS</div>
