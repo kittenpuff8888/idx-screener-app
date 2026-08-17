@@ -70,7 +70,15 @@ const W = 1000, H = Math.round((1000 * 7) / 16), GAP = 2.4, HEAD = 20;
 const pct = (r: Rect) => ({ left: `${((r.x / W) * 100).toFixed(3)}%`, top: `${((r.y / H) * 100).toFixed(3)}%`, width: `${((r.w / W) * 100).toFixed(3)}%`, height: `${((r.h / H) * 100).toFixed(3)}%`, wFrac: r.w / W, hFrac: r.h / H });
 
 export function MarketMapTreemap() {
-  const { bundle, marketDate, openTicker } = useApp();
+  const { bundle, ksei, marketDate, openTicker } = useApp();
+  // The fundamentals workbook ships "IDX Sector" as "-", so classify each
+  // ticker from the KSEI registry instead (issuer.sector is the display name,
+  // e.g. "Energy"). Without this every name collapses into a single "Others".
+  const sectorByTicker = useMemo(() => {
+    const m = new Map<string, string>();
+    ksei?.records.forEach((r) => { if (r.sector && r.sector !== "Others") m.set(r.ticker, r.sector); });
+    return m;
+  }, [ksei]);
   const boxRef = useRef<HTMLDivElement | null>(null);
   const [mapW, setMapW] = useState(900);
   const [zoom, setZoom] = useState<string | null>(null);
@@ -93,7 +101,7 @@ export function MarketMapTreemap() {
       const mcap = asNumber(raw["Market Cap"]);
       const change = asNumber(raw["Price Change %"]);
       if (mcap === null || mcap <= 0 || change === null) return;
-      const sector = normalizeSector(String(raw["IDX Sector"] ?? "Others"));
+      const sector = sectorByTicker.get(ticker) || normalizeSector(String(raw["IDX Sector"] ?? "Others"));
       const list = bySector.get(sector) || [];
       list.push({ ticker, mcap, change, sector, price: asNumber(raw["Price"]), pe: asNumber(raw["Current PE Ratio (TTM)"]), yld: asNumber(raw["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]) });
       bySector.set(sector, list);
@@ -106,7 +114,7 @@ export function MarketMapTreemap() {
         return { sector, count: list.length, weight, capChange, tiles: list };
       })
       .sort((a, b) => b.weight - a.weight);
-  }, [bundle]);
+  }, [bundle, sectorByTicker]);
 
   const layout = useMemo(() => {
     if (!sectors.length) return { tiles: [] as Array<Tile & { rect: Rect }>, bands: [] as Array<{ sector: string; rect: Rect; capChange: number; hasHead: boolean }> };
