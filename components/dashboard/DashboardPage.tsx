@@ -62,7 +62,23 @@ export function DashboardPage() {
   const adv = asNumber(breadth.advances) ?? 0;
   const dec = asNumber(breadth.declines) ?? 0;
   const ratio = adv + dec ? adv / (adv + dec) : 0;
-  const marketRisk = useMemo(() => computeMarketRisk(marketContext, ratio, marketDate), [marketContext, ratio, marketDate]);
+
+  // Structural breadth: share of stocks above their 200-day / 50-day MA, from
+  // each ticker's moving-average block (IDX-breadth methodology — % above the
+  // long MA is the market-health measure, not the daily advancers count).
+  const maBreadth = useMemo(() => {
+    let n200 = 0, a200 = 0, n50 = 0, a50 = 0;
+    bundle?.technical.forEach((t) => {
+      const price = asNumber(t.lastPrice);
+      const ma = (t.movingAverages || {}) as JsonRecord;
+      const s200 = asNumber(ma.sma200), e50 = asNumber(ma.ema50);
+      if (price != null && s200 != null && s200 > 0) { n200 += 1; if (price >= s200) a200 += 1; }
+      if (price != null && e50 != null && e50 > 0) { n50 += 1; if (price >= e50) a50 += 1; }
+    });
+    return { pct200: n200 ? a200 / n200 : null, pct50: n50 ? a50 / n50 : null };
+  }, [bundle]);
+
+  const marketRisk = useMemo(() => computeMarketRisk(marketContext, ratio, maBreadth.pct200, maBreadth.pct50, marketDate), [marketContext, ratio, maBreadth, marketDate]);
 
   // ---- IHSG series (market context) — benchmark for rotation + leader points ----
   const ihsgSeries = useMemo(() => {

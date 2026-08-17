@@ -51,7 +51,7 @@ export function RiskGauge({ risk }: { risk: MarketRisk | null }) {
       <div style={{ fontSize: 11.5, color: "var(--muted)", margin: "12px 0 2px", lineHeight: 1.45, textWrap: "pretty" as CSSProperties["textWrap"] }}>Why: {risk.why}</div>
 
       <div style={{ borderTop: "1px solid var(--hair)", marginTop: 12, paddingTop: 10 }}>
-        <div style={{ ...KICKER, marginBottom: 2 }}>EIGHT SUB-METRICS</div>
+        <div style={{ ...KICKER, marginBottom: 2 }}>{risk.metrics.length} SUB-METRICS</div>
         <div>
           {risk.metrics.map((m, i) => (
             <div key={m.name} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", alignItems: "center", gap: 10, padding: "8px 0", borderTop: i === 0 ? "none" : "1px solid var(--hair)" }}>
