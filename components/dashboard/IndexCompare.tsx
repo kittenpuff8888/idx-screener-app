@@ -147,7 +147,7 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
   // y gridlines (5) labelled as % vs the 0 start
   const yTicks = Array.from({ length: 5 }, (_, i) => { const v = max - (spread) * i / 4; return { v, top: yPct(v, min, spread) }; });
   // x ticks — ~4 evenly spaced dates, de-duplicated month labels
-  const nX = 5; // 5 pivot dates on the x-axis for every timeframe
+  const nX = 6; // 6 pivot dates on the x-axis for every timeframe
   const xIdx = dates.length ? [...new Set(Array.from({ length: nX }, (_, i) => Math.round(i * (dates.length - 1) / (nX - 1))))] : [];
   let lastLabel = "";
   const xTicks = xIdx.map((idx) => { let lab = fmtTick(dates[idx], rangeKey); if (rangeKey !== "1W" && lab === lastLabel) lab = ""; else lastLabel = lab; return { left: (idx / (dates.length - 1)) * 100, lab }; });
@@ -184,7 +184,7 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
             ))}
           </div>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <div style={{ position: "relative", flex: 1, minHeight: 250 }}>
+            <div style={{ position: "relative", flex: 1, minHeight: 340 }}>
               {yTicks.map((t, i) => <div key={i} style={{ position: "absolute", left: 0, right: 0, top: `${t.top}%`, borderTop: "1px solid var(--hair)" }} />)}
               <div style={{ position: "absolute", left: 0, right: 0, top: `${yPct(0, min, spread)}%`, borderTop: "1.5px dashed var(--muted)", opacity: 0.75 }} />
               <svg viewBox="0 0 100 60" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }} aria-label={`${title}: % return`}>
@@ -221,7 +221,7 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
             <span style={{ fontSize: 12, fontWeight: 700, flex: 1 }}>IHSG</span>
             <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)" }}>bench</span>
           </div>
-          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2, maxHeight: 250 }}>
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 2, maxHeight: 340 }}>
             {series.map((s) => {
               const on = !off.has(s.entry.id);
               const v = s.pct[s.pct.length - 1] / 100;
