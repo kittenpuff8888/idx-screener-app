@@ -102,8 +102,8 @@ export function TickerResearch() {
               symbol={`IDX:${ticker}`}
               range="3M"
               interval="1D"
-              studies={["VWAP@tv-basicstudies", "MAExp@tv-basicstudies"]}
               minHeight={420}
+              showIndicatorPicker
             />
           </div>
 

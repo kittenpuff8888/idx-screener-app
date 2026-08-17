@@ -151,7 +151,7 @@ export function DashboardPage() {
             <a href="https://www.tradingview.com/chart/?symbol=IDX%3ACOMPOSITE" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "4px 9px", textDecoration: "none" }}>TradingView ↗</a>
           </div>
           <div style={{ flex: "1 1 auto", minHeight: 620, borderRadius: 12, overflow: "hidden" }}>
-            <TradingViewChart symbol="IDX:COMPOSITE" range="YTD" minHeight={620} />
+            <TradingViewChart symbol="IDX:COMPOSITE" range="YTD" minHeight={620} showIndicatorPicker />
           </div>
         </div>
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column" }}>
