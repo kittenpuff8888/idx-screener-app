@@ -50,6 +50,13 @@ function squarify<T extends { value: number }>(items: T[], x: number, y: number,
   return out;
 }
 
+// Compact market-cap for the tile caption: billions → "258 T" / "87.7 T" / "500 B".
+// Keeps the tile from cramming a long raw number (was "Rp 258.282").
+function fmtCap(bn: number): string {
+  if (bn >= 1000) return `${(bn / 1000).toFixed(bn >= 100000 ? 0 : 1)} T`;
+  return `${Math.round(bn)} B`;
+}
+
 function tileColor(change: number): string {
   const inten = 0.5 + Math.min(1, Math.abs(change) / 0.045) * 0.45;
   const rgb = change >= 0 ? "37, 99, 235" : "229, 72, 77";
@@ -63,7 +70,9 @@ function labelFit(ticker: string, pxW: number, pxH: number) {
   let fsT = 0;
   for (const [fs, minW, minH] of steps) { if (pxW >= minW && pxH >= minH && fit(fs)) { fsT = fs; break; } }
   const showTicker = fsT > 0;
-  return { showTicker, showPct: showTicker && pxW >= 58 && pxH >= 36, showCap: showTicker && pxW >= 110 && pxH >= 64, fsT, fsP: pxH >= 58 ? 11.5 : 10 };
+  // Cap needs a comfortable third line — hold it back until the tile is tall
+  // enough so ticker/pct/cap don't get clipped in the middle.
+  return { showTicker, showPct: showTicker && pxW >= 58 && pxH >= 36, showCap: showTicker && pxW >= 96 && pxH >= 74, fsT, fsP: pxH >= 58 ? 11.5 : 10 };
 }
 
 const W = 1000, H = Math.round((1000 * 7) / 16), GAP = 2.4, HEAD = 20;
@@ -144,7 +153,7 @@ export function MarketMapTreemap() {
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 10px", flexWrap: "wrap" }}>
         <span style={KICKER}>MARKET MAP · CAP-WEIGHTED, COLOURED BY % CHANGE</span>
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>size = market cap · double-click a sector to zoom · hover for detail</span>
+        <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>size = market cap · click a sector to see all its tickers · hover for detail</span>
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5, color: "var(--faint)" }}>
           <span>−5%</span>
@@ -175,9 +184,10 @@ export function MarketMapTreemap() {
               <div key={`band-${b.sector}`}>
                 <div onDoubleClick={() => setZoom(b.sector)} style={{ position: "absolute", left: p.left, top: p.top, width: p.width, height: p.height, border: "1px solid var(--panel)", borderRadius: 6, pointerEvents: "none" }} />
                 {showHead ? (
-                  <div onDoubleClick={() => setZoom(b.sector)} style={{ position: "absolute", left: p.left, top: p.top, display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", margin: "3px 0 0 3px", cursor: "pointer", zIndex: 3, background: "rgba(255,255,255,.82)", borderRadius: 6 }}>
+                  <div onClick={() => setZoom(b.sector)} onDoubleClick={() => setZoom(b.sector)} title={`See all ${b.sector} tickers`} style={{ position: "absolute", left: p.left, top: p.top, display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", margin: "3px 0 0 3px", cursor: "pointer", zIndex: 3, background: "rgba(255,255,255,.82)", borderRadius: 6 }}>
                     <span style={{ fontSize: 10, fontWeight: 800, color: "#0b0e14", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.sector}</span>
                     <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 800, color: b.capChange >= 0 ? "var(--up)" : "var(--down)" }}>{formatPercent(b.capChange)}</span>
+                    <span style={{ fontSize: 9, color: "var(--faint)" }}>›</span>
                   </div>
                 ) : null}
               </div>
@@ -195,7 +205,7 @@ export function MarketMapTreemap() {
                 style={{ position: "absolute", left: p.left, top: p.top, width: p.width, height: p.height, background: tileColor(t.change), color: "#fff", border: "1px solid var(--panel)", borderRadius: 4, padding: "3px 5px", overflow: "hidden", cursor: "pointer", display: "flex", flexDirection: "column", justifyContent: "center", textShadow: "0 1px 2px rgba(0,0,0,.32)" }}>
                 {lab.showTicker ? <strong style={{ fontFamily: MONO, fontSize: lab.fsT, fontWeight: 700, letterSpacing: ".02em", lineHeight: 1.05 }}>{t.ticker}</strong> : null}
                 {lab.showPct ? <span style={{ fontFamily: MONO, fontSize: lab.fsP, fontWeight: 600, opacity: 0.92, lineHeight: 1.1 }}>{formatPercent(t.change)}</span> : null}
-                {lab.showCap ? <span style={{ fontFamily: MONO, fontSize: 9, opacity: 0.72, lineHeight: 1.1 }}>Rp {formatNumber(t.mcap, 0)}</span> : null}
+                {lab.showCap ? <span style={{ fontFamily: MONO, fontSize: 9, opacity: 0.72, lineHeight: 1.1 }}>Rp {fmtCap(t.mcap)}</span> : null}
               </div>
             );
           })}
