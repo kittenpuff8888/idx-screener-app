@@ -30,13 +30,17 @@ function isForeignProxy(name: string): boolean {
     && !/\bPT\.?\s|TBK|PERSERO|INDONESIA|NEGARA|DAERAH/i.test(name);
 }
 
-function Bar({ segs, height = 16 }: { segs: Array<{ w: number; color: string; op?: number }>; height?: number }) {
+
+function Donut({ segs, size = 120 }: { segs: Array<{ v: number; color: string }>; size?: number }) {
+  const total = segs.reduce((s, x) => s + x.v, 0) || 1;
+  const r = size / 2 - 9, c = 2 * Math.PI * r; let off = 0;
   return (
-    <div style={{ display: "flex", gap: 2, height, borderRadius: 6, overflow: "hidden" }}>
-      {segs.filter((s) => s.w > 0).map((s, i) => (
-        <div key={i} style={{ width: `${s.w}%`, background: s.color, opacity: s.op ?? 1 }} />
-      ))}
-    </div>
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--soft)" strokeWidth={9} />
+      <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+        {segs.filter((s) => s.v > 0).map((s, i) => { const len = (s.v / total) * c; const el = <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color} strokeWidth={9} strokeDasharray={`${len} ${c - len}`} strokeDashoffset={-off} strokeLinecap="butt" />; off += len; return el; })}
+      </g>
+    </svg>
   );
 }
 
@@ -45,19 +49,23 @@ export function KseiMarketOverview({ ksei }: { ksei: KseiPayload | null }) {
   useEffect(() => { loadKseiTrend().then(setTrend); }, []);
 
   const records = ksei?.records ?? [];
-  const summary = ksei?.summary ?? {};
 
   // market-average float composition by KSEI type (real) + local/foreign proxy
   const model = useMemo(() => {
     const typeSum: Record<string, number> = {}; TYPE_ORDER.forEach((t) => (typeSum[t] = 0));
     let foreign = 0, local = 0, covered = 0;
+    let totalShareholders = 0, foreignCo = 0, localCo = 0, unclassCo = 0;
     // Aggregate each holder across every issuer they appear in — breadth
     // (# of stocks held) is real from KSEI alone, no price join needed.
     const inv: Record<string, { name: string; type: string; stocks: number; foreign: boolean }> = {};
     for (const t of records) {
       const holders = (t.investors || []) as InvestorEntry[];
-      if (!holders.length) continue;
+      if (!holders.length) { unclassCo++; continue; }
       covered++;
+      totalShareholders += holders.length;
+      // classify the company by its dominant (largest) holder's nationality proxy
+      const top = holders.reduce((a, b) => (Number(b.percentage) || 0) > (Number(a.percentage) || 0) ? b : a, holders[0]);
+      if (top) { if (isForeignProxy(top.name)) foreignCo++; else localCo++; } else unclassCo++;
       for (const h of holders) {
         const pct = Number(h.percentage) || 0;
         typeSum[normType(h.type)] = (typeSum[normType(h.type)] || 0) + pct;
@@ -68,92 +76,76 @@ export function KseiMarketOverview({ ksei }: { ksei: KseiPayload | null }) {
       }
     }
     const totalType = Object.values(typeSum).reduce((a, b) => a + b, 0) || 1;
-    const typeShare = TYPE_ORDER.map((t) => ({ type: t, pct: (typeSum[t] / totalType) * 100 }));
+    const typeShare = TYPE_ORDER.map((t) => ({ type: t, pct: (typeSum[t] / totalType) * 100 })).filter((s) => s.pct >= 0.05);
     const totalFL = foreign + local || 1;
-    const topInvestors = Object.values(inv).sort((a, b) => b.stocks - a.stocks).slice(0, 20);
-    return { typeShare, foreignPct: (foreign / totalFL) * 100, localPct: (local / totalFL) * 100, covered, topInvestors };
+    const invList = Object.values(inv);
+    const topInvestors = invList.slice().sort((a, b) => b.stocks - a.stocks).slice(0, 20);
+    return {
+      typeShare, foreignPct: (foreign / totalFL) * 100, localPct: (local / totalFL) * 100, covered, topInvestors,
+      totalShareholders, uniqueInvestors: invList.length, multiStock: invList.filter((i) => i.stocks > 1).length,
+      maxStocks: topInvestors[0]?.stocks ?? 0, foreignCo, localCo, unclassCo,
+    };
   }, [records]);
 
   if (!ksei) return null;
 
   const asOf = formatAsOf(ksei.asOf) || ksei.asOf || "—";
-  const ownershipTypes = (summary.ownershipTypes as Record<string, number> | undefined) || {};
-  const avgFF = summary.averageFreeFloat as number | undefined;
-  const avgHHI = summary.averageHHI as number | undefined;
-  const highConc = summary.highConcentrationIssuers as number | undefined;
-  const total = (summary.totalIssuers as number | undefined) ?? records.length;
   const snaps = trend?.snapshots ?? [];
 
   return (
     <div style={{ marginBottom: 20 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <span style={KICKER}>WHO OWNS THE MARKET</span>
-        <span style={{ fontSize: 10, color: "var(--faint)" }}>AS OF {asOf} · {formatNumber(model.covered, 0)} issuers with disclosed holders</span>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 14 }}>
-        {/* investor type composition (real) */}
-        <div style={CARD}>
-          <div style={{ ...KICKER, marginBottom: 12 }}>OWNERSHIP BY INVESTOR TYPE · KSEI CATEGORIES</div>
-          <Bar segs={model.typeShare.map((s) => ({ w: s.pct, color: TYPE_COLOR[s.type] }))} />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", marginTop: 14, fontSize: 11.5 }}>
-            {model.typeShare.filter((s) => s.pct >= 0.05).map((s) => (
-              <div key={s.type} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                <span aria-hidden style={{ width: 9, height: 9, borderRadius: 2, background: TYPE_COLOR[s.type], flex: "none" }} />
-                <span style={{ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.type}</span>
-                <div style={{ flex: 1 }} />
-                <span style={{ fontFamily: MONO, fontWeight: 700 }}>{s.pct.toFixed(1)}%</span>
+      {/* 8 KPI tiles (design/4 Metrics) */}
+      {(() => {
+        const totalCo = model.foreignCo + model.localCo + model.unclassCo || 1;
+        const tiles: Array<[string, string, string?]> = [
+          ["Total Companies", formatNumber(model.covered, 0)],
+          ["Total Shareholders", formatNumber(model.totalShareholders, 0)],
+          ["Foreign", formatNumber(model.foreignCo, 0), `${((model.foreignCo / totalCo) * 100).toFixed(1)}%`],
+          ["Local", formatNumber(model.localCo, 0), `${((model.localCo / totalCo) * 100).toFixed(1)}%`],
+          ["Unclassified", formatNumber(model.unclassCo, 0), `${((model.unclassCo / totalCo) * 100).toFixed(1)}%`],
+          ["Unique Investors", formatNumber(model.uniqueInvestors, 0)],
+          ["Multi-Stock", formatNumber(model.multiStock, 0)],
+          ["Max Stocks Held", formatNumber(model.maxStocks, 0)],
+        ];
+        return (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 14 }}>
+            {tiles.map(([k, v, sub]) => (
+              <div key={k} style={CARD}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--faint)" }}>{k.toUpperCase()}</div>
+                <div style={{ fontFamily: MONO, fontSize: 26, fontWeight: 800, marginTop: 4 }}>{v}</div>
+                {sub ? <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{sub}</div> : null}
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 12, lineHeight: 1.45 }}>Market-average share of disclosed float by KSEI investor category — real, aggregated across every issuer's holder list.</div>
-        </div>
+        );
+      })()}
 
-        {/* local vs foreign proxy */}
+      {/* LOCAL vs FOREIGN | INVESTOR TYPE donuts (design/4 Metrics) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 14 }}>
         <div style={CARD}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-            <span style={KICKER}>LOCAL vs FOREIGN</span>
-            <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".08em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" }}>PROXY</span>
-          </div>
-          <Bar segs={[{ w: model.localPct, color: "var(--cat-2)" }, { w: model.foreignPct, color: "var(--cat-4)" }]} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14, fontSize: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span aria-hidden style={{ width: 9, height: 9, borderRadius: 2, background: "var(--cat-2)" }} />
-              <span style={{ color: "var(--muted)" }}>Local investors</span><div style={{ flex: 1 }} />
-              <span style={{ fontFamily: MONO, fontWeight: 800 }}>{model.localPct.toFixed(1)}%</span>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-              <span aria-hidden style={{ width: 9, height: 9, borderRadius: 2, background: "var(--cat-4)" }} />
-              <span style={{ color: "var(--muted)" }}>Foreign investors</span><div style={{ flex: 1 }} />
-              <span style={{ fontFamily: MONO, fontWeight: 800 }}>{model.foreignPct.toFixed(1)}%</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}><span style={KICKER}>LOCAL vs FOREIGN</span><span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".08em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" }}>PROXY</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <Donut segs={[{ v: model.localCo, color: "var(--cat-1)" }, { v: model.foreignCo, color: "var(--cat-5)" }, { v: model.unclassCo, color: "var(--cat-8)" }]} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 9, fontSize: 12 }}>
+              {([["Local", model.localCo, "var(--cat-1)"], ["Foreign", model.foreignCo, "var(--cat-5)"], ["Unclassified", model.unclassCo, "var(--cat-8)"]] as const).map(([l, v, c]) => {
+                const totalCo = model.foreignCo + model.localCo + model.unclassCo || 1;
+                return <div key={l} style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: c }} /><span style={{ color: "var(--muted)" }}>{l}</span><div style={{ flex: 1 }} /><b style={{ fontFamily: MONO }}>{((v / totalCo) * 100).toFixed(1)}%</b><span style={{ fontFamily: MONO, color: "var(--faint)", width: 32, textAlign: "right" }}>{v}</span></div>;
+              })}
             </div>
           </div>
-          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 12, lineHeight: 1.45 }}>Foreign/local is a <strong>labelled name heuristic</strong> on the holder name — KSEI carries no broker-level nationality, so this is a proxy, not authoritative.</div>
+          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 12, lineHeight: 1.45 }}>Each company classified by its dominant holder — a labelled name heuristic (KSEI carries no nationality field).</div>
         </div>
-
-        {/* concentration (real summary) */}
         <div style={CARD}>
-          <div style={{ ...KICKER, marginBottom: 12 }}>CONCENTRATION · MARKET</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" }}>
-            <Metric label="Avg free float" value={avgFF != null ? `${avgFF.toFixed(1)}%` : "—"} />
-            <Metric label="Avg HHI" value={avgHHI != null ? formatNumber(avgHHI, 0) : "—"} />
-            <Metric label="High-concentration" value={highConc != null ? `${formatNumber(highConc, 0)} / ${formatNumber(total, 0)}` : "—"} />
-            <Metric label="Issuers" value={formatNumber(total, 0)} />
-          </div>
-          {Object.keys(ownershipTypes).length ? (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--faint)", marginBottom: 7 }}>OWNERSHIP STRUCTURE (ISSUER COUNT)</div>
-              {Object.entries(ownershipTypes).sort((a, b) => b[1] - a[1]).map(([k, v]) => (
-                <div key={k} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", fontSize: 11.5 }}>
-                  <span style={{ color: "var(--muted)", width: 110 }}>{k}</span>
-                  <div style={{ flex: 1, height: 6, background: "var(--soft)", borderRadius: 4, overflow: "hidden" }}>
-                    <div style={{ width: `${(v / total) * 100}%`, height: "100%", background: "var(--cat-3)" }} />
-                  </div>
-                  <span style={{ fontFamily: MONO, fontWeight: 700, width: 36, textAlign: "right" }}>{formatNumber(v, 0)}</span>
-                </div>
+          <div style={{ ...KICKER, marginBottom: 12 }}>INVESTOR TYPE</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <Donut segs={model.typeShare.map((s) => ({ v: s.pct, color: TYPE_COLOR[s.type] }))} />
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "7px 14px", fontSize: 11 }}>
+              {model.typeShare.map((s) => (
+                <div key={s.type} style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 8, height: 8, borderRadius: 2, background: TYPE_COLOR[s.type], flexShrink: 0 }} /><span style={{ color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.type}</span><div style={{ flex: 1 }} /><b style={{ fontFamily: MONO }}>{s.pct.toFixed(1)}%</b></div>
               ))}
             </div>
-          ) : null}
+          </div>
+          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 12, lineHeight: 1.45 }}>Market-average share of disclosed float by KSEI investor category — real.</div>
         </div>
       </div>
 
@@ -211,11 +203,3 @@ export function KseiMarketOverview({ ksei }: { ksei: KseiPayload | null }) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: 10, color: "var(--faint)" }}>{label}</div>
-      <div style={{ fontFamily: MONO, fontSize: 18, fontWeight: 800, marginTop: 2 }}>{value}</div>
-    </div>
-  );
-}
