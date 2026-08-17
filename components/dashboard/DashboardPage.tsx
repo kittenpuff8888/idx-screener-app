@@ -4,14 +4,13 @@ import { useMemo } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
-import { Provenance } from "@/components/shared/Metric";
 import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { TradingViewChart } from "./TradingViewChart";
-import { RiskGauge } from "./RiskGauge";
+import { MarketBreadthPanel } from "./MarketBreadthPanel";
 import { MarketsCarousel } from "./MarketsCarousel";
 import { BreadthTiles } from "./BreadthTiles";
 import { MarketMapTreemap } from "./MarketMapTreemap";
-import { computeMarketRisk } from "@/lib/data/marketRisk";
+import { computeMarketBreadth } from "@/lib/data/marketBreadth";
 import { normalizeSector } from "@/lib/domain/sectors";
 import type { JsonRecord } from "@/lib/domain/types";
 import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
@@ -52,33 +51,15 @@ function parseCount(v: unknown): number | null {
 const KONGLO_FEATURED = ["Barito", "Salim", "Sinarmas", "Astra", "Djarum", "Saratoga", "Bakrie", "Lippo"];
 
 export function DashboardPage() {
-  const { loading, bundle, indexes, marketContext, marketDate, openTicker } = useApp();
+  const { loading, bundle, ksei, indexes, marketContext, marketDate, openTicker } = useApp();
 
   const overview = (bundle?.overview?.overview || {}) as JsonRecord;
   const summary = (bundle?.overview?.summary || {}) as JsonRecord;
 
-  // ---- Breadth + composite risk (drives the hero regime read + the gauge) ----
-  const breadth = (overview.breadth || {}) as JsonRecord;
-  const adv = asNumber(breadth.advances) ?? 0;
-  const dec = asNumber(breadth.declines) ?? 0;
-  const ratio = adv + dec ? adv / (adv + dec) : 0;
-
-  // Structural breadth: share of stocks above their 200-day / 50-day MA, from
-  // each ticker's moving-average block (IDX-breadth methodology — % above the
-  // long MA is the market-health measure, not the daily advancers count).
-  const maBreadth = useMemo(() => {
-    let n200 = 0, a200 = 0, n50 = 0, a50 = 0;
-    bundle?.technical.forEach((t) => {
-      const price = asNumber(t.lastPrice);
-      const ma = (t.movingAverages || {}) as JsonRecord;
-      const s200 = asNumber(ma.sma200), e50 = asNumber(ma.ema50);
-      if (price != null && s200 != null && s200 > 0) { n200 += 1; if (price >= s200) a200 += 1; }
-      if (price != null && e50 != null && e50 > 0) { n50 += 1; if (price >= e50) a50 += 1; }
-    });
-    return { pct200: n200 ? a200 / n200 : null, pct50: n50 ? a50 / n50 : null };
-  }, [bundle]);
-
-  const marketRisk = useMemo(() => computeMarketRisk(marketContext, ratio, maBreadth.pct200, maBreadth.pct50, marketDate), [marketContext, ratio, maBreadth, marketDate]);
+  // ---- Market breadth & regime (IDX-breadth study): % above 200-day/50-day MA,
+  //      sector breadth, and the cap-vs-equal gap. Descriptive context, not a
+  //      predictive score. ----
+  const marketBreadth = useMemo(() => computeMarketBreadth(bundle, ksei, marketContext), [bundle, ksei, marketContext]);
 
   // ---- IHSG series (market context) — benchmark for rotation + leader points ----
   const ihsgSeries = useMemo(() => {
@@ -174,8 +155,7 @@ export function DashboardPage() {
           </div>
         </div>
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column" }}>
-          <RiskGauge risk={marketRisk} />
-          <div style={{ marginTop: 10 }}><Provenance source="IHSG close + breadth" asOf={marketDate} /></div>
+          <MarketBreadthPanel data={marketBreadth} asOf={marketDate || "—"} />
         </div>
       </div>
 
