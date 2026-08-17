@@ -58,7 +58,7 @@ function IndicatorPicker({ selected, onToggle }: { selected: string[]; onToggle:
 /** TradingView advanced-chart embed. Interval is forced to 1D (like the IHSG
     hero chart). The study set is site-wide, saved to localStorage, and applied
     to every chart; the optional picker edits it and all charts re-mount. */
-export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", interval = "1D", minHeight = 520, showIndicatorPicker = false }: Props) {
+export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", minHeight = 520, showIndicatorPicker = false }: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -101,11 +101,15 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", inte
       // fall back to the session's intraday interval (e.g. 1h), which IDX
       // small-caps don't offer ("Only D, W, M intervals are available"). Normalise.
       const tvInterval = /^1?d$/i.test(interval) ? "D" : /^1?w$/i.test(interval) ? "W" : /^1?m(o|onth)?$/i.test(interval) ? "M" : interval;
+      // NB: do NOT send `range`. IDX equities have EOD-only free data (no
+      // intraday), and the `range` shortcut makes TradingView auto-pick an
+      // intraday resolution for short spans (e.g. "3M" → 1h) that overrides
+      // `interval`, tripping "Only D, W, M intervals are available". Verified in
+      // the live embed: interval "D" with no range renders daily correctly.
       s.innerHTML = JSON.stringify({
         autosize: true,
         symbol,
         interval: tvInterval,
-        range,
         timezone: "Asia/Jakarta",
         theme: dark ? "dark" : "light",
         style: "1",
@@ -137,7 +141,7 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", range = "YTD", inte
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key on contents, not identity
-  }, [symbol, range, interval, studies.join(",")]);
+  }, [symbol, interval, studies.join(",")]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight }}>
