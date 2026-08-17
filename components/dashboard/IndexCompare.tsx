@@ -45,9 +45,9 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 function fmtTick(iso: string, rangeKey: string): string {
   const [y, m, d] = iso.split("-").map(Number);
   if (!y || !m) return "";
-  if (rangeKey === "1W") return `${String(d).padStart(2, "0")} ${MONTHS[m - 1]}`;
   if (rangeKey === "1Y") return `${MONTHS[m - 1]} '${String(y).slice(2)}`;
-  return MONTHS[m - 1];
+  // 1W / 1M / 3M: day + month, so the 5 pivots read as distinct dates.
+  return `${String(d).padStart(2, "0")} ${MONTHS[m - 1]}`;
 }
 
 function linePath(vals: number[], min: number, spread: number, w = 100, h = 60): string {
@@ -147,7 +147,7 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
   // y gridlines (5) labelled as % vs the 0 start
   const yTicks = Array.from({ length: 5 }, (_, i) => { const v = max - (spread) * i / 4; return { v, top: yPct(v, min, spread) }; });
   // x ticks — ~4 evenly spaced dates, de-duplicated month labels
-  const nX = rangeKey === "1W" ? 3 : rangeKey === "1Y" ? 5 : 4;
+  const nX = 5; // 5 pivot dates on the x-axis for every timeframe
   const xIdx = dates.length ? [...new Set(Array.from({ length: nX }, (_, i) => Math.round(i * (dates.length - 1) / (nX - 1))))] : [];
   let lastLabel = "";
   const xTicks = xIdx.map((idx) => { let lab = fmtTick(dates[idx], rangeKey); if (rangeKey !== "1W" && lab === lastLabel) lab = ""; else lastLabel = lab; return { left: (idx / (dates.length - 1)) * 100, lab }; });

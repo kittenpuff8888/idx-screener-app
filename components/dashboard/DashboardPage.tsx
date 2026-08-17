@@ -32,6 +32,13 @@ function chgColor(v: number | null): string {
   return v > 0 ? "var(--up)" : "var(--down)";
 }
 
+// Compact market cap (value is in Rp billions): "Rp 258 T" / "Rp 87.7 T" / "Rp 500 B".
+function fmtMcapBn(bn: number | null): string {
+  if (bn === null) return "—";
+  if (bn >= 1000) return `Rp ${(bn / 1000).toFixed(bn >= 100000 ? 0 : 1)} T`;
+  return `Rp ${Math.round(bn)} B`;
+}
+
 // Parse counts that may carry a K/M/B/T suffix (e.g. "7.79 B" shares outstanding).
 const COUNT_SUFFIX: Record<string, number> = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
 function parseCount(v: unknown): number | null {
@@ -74,7 +81,7 @@ export function DashboardPage() {
   const idxMove = ihsgLast !== null && ihsgPrev !== null ? ihsgLast - ihsgPrev : null;
 
   const { leaders, laggards, leadMax, lagMax } = useMemo(() => {
-    type Mv = { ticker: string; name: string; price: number | null; chg: number; mcap: number | null; points: number | null; pctIdxMv: number | null };
+    type Mv = { ticker: string; name: string; price: number | null; chg: number; yr1: number | null; mcap: number | null; points: number | null; pctIdxMv: number | null };
     const universe: Array<Omit<Mv, "points" | "pctIdxMv">> = [];
     let totalMcap = 0;
     bundle?.fundamentals.forEach((raw, ticker) => {
@@ -87,7 +94,7 @@ export function DashboardPage() {
         if (sh !== null) mcap = (price * sh) / 1e9;
       }
       if (mcap !== null) totalMcap += mcap;
-      universe.push({ ticker, name: bundle.technical.get(ticker)?.companyName || normalizeSector(String(raw["IDX Sector"] ?? "Others")), price, chg, mcap });
+      universe.push({ ticker, name: bundle.technical.get(ticker)?.companyName || normalizeSector(String(raw["IDX Sector"] ?? "Others")), price, chg, yr1: asNumber(raw["1 Year Price Returns"]), mcap });
     });
     const withPoints = (m: Omit<Mv, "points" | "pctIdxMv">): Mv => {
       const points = ihsgPrev !== null && m.mcap !== null && totalMcap > 0 ? ihsgPrev * (m.mcap / totalMcap) * m.chg : null;
@@ -173,10 +180,11 @@ export function DashboardPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px 6px 0", borderBottom: "1px solid var(--hair)" }}>
               <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 20, textAlign: "right" }}>#</span>
               <span style={{ fontSize: 9.5, color: "var(--faint)", letterSpacing: ".06em", flex: 1 }}>TICKER</span>
-              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 56, textAlign: "right" }}>END PRC</span>
-              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 58, textAlign: "right" }}>% CHG</span>
-              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 48, textAlign: "right" }}>POINTS</span>
-              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 56, textAlign: "right" }}>%IDX MV</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 66, textAlign: "right" }}>MKT CAP</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 54, textAlign: "right" }}>CLOSE</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 54, textAlign: "right" }}>% CHG</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 58, textAlign: "right" }}>52W %</span>
+              <span style={{ fontFamily: MONO, fontSize: 9.5, color: "var(--faint)", width: 54, textAlign: "right" }}>%IDX MV</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", maxHeight: 440, overflowY: "auto" }}>
               {rows.map((m, i) => (
@@ -191,10 +199,11 @@ export function DashboardPage() {
                     </span>
                     <span style={{ display: "block", fontSize: 9.5, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 1 }}>{m.name}</span>
                   </span>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 56, textAlign: "right" }}>{m.price === null ? "—" : formatPrice(m.price)}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 600, color: chgColor(m.chg), width: 58, textAlign: "right" }}>{formatPercent(m.chg)}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: m.points === null ? "var(--faint)" : chgColor(m.points), width: 48, textAlign: "right" }}>{m.points === null ? "—" : `${m.points > 0 ? "+" : ""}${m.points.toFixed(2)}`}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: m.pctIdxMv === null ? "var(--faint)" : chgColor(m.pctIdxMv), width: 56, textAlign: "right" }}>{m.pctIdxMv === null ? "—" : formatPercent(m.pctIdxMv)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 66, textAlign: "right" }}>{fmtMcapBn(m.mcap)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 54, textAlign: "right" }}>{m.price === null ? "—" : formatPrice(m.price)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 600, color: chgColor(m.chg), width: 54, textAlign: "right" }}>{formatPercent(m.chg)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: chgColor(m.yr1), width: 58, textAlign: "right" }}>{m.yr1 === null ? "—" : formatPercent(m.yr1)}</span>
+                  <span style={{ fontFamily: MONO, fontSize: 11, color: m.pctIdxMv === null ? "var(--faint)" : chgColor(m.pctIdxMv), width: 54, textAlign: "right" }}>{m.pctIdxMv === null ? "—" : formatPercent(m.pctIdxMv)}</span>
                 </button>
               ))}
               {!rows.length ? <div style={{ fontSize: 12.5, color: "var(--muted)", padding: "8px 0" }}>No movers reported.</div> : null}
