@@ -156,25 +156,29 @@ export function TickerResearch() {
         </div>
       </div>
 
-      {/* ── SETUP VERDICT | TRADE PLAN ─────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
-        <Section title="SETUP VERDICT">{setup ? <SetupActive setup={setup} /> : <SetupNone rangePos={rangePos} offLow={offLow} live={firstLive} onOpen={openTicker} />}</Section>
-        <Section title="TRADE PLAN · PRICE LADDER" badge={<span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 6, padding: "2px 8px" }}>R:R {rr(setup, price, VAL, VAH)}</span>}>
-          <TradePlan setup={setup} price={price} hi52={hi52} lo52={lo52} VAL={VAL} VAH={VAH} PoC={PoC} atr={n(t["atrPercent"])} />
-        </Section>
-      </div>
-
-      {/* ── PRICE CHART ────────────────────────────────────────── */}
-      <div style={{ ...CARD, marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={KICKER}>PRICE · {ticker} · VWAP + MA</span>
-          {[["VAL", VAL], ["PoC", PoC], ["VAH", VAH]].map(([l, v]) => v != null ? <span key={l as string} style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 7px" }}>{l} {formatPrice(v as number)}</span> : null)}
-          <div style={{ flex: 1 }} />
-          <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
-            {(["1M", "3M", "6M", "1Y"] as const).map((r) => <button key={r} type="button" onClick={() => setRange(r)} style={{ fontSize: 10.5, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: range === r ? "var(--accent)" : "transparent", color: range === r ? "#fff" : "var(--muted)" }}>{r}</button>)}
+      {/* ── SETUP + CHART (left) | TRADE PLAN LADDER (right) ───── */}
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.7fr) minmax(0,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0 }}>
+          <Section title="SETUP VERDICT">{setup ? <SetupActive setup={setup} /> : <SetupNone rangePos={rangePos} offLow={offLow} live={firstLive} onOpen={openTicker} />}</Section>
+          <div style={{ ...CARD, flex: "1 1 auto", display: "flex", flexDirection: "column", gap: 10, minHeight: 400 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={KICKER}>PRICE · {ticker} · VWAP + MA</span>
+              {[["VAL", VAL], ["PoC", PoC], ["VAH", VAH]].map(([l, v]) => v != null ? <span key={l as string} style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 7px" }}>{l} {formatPrice(v as number)}</span> : null)}
+              <div style={{ flex: 1 }} />
+              <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
+                {(["1M", "3M", "6M", "1Y"] as const).map((r) => <button key={r} type="button" onClick={() => setRange(r)} style={{ fontSize: 10.5, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: range === r ? "var(--accent)" : "transparent", color: range === r ? "#fff" : "var(--muted)" }}>{r}</button>)}
+              </div>
+            </div>
+            <TradingViewChart symbol={`IDX:${ticker}`} range={range === "1Y" ? "12M" : range} interval="1D" minHeight={340} showIndicatorPicker />
           </div>
         </div>
-        <TradingViewChart symbol={`IDX:${ticker}`} range={range === "1Y" ? "12M" : range} interval="1D" minHeight={420} showIndicatorPicker />
+        <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={KICKER}>TRADE PLAN · PRICE LADDER</span><div style={{ flex: 1 }} />
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 6, padding: "2px 8px" }}>R:R {rr(setup, price, VAL, VAH)}</span>
+          </div>
+          <TradePlan setup={setup} price={price} hi52={hi52} lo52={lo52} VAL={VAL} VAH={VAH} PoC={PoC} atr={n(t["atrPercent"])} />
+        </div>
       </div>
 
       {/* ── KEY STATISTICS | COMPANY INFO ──────────────────────── */}
@@ -184,7 +188,7 @@ export function TickerResearch() {
       </div>
 
       {/* ── TECHNICAL ──────────────────────────────────────────── */}
-      <div style={{ marginBottom: 14 }}><TechnicalCard t={t} ma={ma} price={price} VAL={VAL} VAH={VAH} PoC={PoC} /></div>
+      <div style={{ marginBottom: 14 }}><TechnicalCard stock={stock as JsonRecord | undefined} t={t} ma={ma} price={price} VAL={VAL} VAH={VAH} PoC={PoC} /></div>
 
       {/* ── RETURNS | OWNERSHIP ────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
@@ -293,22 +297,34 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr }: { setup: Se
   const rewardTo = setup ? setup.target : VAH; const riskTo = setup ? setup.invalidation : VAL;
   const reward = rewardTo != null && price != null ? rewardTo - price : null;
   const risk = riskTo != null && price != null ? riskTo - price : null;
+  const prices = uniq.map((r) => r.v);
+  const max = Math.max(...prices), min = Math.min(...prices), span = max - min || 1;
+  const yOf = (v: number) => ((max - v) / span) * 100; // 0% at top (max) → 100% at bottom (min)
+  const closeY = price != null ? Math.max(0, Math.min(100, yOf(price))) : 50;
   return (
-    <div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto" }}>
+      {/* Vertical price-positioned ladder: reward zone above the close (blue),
+          risk zone below (red); dots sit at each level's true price. */}
+      <div style={{ position: "relative", flex: "1 1 auto", minHeight: 280, margin: "6px 0 4px" }}>
+        <div style={{ position: "absolute", left: 50, right: 0, top: 0, height: `${closeY}%`, background: "var(--upSoft)", borderRadius: "6px 6px 0 0" }} />
+        <div style={{ position: "absolute", left: 50, right: 0, top: `${closeY}%`, bottom: 0, background: "var(--downSoft)", borderRadius: "0 0 6px 6px" }} />
+        <div style={{ position: "absolute", left: 55, top: 4, bottom: 4, width: 2, background: "var(--hair)" }} />
         {uniq.map((r) => {
-          const rel = price != null && price > 0 ? (r.v - price) / price : null;
+          const y = Math.max(0, Math.min(100, yOf(r.v)));
           const isClose = r.label === "CLOSE";
+          const rel = price != null && price > 0 ? (r.v - price) / price : null;
+          const c = r.tone === "up" ? "var(--up)" : r.tone === "down" ? "var(--down)" : "var(--text)";
           return (
-            <div key={r.label} style={{ display: "grid", gridTemplateColumns: "58px 1fr 66px", alignItems: "center", gap: 8, padding: "3px 0", borderTop: isClose ? "2px solid var(--text)" : "none" }}>
-              <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: isClose ? 800 : 600 }}>{formatPrice(r.v)}</span>
-              <span style={{ fontSize: 10.5, color: isClose ? "var(--text)" : "var(--muted)", fontWeight: isClose ? 800 : 400 }}>{r.label}</span>
-              <span style={{ fontFamily: MONO, fontSize: 10.5, textAlign: "right", color: r.tone === "up" ? "var(--up)" : r.tone === "down" ? "var(--down)" : "var(--faint)" }}>{rel == null ? "" : sPct(rel, 1)}</span>
+            <div key={r.label} style={{ position: "absolute", left: 0, right: 0, top: `${y}%`, transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: isClose ? 800 : 600, width: 48, textAlign: "right", color: isClose ? "var(--text)" : "var(--muted)" }}>{formatPrice(r.v)}</span>
+              <span style={{ width: isClose ? 11 : 9, height: isClose ? 11 : 9, borderRadius: "50%", background: c, flexShrink: 0, border: "2px solid var(--panel)", boxShadow: isClose ? "0 0 0 2px var(--text)" : "none" }} />
+              <span style={{ fontSize: 10.5, color: isClose ? "var(--text)" : "var(--muted)", fontWeight: isClose ? 800 : 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.label}</span>
+              <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: c, paddingRight: 2 }}>{rel == null ? "" : sPct(rel, 1)}</span>
             </div>
           );
         })}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 }}>
         <div style={{ background: "var(--upSoft)", borderRadius: 9, padding: "8px 11px" }}>
           <div style={{ fontSize: 8.5, fontWeight: 700, color: "var(--up)" }}>REWARD · to {setup ? "target" : "VAH"}</div>
           <div style={{ fontFamily: MONO, fontSize: 16, fontWeight: 800, color: "var(--up)" }}>{reward == null ? "—" : `${reward >= 0 ? "+" : ""}${formatNumber(reward, 0)}`} {reward != null && price ? <span style={{ fontSize: 10 }}>({sPct(reward / price, 1)})</span> : null}</div>
@@ -397,24 +413,65 @@ function CompanyInfo({ fund, ownership }: { fund?: JsonRecord; ownership?: { ind
   );
 }
 
-function TechnicalCard({ t, ma, price, VAL, VAH, PoC }: { t: JsonRecord; ma: JsonRecord; price: number | null; VAL: number | null; VAH: number | null; PoC: number | null }) {
-  const [tab, setTab] = useState<"profile" | "rsi" | "ma">("profile");
-  const tabs = [["profile", "Market Profile"], ["rsi", "RSI & Momentum"], ["ma", "Moving Averages"]] as const;
+const posColor = (p?: string) => /Above|Bull|Strong|Buy/i.test(p || "") ? "var(--up)" : /Below|Bear|Weak|Sell/i.test(p || "") ? "var(--down)" : "var(--muted)";
+const KV = ({ k, v, tone }: { k: string; v: React.ReactNode; tone?: string }) => (
+  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", borderTop: HAIR, fontSize: 11.5 }}>
+    <span style={{ color: "var(--muted)" }}>{k}</span><span style={{ fontFamily: MONO, fontWeight: 700, textAlign: "right", color: tone }}>{v}</span>
+  </div>
+);
+const Chip = ({ children, tone }: { children: React.ReactNode; tone?: string }) => (
+  <span style={{ fontSize: 9, fontWeight: 700, color: tone || "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 7px" }}>{children}</span>
+);
+const px = (v: number | null | undefined) => (v == null ? "—" : formatPrice(v));
+
+function TechnicalCard({ stock, t, ma, price, VAL, VAH, PoC }: { stock?: JsonRecord; t: JsonRecord; ma: JsonRecord; price: number | null; VAL: number | null; VAH: number | null; PoC: number | null }) {
+  const [tab, setTab] = useState("structure");
+  const tabs = [["structure", "Structure · SMC"], ["profile", "Market Profile"], ["momentum", "RSI & MACD"], ["vwap", "VWAP"], ["ma", "Moving Averages"], ["liquidity", "Volume & Vol"]] as const;
   return (
     <div style={CARD}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <span style={KICKER}>TECHNICAL</span><div style={{ flex: 1 }} />
-        <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
-          {tabs.map(([k, l]) => <button key={k} type="button" onClick={() => setTab(k)} style={{ fontSize: 11, fontWeight: 700, padding: "5px 11px", borderRadius: 6, border: "none", cursor: "pointer", background: tab === k ? "var(--accent)" : "transparent", color: tab === k ? "#fff" : "var(--muted)" }}>{l}</button>)}
+        <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3, flexWrap: "wrap" }}>
+          {tabs.map(([k, l]) => <button key={k} type="button" onClick={() => setTab(k)} style={{ fontSize: 10.5, fontWeight: 700, padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: tab === k ? "var(--accent)" : "transparent", color: tab === k ? "#fff" : "var(--muted)" }}>{l}</button>)}
         </div>
       </div>
-      {tab === "profile" ? <ProfileTab price={price} VAL={VAL} VAH={VAH} PoC={PoC} zone={t["marketProfileZone"] as string} /> : null}
-      {tab === "rsi" ? <RsiTab t={t} /> : null}
-      {tab === "ma" ? <MaTab ma={ma} zone={t["maZone"] as string} price={price} /> : null}
+      {tab === "structure" ? <StructureTab stock={stock} t={t} /> : null}
+      {tab === "profile" ? <ProfileTab t={t} price={price} VAL={VAL} VAH={VAH} PoC={PoC} /> : null}
+      {tab === "momentum" ? <MomentumTab t={t} /> : null}
+      {tab === "vwap" ? <VwapTab t={t} price={price} /> : null}
+      {tab === "ma" ? <MaTab ma={ma} t={t} price={price} /> : null}
+      {tab === "liquidity" ? <LiquidityTab t={t} /> : null}
     </div>
   );
 }
-function ProfileTab({ price, VAL, VAH, PoC, zone }: { price: number | null; VAL: number | null; VAH: number | null; PoC: number | null; zone?: string }) {
+
+function StructureTab({ stock, t }: { stock?: JsonRecord; t: JsonRecord }) {
+  const trend = (stock?.["trend"] || {}) as JsonRecord; const struct = (stock?.["structure"] || {}) as JsonRecord;
+  const smc = (t["smc"] || {}) as JsonRecord;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+      <div>
+        <div style={{ ...KICKER, fontSize: 9, marginBottom: 4 }}>TREND & STRUCTURE</div>
+        <KV k="Internal trend" v={String(trend["internal"] ?? "—")} tone={posColor(trend["internal"] as string)} />
+        <KV k="Swing trend" v={String(trend["swing"] ?? "—")} tone={posColor(trend["swing"] as string)} />
+        <KV k="Internal structure" v={String(struct["internal"] ?? "—")} tone={posColor(struct["internal"] as string)} />
+        <KV k="Swing structure" v={String(struct["swing"] ?? "—")} tone={posColor(struct["swing"] as string)} />
+        <KV k="Wave pattern" v={String(t["wavePattern"] ?? "—")} />
+      </div>
+      <div>
+        <div style={{ ...KICKER, fontSize: 9, marginBottom: 4 }}>SMC LEVELS</div>
+        <KV k="Strong / Weak high" v={`${px(n(smc["strongHigh"]))} · ${px(n(smc["weakHigh"]))}`} />
+        <KV k="Strong / Weak low" v={`${px(n(smc["strongLow"]))} · ${px(n(smc["weakLow"]))}`} />
+        <KV k="Equilibrium" v={String(smc["equilibrium"] ?? "—")} />
+        <KV k="Bull OB" v={<>{String(smc["closestBullishBlock"] ?? "—")} {smc["bullishBlockAgeDays"] != null ? <span style={{ color: "var(--faint)", fontSize: 9 }}>· {String(smc["bullishBlockAgeDays"])}d</span> : null}</>} tone="var(--up)" />
+        <KV k="Bear OB" v={<>{String(smc["closestBearishBlock"] ?? "—")} {smc["bearishBlockAgeDays"] != null ? <span style={{ color: "var(--faint)", fontSize: 9 }}>· {String(smc["bearishBlockAgeDays"])}d</span> : null}</>} tone="var(--down)" />
+      </div>
+    </div>
+  );
+}
+
+function ProfileTab({ t, price, VAL, VAH, PoC }: { t: JsonRecord; price: number | null; VAL: number | null; VAH: number | null; PoC: number | null }) {
+  const mp = (t["marketProfile"] || {}) as JsonRecord;
   const lo = VAL, hi = VAH; const pos = price != null && lo != null && hi != null && hi > lo ? ((price - lo) / (hi - lo)) * 100 : 50;
   return (
     <div>
@@ -431,35 +488,103 @@ function ProfileTab({ price, VAL, VAH, PoC, zone }: { price: number | null; VAL:
           </div>
         ))}
       </div>
-      <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>{price != null && PoC != null ? (price >= PoC ? "Price above the point of control — acceptance higher." : "Price below PoC, holding above the value-area low — balancing.") : "Value-area read from real structural levels."} {zone ? <span style={{ color: "var(--faint)" }}>· {zone}</span> : null}</p>
-      <p style={{ fontSize: 10, color: "var(--faint)", marginTop: 4 }}>Technical read illustrative from real levels — wire to the OHLCV service.</p>
-    </div>
-  );
-}
-function RsiTab({ t }: { t: JsonRecord }) {
-  const rsi = n(t["rsi14"]); const macd = n(t["macdLine"]); const pos = rsi == null ? 50 : Math.max(0, Math.min(100, rsi));
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div><div style={{ fontSize: 9, color: "var(--faint)" }}>RSI (14) · {String(t["rsiStatus"] ?? "")}</div><div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: rsi == null ? "var(--muted)" : rsi >= 70 ? "var(--down)" : rsi >= 50 ? "var(--up)" : "var(--muted)" }}>{rsi == null ? "—" : rsi.toFixed(1)}</div>
-          <div style={{ position: "relative", height: 5, background: "linear-gradient(90deg,var(--down),var(--soft),var(--up))", borderRadius: 3, marginTop: 6 }}><div style={{ position: "absolute", left: `${pos}%`, top: -2, width: 9, height: 9, borderRadius: "50%", background: "var(--accent)", transform: "translateX(-50%)" }} /></div></div>
-        <div><div style={{ fontSize: 9, color: "var(--faint)" }}>MACD · {String(t["macdPosition"] ?? "")}</div><div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, color: macd == null ? "var(--muted)" : macd >= 0 ? "var(--up)" : "var(--down)" }}>{macd == null ? "—" : macd.toFixed(1)}</div></div>
+      <div style={{ marginTop: 12 }}>
+        <div style={{ ...KICKER, fontSize: 9, marginBottom: 2 }}>INITIAL BALANCE / PRIOR WEEK / MULTI-DAY</div>
+        <KV k="Initial balance H / L" v={<>{px(n(mp["ibh"]))} · {px(n(mp["ibl"]))} <Chip tone={posColor(mp["vsIbl"] as string)}>{String(mp["vsIbl"] ?? "")}</Chip></>} />
+        <KV k="Prior week H / L" v={<>{px(n(mp["pwh"]))} · {px(n(mp["pwl"]))} <Chip tone={posColor(mp["vsPwl"] as string)}>{String(mp["vsPwl"] ?? "")}</Chip></>} />
+        <KV k="Multi-day H / L" v={<>{px(n(mp["mdh"]))} · {px(n(mp["mdl"]))} <Chip tone={posColor(mp["vsMdl"] as string)}>{String(mp["vsMdl"] ?? "")}</Chip></>} />
       </div>
-      <p style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 10 }}>Momentum read from the workbook technical block. {t["wavePattern"] ? `Wave: ${t["wavePattern"]}.` : ""}</p>
+      {mp["summary"] ? <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>{String(mp["summary"])}</p> : null}
     </div>
   );
 }
-function MaTab({ ma, zone, price }: { ma: JsonRecord; zone?: string; price: number | null }) {
-  const rows = [["EMA 25", n(ma["ema25"])], ["EMA 50", n(ma["ema50"])], ["SMA 200", n(ma["sma200"])]] as const;
+
+function MomentumTab({ t }: { t: JsonRecord }) {
+  const rsi = n(t["rsi14"]); const rd = (t["rsiDetail"] || {}) as JsonRecord; const md = (t["macdDetail"] || {}) as JsonRecord; const macd = n(t["macdLine"]);
+  const pos = rsi == null ? 50 : Math.max(0, Math.min(100, rsi));
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+      <div>
+        <div style={{ ...KICKER, fontSize: 9, marginBottom: 4 }}>RSI (14) · {String(t["rsiStatus"] ?? "")}</div>
+        <div style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: rsi == null ? "var(--muted)" : rsi >= 70 ? "var(--down)" : rsi >= 50 ? "var(--up)" : "var(--muted)" }}>{rsi == null ? "—" : rsi.toFixed(1)}</div>
+        <div style={{ position: "relative", height: 5, background: "linear-gradient(90deg,var(--down),var(--soft),var(--up))", borderRadius: 3, margin: "6px 0" }}><div style={{ position: "absolute", left: `${pos}%`, top: -2, width: 9, height: 9, borderRadius: "50%", background: "var(--accent)", transform: "translateX(-50%)" }} /></div>
+        <KV k="RSI MA (14)" v={n(rd["average14"]) == null ? "—" : n(rd["average14"])!.toFixed(1)} />
+        <KV k="Position" v={String(rd["position"] ?? "—")} tone={posColor(rd["position"] as string)} />
+        <KV k="Δ 1D" v={n(rd["change1d"]) == null ? "—" : `${n(rd["change1d"])! >= 0 ? "+" : ""}${n(rd["change1d"])!.toFixed(1)}`} />
+        {rd["divergenceSignal"] ? <KV k="Divergence" v={<>{String(rd["divergenceSignal"])} {rd["divergenceConfirmDate"] ? <span style={{ color: "var(--faint)", fontSize: 9 }}>· {String(rd["divergenceConfirmDate"])}</span> : null}</>} tone={posColor(rd["divergenceSignal"] as string)} /> : null}
+      </div>
+      <div>
+        <div style={{ ...KICKER, fontSize: 9, marginBottom: 4 }}>MACD · {String(t["macdPosition"] ?? "")}</div>
+        <div style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: macd == null ? "var(--muted)" : macd >= 0 ? "var(--up)" : "var(--down)" }}>{macd == null ? "—" : macd.toFixed(1)}</div>
+        <div style={{ height: 11 }} />
+        <KV k="Signal line" v={n(md["signalLine"]) == null ? "—" : n(md["signalLine"])!.toFixed(1)} />
+        <KV k="Histogram" v={n(md["histogram"]) == null ? "—" : n(md["histogram"])!.toFixed(1)} tone={n(md["histogram"]) == null ? undefined : n(md["histogram"])! >= 0 ? "var(--up)" : "var(--down)"} />
+        <KV k="Cross" v={String(md["cross"] ?? "—")} />
+        <KV k="Wave pattern" v={String(t["wavePattern"] ?? "—")} />
+      </div>
+    </div>
+  );
+}
+
+function VwapTab({ t, price }: { t: JsonRecord; price: number | null }) {
+  const vp = (t["vwapProfiles"] || {}) as JsonRecord;
+  const periods = [["currentMonth", "Month"], ["currentQuarter", "Quarter"], ["previousMonth", "Prev month"]] as const;
   return (
     <div>
-      {rows.map(([k, v], i) => (
-        <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderTop: i ? HAIR : "none", fontSize: 12 }}>
+      {periods.map(([k, label], i) => {
+        const p = (vp[k] || {}) as JsonRecord; const v = n(p["vwap"]);
+        if (v == null) return null;
+        return (
+          <div key={k} style={{ display: "grid", gridTemplateColumns: "80px 90px 1fr", gap: 10, alignItems: "center", padding: "8px 0", borderTop: i ? HAIR : "none", fontSize: 12 }}>
+            <span style={{ color: "var(--muted)" }}>{label} VWAP</span>
+            <span style={{ fontFamily: MONO, fontWeight: 700, color: price != null ? (price >= v ? "var(--up)" : "var(--down)") : undefined }}>{formatPrice(v)}</span>
+            <span style={{ fontSize: 10.5, color: "var(--faint)" }}>{String(p["zone"] ?? "")}{p["priceSigma"] != null ? ` · σ ${n(p["priceSigma"])!.toFixed(2)}` : ""}</span>
+          </div>
+        );
+      })}
+      <p style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>Price vs the volume-weighted average and its standard-deviation bands, per period.</p>
+    </div>
+  );
+}
+
+function MaTab({ ma, t, price }: { ma: JsonRecord; t: JsonRecord; price: number | null }) {
+  const md = (t["movingAverageDetail"] || {}) as JsonRecord;
+  const rows = [["EMA 25", n(ma["ema25"]), n(md["ema25DifferencePercent"]), md["ema25Position"]], ["EMA 50", n(ma["ema50"]), n(md["ema50DifferencePercent"]), md["ema50Position"]], ["SMA 200", n(ma["sma200"]), n(md["sma200DifferencePercent"]), md["sma200Position"]]] as const;
+  return (
+    <div>
+      {rows.map(([k, v, diff, posv], i) => (
+        <div key={k} style={{ display: "grid", gridTemplateColumns: "70px 1fr 70px 60px", gap: 8, alignItems: "center", padding: "8px 0", borderTop: i ? HAIR : "none", fontSize: 12 }}>
           <span style={{ color: "var(--muted)" }}>{k}</span>
-          <span style={{ fontFamily: MONO, fontWeight: 700 }}>{v == null ? "—" : formatPrice(v)} {v != null && price != null ? <span style={{ fontSize: 10, color: price >= v ? "var(--up)" : "var(--down)" }}>{price >= v ? "above" : "below"}</span> : null}</span>
+          <span style={{ fontFamily: MONO, fontWeight: 700 }}>{v == null ? "—" : formatPrice(v)}</span>
+          <span style={{ fontFamily: MONO, fontSize: 11, textAlign: "right", color: diff == null ? "var(--faint)" : diff >= 0 ? "var(--up)" : "var(--down)" }}>{diff == null ? "" : `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`}</span>
+          <span style={{ fontSize: 10, textAlign: "right", color: posColor(posv as string) }}>{String(posv ?? (v != null && price != null ? (price >= v ? "Above" : "Below") : ""))}</span>
         </div>
       ))}
-      {zone ? <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 10 }}>{zone}</p> : null}
+      {t["maZone"] ? <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 10 }}>{String(t["maZone"])}</p> : null}
+    </div>
+  );
+}
+
+function LiquidityTab({ t }: { t: JsonRecord }) {
+  const lq = (t["liquidity"] || {}) as JsonRecord; const rg = (t["regime"] || {}) as JsonRecord;
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+      <div>
+        <div style={{ ...KICKER, fontSize: 9, marginBottom: 4 }}>VOLUME & VOLATILITY</div>
+        <KV k="RVOL (20D)" v={String(lq["rvolZone"] ?? "—")} />
+        <KV k="RVOL change" v={String(lq["rvolChangeZone"] ?? "—")} />
+        <KV k="ADR %" v={n(t["adrPercent"]) == null ? "—" : `${n(t["adrPercent"])!.toFixed(2)}%`} />
+        <KV k="ATR (14) %" v={n(t["atrPercent"]) == null ? "—" : `${n(t["atrPercent"])!.toFixed(2)}%`} />
+        <KV k="Range zone" v={String(lq["rangeZone"] ?? "—")} />
+      </div>
+      <div>
+        <div style={{ ...KICKER, fontSize: 9, marginBottom: 4 }}>LIQUIDITY & REGIME</div>
+        <KV k="Value (approx)" v={String(lq["valueApprox"] ?? "—")} />
+        <KV k="Avg value 20D" v={String(lq["averageValue20"] ?? "—")} />
+        <KV k="Avg volume 20D" v={String(lq["averageVolume20"] ?? "—")} />
+        <KV k="Liquidity" v={String(rg["liquidityCategory"] ?? "—")} />
+        <KV k="Profile" v={String(rg["verdictProfile"] ?? "—")} />
+      </div>
     </div>
   );
 }
