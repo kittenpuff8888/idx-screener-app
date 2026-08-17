@@ -160,7 +160,7 @@ export function KseiPage() {
       {/* ── CONGLOMERATES ── */}
       {ksei && tab === "konglo" ? (
         <>
-          <ConglomerateMasterDetail groups={konglo} onTicker={openTicker} />
+          <ConglomerateMasterDetail groups={konglo} ksei={ksei} onTicker={openTicker} />
         </>
       ) : null}
 
@@ -378,7 +378,7 @@ function NetworkModal({ investor, ksei, onClose, onTicker }: { investor: Investo
       Small-Micro — the remainder it holds alone
       Sharing     — stocks another ≥3-stock investor also holds
     "Sharing" needs the full group list to compute, so it is passed in. */
-function ConglomerateMasterDetail({ groups, onTicker }: { groups: Investor[]; onTicker: (t: string) => void }) {
+function ConglomerateMasterDetail({ groups, ksei, onTicker }: { groups: Investor[]; ksei: KseiPayload | null; onTicker: (t: string) => void }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<string | null>(null);
 
@@ -479,8 +479,7 @@ function ConglomerateMasterDetail({ groups, onTicker }: { groups: Investor[]; on
             </div>
 
             <div style={{ padding: "14px 18px", borderTop: "1px solid var(--hair)" }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", marginBottom: 6 }}>CONNECTION NETWORK</div>
-              <NetworkGraph investor={active} />
+              <KseiNetwork ksei={ksei} anchor={active.holdings[0] ? { type: "stock", id: active.holdings[0].code } : null} />
             </div>
           </div>
         ) : null}
