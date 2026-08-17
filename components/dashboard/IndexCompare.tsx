@@ -70,8 +70,9 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
       return { ticker: c.ticker.toUpperCase(), mcap: asNumber(raw?.["Market Cap"]) ?? 0, price: asNumber(raw?.["Price"]), chg: asNumber(raw?.["Price Change %"]) };
     }).filter((r) => r.mcap > 0);
     rows.sort((a, b) => b.mcap - a.mcap);
-    return rows.slice(0, 10);
+    return rows; // all constituents of the index, not just the top few
   }, [entry, bundle]);
+  const totalConstituents = entry.group?.constituents?.length ?? 0;
   const mcapMax = Math.max(1, ...constituents.map((c) => c.mcap));
 
   let area: React.ReactNode = <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No data for this range.</div>;
@@ -96,8 +97,8 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
       {area}
       {constituents.length ? (
         <div style={{ marginTop: 16 }}>
-          <div style={{ ...KICKER, marginBottom: 9 }}>TOP CONSTITUENTS · BY MARKET CAP</div>
-          <div style={{ display: "flex", flexDirection: "column" }}>
+          <div style={{ ...KICKER, marginBottom: 9 }}>CONSTITUENTS · {constituents.length}{totalConstituents > constituents.length ? ` OF ${totalConstituents}` : ""} · BY MARKET CAP</div>
+          <div style={{ display: "flex", flexDirection: "column", maxHeight: 340, overflowY: "auto" }}>
             {constituents.map((c) => (
               <button key={c.ticker} type="button" onClick={() => { onClose(); openTicker(c.ticker); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", background: "transparent", border: "none", borderTop: "1px solid var(--hair)", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
                 <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 12.5, width: 52 }}>{c.ticker}</span>
