@@ -75,18 +75,21 @@ export function computeMarketBreadth(
   const ihsg = ihsgSeries(mc);
   const ihsgRet1M = ihsg.length >= 22 && ihsg[ihsg.length - 22] ? ihsg.at(-1)! / ihsg[ihsg.length - 22] - 1 : null;
 
-  // Descriptive regime read from the two breadth measures (IDX-calibrated bands).
-  const p200 = pct200 == null ? null : pct200 * 100;
-  const p50 = pct50 == null ? null : pct50 * 100;
-  let regimeLabel = "MIXED";
-  let regimeNote = "Short- and long-term breadth read differently — weight the trend of breadth over its level.";
-  if (p200 != null && p50 != null) {
-    if (p200 >= 50) { regimeLabel = "BROAD STRENGTH"; regimeNote = "Most stocks are above both their 50- and 200-day averages — participation is wide."; }
-    else if (p50 >= 50 && p200 < 35) { regimeLabel = "EARLY RECOVERY"; regimeNote = `Near-term breadth is broad (${Math.round(p50)}% above 50-day), but ${Math.round(100 - p200)}% of stocks are still below their 200-day average — a young, structurally-incomplete recovery.`; }
-    else if (p50 < 40 && p200 < 30) { regimeLabel = "BROADLY WEAK"; regimeNote = "Both short- and long-term breadth are thin — the typical stock is in a downtrend."; }
-    else if (p50 < 45 && p200 >= 35) { regimeLabel = "COOLING"; regimeNote = "Long-term breadth is holding up but near-term participation is fading."; }
-    else { regimeLabel = "MIXED"; regimeNote = `Short-term breadth ${Math.round(p50)}%, structural breadth ${Math.round(p200)}% — the two honestly disagree.`; }
-  }
-
+  const { label: regimeLabel, note: regimeNote } = breadthRegime(pct200, pct50);
   return { pct200, pct50, coverage: n200, sectors, medianRet1M, ihsgRet1M, regimeLabel, regimeNote };
 }
+
+/** Descriptive regime read from the two breadth measures (IDX-calibrated bands).
+    Exported so the panel can apply it to the liquid-universe headline. */
+export function breadthRegime(pct200: number | null, pct50: number | null): { label: string; note: string } {
+  const p200 = pct200 == null ? null : pct200 * 100;
+  const p50 = pct50 == null ? null : pct50 * 100;
+  if (p200 == null || p50 == null) return { label: "—", note: "Breadth unavailable in this snapshot." };
+  if (p200 >= 50) return { label: "BROAD STRENGTH", note: "Most stocks are above both their 50- and 200-day averages — participation is wide." };
+  if (p50 >= 50 && p200 < 35) return { label: "EARLY RECOVERY", note: `Near-term breadth is broad (${Math.round(p50)}% above 50-day), but ${Math.round(100 - p200)}% of stocks are still below their 200-day average — a young, structurally-incomplete recovery.` };
+  if (p50 < 40 && p200 < 30) return { label: "BROADLY WEAK", note: "Both short- and long-term breadth are thin — the typical stock is in a downtrend." };
+  if (p50 < 45 && p200 >= 35) return { label: "COOLING", note: "Long-term breadth is holding up but near-term participation is fading." };
+  return { label: "MIXED", note: `Short-term breadth ${Math.round(p50)}%, structural breadth ${Math.round(p200)}% — the two honestly disagree.` };
+}
+
+export type BreadthHistory = { universeSize: number; method: string; points: Array<{ date: string; pct200: number | null; pct50: number | null; n: number }> };
