@@ -1,5 +1,5 @@
-import { PastSetupsPage } from "@/components/screener/PastSetupsPage";
+import { PastSetups } from "@/components/setups/PastSetups";
 
 export default function Page() {
-  return <PastSetupsPage />;
+  return <PastSetups />;
 }
