@@ -5,7 +5,7 @@ import { loadStudies, saveStudies, subscribeStudies, STUDIES } from "@/lib/data/
 
 type Props = {
   symbol?: string;
-  range?: "1D" | "5D" | "1M" | "3M" | "YTD" | "12M" | "60M" | "ALL";
+  range?: "1D" | "5D" | "1M" | "3M" | "6M" | "YTD" | "12M" | "60M" | "ALL";
   interval?: string;
   minHeight?: number;
   /** Show the ƒx indicator picker overlay (site-wide, saved selection). */
