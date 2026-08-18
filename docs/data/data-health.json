@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-17T19:44:32.734818+07:00",
+ "generatedAt": "2026-08-18T16:58:02.575141+07:00",
  "marketDate": "2026-08-14",
  "universe": {
   "size": 950,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-17T19:44:22.572516+07:00"
+  "auditedAt": "2026-08-18T16:57:50.250095+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-13T21:04:48.611264+07:00",
-   "marketDate": "2026-08-13",
-   "status": "FAILED",
-   "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/validate_data.py']' returned non-zero exit status 1."
-  },
   {
    "timestamp": "2026-08-14T17:32:38.153573+07:00",
    "marketDate": "2026-08-14",
@@ -65,6 +59,12 @@
    "marketDate": "2026-08-17",
    "status": "NO_DATA",
    "message": "No valid IDX session was available for 2026-08-17; latest observed OHLCV date was 2026-08-14. The last successful snapshot was preserved."
+  },
+  {
+   "timestamp": "2026-08-18T16:57:26.860386+07:00",
+   "marketDate": "2026-08-18",
+   "status": "WAITING",
+   "message": "Market-close check completed at 16:57 WIB; the current session is retried after 17:00."
   }
  ],
  "qaSummary": {
@@ -92,7 +92,7 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-17T19:44:24.673531+07:00",
+  "lastChecked": "2026-08-18T16:57:52.713366+07:00",
   "checked": 12,
   "failures": [],
   "results": [
@@ -105,10 +105,6 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "ASMI",
-    "status": "ERROR: TypeError"
-   },
-   {
     "ticker": "BBCA",
     "status": "ERROR: TypeError"
    },
@@ -117,7 +113,11 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "CLAY",
+    "ticker": "BIPP",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "BNBR",
     "status": "ERROR: TypeError"
    },
    {
@@ -125,7 +125,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "LFLO",
+    "ticker": "KBAG",
     "status": "ERROR: TypeError"
    },
    {
@@ -133,7 +133,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "SFAN",
+    "ticker": "SUNI",
     "status": "ERROR: TypeError"
    },
    {
@@ -141,7 +141,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "TRUE",
+    "ticker": "WINS",
     "status": "ERROR: TypeError"
    }
   ],
