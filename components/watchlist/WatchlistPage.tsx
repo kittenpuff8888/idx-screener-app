@@ -4,13 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { TradingViewChart } from "@/components/dashboard/TradingViewChart";
-import { loadOhlcv } from "@/lib/data/ticker";
+import { formatPrice } from "@/lib/format/number";
+import { loadUniverse, setupByKey, type Universe, type UniverseRow } from "@/lib/data/screenerUniverse";
 import {
-  computeMetrics,
   loadWatchlist,
   newGroupId,
   saveWatchlist,
-  type WatchlistMetrics,
   type WatchlistState,
 } from "@/lib/data/watchlistStore";
 
@@ -28,19 +27,11 @@ const CARD: CSSProperties = {
   padding: "18px 20px",
 };
 
-const COLS = "120px 100px 84px 84px 84px 84px 84px 110px 100px 120px 46px";
+// Design/3 columns: star · ticker · setup · price · chg · R:R · (remove)
+const COLS = "26px 96px 1fr 80px 78px 66px 40px";
 
-const HEADERS = ["SYMBOL", "CLOSE", "1D%", "1W%", "1M%", "3M%", "YTD%", "ATH", "FROM ATH%", "SINCE ADDED%", ""];
-
-function pct(v: number | null): { text: string; color: string } {
-  if (v === null || !Number.isFinite(v)) return { text: "no data", color: "var(--faint)" };
-  const glyph = v > 0 ? "▲" : v < 0 ? "▼" : "•";
-  const color = v > 0 ? "var(--up)" : v < 0 ? "var(--down)" : "var(--flat)";
-  return { text: `${glyph} ${v > 0 ? "+" : ""}${v.toFixed(2)}%`, color };
-}
-
-function num(v: number | null): string {
-  return v === null || !Number.isFinite(v) ? "no data" : v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+function chgColor(v: number | null): string {
+  return v == null || !Number.isFinite(v) || v === 0 ? "var(--flat)" : v > 0 ? "var(--up)" : "var(--down)";
 }
 
 export function WatchlistPage() {
@@ -49,12 +40,25 @@ export function WatchlistPage() {
   const [hydrated, setHydrated] = useState(false);
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<null | "ticker" | "group">(null);
-  const [metrics, setMetrics] = useState<Record<string, WatchlistMetrics>>({});
+  const [universe, setUniverse] = useState<Universe | null>(null);
 
   useEffect(() => {
     setState(loadWatchlist());
     setHydrated(true);
   }, []);
+
+  // Screener universe → per-ticker setup / price / chg / R:R for the design columns.
+  useEffect(() => {
+    if (!marketDate) return;
+    let cancelled = false;
+    loadUniverse(marketDate).then((u) => !cancelled && setUniverse(u)).catch(() => {});
+    return () => { cancelled = true; };
+  }, [marketDate]);
+  const uniMap = useMemo(() => {
+    const m = new Map<string, UniverseRow>();
+    (universe?.rows || []).forEach((r) => m.set(r.ticker, r));
+    return m;
+  }, [universe]);
 
   const persist = useCallback((next: WatchlistState) => {
     setState(next);
@@ -68,23 +72,6 @@ export function WatchlistPage() {
     const needle = search.trim().toUpperCase();
     return needle ? activeGroup.rows.filter((r) => r.symbol.includes(needle)) : activeGroup.rows;
   }, [activeGroup, search]);
-
-  // Load bars for every symbol on the board, once per symbol per market date.
-  useEffect(() => {
-    if (!marketDate || !activeGroup) return;
-    let cancelled = false;
-    const wanted = activeGroup.rows.map((r) => r.symbol).filter((s) => !(s in metrics));
-    if (!wanted.length) return;
-    Promise.all(
-      wanted.map(async (symbol) => {
-        const payload = await loadOhlcv(marketDate, symbol);
-        return [symbol, computeMetrics(payload?.rows || [])] as const;
-      }),
-    ).then((pairs) => {
-      if (!cancelled) setMetrics((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
-    });
-    return () => { cancelled = true; };
-  }, [marketDate, activeGroup, metrics]);
 
   const total = state.groups.reduce((n, g) => n + g.rows.length, 0);
   const selected = state.selectedSymbol || visibleRows[0]?.symbol || null;
@@ -196,107 +183,71 @@ export function WatchlistPage() {
           <div style={{ fontSize: 13, color: "var(--muted)" }}>Create a group, then add the tickers you want to track.</div>
         </div>
       ) : (
-        <>
-          <div style={{ ...CARD, padding: 0, overflow: "hidden", marginBottom: 14 }}>
+        // Design/3: two columns — starred table (left) + selected chart (right).
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(360px,1fr))", gap: 16, alignItems: "start" }}>
+          {/* starred table */}
+          <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderBottom: "1px solid var(--border)" }}>
-              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>
-                STARRED NAMES · {activeGroup.name.toUpperCase()}
-              </span>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".06em", color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 7px" }}>
-                real · EOD close
-              </span>
+              <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>STARRED NAMES · {activeGroup.name.toUpperCase()}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".06em", color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 7px" }}>real · EOD close</span>
             </div>
-
-            <div style={{ overflowX: "auto" }}>
-              <div style={{ minWidth: 960 }}>
-                <div style={{ position: "sticky", top: 0, zIndex: 2, display: "grid", gridTemplateColumns: COLS, background: "var(--soft)", borderBottom: "1px solid var(--border)" }}>
-                  {HEADERS.map((h, i) => (
-                    <div key={h || i} style={{ padding: "9px 12px", fontSize: 9, fontWeight: 700, letterSpacing: ".06em", color: "var(--faint)", textAlign: i === 0 || i === HEADERS.length - 1 ? "left" : "right" }}>
-                      {h}
-                    </div>
-                  ))}
-                </div>
-
-                {!visibleRows.length ? (
-                  <div style={{ padding: 40, textAlign: "center", color: "var(--faint)", fontSize: 13 }}>
-                    {activeGroup.rows.length ? "No symbol in this group matches your search." : "This group is empty — add a ticker to start tracking it."}
-                  </div>
-                ) : (
-                  visibleRows.map((row) => {
-                    const m = metrics[row.symbol];
-                    const since = m?.close != null && row.addedClose ? ((m.close - row.addedClose) / row.addedClose) * 100 : null;
-                    const fromHigh = m?.close != null && m?.high != null && m.high > 0 ? ((m.close - m.high) / m.high) * 100 : null;
-                    const cells: Array<{ text: string; color: string; mono?: boolean }> = [
-                      { text: num(m?.close ?? null), color: "var(--text)", mono: true },
-                      pct(m?.d1 ?? null),
-                      pct(m?.w1 ?? null),
-                      pct(m?.m1 ?? null),
-                      pct(m?.m3 ?? null),
-                      pct(m?.ytd ?? null),
-                      { text: num(m?.high ?? null), color: "var(--muted)", mono: true },
-                      pct(fromHigh),
-                      pct(since),
-                    ];
-                    const on = selected === row.symbol;
-                    return (
-                      <div
-                        key={row.symbol}
-                        style={{ display: "grid", gridTemplateColumns: COLS, borderBottom: "1px solid var(--hair)", background: on ? "var(--soft)" : "transparent" }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => persist({ ...state, selectedSymbol: row.symbol })}
-                          title={`Show ${row.symbol} chart`}
-                          style={{ textAlign: "left", padding: "9px 12px", border: "none", background: "transparent", cursor: "pointer", fontFamily: MONO, fontSize: 12.5, fontWeight: 700, color: "var(--text)" }}
-                        >
-                          {row.symbol}
-                        </button>
-                        {cells.map((c, i) => (
-                          <div key={i} style={{ padding: "9px 12px", textAlign: "right", fontFamily: c.mono === false ? undefined : MONO, fontSize: 12.5, color: c.color }}>
-                            {c.text}
-                          </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => removeRow(row.symbol)}
-                          aria-label={`Remove ${row.symbol}`}
-                          style={{ border: "none", background: "transparent", color: "var(--faint)", cursor: "pointer", fontSize: 14 }}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
+            <div style={{ display: "grid", gridTemplateColumns: COLS, background: "var(--soft)", borderBottom: "1px solid var(--border)", fontSize: 9, fontWeight: 700, letterSpacing: ".05em", color: "var(--faint)" }}>
+              <span style={{ padding: "9px 6px 9px 12px" }}>★</span>
+              <span style={{ padding: "9px 6px" }}>TICKER</span>
+              <span style={{ padding: "9px 6px" }}>SETUP</span>
+              <span style={{ padding: "9px 6px", textAlign: "right" }}>PRICE</span>
+              <span style={{ padding: "9px 6px", textAlign: "right" }}>CHG</span>
+              <span style={{ padding: "9px 6px", textAlign: "right" }}>R/R</span>
+              <span />
+            </div>
+            {!visibleRows.length ? (
+              <div style={{ padding: 40, textAlign: "center", color: "var(--faint)", fontSize: 13 }}>
+                {activeGroup.rows.length ? "No symbol in this group matches your search." : "This group is empty — add a ticker to start tracking it."}
               </div>
-            </div>
-
-            <div style={{ padding: "10px 18px", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, borderTop: "1px solid var(--hair)" }}>
-              Close &amp; 1D% = real EOD close. Multi-period returns, ATH and since-added are <strong>modelled · approx</strong> — ATH is the highest high in
-              published coverage{metrics[visibleRows[0]?.symbol || ""]?.highSince ? ` (from ${metrics[visibleRows[0]!.symbol].highSince})` : ""}, not a true
-              all-time high, and FROM ATH% is the pullback from it. YTD% uses the prior year&apos;s final close where coverage holds it, otherwise the
-              first bar of the year. Cells read <strong>no data</strong> when coverage does not reach back far
-              enough — never an estimate.
+            ) : (
+              visibleRows.map((row) => {
+                const uni = uniMap.get(row.symbol);
+                const tech = bundle?.technical.get(row.symbol);
+                const setupKey = uni?.setupsMatched?.[0];
+                const setup = setupKey ? (setupByKey(setupKey)?.label.split(" ")[0] ?? setupKey) : null;
+                // PRICE / CHG = real EOD close (always, from the technical bundle where the
+                // scanned universe doesn't reach); SETUP / R:R = engine, from the universe.
+                const price = uni?.price ?? (typeof tech?.lastPrice === "number" ? (tech.lastPrice as number) : null);
+                const chgRatio = uni?.chg ?? (typeof tech?.changePercent === "number" ? (tech.changePercent as number) : null);
+                const chg = chgRatio == null ? null : chgRatio * 100;
+                const rr = uni?.rr ?? null;
+                const on = selected === row.symbol;
+                return (
+                  <div key={row.symbol} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center", borderBottom: "1px solid var(--hair)", background: on ? "var(--accentSoft)" : "transparent" }}>
+                    <span style={{ padding: "10px 6px 10px 12px", color: "var(--warning, var(--warn))", fontSize: 13 }}>★</span>
+                    <button type="button" onClick={() => persist({ ...state, selectedSymbol: row.symbol })} title={`Show ${row.symbol} chart`} style={{ padding: "10px 6px", textAlign: "left", border: "none", background: "transparent", cursor: "pointer", fontFamily: MONO, fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{row.symbol}</button>
+                    <span style={{ padding: "10px 6px" }}>{setup ? <span style={{ fontFamily: MONO, fontSize: 9.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 5, padding: "2px 7px" }}>{setup}</span> : <span style={{ fontSize: 10, color: "var(--faint)" }}>—</span>}</span>
+                    <span style={{ padding: "10px 6px", textAlign: "right", fontFamily: MONO, fontSize: 11.5 }}>{price == null ? "—" : formatPrice(price)}</span>
+                    <span style={{ padding: "10px 6px", textAlign: "right", fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: chgColor(chg) }}>{chg == null ? "—" : `${chg > 0 ? "▲" : chg < 0 ? "▼" : "•"} ${chg > 0 ? "+" : ""}${chg.toFixed(2)}%`}</span>
+                    <span style={{ padding: "10px 6px", textAlign: "right", fontFamily: MONO, fontSize: 12, fontWeight: 800, color: rr == null ? "var(--faint)" : rr >= 2 ? "var(--up)" : "var(--warning, var(--warn))" }}>{rr == null ? "—" : `${rr.toFixed(1)}×`}</span>
+                    <button type="button" onClick={() => removeRow(row.symbol)} aria-label={`Remove ${row.symbol}`} style={{ border: "none", background: "transparent", color: "var(--faint)", cursor: "pointer", fontSize: 14 }}>×</button>
+                  </div>
+                );
+              })
+            )}
+            <div style={{ padding: "11px 16px", fontSize: 10, color: "var(--faint)", lineHeight: 1.5 }}>
+              Price &amp; change = real EOD close. Setup &amp; R:R are from the setup engine over the same workbook (real) — a name with no active setup reads <strong>—</strong>, never invented. Rows open the chart; the star removes.
             </div>
           </div>
 
+          {/* selected chart */}
           {selected ? (
             <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderBottom: "1px solid var(--border)" }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>{selected} · DAILY</span>
+                <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800 }}>{selected}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--warning, var(--warn))", background: "var(--warnSoft, var(--soft))", borderRadius: 6, padding: "3px 8px" }}>1-day candles · EOD</span>
                 <div style={{ flex: 1 }} />
-                <button
-                  type="button"
-                  onClick={() => openTicker(selected)}
-                  style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}
-                >
-                  Detail →
-                </button>
+                <button type="button" onClick={() => openTicker(selected)} style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>Detail →</button>
               </div>
-              <TradingViewChart symbol={`IDX:${selected}`} interval="1D" range="3M" minHeight={420} />
+              <TradingViewChart symbol={`IDX:${selected}`} interval="1D" minHeight={460} />
             </div>
           ) : null}
-        </>
+        </div>
       )}
     </section>
   );

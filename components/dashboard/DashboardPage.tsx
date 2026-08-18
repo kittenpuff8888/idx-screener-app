@@ -116,6 +116,27 @@ export function DashboardPage() {
     .filter((g) => g.section === "SECTORAL INDEX" && g.series.length)
     .map((g) => ({ id: g.id, label: normalizeSector(g.label), group: g, series: g.series.filter((p) => !marketDate || p.date <= marketDate) })), [indexes, marketDate]);
 
+  // ── MACRO rail (design/1 · section 0): compact cross-asset strip from the real
+  //    market-context feed. The design's US 10Y / DXY / BI-rate aren't in the feed,
+  //    so the rail carries only the instruments we actually track — labelled, real. ──
+  const macroRail = useMemo(() => {
+    const insts = marketContext?.instruments || [];
+    const disp: Record<string, string> = { USDIDR: "USD/IDR", VIX: "VIX", SPX: "S&P 500", KOSPI: "KOSPI", BTC: "BTC" };
+    return (["USDIDR", "VIX", "SPX", "KOSPI", "BTC"] as const).map((sym) => {
+      const inst = insts.find((i) => i.label.toUpperCase() === sym || i.symbol.toUpperCase() === sym);
+      if (!inst) return null;
+      const vals = (inst.rows || [])
+        .filter((r) => !marketDate || String(r.date) <= marketDate)
+        .map((r) => Number(r.close ?? r.value))
+        .filter((v) => Number.isFinite(v));
+      const last = vals.at(-1) ?? null, prev = vals.at(-2) ?? null;
+      if (last == null) return null;
+      const chg = prev != null && prev !== 0 ? (last / prev - 1) * 100 : null;
+      const value = last >= 1000 ? last.toLocaleString("en-US", { maximumFractionDigits: 0 }) : last.toFixed(2);
+      return { label: disp[sym], value, chg };
+    }).filter((x): x is { label: string; value: string; chg: number | null } => x !== null);
+  }, [marketContext, marketDate]);
+
   const kongloEntries = useMemo<CompareEntry[]>(() => KONGLO_FEATURED
     .map((key) => (indexes?.groups || []).find((g) => g.section === "KONGLO INDEX" && g.label.toLowerCase().includes(key.toLowerCase())))
     .filter((g): g is NonNullable<typeof g> => Boolean(g && g.series.length))
@@ -138,6 +159,22 @@ export function DashboardPage() {
         <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--flat)" }} />
         src: IDX close · as of {marketDate} 16:00:00 WIB · EOD (delayed)
       </div>
+
+      {/* MACRO rail (design/1 · section 0) — compact real cross-asset strip */}
+      {macroRail.length ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", ...CARD, borderRadius: 12, padding: "9px 14px", marginBottom: 14 }}>
+          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", color: "var(--faint)", flex: "none" }}>MACRO</span>
+          {macroRail.map((m) => (
+            <span key={m.label} style={{ display: "inline-flex", alignItems: "baseline", gap: 5, fontSize: 11, background: "var(--soft)", borderRadius: 7, padding: "4px 9px" }}>
+              <span style={{ color: "var(--muted)", fontWeight: 600 }}>{m.label}</span>
+              <span style={{ fontFamily: MONO, fontWeight: 700 }}>{m.value}</span>
+              <span style={{ fontFamily: MONO, fontWeight: 700, color: chgColor(m.chg) }}>{m.chg == null ? "" : `${m.chg > 0 ? "▲" : m.chg < 0 ? "▼" : "•"} ${m.chg > 0 ? "+" : ""}${m.chg.toFixed(2)}%`}</span>
+            </span>
+          ))}
+          <div style={{ flex: 1 }} />
+          <span style={{ fontSize: 9.5, color: "var(--faint)" }}>cross-asset · EOD {marketDate}</span>
+        </div>
+      ) : null}
 
       {/* BREADTH — four tiles (prototype: breadth before the cross-asset row) */}
       <BreadthTiles />
