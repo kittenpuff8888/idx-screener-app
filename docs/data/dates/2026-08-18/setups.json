@@ -1,0 +1,331 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-18",
+ "generatedAt": "2026-08-18T18:03:20.395412+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 4,
+ "setups": [
+  {
+   "ticker": "MNCN",
+   "name": "Media Nusantara Citra Tbk.",
+   "sector": "Others",
+   "close": 202.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 25,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 200,
+   "invalidation": 196.02,
+   "target": 210,
+   "medianValueTraded20": 6779491200,
+   "rvol": 1.634509793867609,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -966114406,
+    -983917506,
+    -950052606,
+    -950052606,
+    -950052606,
+    -910185306,
+    -948361606,
+    -905914306,
+    -905914306,
+    -872201106,
+    -815700306,
+    -841910346,
+    -841910346,
+    -882644246,
+    -846701546,
+    -846701546,
+    -846701546,
+    -836223746,
+    -803693646,
+    -821508196,
+    -806081496,
+    -806081496,
+    -779644796,
+    -747073796,
+    -758248463,
+    -764705229,
+    -764705229,
+    -736402629,
+    -747100063,
+    -693546363
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 18,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMNCN"
+  },
+  {
+   "ticker": "MSIN",
+   "name": "MNC Digital Entertainment Tbk.",
+   "sector": "Others",
+   "close": 370.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 360,
+   "invalidation": 352.44,
+   "target": 403,
+   "medianValueTraded20": 11260034400,
+   "rvol": 0.7131268530226151,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1575733832,
+    1558822018,
+    1556640181,
+    1559473100,
+    1547852300,
+    1518855422,
+    1522450842,
+    1535116602,
+    1529601668,
+    1529601668,
+    1545381068,
+    1535104468,
+    1517105122,
+    1502620922,
+    1517321311,
+    1517321311,
+    1520729219,
+    1505015719,
+    1522210719,
+    1522210719,
+    1517304959,
+    1536703692,
+    1525664242,
+    1540637692,
+    1548794472,
+    1539001806,
+    1561809448,
+    1541828248,
+    1555119248,
+    1566912348
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 25,
+    "hitRate": 0.56,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMSIN"
+  },
+  {
+   "ticker": "CLEO",
+   "name": "Sariguna Primatirta Tbk.",
+   "sector": "Others",
+   "close": 380.0,
+   "score": 65,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 374,
+   "invalidation": 362.59999999999997,
+   "target": 382,
+   "medianValueTraded20": 2558920000,
+   "rvol": 1.099459087027722,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -829019784,
+    -832928984,
+    -830377634,
+    -835531734,
+    -831018334,
+    -834190934,
+    -830734934,
+    -831901201,
+    -831901201,
+    -830430334,
+    -826621734,
+    -822071534,
+    -820611034,
+    -822746734,
+    -822267534,
+    -824784334,
+    -817939534,
+    -815856034,
+    -812113634,
+    -815342284,
+    -815342284,
+    -812655209,
+    -809056576,
+    -811346742,
+    -822631042,
+    -827436802,
+    -822013002,
+    -823583152,
+    -820046952,
+    -813312952
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 4,
+    "hitRate": 0.0,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ACLEO"
+  },
+  {
+   "ticker": "MTEL",
+   "name": "Dayamitra Telekomunikasi Tbk.",
+   "sector": "Others",
+   "close": 438.0,
+   "score": 65,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 422,
+   "invalidation": 413.82,
+   "target": 440,
+   "medianValueTraded20": 21417901200,
+   "rvol": 0.7030432983961593,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    516826710,
+    516826710,
+    551456510,
+    497332510,
+    497332510,
+    528454082,
+    542372548,
+    585055148,
+    593083248,
+    605261148,
+    587792215,
+    587792215,
+    632743615,
+    685888215,
+    660704215,
+    712386415,
+    741651715,
+    741651715,
+    787955515,
+    750688848,
+    701326748,
+    685319348,
+    635879748,
+    595327748,
+    614598648,
+    614598648,
+    648223948,
+    654192315,
+    666238415,
+    676426615
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 11,
+    "hitRate": 0.45,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMTEL"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 962
+}
