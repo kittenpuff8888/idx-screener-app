@@ -1,11 +1,45 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { formatAsOf } from "@/lib/format/number";
 import { newsStories, newsDisclosures, type NewsStory, type NewsTone, type NewsTopic } from "@/lib/data/news";
+import { loadOhlcv } from "@/lib/data/ticker";
 import { PageHeader } from "@/components/shared/PageHeader";
+
+type OhlcvRow = { date?: unknown; close?: unknown; value?: unknown };
+
+// Source → wire code + tier, a labelled classification of the headline's origin
+// (primary filing / newswire / web) — derived from the source name, not invented.
+function sourceTier(src: string): { wire: string; tier: string } {
+  const s = src.toLowerCase();
+  if (/\bidx\b|bursa efek|\bbei\b|ksei|\bojk\b|keterbukaan/.test(s)) return { wire: "IDX", tier: "primary" };
+  if (/bloomberg|reuters|cnbc|antara|dow jones/.test(s)) return { wire: "WIRE", tier: "wire" };
+  if (/kontan|bisnis|investor daily|kompas|detik|emiten|iqplus|pasardana|tradingview/.test(s)) return { wire: "DESK", tier: "desk" };
+  return { wire: "WEB", tier: "media" };
+}
+
+// Real price move since the headline date: latest close vs the close ~ageDays
+// calendar-days earlier in the ticker's own OHLCV series. Null if uncomputable.
+function moveSince(rows: OhlcvRow[] | undefined, ageDays: number | null): number | null {
+  if (!rows || !rows.length || ageDays == null) return null;
+  const closeOf = (r: OhlcvRow) => Number(r.close ?? r.value);
+  const last = rows[rows.length - 1];
+  const lastClose = closeOf(last);
+  if (!Number.isFinite(lastClose) || lastClose === 0) return null;
+  const lastDate = String(last.date ?? "");
+  const target = new Date(lastDate);
+  if (Number.isNaN(target.getTime())) return null;
+  target.setDate(target.getDate() - ageDays);
+  const ts = target.toISOString().slice(0, 10);
+  let past: number | null = null;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i].date ?? "") <= ts) { past = closeOf(rows[i]); break; }
+  }
+  if (past == null || !Number.isFinite(past) || past === 0) return null;
+  return (lastClose / past - 1) * 100;
+}
 
 const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))" };
@@ -54,9 +88,27 @@ export function NewsPage() {
   const catCount = (k: Cat) => all.filter((n) => (k === "all" || n.topic === k) && inRange(n)).length;
 
   const needle = q.trim().toLowerCase();
-  const items = all
+  const items = useMemo(() => all
     .filter((n) => (cat === "all" || n.topic === cat) && inRange(n) && (!needle || `${n.title} ${n.ticker} ${n.company} ${n.sector} ${n.source}`.toLowerCase().includes(needle)))
-    .sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
+    .sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999)), [all, cat, range, needle]);
+
+  // Tickers with a real corporate-action disclosure this snapshot → DISCLOSURE badge.
+  const disclosureSet = useMemo(() => new Set(disclosures.map((d) => d.ticker)), [disclosures]);
+
+  // Real "move since headline": load each visible story's OHLCV once and compute
+  // the price change over its age. RVOL comes free from the technical bundle.
+  const [ohlcv, setOhlcv] = useState<Record<string, OhlcvRow[]>>({});
+  const tickerKey = useMemo(() => [...new Set(items.map((n) => n.ticker).filter(Boolean))].join(","), [items]);
+  useEffect(() => {
+    if (!marketDate) return;
+    const wanted = tickerKey.split(",").filter((t) => t && !(t in ohlcv));
+    if (!wanted.length) return;
+    let cancelled = false;
+    Promise.all(wanted.slice(0, 60).map(async (t) => [t, (await loadOhlcv(marketDate, t))?.rows || []] as const)).then((pairs) => {
+      if (!cancelled) setOhlcv((prev) => ({ ...prev, ...Object.fromEntries(pairs) }));
+    });
+    return () => { cancelled = true; };
+  }, [tickerKey, marketDate, ohlcv]);
 
   // tape sentiment (real, over all parsed headlines)
   const up = all.filter((n) => n.tone === "up").length;
@@ -121,7 +173,14 @@ export function NewsPage() {
         {/* feed */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {items.map((n, i) => (
-            <NewsCard key={`${n.ticker}-${i}`} n={n} onOpen={() => n.ticker && openTicker(n.ticker)} />
+            <NewsCard
+              key={`${n.ticker}-${i}`}
+              n={n}
+              rvol={n.ticker ? (typeof bundle?.technical.get(n.ticker)?.rvol === "number" ? (bundle!.technical.get(n.ticker)!.rvol as number) : null) : null}
+              move={moveSince(ohlcv[n.ticker], n.ageDays)}
+              disclosure={disclosureSet.has(n.ticker)}
+              onOpen={() => n.ticker && openTicker(n.ticker)}
+            />
           ))}
           {bundle && !items.length ? (
             <div style={{ padding: "40px 0", textAlign: "center", color: "var(--faint)", fontSize: 12 }}>No stories match this filter.</div>
@@ -197,30 +256,41 @@ export function NewsPage() {
       </div>
 
       <div style={{ fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, maxWidth: 820, marginTop: 16 }}>
-        Real workbook news feed · {marketDate}. {all.length} headlines parsed from the source snapshot; each links to the ticker detail page. Sentiment (▲/▼/•) is a <strong>labelled model</strong> read, not a price signal. Topic categories (Earnings / Flow / Company / Sector / Macro) are <strong>derived from the headline text</strong> — the feed carries no topic field (see Data Health). Age is the source-reported recency. Records without a headline are omitted (never fabricated); no external article URLs are published because the feed stores none.
+        Real workbook news feed · {marketDate}. {all.length} headlines parsed from the source snapshot; each opens the ticker detail page. Sentiment (▲/▼/•) is a <strong>labelled model</strong> read, not a price signal. Topic categories (Earnings / Flow / Company / Sector / Macro) are <strong>derived from the headline text</strong> — the feed carries no topic field (see Data Health). <strong>Move-since-headline</strong> and <strong>RVOL</strong> are computed from the real OHLCV series; the wire·tier chip is a labelled classification of the source name. Age is the source-reported recency; DISCLOSURE flags a ticker with a real corporate action this snapshot. Records without a headline are omitted (never fabricated); no external article URLs are published because the feed stores none.
       </div>
     </section>
   );
 }
 
-function NewsCard({ n, onOpen }: { n: NewsStory; onOpen: () => void }) {
+const TOPIC_LABEL: Record<NewsTopic, string> = { earnings: "Earnings", flow: "Flow", company: "Company", sector: "Sector", macro: "Macro" };
+
+function NewsCard({ n, rvol, move, disclosure, onOpen }: { n: NewsStory; rvol: number | null; move: number | null; disclosure: boolean; onOpen: () => void }) {
+  const { wire, tier } = sourceTier(n.source);
+  const moveColor = move == null ? "var(--faint)" : move > 0 ? "var(--up)" : move < 0 ? "var(--down)" : "var(--flat)";
   return (
     <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => { if (e.key === "Enter") onOpen(); }} style={{ ...CARD, borderRadius: 13, padding: "15px 17px", cursor: n.ticker ? "pointer" : "default", color: "var(--text)", borderLeft: `3px solid ${toneColor(n.tone)}` }}>
+      {/* header: ticker · topic · disclosure · recency */}
       <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7, flexWrap: "wrap" }}>
         {n.ticker ? <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 6, padding: "3px 8px" }}>{n.ticker}</span> : null}
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 9.5, fontWeight: 700, letterSpacing: ".05em", color: toneColor(n.tone), background: toneBg(n.tone), borderRadius: 6, padding: "3px 8px" }}>
-          {toneGlyph(n.tone)} {toneLabel(n.tone)}
-          <span style={{ fontSize: 8, fontWeight: 800, opacity: 0.7 }}>· MODELLED</span>
-        </span>
+        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".05em", color: toneColor(n.tone), background: toneBg(n.tone), borderRadius: 6, padding: "3px 8px" }}>{TOPIC_LABEL[n.topic]}</span>
+        {disclosure ? <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".04em", color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 5, padding: "2px 6px" }}>DISCLOSURE</span> : null}
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 10, color: "var(--faint)" }}>{ageLabel(n.ageDays, n.when)}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)" }}>{ageLabel(n.ageDays, n.when)}</span>
       </div>
+      {/* headline */}
       <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{n.title}</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 9, fontSize: 10.5, color: "var(--faint)" }}>
-        <span>{n.source}</span>
+      {/* footer: source · wire·tier · sector · move · rvol · sentiment (modelled) */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9, fontSize: 10.5, color: "var(--faint)", flexWrap: "wrap" }}>
+        <span style={{ fontWeight: 700, color: "var(--muted)" }}>{n.source}</span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--soft)", borderRadius: 4, padding: "1px 5px" }}>{wire} · {tier}</span>
         {n.sector && n.sector !== "—" ? <><span>·</span><span>{n.sector}</span></> : null}
         <div style={{ flex: 1 }} />
-        <span style={{ color: "var(--accent)", fontWeight: 700 }}>Open {n.ticker} →</span>
+        {move != null ? <span style={{ fontFamily: MONO, fontWeight: 700, color: moveColor }}>{move > 0 ? "▲" : move < 0 ? "▼" : "•"} {move > 0 ? "+" : ""}{move.toFixed(1)}% since</span> : null}
+        {rvol != null ? <span style={{ fontFamily: MONO, color: "var(--muted)" }}>RVOL {rvol.toFixed(1)}×</span> : null}
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 700, color: toneColor(n.tone) }}>
+          {toneGlyph(n.tone)} {toneLabel(n.tone)}
+          <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 4px" }}>MODELLED</span>
+        </span>
       </div>
     </div>
   );
