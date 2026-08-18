@@ -164,13 +164,8 @@ export function KseiPage() {
         </>
       ) : null}
 
-      {/* ── METRICS (market-ownership overview + real summary distributions) ── */}
-      {ksei && tab === "metrik" ? (
-        <>
-          <KseiMarketOverview ksei={ksei} />
-          <MetricsTab summary={ksei.summary} />
-        </>
-      ) : null}
+      {/* ── METRICS (design/4: ownership hero · type composition · snapshot log) ── */}
+      {ksei && tab === "metrik" ? <KseiMarketOverview ksei={ksei} /> : null}
 
       {/* ── CHANGELOG ── */}
       {ksei && tab === "changelog" ? (
@@ -221,7 +216,7 @@ function IssuerRow({ t, expanded, onToggle, onDetail, onFocus }: { t: KseiIssuer
       {expanded ? (
         <div style={{ borderTop: "1px solid var(--hair)", padding: "2px 16px 10px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "28px 1fr 120px 80px 96px", gap: 8, padding: "8px 0 6px", borderBottom: "1px solid var(--hair)", fontSize: 9, fontWeight: 700, letterSpacing: ".05em", color: "var(--faint)" }}>
-            <span>#</span><span>SHAREHOLDER</span><span>INVESTOR TYPE</span><span>STATUS</span><span style={{ textAlign: "right" }}>% OWNERSHIP</span>
+            <span>#</span><span>SHAREHOLDER</span><span>INVESTOR TYPE</span><span>DOMICILE <span style={{ color: "var(--warning, var(--warn))" }}>·MODELLED</span></span><span style={{ textAlign: "right" }}>% OWNERSHIP</span>
           </div>
           {t.investors.map((h, i) => (
             <div key={i} style={{ display: "grid", gridTemplateColumns: "28px 1fr 120px 80px 96px", gap: 8, alignItems: "center", padding: "7px 0", borderBottom: "1px solid var(--hair)" }}>
@@ -238,70 +233,6 @@ function IssuerRow({ t, expanded, onToggle, onDetail, onFocus }: { t: KseiIssuer
         </div>
       ) : null}
     </div>
-  );
-}
-
-function MetricsTab({ summary }: { summary: Record<string, unknown> }) {
-  const num = (v: unknown): number | null => (typeof v === "number" ? v : null);
-  const dist = (v: unknown): Array<[string, number]> => {
-    if (!v || typeof v !== "object") return [];
-    return Object.entries(v as Record<string, unknown>).map(([k, n]) => [k, Number(n) || 0] as [string, number]).sort((a, b) => b[1] - a[1]);
-  };
-  const ownershipTypes = dist(summary.ownershipTypes);
-  const ccsCategories = dist(summary.ccsCategories);
-  const sectors = dist(summary.sectors);
-  const total = num(summary.totalIssuers) ?? ownershipTypes.reduce((s, [, n]) => s + n, 0);
-  const palette = ["var(--cat-1)", "var(--cat-2)", "var(--cat-3)", "var(--cat-4)", "var(--cat-5)", "var(--cat-6)", "var(--cat-7)", "var(--cat-8)"];
-
-  const avgFloat = num(summary.averageFreeFloat);
-  const avgHhi = num(summary.averageHHI);
-  const tiles: Array<[string, string, string]> = [
-    ["ISSUERS", formatNumber(total, 0), "in the snapshot"],
-    ["AVG FREE FLOAT", avgFloat == null ? "—" : `${avgFloat.toFixed(1)}%`, "market average"],
-    ["AVG HHI", avgHhi == null ? "—" : formatNumber(avgHhi, 0), "concentration index"],
-    ["HIGH CONCENTRATION", formatNumber(num(summary.highConcentrationIssuers), 0), "issuers · HHI-heavy"],
-  ];
-
-  const Bars = ({ title, rows }: { title: string; rows: Array<[string, number]> }) => {
-    const max = Math.max(1, ...rows.map(([, n]) => n));
-    return (
-      <div style={{ ...CARD, padding: "16px 18px" }}>
-        <div style={{ ...KICKER, marginBottom: 12 }}>{title}</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-          {rows.map(([label, n], i) => (
-            <div key={label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 11.5, fontWeight: 600, width: 140, flex: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-              <span style={{ flex: 1, height: 8, background: "var(--soft)", borderRadius: 4, overflow: "hidden" }}>
-                <span style={{ display: "block", width: `${(n / max) * 100}%`, height: "100%", background: palette[i % palette.length], borderRadius: 4 }} />
-              </span>
-              <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, width: 44, textAlign: "right" }}>{formatNumber(n, 0)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12, marginBottom: 14 }}>
-        {tiles.map(([label, value, note]) => (
-          <div key={label} style={{ ...CARD, padding: "15px 18px" }}>
-            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", color: "var(--faint)" }}>{label}</div>
-            <div style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, marginTop: 4 }}>{value}</div>
-            <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 2 }}>{note}</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 14, marginBottom: 14 }}>
-        <Bars title="OWNERSHIP TYPE · ISSUER COUNT" rows={ownershipTypes} />
-        <Bars title="CONCENTRATION (CCS) · ISSUER COUNT" rows={ccsCategories} />
-      </div>
-      {sectors.length ? <div style={{ marginBottom: 14 }}><Bars title="ISSUERS BY SECTOR" rows={sectors.map(([k, n]) => [normalizeSector(k), n] as [string, number])} /></div> : null}
-      <div style={{ fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, maxWidth: 900 }}>
-        Real KSEI summary ({formatAsOf(String(summary.asOf ?? "")) || "latest snapshot"}). Market-level foreign/local composition and the foreign-ownership trend are <strong>not shown</strong> — those require the full 955×5,206 nationality snapshot, which is not in this feed, and are never fabricated. KSEI carries no broker-level buy/sell, so foreign vs local is only ever a labelled proxy.
-      </div>
-    </>
   );
 }
 

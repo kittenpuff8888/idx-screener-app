@@ -157,7 +157,7 @@ export function TickerResearch() {
       </div>
 
       {/* ── SETUP VERDICT | TRADE PLAN (design/00) ─────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(340px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
           <div style={{ ...KICKER, marginBottom: 12 }}>SETUP VERDICT</div>
           {setup ? <SetupActive setup={setup} /> : <SetupNone rangePos={rangePos} offLow={offLow} live={firstLive} onOpen={openTicker} />}
@@ -300,50 +300,88 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr }: { setup: Se
   const rewardTo = setup ? setup.target : VAH; const riskTo = setup ? setup.invalidation : VAL;
   const reward = rewardTo != null && price != null ? rewardTo - price : null;
   const risk = riskTo != null && price != null ? riskTo - price : null;
-  const prices = uniq.map((r) => r.v);
-  const max = Math.max(...prices), min = Math.min(...prices), span = max - min || 1;
-  const yOf = (v: number) => ((max - v) / span) * 100; // 0% at top (max) → 100% at bottom (min)
-  const closeY = price != null ? Math.max(0, Math.min(100, yOf(price))) : 50;
+  const targetRole = setup ? "target" : "VAH"; const invalRole = setup ? "stop" : "VAL";
+
+  // ── Ladder geometry (design/00): dots sit at TRUE price on the spine, label
+  //    rows are spaced perfectly evenly (MG + i·step → never overlap), connected
+  //    by elbow leader lines. Font-size + opacity fade with distance from close;
+  //    the % gap to the next level shows beneath each role. ──
+  const H = 300, MG = 14, spineX = 12;
+  const N = uniq.length, step = N > 1 ? (H - 2 * MG) / (N - 1) : 0;
+  const pxs = uniq.map((r) => r.v);
+  const hiP = Math.max(...pxs), loP = Math.min(...pxs), pad = (hiP - loP) * 0.06 || 1;
+  const axMax = hiP + pad, axMin = loP - pad, axSpan = axMax - axMin || 1;
+  const trueY = (v: number) => MG + ((axMax - v) / axSpan) * (H - 2 * MG);
+  const close = price ?? (loP + hiP) / 2;
+  const maxDist = Math.max(1, ...uniq.filter((r) => r.label !== "CLOSE").map((r) => Math.abs(r.v - close)));
+  const rungs = uniq.map((r, i) => {
+    const isClose = r.label === "CLOSE";
+    const rank = isClose ? 0 : Math.abs(r.v - close) / maxDist;
+    const rel = close ? r.v / close - 1 : 0;
+    const next = uniq[i + 1];
+    const gap = next ? r.v / next.v - 1 : null;
+    const dc = isClose ? "var(--text)" : r.tone === "up" ? "var(--up)" : r.tone === "down" ? "var(--down)" : "var(--flat)";
+    return { label: r.label, isClose, dotY: trueY(r.v), rowTop: MG + i * step, dotR: isClose ? 4 : 3, dotColor: dc,
+      priceStr: formatPrice(r.v), priceColor: isClose ? "var(--text)" : "var(--muted)",
+      rel: isClose ? "" : sPct(rel, 1), relColor: isClose ? "var(--faint)" : rel > 0 ? "var(--up)" : rel < 0 ? "var(--down)" : "var(--flat)",
+      roleColor: isClose ? "var(--text)" : "var(--muted)",
+      fs: isClose ? 13 : 12 - 2 * rank, roleFs: isClose ? 11 : 10.5 - 1.5 * rank, opacity: isClose ? 1 : 1 - 0.4 * rank,
+      gapShow: gap != null && Math.abs(gap) > 0.001, gapText: gap != null ? `${(Math.abs(gap) * 100).toFixed(1)}% ↓` : "" };
+  });
+  const closeY = price != null ? trueY(price) : H / 2;
+  const targetY = rewardTo != null ? trueY(rewardTo) : closeY;
+  const invalY = riskTo != null ? trueY(riskTo) : closeY;
+  const rewardY = Math.min(closeY, targetY), rewardH = Math.abs(closeY - targetY);
+  const riskY = Math.min(closeY, invalY), riskH = Math.abs(closeY - invalY);
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.25fr 1fr", gap: 16, flex: "1 1 auto", alignItems: "stretch" }}>
-        {/* Left: price-positioned levels; reward zone (blue) above the close, risk (red) below. */}
-        <div style={{ position: "relative", minHeight: 210 }}>
-          <div style={{ position: "absolute", left: 52, right: 0, top: 0, height: `${closeY}%`, background: "var(--upSoft)", borderRadius: "6px 6px 0 0" }} />
-          <div style={{ position: "absolute", left: 52, right: 0, top: `${closeY}%`, bottom: 0, background: "var(--downSoft)", borderRadius: "0 0 6px 6px" }} />
-          <div style={{ position: "absolute", left: 57, top: 4, bottom: 4, width: 2, background: "var(--hair)" }} />
-          {uniq.map((r) => {
-            const y = Math.max(0, Math.min(100, yOf(r.v)));
-            const isClose = r.label === "CLOSE";
-            const rel = price != null && price > 0 ? (r.v - price) / price : null;
-            const c = r.tone === "up" ? "var(--up)" : r.tone === "down" ? "var(--down)" : "var(--text)";
-            return (
-              <div key={r.label} style={{ position: "absolute", left: 0, right: 0, top: `${y}%`, transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: isClose ? 800 : 600, width: 50, textAlign: "right", color: isClose ? "var(--text)" : "var(--muted)" }}>{formatPrice(r.v)}</span>
-                <span style={{ width: isClose ? 11 : 9, height: isClose ? 11 : 9, borderRadius: "50%", background: c, flexShrink: 0, border: "2px solid var(--panel)", boxShadow: isClose ? "0 0 0 2px var(--text)" : "none" }} />
-                <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: c, width: 44 }}>{rel == null ? "" : sPct(rel, 1)}</span>
-                <span style={{ fontSize: 10.5, color: isClose ? "var(--text)" : "var(--muted)", fontWeight: isClose ? 800 : 500, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.label}</span>
-              </div>
-            );
-          })}
+      {/* mode row */}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "2px 8px" }}>{setup ? "Active setup" : "Structural · no active setup"}</span>
+        <span style={{ fontSize: 10.5, color: "var(--faint)" }}>R:R {setup ? "from entry" : "from close"}</span>
+      </div>
+      <div style={{ display: "flex", gap: 16, flex: "1 1 auto" }}>
+        {/* Left: true-price spine (reward/risk zones + dots) + evenly-spaced leader rows */}
+        <div style={{ position: "relative", width: 214, flex: "none", height: H }}>
+          <svg viewBox={`0 0 44 ${H}`} preserveAspectRatio="none" style={{ position: "absolute", left: 0, top: 0, width: 44, height: H, overflow: "visible" }}>
+            {rewardH > 0.5 ? <rect x={4} y={rewardY} width={16} height={rewardH} rx={3} fill="var(--upSoft)" /> : null}
+            {riskH > 0.5 ? <rect x={4} y={riskY} width={16} height={riskH} rx={3} fill="var(--downSoft)" /> : null}
+            <line x1={spineX} y1={MG} x2={spineX} y2={H - MG} stroke="var(--hair)" strokeWidth={2} />
+            {rungs.map((r) => (
+              <g key={r.label}>
+                <polyline points={`${spineX},${r.dotY} ${spineX + 13},${r.dotY} ${spineX + 22},${r.rowTop} ${spineX + 30},${r.rowTop}`} fill="none" stroke={r.dotColor} strokeWidth={1} opacity={0.45} />
+                <circle cx={spineX} cy={r.dotY} r={r.dotR} fill={r.dotColor} />
+              </g>
+            ))}
+          </svg>
+          {rungs.map((r) => (
+            <div key={r.label} style={{ position: "absolute", left: 46, right: 0, top: r.rowTop, transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 6, opacity: r.opacity }}>
+              <span style={{ fontFamily: MONO, fontSize: r.fs, fontWeight: 800, width: 44, textAlign: "right", color: r.priceColor }}>{r.priceStr}</span>
+              <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, width: 38, textAlign: "right", color: r.relColor }}>{r.rel}</span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: r.roleFs, fontWeight: 700, color: r.roleColor, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
+                {r.gapShow ? <span style={{ display: "block", fontFamily: MONO, fontSize: 8, color: "var(--faint)" }}>{r.gapText}</span> : null}
+              </span>
+            </div>
+          ))}
         </div>
-        {/* Right: reward / risk / references, vertically centred */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, justifyContent: "center" }}>
-          <div style={{ background: "var(--upSoft)", borderRadius: 9, padding: "9px 12px" }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: "var(--up)" }}>REWARD · to {setup ? "target" : "VAH"}</div>
-            <div style={{ fontFamily: MONO, fontSize: 18, fontWeight: 800, color: "var(--up)" }}>{reward == null ? "—" : `${reward >= 0 ? "+" : ""}${formatNumber(reward, 0)}`} {reward != null && price ? <span style={{ fontSize: 10.5 }}>({sPct(reward / price, 1)})</span> : null}</div>
+        {/* Right: reward / risk readout */}
+        <div style={{ flex: "1 1 auto", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10, minWidth: 0 }}>
+          <div style={{ background: "var(--upSoft)", borderRadius: 11, padding: "11px 13px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--up)" }}>REWARD · to {targetRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 19, fontWeight: 800, color: "var(--up)" }}>{reward == null ? "—" : `+${formatNumber(Math.abs(reward), 0)}`} {reward != null && price ? <span style={{ fontSize: 12, fontWeight: 600 }}>({sPct(Math.abs(reward) / price, 1)})</span> : null}</div>
           </div>
-          <div style={{ background: "var(--downSoft)", borderRadius: 9, padding: "9px 12px" }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, color: "var(--down)" }}>RISK · to {setup ? "stop" : "VAL"}</div>
-            <div style={{ fontFamily: MONO, fontSize: 18, fontWeight: 800, color: "var(--down)" }}>{risk == null ? "—" : `${formatNumber(risk, 0)}`} {risk != null && price ? <span style={{ fontSize: 10.5 }}>({sPct(risk / price, 1)})</span> : null}</div>
+          <div style={{ background: "var(--downSoft)", borderRadius: 11, padding: "11px 13px" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--down)" }}>RISK · to {invalRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 19, fontWeight: 800, color: "var(--down)" }}>{risk == null ? "—" : `−${formatNumber(Math.abs(risk), 0)}`} {risk != null && price ? <span style={{ fontSize: 12, fontWeight: 600 }}>({sPct(-Math.abs(risk) / price, 1)})</span> : null}</div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <div style={{ background: "var(--soft)", borderRadius: 9, padding: "7px 10px" }}><div style={{ fontSize: 8, color: "var(--faint)" }}>ATR (14)</div><div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>{atr == null ? "—" : `${atr.toFixed(1)}%`}</div></div>
-            <div style={{ background: "var(--soft)", borderRadius: 9, padding: "7px 10px" }}><div style={{ fontSize: 8, color: "var(--faint)" }}>Reference</div><div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>Close {price == null ? "—" : formatPrice(price)}</div></div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "7px 9px" }}><div style={{ fontSize: 9, color: "var(--faint)" }}>ATR (14)</div><div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>{atr == null ? "—" : `${atr.toFixed(1)}%`}</div></div>
+            <div style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "7px 9px" }}><div style={{ fontSize: 9, color: "var(--faint)" }}>Reference</div><div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>Close {price == null ? "—" : formatPrice(price)}</div></div>
           </div>
         </div>
       </div>
-      <p style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>{setup ? "Entry / stop / target" : "Value-area frame · VAH target / VAL invalidation"} — levels nearest the close are most prominent. Real structural levels only — nothing fabricated.</p>
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--hair)", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.45 }}>{setup ? "Entry · stop · target" : "Value-area frame · VAH target / VAL invalidation"} · levels nearest the close are most prominent. Real structural levels only — nothing fabricated.</div>
     </div>
   );
 }
