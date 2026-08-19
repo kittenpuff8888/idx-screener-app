@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
-import { TradingViewChart } from "@/components/dashboard/TradingViewChart";
+import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
 import { formatPrice } from "@/lib/format/number";
 import { loadUniverse, setupByKey, type Universe, type UniverseRow } from "@/lib/data/screenerUniverse";
 import {
@@ -183,8 +183,8 @@ export function WatchlistPage() {
           <div style={{ fontSize: 13, color: "var(--muted)" }}>Create a group, then add the tickers you want to track.</div>
         </div>
       ) : (
-        // Design/3: two columns — starred table (left) + selected chart (right).
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(360px,1fr))", gap: 16, alignItems: "start" }}>
+        // Stacked: starred table on top (fixed height, scrolls past ~5 rows) + chart below.
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* starred table */}
           <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderBottom: "1px solid var(--border)" }}>
@@ -200,6 +200,7 @@ export function WatchlistPage() {
               <span style={{ padding: "9px 6px", textAlign: "right" }}>R/R</span>
               <span />
             </div>
+            <div style={{ maxHeight: 232, overflowY: "auto" }}>
             {!visibleRows.length ? (
               <div style={{ padding: 40, textAlign: "center", color: "var(--faint)", fontSize: 13 }}>
                 {activeGroup.rows.length ? "No symbol in this group matches your search." : "This group is empty — add a ticker to start tracking it."}
@@ -230,6 +231,7 @@ export function WatchlistPage() {
                 );
               })
             )}
+            </div>
             <div style={{ padding: "11px 16px", fontSize: 10, color: "var(--faint)", lineHeight: 1.5 }}>
               Price &amp; change = real EOD close. Setup &amp; R:R are from the setup engine over the same workbook (real) — a name with no active setup reads <strong>—</strong>, never invented. Rows open the chart; the star removes.
             </div>
@@ -242,6 +244,7 @@ export function WatchlistPage() {
                 <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800 }}>{selected}</span>
                 <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--warning, var(--warn))", background: "var(--warnSoft, var(--soft))", borderRadius: 6, padding: "3px 8px" }}>1-day candles · EOD</span>
                 <div style={{ flex: 1 }} />
+                <ChartIndicatorPicker />
                 <button type="button" onClick={() => openTicker(selected)} style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>Detail →</button>
               </div>
               <TradingViewChart symbol={`IDX:${selected}`} interval="1D" minHeight={460} />

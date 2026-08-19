@@ -55,6 +55,23 @@ function IndicatorPicker({ selected, onToggle }: { selected: string[]; onToggle:
   );
 }
 
+/** Standalone ƒx indicator picker wired to the site-wide saved study set — for
+    placing inline in a page header (next to the range tabs / TradingView link)
+    instead of above the chart. Stays in sync with every chart via chartStudies. */
+export function ChartIndicatorPicker() {
+  const [studies, setStudies] = useState<string[]>([]);
+  useEffect(() => {
+    setStudies(loadStudies());
+    return subscribeStudies(setStudies);
+  }, []);
+  function toggle(id: string) {
+    const next = studies.includes(id) ? studies.filter((x) => x !== id) : [...studies, id];
+    setStudies(next);
+    saveStudies(next);
+  }
+  return <IndicatorPicker selected={studies} onToggle={toggle} />;
+}
+
 /** TradingView advanced-chart embed. Interval is forced to 1D (like the IHSG
     hero chart). The study set is site-wide, saved to localStorage, and applied
     to every chart; the optional picker edits it and all charts re-mount. */
