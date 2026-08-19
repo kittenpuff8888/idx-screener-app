@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { fetchJson } from "@/lib/data/client";
 import { loadOhlcv } from "@/lib/data/ticker";
 import type { JsonRecord, OhlcvPayload } from "@/lib/domain/types";
-import { TradingViewChart } from "@/components/dashboard/TradingViewChart";
+import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
+import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
 const MONO = "var(--font-mono)";
@@ -64,7 +65,7 @@ export function TickerResearch() {
   const stock = ticker ? bundle?.technical.get(ticker) : undefined;
   const fund = ticker ? bundle?.fundamentals.get(ticker) : undefined;
   const ownership = ticker ? ksei?.records.find((r) => r.ticker === ticker) : undefined;
-  const news = ticker ? bundle?.news.get(ticker) : undefined;
+  const tickerNews = useMemo(() => (ticker ? newsStories(bundle).filter((nn) => nn.ticker === ticker) : []), [bundle, ticker]);
   const indexRecord = ticker ? idxIndex?.records[ticker] : undefined;
 
   useEffect(() => {
@@ -160,7 +161,7 @@ export function TickerResearch() {
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
           <div style={{ ...KICKER, marginBottom: 12 }}>SETUP VERDICT</div>
-          {setup ? <SetupActive setup={setup} /> : <SetupNone rangePos={rangePos} offLow={offLow} live={firstLive} onOpen={openTicker} />}
+          {setup ? <SetupActive setup={setup} /> : <SetupNone rangePos={rangePos} offLow={offLow} />}
         </div>
         <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -177,15 +178,16 @@ export function TickerResearch() {
           <span style={KICKER}>PRICE · {ticker} · VWAP + MA</span>
           {[["VAL", VAL], ["PoC", PoC], ["VAH", VAH]].map(([l, v]) => v != null ? <span key={l as string} style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 7px" }}>{l} {formatPrice(v as number)}</span> : null)}
           <div style={{ flex: 1 }} />
+          <ChartIndicatorPicker />
           <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
             {(["1M", "3M", "6M", "1Y"] as const).map((r) => <button key={r} type="button" onClick={() => setRange(r)} style={{ fontSize: 10.5, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: range === r ? "var(--accent)" : "transparent", color: range === r ? "#fff" : "var(--muted)" }}>{r}</button>)}
           </div>
         </div>
-        <TradingViewChart symbol={`IDX:${ticker}`} range={range === "1Y" ? "12M" : range} interval="1D" minHeight={460} showIndicatorPicker />
+        <TradingViewChart symbol={`IDX:${ticker}`} range={range === "1Y" ? "12M" : range} interval="1D" minHeight={460} />
       </div>
 
       {/* ── KEY STATISTICS | COMPANY INFO ──────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <Section title="KEY STATISTICS"><KeyStats fund={fund} /></Section>
         <Section title="COMPANY INFORMATION"><CompanyInfo fund={fund} ownership={ownership} /></Section>
       </div>
@@ -194,26 +196,24 @@ export function TickerResearch() {
       <div style={{ marginBottom: 14 }}><TechnicalCard stock={stock as JsonRecord | undefined} t={t} ma={ma} price={price} VAL={VAL} VAH={VAH} PoC={PoC} /></div>
 
       {/* ── RETURNS | OWNERSHIP ────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <Section title="RETURNS · vs SECTOR & IHSG"><Returns fund={fund} ihsg={ihsg} sectorSeries={sectorSeries(indexes, sector)} /></Section>
         <Section title="OWNERSHIP · KSEI" badge={<span style={{ fontSize: 9.5, color: "var(--faint)" }}>as of {ksei?.asOf || marketDate}</span>}><Ownership ownership={ownership} footprint={setup?.kseiFootprint} /></Section>
       </div>
 
       {/* ── DIVIDEND | NEWS | PEERS ────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <Section title="DIVIDEND"><Dividend fund={fund} /></Section>
-        <Section title="NEWS & CATALYSTS"><NewsList news={news} /></Section>
+        <Section title="NEWS & CATALYSTS"><NewsList stories={tickerNews} /></Section>
         <Section title={`SECTOR PEERS · ${sector.toUpperCase()}`}><Peers ticker={ticker} sector={sector} ksei={ksei?.records || []} bundle={bundle} onOpen={openTicker} /></Section>
       </div>
 
       {/* ── CORP CALENDAR | FILINGS ────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <Section title="CORPORATE-ACTION CALENDAR"><CorpCalendar fund={fund} /></Section>
         <Section title="FILINGS & DISCLOSURES"><Filings indexRecord={indexRecord} kseiAsOf={ksei?.asOf} marketDate={marketDate} /></Section>
       </div>
 
-      {/* ── RECENT SETUPS ──────────────────────────────────────── */}
-      <div style={{ marginBottom: 14 }}><Section title="RECENT SETUPS · SIGNAL ENGINE"><RecentSetups hist={hist} onOpen={openTicker} /></Section></div>
 
       <p style={{ fontSize: 10, color: "var(--faint)", lineHeight: 1.6, margin: "4px 4px 20px" }}>
         <b style={{ color: "var(--muted)" }}>Real vs modelled.</b> <b style={{ color: "var(--up)" }}>Real</b> (decision-grade): setup score &amp; components, entry/stop/target, ROE, returns, 52-week range, KSEI net-flow. <b style={{ color: "var(--warning)" }}>Modelled / representative</b> (labelled): technical RSI/MA reads, ownership foreign/local split, corporate-action &amp; filings calendar, sample news. Genuinely-absent fields read <b>no data</b>, never fabricated. Data as of {marketDate} close (EOD, delayed) — not investment advice.
@@ -273,7 +273,7 @@ function SetupActive({ setup }: { setup: Setup }) {
   );
 }
 
-function SetupNone({ rangePos, offLow, live, onOpen }: { rangePos: number | null; offLow: number | null; live?: string; onOpen: (t: string) => void }) {
+function SetupNone({ rangePos, offLow }: { rangePos: number | null; offLow: number | null }) {
   return (
     <div>
       <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>No active setup</div>
@@ -281,7 +281,6 @@ function SetupNone({ rangePos, offLow, live, onOpen }: { rangePos: number | null
       <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.55, marginTop: 12 }}>
         {rangePos != null ? `At ${Math.round(rangePos)}% of its 52-week range${offLow != null ? ` and ${offLow.toFixed(0)}% off the low` : ""} — a value location. ` : ""}The signal engine has not flagged a triggered entry.
       </p>
-      {live ? <button type="button" onClick={() => onOpen(live)} style={{ marginTop: 12, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 9, padding: "8px 12px", cursor: "pointer" }}>▶ See a live setup · {live}</button> : null}
     </div>
   );
 }
@@ -720,19 +719,26 @@ const Row = ({ label, children }: { label: string; children: React.ReactNode }) 
   <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderTop: HAIR, fontSize: 12 }}><span style={{ color: "var(--muted)" }}>{label}</span><span style={{ fontFamily: MONO, fontWeight: 600 }}>{children}</span></div>
 );
 
-function NewsList({ news }: { news?: { stories?: Array<{ title: string; category?: string; when?: string }> } }) {
-  const stories = news?.stories || [];
+const NEWS_TOPIC: Record<string, string> = { earnings: "Earnings", flow: "Flow", company: "Company", sector: "Sector", macro: "Macro" };
+function NewsList({ stories }: { stories: NewsStory[] }) {
   if (!stories.length) return <div style={{ fontSize: 12, color: "var(--muted)" }}>No recent headlines for this ticker.</div>;
   return (
-    <div>{stories.slice(0, 4).map((s, i) => (
-      <div key={i} style={{ padding: "8px 0", borderTop: i ? HAIR : "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
-          {s.category ? <span style={{ fontSize: 8.5, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 6px" }}>{s.category}</span> : null}
-          {s.when ? <span style={{ fontSize: 9.5, color: "var(--faint)" }}>{s.when}</span> : null}
+    <div>{stories.slice(0, 5).map((s, i) => {
+      const dot = s.tone === "up" ? "var(--up)" : s.tone === "down" ? "var(--down)" : "var(--flat)";
+      const age = s.ageDays == null ? s.when : s.ageDays === 0 ? "today" : s.ageDays === 1 ? "1 day ago" : s.ageDays < 7 ? `${s.ageDays} days ago` : s.ageDays < 30 ? `~${Math.round(s.ageDays / 7)}w ago` : `${Math.round(s.ageDays / 30)}mo ago`;
+      return (
+        <div key={i} style={{ display: "flex", gap: 9, padding: "8px 0", borderTop: i ? HAIR : "none" }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, marginTop: 6, flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12, lineHeight: 1.35 }}>{s.title}</div>
+            <div style={{ display: "flex", gap: 7, alignItems: "center", marginTop: 3 }}>
+              <span style={{ fontSize: 8.5, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 6px" }}>{NEWS_TOPIC[s.topic] || s.topic}</span>
+              <span style={{ fontSize: 9.5, color: "var(--faint)" }}>{s.source}{age ? ` · ${age}` : ""}</span>
+            </div>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.4 }}>{s.title}</div>
-      </div>
-    ))}</div>
+      );
+    })}</div>
   );
 }
 

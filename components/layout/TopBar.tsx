@@ -48,8 +48,19 @@ export function TopBar() {
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return [];
+    // Rank by relevance so an exact/prefix TICKER match (e.g. "bumi" → BUMI) leads
+    // the list instead of being buried alphabetically among name matches.
+    const score = (item: { ticker: string; label: string }) => {
+      const t = item.ticker.toLowerCase(), l = item.label.toLowerCase();
+      if (t === needle) return 0;
+      if (t.startsWith(needle)) return 1;
+      if (t.includes(needle)) return 2;
+      if (l.startsWith(needle)) return 3;
+      return 4;
+    };
     return tickerOptions
       .filter((item) => item.ticker.toLowerCase().includes(needle) || item.label.toLowerCase().includes(needle))
+      .sort((a, b) => score(a) - score(b) || a.ticker.localeCompare(b.ticker))
       .slice(0, 8);
   }, [query, tickerOptions]);
 

@@ -75,8 +75,16 @@ function labelFit(ticker: string, pxW: number, pxH: number) {
   return { showTicker, showPct: showTicker && pxW >= 58 && pxH >= 36, showCap: showTicker && pxW >= 96 && pxH >= 74, fsT, fsP: pxH >= 58 ? 11.5 : 10 };
 }
 
-const W = 1000, H = Math.round((1000 * 7) / 16), GAP = 2.4, HEAD = 20;
-const pct = (r: Rect) => ({ left: `${((r.x / W) * 100).toFixed(3)}%`, top: `${((r.y / H) * 100).toFixed(3)}%`, width: `${((r.w / W) * 100).toFixed(3)}%`, height: `${((r.h / H) * 100).toFixed(3)}%`, wFrac: r.w / W, hFrac: r.h / H });
+const W = 1000, H = (1000 * 7) / 16, GAP = 2.4, HEAD = 20;
+// Clamp each rect to the container so accumulated squarify rounding can't push a
+// tile past the right/bottom edge (which the container would otherwise shave off).
+const pct = (r: Rect) => {
+  const left = Math.max(0, Math.min(100, (r.x / W) * 100));
+  const top = Math.max(0, Math.min(100, (r.y / H) * 100));
+  const width = Math.max(0, Math.min((r.w / W) * 100, 100 - left));
+  const height = Math.max(0, Math.min((r.h / H) * 100, 100 - top));
+  return { left: `${left.toFixed(3)}%`, top: `${top.toFixed(3)}%`, width: `${width.toFixed(3)}%`, height: `${height.toFixed(3)}%`, wFrac: r.w / W, hFrac: r.h / H };
+};
 
 export function MarketMapTreemap() {
   const { bundle, ksei, marketDate, openTicker } = useApp();

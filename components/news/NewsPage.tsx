@@ -176,9 +176,9 @@ export function NewsPage() {
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)", gap: 16 }}>
-        {/* feed */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
+        {/* feed — only this column scrolls; header + right rail stay put (design/5) */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: "calc(100vh - 200px)", overflowY: "auto", paddingRight: 4 }}>
           {items.map((n, i) => (
             <NewsCard
               key={`${n.ticker}-${i}`}
@@ -196,7 +196,7 @@ export function NewsPage() {
         </div>
 
         {/* right rail (design/5 order: most-mentioned · events · sentiment) */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 16, maxHeight: "calc(100vh - 200px)", overflowY: "auto" }}>
           {/* most-mentioned tickers — real mention frequency */}
           <div style={{ ...CARD, padding: "16px 18px" }}>
             <div style={{ ...KICKER, marginBottom: 10 }}>MOST-MENTIONED TICKERS</div>
