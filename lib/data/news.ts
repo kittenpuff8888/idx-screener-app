@@ -91,15 +91,19 @@ function parseSentimentNews(raw: string): { title: string; source: string; when:
   return { title, source, when };
 }
 
-export function newsStories(bundle: ResearchBundle | null): NewsStory[] {
+export function newsStories(bundle: ResearchBundle | null, sectorOf?: Map<string, string>): NewsStory[] {
   if (!bundle) return [];
   const out: NewsStory[] = [];
   bundle.news.forEach((row: JsonRecord, ticker: string) => {
     const parsed = parseSentimentNews(String(row["Sentiment News"] ?? ""));
     if (!parsed) return;
     const stock = bundle.technical.get(ticker);
-    const sectorRaw = row.Sector || stock?.sector;
-    const sector = sectorRaw ? normalizeSector(String(sectorRaw)) : "—";
+    // The workbook ships "IDX Sector" as "-" on fundamentals/technical, so those
+    // fall through to "Others". The KSEI registry carries the real sector name —
+    // the caller passes it in (same source the dashboard's sector breadth uses).
+    const fromKsei = sectorOf?.get(ticker);
+    const rawFallback = row.Sector || stock?.sector;
+    const sector = fromKsei || (rawFallback ? normalizeSector(String(rawFallback)) : "—");
     out.push({
       ticker,
       company: String(row.Company || stock?.companyName || ticker),

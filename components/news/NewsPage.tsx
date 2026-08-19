@@ -76,12 +76,19 @@ type Range = 7 | 14 | 31 | 93;
 const RANGES: Array<[Range, string]> = [[7, "Last 1 week"], [14, "Last 2 weeks"], [31, "Last 1 month"], [93, "Last 3 months"]];
 
 export function NewsPage() {
-  const { bundle, marketDate, openTicker } = useApp();
+  const { bundle, marketDate, openTicker, ksei } = useApp();
   const [cat, setCat] = useState<Cat>("all");
   const [range, setRange] = useState<Range>(7);
   const [q, setQ] = useState("");
 
-  const all = useMemo(() => newsStories(bundle), [bundle]);
+  // The workbook's per-ticker sector is "-"; the KSEI registry carries the real
+  // sector name (same map the dashboard sector-breadth uses).
+  const sectorOf = useMemo(() => {
+    const m = new Map<string, string>();
+    ksei?.records.forEach((r) => { if (r.sector && r.sector !== "Others") m.set(r.ticker, r.sector); });
+    return m;
+  }, [ksei]);
+  const all = useMemo(() => newsStories(bundle, sectorOf), [bundle, sectorOf]);
   const disclosures = useMemo(() => newsDisclosures(bundle), [bundle]);
 
   const inRange = (n: NewsStory) => n.ageDays == null || n.ageDays <= range;
@@ -188,48 +195,9 @@ export function NewsPage() {
           {!bundle ? <div style={{ padding: "40px 0", textAlign: "center", color: "var(--faint)", fontSize: 12 }}>Loading the newswire…</div> : null}
         </div>
 
-        {/* right rail */}
+        {/* right rail (design/5 order: most-mentioned · events · sentiment) */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* tape sentiment */}
-          <div style={{ ...CARD, padding: "16px 18px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-              <span style={KICKER}>TAPE SENTIMENT · {formatAsOf(marketDate) || marketDate}</span>
-              <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".08em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" }}>MODELLED</span>
-            </div>
-            <div style={{ display: "flex", gap: 2, height: 14, borderRadius: 6, overflow: "hidden", marginBottom: 12 }} role="img" aria-label={`Sentiment: ${up} bullish, ${flat} neutral, ${down} bearish`}>
-              <div style={{ width: pct(up), background: "var(--up)" }} />
-              <div style={{ width: pct(flat), background: "var(--flat)", opacity: 0.4 }} />
-              <div style={{ width: pct(down), background: "var(--down)" }} />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11.5 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--up)", fontWeight: 700 }}>▲ Positive</span><span style={{ fontFamily: MONO }}>{up}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)", fontWeight: 700 }}>• Neutral</span><span style={{ fontFamily: MONO }}>{flat}</span></div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--down)", fontWeight: 700 }}>▼ Negative</span><span style={{ fontFamily: MONO }}>{down}</span></div>
-            </div>
-            <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.45 }}>Sentiment is a labelled model read on {all.length} headlines in this snapshot — not a price signal.</div>
-          </div>
-
-          {/* disclosure (real corporate actions) */}
-          <div style={{ ...CARD, padding: "16px 18px" }}>
-            <div style={{ ...KICKER, marginBottom: 12 }}>DISCLOSURE · CORPORATE ACTIONS</div>
-            {disclosures.length ? (
-              disclosures.slice(0, 8).map((d, i) => (
-                <button key={`${d.ticker}-${i}`} type="button" onClick={() => openTicker(d.ticker)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 0", borderTop: i ? "1px solid var(--hair)" : "none", background: "transparent", border: "none", cursor: "pointer", color: "var(--text)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800, color: "var(--accent)" }}>{d.ticker}</span>
-                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 6px" }}>{d.category}</span>
-                    <div style={{ flex: 1 }} />
-                    {d.when ? <span style={{ fontSize: 10, color: "var(--faint)" }}>{d.when}</span> : null}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.35 }}>{d.title}</div>
-                </button>
-              ))
-            ) : (
-              <div style={{ fontSize: 11.5, color: "var(--faint)" }}>No corporate actions flagged in this snapshot.</div>
-            )}
-          </div>
-
-          {/* most-mentioned tickers (design/5. News.dc.html) — real mention frequency */}
+          {/* most-mentioned tickers — real mention frequency */}
           <div style={{ ...CARD, padding: "16px 18px" }}>
             <div style={{ ...KICKER, marginBottom: 10 }}>MOST-MENTIONED TICKERS</div>
             {mentioned.length ? (
@@ -247,10 +215,32 @@ export function NewsPage() {
 
           {/* economic & events calendar — honest: no forward calendar in the feed */}
           <div style={{ ...CARD, padding: "16px 18px" }}>
-            <div style={{ ...KICKER, marginBottom: 10 }}>ECONOMIC &amp; EVENTS CALENDAR</div>
-            <div style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
-              No forward-dated event calendar in this snapshot. The workbook flags corporate actions after the fact — see DISCLOSURE above ({disclosures.length} flagged). A dated calendar is not fabricated here.
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+              <span style={KICKER}>ECONOMIC &amp; EVENTS CALENDAR</span>
+              <span style={{ fontSize: 8, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px" }}>SCHEDULE</span>
             </div>
+            <div style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5 }}>
+              No forward-dated event calendar in this snapshot. The workbook flags {disclosures.length} corporate action{disclosures.length === 1 ? "" : "s"} after the fact, surfaced by the DISCLOSURE badge on the story cards. A dated calendar is not fabricated here.
+            </div>
+          </div>
+
+          {/* tape sentiment */}
+          <div style={{ ...CARD, padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={KICKER}>TAPE SENTIMENT · {formatAsOf(marketDate) || marketDate}</span>
+              <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: ".08em", color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" }}>MODELLED</span>
+            </div>
+            <div style={{ display: "flex", gap: 2, height: 14, borderRadius: 6, overflow: "hidden", marginBottom: 12 }} role="img" aria-label={`Sentiment: ${up} bullish, ${flat} neutral, ${down} bearish`}>
+              <div style={{ width: pct(up), background: "var(--up)" }} />
+              <div style={{ width: pct(flat), background: "var(--flat)", opacity: 0.4 }} />
+              <div style={{ width: pct(down), background: "var(--down)" }} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 11.5 }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--up)", fontWeight: 700 }}>▲ Positive</span><span style={{ fontFamily: MONO }}>{up}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--muted)", fontWeight: 700 }}>• Neutral</span><span style={{ fontFamily: MONO }}>{flat}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--down)", fontWeight: 700 }}>▼ Negative</span><span style={{ fontFamily: MONO }}>{down}</span></div>
+            </div>
+            <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.45 }}>Sentiment is a labelled model read on {all.length} headlines in this snapshot — not a price signal.</div>
           </div>
         </div>
       </div>
