@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/providers/AppProvider";
+import { kseiSectorMap } from "@/lib/data/ksei";
 import { formatPercent, formatPrice } from "@/lib/format/number";
 import {
   CONTEXT_BY_KEY,
@@ -59,7 +60,11 @@ function readPresets(): SavedPreset[] {
 }
 
 export function ScreenerPage() {
-  const { marketDate, openTicker } = useApp();
+  const { marketDate, openTicker, ksei } = useApp();
+  // Real per-ticker sector (the workbook ships "IDX Sector" as "-").
+  const kseiSec = useMemo(() => kseiSectorMap(ksei), [ksei]);
+  const secLabel = (t: string, fallback: string) => kseiSec.get(t)?.label || fallback;
+  const secCode = (t: string, fallback: string) => kseiSec.get(t)?.code || fallback;
   const [universe, setUniverse] = useState<Universe | null>(null);
   const [history, setHistory] = useState<HistoryDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -105,11 +110,12 @@ export function ScreenerPage() {
   const passGeneral = useCallback(
     (r: UniverseRow) => {
       if (fTicker && !r.ticker.toLowerCase().includes(fTicker.toLowerCase())) return false;
-      if (fSector && r.sectorCode !== fSector) return false;
+      if (fSector && secCode(r.ticker, r.sectorCode) !== fSector) return false;
       if (!passLiquidity(r, fLiq)) return false;
       return true;
     },
-    [fTicker, fSector, fLiq],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- secCode is stable per kseiSec
+    [fTicker, fSector, fLiq, kseiSec],
   );
 
   const filtered = useMemo(() => {
@@ -227,7 +233,7 @@ export function ScreenerPage() {
     const cell = (c: Cell) => (c.available ? `${c.label} (${c.val})` : "no data");
     const lines = sorted.map((r) =>
       [
-        r.ticker, r.sectorLabel, r.setupsMatched.join("|") || "-",
+        r.ticker, secLabel(r.ticker, r.sectorLabel), r.setupsMatched.join("|") || "-",
         cell(r.cellTrend), cell(r.cellStructure), cell(r.cellVwap), cell(r.cellLiquidity),
         r.entry ?? "", r.invalidation ?? "", r.target ?? "", r.rr ?? "", (r.chg * 100).toFixed(2),
       ].map(esc).join(","),
@@ -519,7 +525,7 @@ export function ScreenerPage() {
                 <div key={r.ticker} role="button" tabIndex={0} onClick={() => openTicker(r.ticker)} onKeyDown={(e) => { if (e.key === "Enter") openTicker(r.ticker); }} style={{ display: "grid", gridTemplateColumns: GRID, borderBottom: "1px solid var(--hair)", color: "var(--text)", background: rowBg, cursor: "pointer" }}>
                   <div style={{ position: "sticky", left: 0, zIndex: 5, background: rowBg, padding: "9px 12px", borderRight: "1px solid var(--hair)" }}>
                     <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 800 }}>{r.ticker}</div>
-                    <div style={{ fontSize: 9, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.sectorLabel}</div>
+                    <div style={{ fontSize: 9, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{secLabel(r.ticker, r.sectorLabel)}</div>
                   </div>
                   <div style={{ padding: "9px 12px", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                     {r.setupsMatched.slice(0, 3).map((k) => {
