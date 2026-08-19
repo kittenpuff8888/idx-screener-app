@@ -81,6 +81,17 @@ export async function loadKseiTrend(): Promise<KseiTrend | null> {
   }
 }
 
+/** ticker → real IDX sector { code, label } from the KSEI registry. The workbook
+    ships "IDX Sector" as "-" on fundamentals/technical/screener rows, so this is
+    the reliable per-ticker sector source (used by News, Screener, Ticker). */
+export function kseiSectorMap(ksei: KseiPayload | null): Map<string, { code: string; label: string }> {
+  const m = new Map<string, { code: string; label: string }>();
+  (ksei?.records || []).forEach((r) => {
+    if (r.sector && r.sector !== "Others") m.set(r.ticker, { code: r.idxSectorRaw, label: r.sector });
+  });
+  return m;
+}
+
 export function buildInvestorDirectory(ksei: KseiPayload | null) {
   const directory = new Map<string, Array<{ issuer: KseiIssuer; rank: number; type: string; percentage: number }>>();
   (ksei?.records || []).forEach((issuer) => {
