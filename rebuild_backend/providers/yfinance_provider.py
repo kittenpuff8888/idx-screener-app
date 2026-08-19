@@ -101,7 +101,20 @@ class YFinanceProvider(MarketDataProvider):
         symbol = self.source_symbol(ticker)
         try:
             instrument = self._ticker(ticker)
-            info = self._retry(lambda: instrument.info or {})
+            # yfinance returns an EMPTY dict (not an exception) when rate-limited,
+            # so a bare retry never fires and the ticker silently gets no
+            # fundamentals. Treat empty info as a failure so _retry backs off and
+            # tries again; only fall back to {} once the retries are exhausted.
+            def _load_info() -> dict:
+                data = instrument.info or {}
+                if not data:
+                    raise RuntimeError("empty info (likely rate-limited)")
+                return data
+
+            try:
+                info = self._retry(_load_info)
+            except Exception:
+                info = {}
             try:
                 fast_info = dict(instrument.fast_info)
             except Exception:
@@ -133,8 +146,17 @@ class YFinanceProvider(MarketDataProvider):
         try:
             instrument = self._ticker(ticker)
             target = f"quarterly_{attribute}" if period.lower().startswith("q") else attribute
-            frame = self._retry(lambda: getattr(instrument, target))
-            if frame is None or frame.empty:
+            # An empty statement frame is yfinance's rate-limit signature too — make
+            # it raise so _retry backs off and retries instead of giving up at once.
+            def _load_frame():
+                data = getattr(instrument, target)
+                if data is None or data.empty:
+                    raise RuntimeError(f"{target} empty (likely rate-limited)")
+                return data
+
+            try:
+                frame = self._retry(_load_frame)
+            except Exception:
                 return ProviderResult(self.name, ProviderStatus.NO_FIELD, reason=f"{target}_empty")
             payload = self._frame_payload(frame)
             self._write_cache(ticker, target, payload)
