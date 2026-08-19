@@ -84,7 +84,11 @@ jobs:
           for attempt in 1 2 3; do
             if git push; then exit 0; fi
             echo "push rejected (main moved); rebasing, attempt ${attempt}"
-            git pull --rebase origin main || exit 1
+            # The bot only commits regenerated data (docs/data, docs/downloads,
+            # data_sources), so any rebase conflict is a regenerated file (e.g.
+            # update-log.json) where this run's fresh version should win. -X theirs
+            # keeps our replayed commit's version; abort cleanly if it still can't.
+            git pull --rebase -X theirs origin main || { git rebase --abort 2>/dev/null || true; exit 1; }
           done
           git push
 
@@ -135,7 +139,11 @@ jobs:
               exit 0
             fi
             echo "push rejected (main moved); rebasing, attempt ${attempt}"
-            git pull --rebase origin main || exit 1
+            # The bot only commits regenerated data (docs/data, docs/downloads,
+            # data_sources), so any rebase conflict is a regenerated file (e.g.
+            # update-log.json) where this run's fresh version should win. -X theirs
+            # keeps our replayed commit's version; abort cleanly if it still can't.
+            git pull --rebase -X theirs origin main || { git rebase --abort 2>/dev/null || true; exit 1; }
           done
           echo "push still failing after 3 attempts"
           exit 1
