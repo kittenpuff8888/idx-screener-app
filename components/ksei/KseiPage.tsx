@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
-import { formatAsOf, formatNumber, formatPlainPercent } from "@/lib/format/number";
+import { formatAsOf, formatNumber, formatPlainPercent, formatPrice } from "@/lib/format/number";
 import { IDX_SECTOR_MAP, normalizeSector } from "@/lib/domain/sectors";
 import type { InvestorEntry, KseiIssuer, KseiPayload } from "@/lib/domain/types";
 import { KseiMarketOverview } from "./KseiMarketOverview";
@@ -18,7 +18,7 @@ type Tab = "ringkasan" | "investor" | "konglo" | "metrik" | "changelog";
 const TABS: Array<[Tab, string]> = [
   ["ringkasan", "Stock Summary"],
   ["investor", "By Investor"],
-  ["konglo", "Conglomerate Stocks"],
+  ["konglo", "Conglomerates"],
   ["metrik", "Metrics"],
   ["changelog", "Changelog"],
 ];
@@ -38,10 +38,11 @@ function holderStatus(name: string): "Foreign" | "Local" {
 }
 
 export function KseiPage() {
-  const { ksei, openTicker } = useApp();
+  const { ksei, openTicker, bundle } = useApp();
   const [tab, setTab] = useState<Tab>("ringkasan");
   const [q, setQ] = useState("");
   const [sector, setSector] = useState("");
+  const [floatMin, setFloatMin] = useState(0);
   const [sort, setSort] = useState<"ticker" | "float" | "ccs">("ticker");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [focus, setFocus] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export function KseiPage() {
     const needle = q.trim().toLowerCase();
     let list = records.filter((t) => {
       if (sector && t.idxSectorRaw !== sector) return false;
+      if (floatMin > 0 && (t.freeFloat == null || t.freeFloat < floatMin)) return false;
       if (needle && !(t.ticker.toLowerCase().includes(needle) || t.companyName.toLowerCase().includes(needle) || t.investors.some((h) => h.name.toLowerCase().includes(needle)))) return false;
       return true;
     });
@@ -80,7 +82,7 @@ export function KseiPage() {
       sort === "float" ? (b.freeFloat || 0) - (a.freeFloat || 0) : sort === "ccs" ? (b.ccs || 0) - (a.ccs || 0) : a.ticker.localeCompare(b.ticker),
     );
     return list;
-  }, [records, q, sector, sort]);
+  }, [records, q, sector, sort, floatMin]);
 
   const perInvestor = investors.slice(0, 25);
   const konglo = investors.filter((r) => r.holdings.length >= 3).slice(0, 40);
@@ -115,6 +117,11 @@ export function KseiPage() {
               <span style={{ color: "var(--faint)", fontSize: 13 }}>⌕</span>
               <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code, company, or shareholder…" aria-label="Search issuers" style={{ border: "none", outline: "none", background: "transparent", fontSize: 12.5, color: "var(--text)", width: "100%" }} />
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, ...CARD, borderRadius: 10, padding: "6px 12px" }}>
+              <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".06em", color: "var(--faint)", flex: "none" }}>FREE FLOAT</span>
+              <input type="range" min={0} max={100} step={5} value={floatMin} onChange={(e) => setFloatMin(Number(e.target.value))} aria-label="Minimum free float" style={{ width: 90, accentColor: "var(--accent)", cursor: "pointer" }} />
+              <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: floatMin > 0 ? "var(--accent)" : "var(--muted)", width: 46 }}>{floatMin === 0 ? "0–100%" : `≥ ${floatMin}%`}</span>
+            </div>
             <select value={sector} onChange={(e) => setSector(e.target.value)} aria-label="Filter by sector" style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", ...CARD, borderRadius: 10, padding: "8px 11px", cursor: "pointer" }}>
               {sectorOpts.map((o) => (<option key={o.v} value={o.v}>{o.label}</option>))}
             </select>
@@ -125,11 +132,11 @@ export function KseiPage() {
               ))}
             </div>
             <div style={{ flex: 1 }} />
-            <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{formatNumber(ringkasanRows.length, 0)} stocks</span>
+            <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>{formatNumber(ringkasanRows.length, 0)} companies</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {ringkasanRows.slice(0, 80).map((t) => (
-              <IssuerRow key={t.ticker} t={t} expanded={!!expanded[t.ticker]} onToggle={() => setExpanded((m) => ({ ...m, [t.ticker]: !m[t.ticker] }))} onDetail={() => openTicker(t.ticker)} onFocus={setFocus} />
+              <IssuerRow key={t.ticker} t={t} price={typeof bundle?.technical.get(t.ticker)?.lastPrice === "number" ? (bundle!.technical.get(t.ticker)!.lastPrice as number) : null} mcapRaw={bundle?.fundamentals.get(t.ticker)?.["Market Cap"]} expanded={!!expanded[t.ticker]} onToggle={() => setExpanded((m) => ({ ...m, [t.ticker]: !m[t.ticker] }))} onDetail={() => openTicker(t.ticker)} onFocus={setFocus} />
             ))}
             {!ringkasanRows.length ? <div style={{ padding: "40px 0", textAlign: "center", color: "var(--faint)", fontSize: 12 }}>No issuers match this filter.</div> : null}
           </div>
@@ -218,19 +225,28 @@ export function KseiPage() {
   );
 }
 
-function IssuerRow({ t, expanded, onToggle, onDetail, onFocus }: { t: KseiIssuer; expanded: boolean; onToggle: () => void; onDetail: () => void; onFocus: (name: string) => void }) {
+function fmtMcap(raw: unknown): string {
+  const n = typeof raw === "number" ? raw : Number(String(raw ?? "").replace(/,/g, ""));
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  return n >= 1000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1)} T` : `${Math.round(n)} B`;
+}
+function IssuerRow({ t, price, mcapRaw, expanded, onToggle, onDetail, onFocus }: { t: KseiIssuer; price: number | null; mcapRaw?: unknown; expanded: boolean; onToggle: () => void; onDetail: () => void; onFocus: (name: string) => void }) {
   const sectorLabel = normalizeSector(t.idxSectorRaw);
   return (
     <div style={{ ...CARD, borderRadius: 12, overflow: "hidden" }}>
       <div onClick={onToggle} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer", flexWrap: "wrap" }}>
-        <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 7, padding: "4px 9px" }}>{t.ticker}</span>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onDetail(); }} title="Open ticker detail" style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, color: "var(--accent)", background: "var(--accentSoft)", border: "none", borderRadius: 7, padding: "4px 9px", cursor: "pointer" }}>{t.ticker}</button>
         <span style={{ fontSize: 13, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{t.companyName}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, color: "var(--muted)", whiteSpace: "nowrap" }}>Rp {price == null ? "—" : formatPrice(price)}</span>
+        <span style={{ fontFamily: MONO, fontSize: 10.5, color: "var(--muted)", whiteSpace: "nowrap" }}>MCap {fmtMcap(mcapRaw)}</span>
         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>{sectorLabel}</span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 6, padding: "3px 8px" }}>Float {t.freeFloat == null ? "—" : formatPlainPercent(t.freeFloat)}</span>
         <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>{t.ccs == null ? "CCS —" : `CCS ${t.ccs}`}</span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>{t.ownershipType}</span>
-        <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--faint)" }}>{t.holderCount ?? t.investors.length} holders</span>
-        <button type="button" onClick={(e) => { e.stopPropagation(); onDetail(); }} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer" }}>Detail →</button>
+        <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--faint)", whiteSpace: "nowrap" }}>{t.holderCount ?? t.investors.length} holders</span>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", flex: "none", minWidth: 62 }} title="cr1 = largest single holder · float = public free float">
+          <span style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--text)", lineHeight: 1.05 }}>{t.cr1 == null ? "—" : `${t.cr1.toFixed(1)}%`}</span>
+          <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, color: "var(--cat-5)" }}>Float {t.freeFloat == null ? "—" : formatPlainPercent(t.freeFloat)}</span>
+        </div>
+        <span style={{ color: "var(--faint)", fontSize: 15, flex: "none", transform: expanded ? "rotate(90deg)" : "none", transition: "transform .15s" }}>›</span>
       </div>
       {expanded ? (
         <div style={{ borderTop: "1px solid var(--hair)", padding: "2px 16px 10px" }}>
