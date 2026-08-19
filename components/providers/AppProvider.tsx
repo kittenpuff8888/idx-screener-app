@@ -231,17 +231,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const isWatched = useCallback((ticker: string) => watchlist.includes(ticker.toUpperCase()), [watchlist]);
 
   const tickerOptions = useMemo(() => {
+    // Real sector name from the KSEI registry (the technical record's `sector`
+    // and the workbook "IDX Sector" both ship as "-"/label → "Others").
+    const secOf = new Map<string, string>();
+    ksei?.records.forEach((r) => { if (r.sector && r.sector !== "Others") secOf.set(r.ticker, r.sector); });
     const map = new Map<string, { ticker: string; label: string; sector: string }>();
     bundle?.technical.forEach((stock, ticker) => {
       map.set(ticker, {
         ticker,
         label: stock.companyName || ticker,
-        sector: stock.sector || "Others",
+        sector: secOf.get(ticker) || "Others",
       });
     });
     ksei?.records.forEach((issuer) => {
       if (!map.has(issuer.ticker)) {
-        map.set(issuer.ticker, { ticker: issuer.ticker, label: issuer.companyName, sector: issuer.idxSectorRaw });
+        map.set(issuer.ticker, { ticker: issuer.ticker, label: issuer.companyName, sector: issuer.sector });
       }
     });
     return [...map.values()].sort((a, b) => a.ticker.localeCompare(b.ticker));
