@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-18T19:16:06.709046+07:00",
+ "generatedAt": "2026-08-19T16:58:59.445613+07:00",
  "marketDate": "2026-08-18",
  "universe": {
   "size": 962,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-18T19:15:52.901627+07:00"
+  "auditedAt": "2026-08-19T16:58:48.227332+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-17T17:04:37.554035+07:00",
-   "marketDate": "2026-08-17",
-   "status": "STARTED",
-   "message": "Daily update pipeline started."
-  },
   {
    "timestamp": "2026-08-17T17:47:40.338755+07:00",
    "marketDate": "2026-08-17",
@@ -65,6 +59,12 @@
    "marketDate": "2026-08-18",
    "status": "NO_CHANGE",
    "message": "Dataset already published; last successful snapshot preserved."
+  },
+  {
+   "timestamp": "2026-08-19T16:58:26.683197+07:00",
+   "marketDate": "2026-08-19",
+   "status": "WAITING",
+   "message": "Market-close check completed at 16:58 WIB; the current session is retried after 17:00."
   }
  ],
  "qaSummary": {
@@ -92,7 +92,7 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-18T19:15:56.448391+07:00",
+  "lastChecked": "2026-08-19T16:58:51.440399+07:00",
   "checked": 14,
   "failures": [],
   "results": [
@@ -113,7 +113,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "BNBR",
+    "ticker": "BOGA",
     "status": "ERROR: TypeError"
    },
    {
@@ -121,11 +121,11 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "ENVY",
-    "status": "NO_FRESH_DATA"
+    "ticker": "JECX",
+    "status": "ERROR: TypeError"
    },
    {
-    "ticker": "MKTR",
+    "ticker": "MARK",
     "status": "ERROR: TypeError"
    },
    {
@@ -141,15 +141,15 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "SKLT",
+    "ticker": "OILS",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "STAR",
     "status": "ERROR: TypeError"
    },
    {
     "ticker": "TLKM",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "WINE",
     "status": "ERROR: TypeError"
    }
   ],
