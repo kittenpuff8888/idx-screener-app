@@ -256,13 +256,19 @@ export function NewsPage() {
       </div>
 
       <div style={{ fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, maxWidth: 820, marginTop: 16 }}>
-        Real workbook news feed · {marketDate}. {all.length} headlines parsed from the source snapshot; each opens the ticker detail page. Sentiment (▲/▼/•) is a <strong>labelled model</strong> read, not a price signal. Topic categories (Earnings / Flow / Company / Sector / Macro) are <strong>derived from the headline text</strong> — the feed carries no topic field (see Data Health). <strong>Move-since-headline</strong> and <strong>RVOL</strong> are computed from the real OHLCV series; the wire·tier chip is a labelled classification of the source name. Age is the source-reported recency; DISCLOSURE flags a ticker with a real corporate action this snapshot. Records without a headline are omitted (never fabricated); no external article URLs are published because the feed stores none.
+        Real workbook news feed · {marketDate}. {all.length} headlines parsed from the source snapshot; each opens the ticker detail page. Sentiment (▲/▼/•) is a <strong>labelled model</strong> read, not a price signal. Topic categories (Earnings / Flow / Company / Sector / Macro) are <strong>derived from the headline text</strong> — the feed carries no topic field (see Data Health). <strong>Move-since-headline</strong> and <strong>RVOL</strong> are computed from the real OHLCV series; the wire·tier chip is a labelled classification of the source name. Age is the source-reported recency; DISCLOSURE flags a ticker with a real corporate action this snapshot. Records without a headline are omitted (never fabricated). The feed stores no article URL, so each headline links to a web search for it rather than a deep link.
       </div>
     </section>
   );
 }
 
 const TOPIC_LABEL: Record<NewsTopic, string> = { earnings: "Earnings", flow: "Flow", company: "Company", sector: "Sector", macro: "Macro" };
+
+// The workbook stores no article URL, so the headline links to a web search for
+// it (headline + source) — the honest way to reach the real story.
+function newsLink(title: string, source: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${title} ${source}`.trim())}`;
+}
 
 function NewsCard({ n, rvol, move, disclosure, onOpen }: { n: NewsStory; rvol: number | null; move: number | null; disclosure: boolean; onOpen: () => void }) {
   const { wire, tier } = sourceTier(n.source);
@@ -277,11 +283,13 @@ function NewsCard({ n, rvol, move, disclosure, onOpen }: { n: NewsStory; rvol: n
         <div style={{ flex: 1 }} />
         <span style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)" }}>{ageLabel(n.ageDays, n.when)}</span>
       </div>
-      {/* headline */}
-      <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{n.title}</div>
+      {/* headline — links out to the story (web search; feed stores no URL) */}
+      <a href={newsLink(n.title, n.source)} target="_blank" rel="noreferrer noopener" onClick={(e) => e.stopPropagation()} style={{ display: "block", fontSize: 14, fontWeight: 700, lineHeight: 1.35, color: "var(--text)", textDecoration: "none" }}>
+        {n.title} <span style={{ fontSize: 11, color: "var(--accent)", fontWeight: 700, whiteSpace: "nowrap" }}>↗</span>
+      </a>
       {/* footer: source · wire·tier · sector · move · rvol · sentiment (modelled) */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9, fontSize: 10.5, color: "var(--faint)", flexWrap: "wrap" }}>
-        <span style={{ fontWeight: 700, color: "var(--muted)" }}>{n.source}</span>
+        <a href={newsLink(n.title, n.source)} target="_blank" rel="noreferrer noopener" onClick={(e) => e.stopPropagation()} style={{ fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}>{n.source} ↗</a>
         <span style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--soft)", borderRadius: 4, padding: "1px 5px" }}>{wire} · {tier}</span>
         {n.sector && n.sector !== "—" ? <><span>·</span><span>{n.sector}</span></> : null}
         <div style={{ flex: 1 }} />
