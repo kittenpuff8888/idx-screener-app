@@ -1,0 +1,264 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-08-20",
+ "generatedAt": "2026-08-20T18:03:42.269833+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 3,
+ "setups": [
+  {
+   "ticker": "KIJA",
+   "name": "Kawasan Industri Jababeka Tbk.",
+   "sector": "Others",
+   "close": 206.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 20,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 208,
+   "invalidation": 195,
+   "target": 240,
+   "medianValueTraded20": 10273537500,
+   "rvol": 9.777603068386087,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    17827863439,
+    17820695179,
+    17841329854,
+    17904258954,
+    17961532820,
+    18084865320,
+    18027012678,
+    18027012678,
+    17957929178,
+    17943817558,
+    17803950758,
+    17755371258,
+    17745190058,
+    17733098291,
+    17749610724,
+    17749610724,
+    17775229424,
+    17741187824,
+    17751302524,
+    17751302524,
+    17767356724,
+    17750665424,
+    17942439924,
+    17833949588,
+    17833949588,
+    17833949588,
+    17904257828,
+    19037786428,
+    16675843646,
+    18368992897
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI PrevY +1SD; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 13,
+    "hitRate": 0.62,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AKIJA"
+  },
+  {
+   "ticker": "MSIN",
+   "name": "MNC Digital Entertainment Tbk.",
+   "sector": "Others",
+   "close": 352.0,
+   "score": 70,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 339,
+   "invalidation": 332.64,
+   "target": 382,
+   "medianValueTraded20": 11406455200,
+   "rvol": 1.469418688886109,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1550016181,
+    1552849100,
+    1541228300,
+    1512231422,
+    1515826842,
+    1528492602,
+    1522977668,
+    1522977668,
+    1538757068,
+    1528480468,
+    1510481122,
+    1495996922,
+    1510697311,
+    1510697311,
+    1514105219,
+    1498391719,
+    1515586719,
+    1515586719,
+    1510680959,
+    1530079692,
+    1519040242,
+    1534013692,
+    1542170472,
+    1532377806,
+    1555185448,
+    1535204248,
+    1548495248,
+    1560288348,
+    1537864420,
+    1568168800
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 26,
+    "hitRate": 0.54,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMSIN"
+  },
+  {
+   "ticker": "SIDO",
+   "name": "Industri Jamu dan Farmasi Sido",
+   "sector": "Others",
+   "close": 352.0,
+   "score": 55,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 10,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 347,
+   "invalidation": 340.56,
+   "target": 362,
+   "medianValueTraded20": 14261502800,
+   "rvol": 1.306138265053661,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-07-20",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -800189493,
+    -795144933,
+    -789195933,
+    -783698553,
+    -783698553,
+    -795366453,
+    -803496020,
+    -814408670,
+    -814408670,
+    -824215836,
+    -877161136,
+    -877161136,
+    -877161136,
+    -904230936,
+    -921267936,
+    -927738336,
+    -944897336,
+    -987139076,
+    -1005702976,
+    -985886276,
+    -1000930643,
+    -1063136243,
+    -1055168923,
+    -1109032023,
+    -1109032023,
+    -1158217223,
+    -1170457656,
+    -1170457656,
+    -1170457656,
+    -1120806756
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 5,
+    "hitRate": 0.6,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ASIDO"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 962
+}

@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-08-18",
+ "asOf": "2026-08-20",
  "entries": [
   {
    "date": "2026-07-10",
@@ -390,7 +390,7 @@
    "target": 414,
    "invalidation": 360.36,
    "outcome": "invalidated",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-08-12",
@@ -400,7 +400,7 @@
    "target": 413,
    "invalidation": 360.36,
    "outcome": "invalidated",
-   "barsObserved": 3
+   "barsObserved": 5
   },
   {
    "date": "2026-08-12",
@@ -409,8 +409,8 @@
    "close": 200.0,
    "target": 210,
    "invalidation": 196.02,
-   "outcome": "open",
-   "barsObserved": 3
+   "outcome": "undecided",
+   "barsObserved": 5
   },
   {
    "date": "2026-08-12",
@@ -420,7 +420,7 @@
    "target": 81,
    "invalidation": 71.28,
    "outcome": "invalidated",
-   "barsObserved": 3
+   "barsObserved": 5
   },
   {
    "date": "2026-08-12",
@@ -430,7 +430,7 @@
    "target": 343,
    "invalidation": 294.0,
    "outcome": "invalidated",
-   "barsObserved": 3
+   "barsObserved": 5
   },
   {
    "date": "2026-08-14",
@@ -439,8 +439,8 @@
    "close": 376.0,
    "target": 382,
    "invalidation": 362.59999999999997,
-   "outcome": "open",
-   "barsObserved": 1
+   "outcome": "target",
+   "barsObserved": 3
   },
   {
    "date": "2026-08-14",
@@ -449,15 +449,55 @@
    "close": 370.0,
    "target": 407,
    "invalidation": 352.44,
+   "outcome": "invalidated",
+   "barsObserved": 3
+  },
+  {
+   "date": "2026-08-18",
+   "ticker": "MNCN",
+   "score": 70,
+   "close": 202.0,
+   "target": 210,
+   "invalidation": 196.02,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-18",
+   "ticker": "MSIN",
+   "score": 70,
+   "close": 370.0,
+   "target": 403,
+   "invalidation": 352.44,
+   "outcome": "invalidated",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-18",
+   "ticker": "CLEO",
+   "score": 65,
+   "close": 380.0,
+   "target": 382,
+   "invalidation": 362.59999999999997,
+   "outcome": "target",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-08-18",
+   "ticker": "MTEL",
+   "score": 65,
+   "close": 438.0,
+   "target": 440,
+   "invalidation": 413.82,
+   "outcome": "target",
+   "barsObserved": 2
   }
  ],
  "summary": {
-  "total": 45,
-  "decided": 33,
-  "targetFirst": 11,
-  "hitRate": 0.333
+  "total": 49,
+  "decided": 38,
+  "targetFirst": 14,
+  "hitRate": 0.368
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
