@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
+import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
+import { loadOhlcv } from "@/lib/data/ticker";
+import type { OhlcvPayload } from "@/lib/domain/types";
 import { formatPrice } from "@/lib/format/number";
 import { loadUniverse, setupByKey, type Universe, type UniverseRow } from "@/lib/data/screenerUniverse";
 import {
@@ -41,6 +44,7 @@ export function WatchlistPage() {
   const [search, setSearch] = useState("");
   const [dialog, setDialog] = useState<null | "ticker" | "group">(null);
   const [universe, setUniverse] = useState<Universe | null>(null);
+  const [selOhlcv, setSelOhlcv] = useState<OhlcvPayload | null>(null);
 
   useEffect(() => {
     setState(loadWatchlist());
@@ -75,6 +79,15 @@ export function WatchlistPage() {
 
   const total = state.groups.reduce((n, g) => n + g.rows.length, 0);
   const selected = state.selectedSymbol || visibleRows[0]?.symbol || null;
+
+  // OHLCV for the selected symbol — feeds the ƒx custom-overlay companion chart.
+  useEffect(() => {
+    if (!marketDate || !selected) { setSelOhlcv(null); return; }
+    let cancelled = false;
+    setSelOhlcv(null);
+    loadOhlcv(marketDate, selected).then((p) => !cancelled && setSelOhlcv(p)).catch(() => {});
+    return () => { cancelled = true; };
+  }, [marketDate, selected]);
 
   function createGroup(name: string): string {
     const id = newGroupId();
@@ -250,6 +263,9 @@ export function WatchlistPage() {
               <TradingViewChart symbol={`IDX:${selected}`} interval="1D" minHeight={460} />
             </div>
           ) : null}
+
+          {/* Custom-overlay companion (renders only when a ƒx CUSTOM overlay is on) */}
+          {selected ? <IndicatorCompanion ohlcv={selOhlcv} symbol={selected} sessions={130} /> : null}
         </div>
       )}
     </section>

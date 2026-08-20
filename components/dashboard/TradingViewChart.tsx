@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { loadStudies, saveStudies, subscribeStudies, STUDIES } from "@/lib/data/chartStudies";
+import { loadOverlays, saveOverlays, subscribeOverlays, OVERLAYS } from "@/lib/data/chartOverlays";
 
 type Props = {
   symbol?: string;
@@ -15,8 +16,15 @@ type Props = {
 const CURRENT_THEME = (): "light" | "dark" =>
   (typeof document !== "undefined" && document.documentElement.dataset.theme === "dark") ? "dark" : "light";
 
-/** ƒx indicator picker — edits the site-wide saved study set. */
-function IndicatorPicker({ selected, onToggle }: { selected: string[]; onToggle: (id: string) => void }) {
+/** ƒx indicator picker — edits the site-wide saved study set. When overlay props
+    are supplied it also lists CUSTOM overlays (our re-implemented Pine studies),
+    which render on a companion candle chart beneath the embed. */
+function IndicatorPicker({ selected, onToggle, overlaySelected, onOverlayToggle }: {
+  selected: string[];
+  onToggle: (id: string) => void;
+  overlaySelected?: string[];
+  onOverlayToggle?: (id: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -25,14 +33,16 @@ function IndicatorPicker({ selected, onToggle }: { selected: string[]; onToggle:
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
   const groups = [["overlay", "Overlays"], ["oscillator", "Oscillators"], ["volume", "Volume"]] as const;
+  const custom = overlaySelected ?? [];
+  const count = selected.length + custom.length;
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button type="button" onClick={() => setOpen((v) => !v)}
         style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "4px 9px", cursor: "pointer" }}>
-        <span style={{ fontStyle: "italic" }}>ƒx</span> Indicators {selected.length ? `· ${selected.length}` : ""}
+        <span style={{ fontStyle: "italic" }}>ƒx</span> Indicators {count ? `· ${count}` : ""}
       </button>
       {open ? (
-        <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 30, width: 210, maxHeight: 320, overflowY: "auto", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 10, boxShadow: "0 12px 30px rgba(11,14,20,.22)", padding: "8px 6px" }}>
+        <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 30, width: 232, maxHeight: 340, overflowY: "auto", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 10, boxShadow: "0 12px 30px rgba(11,14,20,.22)", padding: "8px 6px" }}>
           {groups.map(([g, label]) => (
             <div key={g} style={{ marginBottom: 4 }}>
               <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", padding: "4px 8px 2px" }}>{label.toUpperCase()}</div>
@@ -48,7 +58,22 @@ function IndicatorPicker({ selected, onToggle }: { selected: string[]; onToggle:
               })}
             </div>
           ))}
-          <div style={{ fontSize: 8.5, color: "var(--faint)", padding: "4px 8px 2px", lineHeight: 1.4, borderTop: "1px solid var(--hair)", marginTop: 2 }}>Saved for every chart on the site. TradingView built-ins (Pine Script can’t run in an embed).</div>
+          {onOverlayToggle ? (
+            <div style={{ marginBottom: 4, borderTop: "1px solid var(--hair)", paddingTop: 4 }}>
+              <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".08em", color: "#D6A100", padding: "4px 8px 2px" }}>CUSTOM · COMPANION CHART</div>
+              {OVERLAYS.map((o) => {
+                const on = custom.includes(o.id);
+                return (
+                  <button key={o.id} type="button" onClick={() => onOverlayToggle(o.id)} title={o.note}
+                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "6px 8px", border: "none", background: on ? "var(--soft)" : "transparent", borderRadius: 7, cursor: "pointer", fontSize: 12, color: "var(--text)" }}>
+                    <span style={{ width: 13, height: 13, borderRadius: 4, border: `1.5px solid ${on ? "#D6A100" : "var(--border)"}`, background: on ? "#D6A100" : "transparent", color: "#fff", fontSize: 10, lineHeight: "11px", textAlign: "center", flexShrink: 0 }}>{on ? "✓" : ""}</span>
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+          <div style={{ fontSize: 8.5, color: "var(--faint)", padding: "4px 8px 2px", lineHeight: 1.4, borderTop: "1px solid var(--hair)", marginTop: 2 }}>Saved for every chart on the site. TradingView built-ins run in the embed; CUSTOM overlays draw on a companion chart below it (Pine can’t run in an embed).</div>
         </div>
       ) : null}
     </div>
@@ -60,16 +85,26 @@ function IndicatorPicker({ selected, onToggle }: { selected: string[]; onToggle:
     instead of above the chart. Stays in sync with every chart via chartStudies. */
 export function ChartIndicatorPicker() {
   const [studies, setStudies] = useState<string[]>([]);
+  const [overlays, setOverlays] = useState<string[]>([]);
   useEffect(() => {
     setStudies(loadStudies());
     return subscribeStudies(setStudies);
+  }, []);
+  useEffect(() => {
+    setOverlays(loadOverlays());
+    return subscribeOverlays(setOverlays);
   }, []);
   function toggle(id: string) {
     const next = studies.includes(id) ? studies.filter((x) => x !== id) : [...studies, id];
     setStudies(next);
     saveStudies(next);
   }
-  return <IndicatorPicker selected={studies} onToggle={toggle} />;
+  function toggleOverlay(id: string) {
+    const next = overlays.includes(id) ? overlays.filter((x) => x !== id) : [...overlays, id];
+    setOverlays(next);
+    saveOverlays(next);
+  }
+  return <IndicatorPicker selected={studies} onToggle={toggle} overlaySelected={overlays} onOverlayToggle={toggleOverlay} />;
 }
 
 /** TradingView advanced-chart embed. Interval is forced to 1D (like the IHSG

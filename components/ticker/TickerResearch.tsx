@@ -9,6 +9,7 @@ import { fetchJson } from "@/lib/data/client";
 import { loadOhlcv } from "@/lib/data/ticker";
 import type { JsonRecord, OhlcvPayload } from "@/lib/domain/types";
 import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
+import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
 import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
@@ -185,6 +186,9 @@ export function TickerResearch() {
         </div>
         <TradingViewChart symbol={`IDX:${ticker}`} range={range === "1Y" ? "12M" : range} interval="1D" minHeight={460} />
       </div>
+
+      {/* Custom-overlay companion (renders only when a ƒx CUSTOM overlay is on) */}
+      <IndicatorCompanion ohlcv={ohlcv} symbol={ticker} sessions={{ "1M": 22, "3M": 66, "6M": 130, "1Y": 252 }[range] ?? 140} />
 
       {/* ── KEY STATISTICS | COMPANY INFO ──────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
