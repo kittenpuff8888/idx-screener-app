@@ -167,12 +167,22 @@ export type KseiChange = {
   notes?: string;
 };
 
+export type KseiComparison = {
+  previousAsOf: string;
+  newTickers: string[];
+  removedTickers: string[];
+  changedTickers: string[];
+  newInvestors: number;
+  exitedInvestors: number;
+};
+
 export type KseiPayload = {
   asOf: string;
   generatedAt?: string;
   summary: JsonRecord;
   records: KseiIssuer[];
   investorChanges: KseiChange[];
+  comparison?: KseiComparison;
 };
 
 export type IndexConstituent = {

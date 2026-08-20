@@ -9,7 +9,17 @@ type RawKsei = {
   summary?: JsonRecord;
   records?: JsonRecord[];
   investorChanges?: JsonRecord[];
+  comparison?: {
+    previousAsOf?: string;
+    newTickers?: unknown[];
+    removedTickers?: unknown[];
+    changedTickers?: unknown[];
+    investorAdditions?: unknown[];
+    investorRemovals?: unknown[];
+  };
 };
+
+const asTicker = (v: unknown): string => (typeof v === "string" ? v : typeof v === "object" && v ? String((v as JsonRecord).ticker ?? "") : "").toUpperCase();
 
 function text(value: unknown, fallback = "Unavailable"): string {
   if (value === null || value === undefined) return fallback;
@@ -54,6 +64,14 @@ export async function loadKsei(): Promise<KseiPayload> {
       newPercentage: asNumber(change.newPercentage) ?? undefined,
       notes: text(change.notes, ""),
     })),
+    comparison: {
+      previousAsOf: text(raw.comparison?.previousAsOf, ""),
+      newTickers: (raw.comparison?.newTickers || []).map(asTicker).filter(Boolean),
+      removedTickers: (raw.comparison?.removedTickers || []).map(asTicker).filter(Boolean),
+      changedTickers: (raw.comparison?.changedTickers || []).map(asTicker).filter(Boolean),
+      newInvestors: (raw.comparison?.investorAdditions || []).length,
+      exitedInvestors: (raw.comparison?.investorRemovals || []).length,
+    },
   };
 }
 
