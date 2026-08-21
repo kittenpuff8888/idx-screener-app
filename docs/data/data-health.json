@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-20T18:52:58.532161+07:00",
+ "generatedAt": "2026-08-21T17:00:33.438843+07:00",
  "marketDate": "2026-08-20",
  "universe": {
   "size": 962,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-20T18:52:44.624997+07:00"
+  "auditedAt": "2026-08-21T17:00:20.548925+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-18T18:02:45.167738+07:00",
-   "marketDate": "2026-08-18",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
-  },
   {
    "timestamp": "2026-08-18T19:15:29.027354+07:00",
    "marketDate": "2026-08-18",
@@ -65,6 +59,12 @@
    "marketDate": "2026-08-20",
    "status": "NO_CHANGE",
    "message": "Dataset already published; last successful snapshot preserved."
+  },
+  {
+   "timestamp": "2026-08-21T16:59:55.401354+07:00",
+   "marketDate": "2026-08-21",
+   "status": "WAITING",
+   "message": "Market-close check completed at 16:59 WIB; the current session is retried after 17:00."
   }
  ],
  "qaSummary": {
@@ -92,7 +92,7 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-20T18:52:47.430432+07:00",
+  "lastChecked": "2026-08-21T17:00:23.256288+07:00",
   "checked": 13,
   "failures": [],
   "results": [
@@ -113,11 +113,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "BSWD",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "CASH",
+    "ticker": "BIKE",
     "status": "ERROR: TypeError"
    },
    {
@@ -129,11 +125,15 @@
     "status": "ERROR: TypeError"
    },
    {
+    "ticker": "PNGO",
+    "status": "ERROR: TypeError"
+   },
+   {
     "ticker": "SIDO",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "SMGA",
+    "ticker": "SMMT",
     "status": "ERROR: TypeError"
    },
    {
@@ -141,11 +141,11 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "UNVR",
+    "ticker": "UCID",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "WEGE",
+    "ticker": "VKTR",
     "status": "ERROR: TypeError"
    }
   ],
