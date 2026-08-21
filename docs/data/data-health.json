@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-21T18:04:19.130063+07:00",
+ "generatedAt": "2026-08-21T19:26:38.659255+07:00",
  "marketDate": "2026-08-21",
  "universe": {
   "size": 962,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-21T18:04:07.424821+07:00"
+  "auditedAt": "2026-08-21T19:26:25.162604+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-19T17:18:22.609470+07:00",
-   "marketDate": "2026-08-19",
-   "status": "STARTED",
-   "message": "Daily update pipeline started."
-  },
   {
    "timestamp": "2026-08-19T18:32:09.486919+07:00",
    "marketDate": "2026-08-19",
@@ -65,6 +59,12 @@
    "marketDate": "2026-08-21",
    "status": "SUCCESS",
    "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-08-21T19:26:01.254502+07:00",
+   "marketDate": "2026-08-21",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
   }
  ],
  "qaSummary": {
@@ -92,8 +92,8 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-21T18:04:08.954210+07:00",
-  "checked": 13,
+  "lastChecked": "2026-08-21T19:26:27.905010+07:00",
+  "checked": 10,
   "failures": [],
   "results": [
    {
@@ -117,19 +117,7 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "KIJA",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "MSIN",
-    "status": "ERROR: TypeError"
-   },
-   {
     "ticker": "PNGO",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "SIDO",
     "status": "ERROR: TypeError"
    },
    {
