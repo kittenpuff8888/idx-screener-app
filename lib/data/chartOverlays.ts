@@ -22,7 +22,35 @@ export const OVERLAYS: OverlayDef[] = [
     label: "MACD 4C Smooth",
     note: "MACD (12/26/9) with an EMA-smoothed histogram and 4-colour momentum states — silver ≥0 rising, red ≥0 falling, bright-red <0 falling, blue <0 rising. Drawn in an oscillator sub-pane below the candles.",
   },
+  {
+    id: "avwap",
+    label: "Anchored VWAP + σ bands",
+    note: "Anchored VWAP (default Quarterly) with ±1σ / ±2σ bands on hlc3 volume, plus the previous period's VWAP (PQVWAP). Pick the anchor (W/M/Q/Y) on the companion chart.",
+  },
 ];
+
+// Anchor period for the anchored-VWAP overlay (persisted, broadcast like overlays).
+const ANCHOR_KEY = "idxr:chart:vwapAnchor";
+const ANCHOR_EVENT = "idxr:vwapAnchor-changed";
+const ANCHOR_DEFAULT = "quarter";
+
+export function loadVwapAnchor(): string {
+  if (typeof window === "undefined") return ANCHOR_DEFAULT;
+  return window.localStorage.getItem(ANCHOR_KEY) || ANCHOR_DEFAULT;
+}
+export function saveVwapAnchor(anchor: string): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(ANCHOR_KEY, anchor);
+  window.dispatchEvent(new CustomEvent(ANCHOR_EVENT, { detail: anchor }));
+}
+export function subscribeVwapAnchor(cb: (anchor: string) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const onCustom = (e: Event) => cb((e as CustomEvent<string>).detail ?? loadVwapAnchor());
+  const onStorage = (e: StorageEvent) => { if (e.key === ANCHOR_KEY) cb(loadVwapAnchor()); };
+  window.addEventListener(ANCHOR_EVENT, onCustom);
+  window.addEventListener("storage", onStorage);
+  return () => { window.removeEventListener(ANCHOR_EVENT, onCustom); window.removeEventListener("storage", onStorage); };
+}
 
 const KEY = "idxr:chart:overlays";
 const EVENT = "idxr:overlays-changed";
