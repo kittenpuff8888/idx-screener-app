@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { OhlcvPayload } from "@/lib/domain/types";
-import { loadOverlays, subscribeOverlays } from "@/lib/data/chartOverlays";
+import { loadOverlays, subscribeOverlays, loadVwapAnchor, saveVwapAnchor, subscribeVwapAnchor } from "@/lib/data/chartOverlays";
 import { computeInitialBalance } from "@/lib/indicators/initialBalance";
 import { computeMacd4c, MACD4C_COLORS } from "@/lib/indicators/macd4c";
+import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor } from "@/lib/indicators/anchoredVwap";
 import { formatPrice } from "@/lib/format/number";
 
 // Companion chart for custom overlays that can't run in the TradingView embed
@@ -33,14 +34,20 @@ function chip(label: string, color: string): CSSProperties {
 
 export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: OhlcvPayload | null; symbol?: string; sessions?: number }) {
   const [overlays, setOverlays] = useState<string[]>([]);
+  const [anchor, setAnchor] = useState<string>("quarter");
   useEffect(() => {
     setOverlays(loadOverlays());
     return subscribeOverlays(setOverlays);
   }, []);
+  useEffect(() => {
+    setAnchor(loadVwapAnchor());
+    return subscribeVwapAnchor(setAnchor);
+  }, []);
 
   const hasIb = overlays.includes("ibhl");
   const hasMacd = overlays.includes("macd4c");
-  const anyOn = hasIb || hasMacd;
+  const hasVwap = overlays.includes("avwap");
+  const anyOn = hasIb || hasMacd || hasVwap;
   const allRows = ohlcv?.rows ?? [];
 
   const view = useMemo(() => {
@@ -59,9 +66,25 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     // MACD over the full series (EMA warmup), visible slice only.
     const macd = hasMacd ? computeMacd4c(allRows).slice(off) : [];
 
+    // Anchored VWAP over the full series; split the visible window into per-period
+    // segments so the line + bands break (reset) at each anchor boundary.
+    const vw = hasVwap ? computeAnchoredVwap(allRows, anchor as VwapAnchor) : null;
+    const vwapVis = vw ? vw.points.slice(off) : [];
+    const vwapSegs: Array<{ key: string; pts: Array<{ i: number; p: NonNullable<typeof vwapVis[number]> }> }> = [];
+    if (vw) {
+      let seg: (typeof vwapSegs)[number] | null = null;
+      vwapVis.forEach((p, k) => {
+        if (!p) { seg = null; return; }
+        if (!seg || seg.key !== p.key) { seg = { key: p.key, pts: [] }; vwapSegs.push(seg); }
+        seg.pts.push({ i: off + k, p });
+      });
+    }
+    const vwapCurrent = [...vwapVis].reverse().find((p) => p) || null;
+
     let min = Infinity, max = -Infinity, maxVol = 1;
     for (const r of rows) { min = Math.min(min, r.low); max = Math.max(max, r.high); maxVol = Math.max(maxVol, r.volume || 0); }
     for (const b of bands) { min = Math.min(min, b.ibLow); max = Math.max(max, b.ibHigh); }
+    for (const p of vwapVis) { if (p) { min = Math.min(min, p.l2); max = Math.max(max, p.u2); } }
     const spread = max - min || 1;
 
     const xStep = (PR - PL) / n;
@@ -83,8 +106,8 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     const last = rows[rows.length - 1];
     const current = bands[bands.length - 1] || null;
     const lastMacd = macd[macd.length - 1] || null;
-    return { rows, off, bands, macd, xStep, xLeft, xMid, yP, vy, yM, VH, macdTop, macdBottom, last, current, lastMacd };
-  }, [anyOn, hasIb, hasMacd, allRows, sessions]);
+    return { rows, off, bands, macd, xStep, xLeft, xMid, yP, vy, yM, VH, macdTop, macdBottom, last, current, lastMacd, vwapSegs, vwapCurrent, vwapPrevFinal: vw?.prevFinalVwap ?? null, vwapKey: vw?.currentKey ?? null };
+  }, [anyOn, hasIb, hasMacd, hasVwap, anchor, allRows, sessions]);
 
   if (!anyOn) return null;
 
@@ -102,10 +125,13 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     );
   }
 
-  const { rows, bands, xStep, xLeft, xMid, yP, vy, yM, VH, macdTop, current, last, lastMacd } = view;
+  const { rows, bands, xStep, xLeft, xMid, yP, vy, yM, VH, macdTop, current, last, lastMacd, vwapSegs, vwapCurrent, vwapPrevFinal, vwapKey } = view;
   const cw = Math.max(1, xStep * 0.62);
   const macdPts = view.macd.map((p, k) => `${xMid(view.off + k)},${yM(p.macd)}`).join(" ");
   const sigPts = view.macd.map((p, k) => `${xMid(view.off + k)},${yM(p.signal)}`).join(" ");
+  const pct = (v: number) => (last && last.close ? `${v >= last.close ? "+" : ""}${(((v - last.close) / last.close) * 100).toFixed(2)}%` : "");
+  const rightX = view.xLeft(rows.length - 1 + view.off) + xStep; // right edge of the last candle slot
+  const vwapAnchorLabel = periodLabel(vwapKey, anchor as VwapAnchor);
 
   return (
     <div style={CARD}>
@@ -114,6 +140,15 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
         <span style={chip("OUR CHART", GOLD)}>OUR CHART</span>
         {hasIb ? <span style={chip("IBH / IBL", GOLD)}>IBH / IBL</span> : null}
         {hasMacd ? <span style={chip("MACD 4C", "#2962FF")}>MACD 4C</span> : null}
+        {hasVwap ? <span style={chip("VWAP", "#2962FF")}>A-VWAP{vwapAnchorLabel ? ` · ${vwapAnchorLabel}` : ""}</span> : null}
+        {hasVwap ? (
+          <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
+            {VWAP_ANCHORS.map((a) => (
+              <button key={a.id} type="button" title={`Anchor VWAP ${a.label}`} onClick={() => { setAnchor(a.id); saveVwapAnchor(a.id); }}
+                style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: anchor === a.id ? "#2962FF" : "transparent", color: anchor === a.id ? "#fff" : "var(--muted)" }}>{a.short}</button>
+            ))}
+          </div>
+        ) : null}
         <div style={{ flex: 1 }} />
         {last ? <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)" }}><strong style={{ color: "var(--text)" }}>{formatPrice(last.close)}</strong> · {String(last.date)}</span> : null}
       </div>
@@ -149,6 +184,25 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
           );
         })() : null}
 
+        {/* Anchored-VWAP σ bands + period boundaries (under candles) */}
+        {hasVwap ? vwapSegs.slice(1).map((seg) => { const x = xLeft(seg.pts[0].i); return <line key={`vb-${seg.key}`} x1={x} x2={x} y1={PT} y2={PRICE_B} stroke="var(--hair, rgba(148,163,184,.28))" strokeWidth="1" strokeDasharray="3 3" />; }) : null}
+        {hasVwap ? vwapSegs.map((seg) => {
+          const up2 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.u2)}`);
+          const lo2 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.l2)}`);
+          const up1 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.u1)}`);
+          const lo1 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.l1)}`);
+          return (
+            <g key={`vw-${seg.key}`}>
+              <polygon points={up2.concat(lo2.slice().reverse()).join(" ")} fill="rgba(41,98,255,.05)" />
+              <polygon points={up1.concat(lo1.slice().reverse()).join(" ")} fill="rgba(41,98,255,.10)" />
+              <polyline points={up1.join(" ")} fill="none" stroke="rgba(22,163,74,.5)" strokeWidth="0.8" />
+              <polyline points={lo1.join(" ")} fill="none" stroke="rgba(22,163,74,.5)" strokeWidth="0.8" />
+              <polyline points={up2.join(" ")} fill="none" stroke="rgba(8,145,178,.45)" strokeWidth="0.8" />
+              <polyline points={lo2.join(" ")} fill="none" stroke="rgba(8,145,178,.45)" strokeWidth="0.8" />
+            </g>
+          );
+        }) : null}
+
         {/* candles + volume */}
         {rows.map((r, k) => {
           const i = view.off + k;
@@ -166,6 +220,36 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
             </g>
           );
         })}
+
+        {/* Anchored-VWAP centre line (on top) + current-period levels */}
+        {hasVwap ? vwapSegs.map((seg) => (
+          <polyline key={`vl-${seg.key}`} points={seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.vwap)}`).join(" ")} fill="none" stroke="#2962FF" strokeWidth="1.7" />
+        )) : null}
+        {hasVwap && vwapPrevFinal != null ? (
+          <g>
+            <line x1={PL} x2={PR} y1={yP(vwapPrevFinal)} y2={yP(vwapPrevFinal)} stroke="var(--faint, #94a3b8)" strokeWidth="1" strokeDasharray="2 4" opacity={0.7} />
+            <text x={PR + 6} y={yP(vwapPrevFinal) - 2} fill="var(--faint)" fontSize="10.5" fontFamily="var(--font-mono)" fontWeight={700}>PQVWAP {formatPrice(vwapPrevFinal)}</text>
+          </g>
+        ) : null}
+        {hasVwap && vwapCurrent ? (() => {
+          const vlabels: Array<[string, number, string]> = [
+            ["VWAP", vwapCurrent.vwap, "#2962FF"],
+            ["+1σ", vwapCurrent.u1, "#16A34A"],
+            ["+2σ", vwapCurrent.u2, "#0891B2"],
+            ["−1σ", vwapCurrent.l1, "#16A34A"],
+            ["−2σ", vwapCurrent.l2, "#0891B2"],
+          ];
+          return (
+            <g>
+              {vlabels.map(([lab, val, col]) => (
+                <g key={lab}>
+                  <line x1={rightX} x2={PR} y1={yP(val)} y2={yP(val)} stroke={col} strokeWidth="1" strokeDasharray="4 3" opacity={0.85} />
+                  <text x={PR + 6} y={yP(val) + 3.5} fill={col} fontSize="11" fontFamily="var(--font-mono)" fontWeight={700}>{lab} {formatPrice(val)} · {pct(val)}</text>
+                </g>
+              ))}
+            </g>
+          );
+        })() : null}
 
         {/* ── MACD 4C oscillator sub-pane ─────────────────────────── */}
         {hasMacd ? (
@@ -192,6 +276,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
         {hasIb ? <>Initial Balance = the high–low range of each month&apos;s first 2 trading sessions, held for the rest of the month (dashed = current month&apos;s IBH/IBL). </> : null}
         {hasMacd ? <>MACD 4C: EMA 12/26 with a signal-9 line and EMA-3 smoothed histogram — silver ≥0 rising, red ≥0 falling, bright-red &lt;0 falling, blue &lt;0 rising. </> : null}
+        {hasVwap ? <>Anchored VWAP on hlc3·volume, reset each {({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (vertical dashes = anchor resets), with ±1σ/±2σ bands; PQVWAP = the previous period&apos;s closing VWAP. Right-axis % is distance from last close. </> : null}
         Computed from our published daily EOD bars. Latest {rows.length} sessions.
       </div>
     </div>
