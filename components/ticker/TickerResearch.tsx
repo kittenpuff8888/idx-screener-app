@@ -193,11 +193,11 @@ export function TickerResearch() {
       <IndicatorCompanion ohlcv={ohlcv} symbol={ticker} sessions={{ "1M": 22, "3M": 66, "6M": 130, "1Y": 252 }[range] ?? 140} />
 
       {/* ── DCF VALUATION ──────────────────────────────────────── */}
-      <DcfPanel ticker={ticker} stock={stock} fund={fund} />
+      <DcfPanel ticker={ticker} stock={stock} fund={fund} marketDate={marketDate} />
 
       {/* ── KEY STATISTICS | COMPANY INFO ──────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
-        <Section title="KEY STATISTICS"><KeyStats fund={fund} /></Section>
+        <Section title="KEY STATISTICS"><KeyStats fund={fund} marketDate={marketDate} /></Section>
         <Section title="COMPANY INFORMATION"><CompanyInfo fund={fund} ownership={ownership} /></Section>
       </div>
 
@@ -471,8 +471,10 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
   );
 }
 
-function KeyStats({ fund }: { fund?: JsonRecord }) {
+function KeyStats({ fund, marketDate }: { fund?: JsonRecord; marketDate?: string | null }) {
   if (!fund) return <div style={{ fontSize: 12, color: "var(--muted)" }}>Fundamental statistics not available for this ticker.</div>;
+  const asOf = fund["Fundamentals As Of"] as string | undefined;
+  const isStale = !!asOf && asOf !== marketDate;
   const roe = n(fund["Return on Equity (TTM)"]), nm = n(fund["Net Profit Margin (Quarter)"]), rev = n(fund["Revenue (Quarter YoY Growth)"]), pe = n(fund["Current PE Ratio (TTM)"]), az = n(fund["Altman Z-Score (Modified)"]), ff = n(fund["Free Float (%)"]);
   const tiles: Array<{ k: string; v: string | null; good: boolean | null }> = [
     { k: "ROE (TTM)", v: roe == null ? null : `${(roe * 100).toFixed(1)}%`, good: roe == null ? null : roe >= 0.12 },
@@ -517,6 +519,11 @@ function KeyStats({ fund }: { fund?: JsonRecord }) {
           </div>
         ) : null)}
       </div>
+      {isStale ? (
+        <div style={{ marginTop: 12, fontSize: 10, color: "var(--warning)", background: "var(--warnSoft)", borderRadius: 8, padding: "6px 9px", lineHeight: 1.4 }}>
+          ⚠ Fundamentals as of {asOf} — the live fetch had no data for {marketDate ? `this ticker on ${marketDate}` : "this ticker today"} (yfinance was unavailable), so the most recent real values are shown instead of blanking to &ldquo;—&rdquo;.
+        </div>
+      ) : null}
     </div>
   );
 }

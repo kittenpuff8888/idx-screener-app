@@ -81,7 +81,7 @@ export function ScreenerPage() {
   // ticker → DCF upside%, from the same model as the ticker-detail panel —
   // real Free Cash Flow / beta / price / share count, fixed macro assumptions.
   const dcfByTicker = useMemo(() => {
-    const m = new Map<string, number>();
+    const m = new Map<string, { up: number; asOf?: string }>();
     if (!bundle) return m;
     bundle.fundamentals.forEach((fund, ticker) => {
       const stock = bundle.technical.get(ticker);
@@ -94,7 +94,7 @@ export function ScreenerPage() {
       const inputs: DcfInputs = { ticker, price, beta, fcfTtmBn, revenueGrowth, sharesOutstanding, week52High: null, week52Low: null, currency: "IDR" };
       const fcfGrowthRate = revenueGrowth == null || !isFinite(revenueGrowth) ? 0.05 : Math.max(-0.3, Math.min(0.4, revenueGrowth));
       const result = computeDcf(inputs, { ...SCREENER_DCF_ASSUMPTIONS, fcfGrowthRate });
-      if (result.eligible) m.set(ticker, result.upsidePct);
+      if (result.eligible) m.set(ticker, { up: result.upsidePct, asOf: fund["Fundamentals As Of"] as string | undefined });
     });
     return m;
   }, [bundle]);
@@ -144,10 +144,10 @@ export function ScreenerPage() {
       if (fSector && secCode(r.ticker, r.sectorCode) !== fSector) return false;
       if (!passLiquidity(r, fLiq)) return false;
       if (fDcf) {
-        const up = dcfByTicker.get(r.ticker);
-        if (up === undefined) return false;
-        if (fDcf === "under" && up < 0.1) return false;
-        if (fDcf === "over" && up > -0.1) return false;
+        const dcf = dcfByTicker.get(r.ticker);
+        if (dcf === undefined) return false;
+        if (fDcf === "under" && dcf.up < 0.1) return false;
+        if (fDcf === "over" && dcf.up > -0.1) return false;
       }
       return true;
     },
@@ -203,7 +203,7 @@ export function ScreenerPage() {
         case "target": return r.target || 0;
         case "rr": return r.rr || 0;
         case "chg": return r.chg;
-        case "dcfUpside": { const v = dcfByTicker.get(r.ticker); return v ?? -Infinity; }
+        case "dcfUpside": { const v = dcfByTicker.get(r.ticker); return v ? v.up : -Infinity; }
         default: return r.freshRank;
       }
     };
@@ -270,12 +270,12 @@ export function ScreenerPage() {
     const esc = (s: unknown) => `"${String(s ?? "").replace(/"/g, '""')}"`;
     const cell = (c: Cell) => (c.available ? `${c.label} (${c.val})` : "no data");
     const lines = sorted.map((r) => {
-      const up = dcfByTicker.get(r.ticker);
+      const dcf = dcfByTicker.get(r.ticker);
       return [
         r.ticker, secLabel(r.ticker, r.sectorLabel), r.setupsMatched.join("|") || "-",
         cell(r.cellTrend), cell(r.cellStructure), cell(r.cellVwap), cell(r.cellLiquidity),
         r.entry ?? "", r.invalidation ?? "", r.target ?? "", r.rr ?? "", (r.chg * 100).toFixed(2),
-        up === undefined ? "no data" : (up * 100).toFixed(1),
+        dcf === undefined ? "no data" : (dcf.up * 100).toFixed(1),
       ].map(esc).join(",");
     });
     const blob = new Blob([`${head.map(esc).join(",")}\n${lines.join("\n")}`], { type: "text/csv" });
@@ -602,9 +602,11 @@ export function ScreenerPage() {
                   <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, color: (r.rr || 0) >= 2 ? "var(--up)" : "var(--muted)" }}>{r.rr == null ? "—" : `${r.rr.toFixed(1)}×`}</span></div>
                   <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: r.chg > 0 ? "var(--up)" : r.chg < 0 ? "var(--down)" : "var(--flat)" }}>{r.chg > 0 ? "▲ " : r.chg < 0 ? "▼ " : ""}{formatPercent(r.chg)}</span></div>
                   {(() => {
-                    const up = dcfByTicker.get(r.ticker);
-                    if (up === undefined) return <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontSize: 10, color: "var(--faint)", fontStyle: "italic" }}>no data</span></div>;
-                    return <div title="DCF: fixed default assumptions — open the ticker for adjustable sliders" style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: up >= 0.1 ? "var(--up)" : up <= -0.1 ? "var(--down)" : "var(--flat)" }}>{formatPercent(up)}</span></div>;
+                    const dcf = dcfByTicker.get(r.ticker);
+                    if (dcf === undefined) return <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontSize: 10, color: "var(--faint)", fontStyle: "italic" }}>no data</span></div>;
+                    const stale = !!dcf.asOf && dcf.asOf !== (universe?.marketDate || marketDate);
+                    const tip = stale ? `DCF: fixed default assumptions — inputs are from ${dcf.asOf} (yfinance had no fresh data for ${r.ticker}) — open the ticker for detail` : "DCF: fixed default assumptions — open the ticker for adjustable sliders";
+                    return <div title={tip} style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: dcf.up >= 0.1 ? "var(--up)" : dcf.up <= -0.1 ? "var(--down)" : "var(--flat)" }}>{formatPercent(dcf.up)}{stale ? " ⚠" : ""}</span></div>;
                   })()}
                 </div>
               );

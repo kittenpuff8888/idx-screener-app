@@ -43,7 +43,9 @@ function Slider({ label, value, onChange, min, max, step, fmt }: { label: string
   );
 }
 
-export function DcfPanel({ ticker, stock, fund }: { ticker: string; stock?: TechnicalRecord; fund?: JsonRecord }) {
+export function DcfPanel({ ticker, stock, fund, marketDate }: { ticker: string; stock?: TechnicalRecord; fund?: JsonRecord; marketDate?: string | null }) {
+  const asOf = fund?.["Fundamentals As Of"] as string | undefined;
+  const isStale = !!asOf && asOf !== marketDate;
   const inputs = useMemo<DcfInputs>(() => {
     const price = asNumber(stock?.lastPrice ?? fund?.["Price"]);
     const beta = asNumber(stock?.beta);
@@ -212,6 +214,11 @@ export function DcfPanel({ ticker, stock, fund }: { ticker: string; stock?: Tech
         </div>
       </div>
 
+      {isStale ? (
+        <div style={{ fontSize: 10, color: "var(--warning)", background: "var(--warnSoft)", borderRadius: 8, padding: "6px 9px", marginTop: 14, lineHeight: 1.4 }}>
+          ⚠ The Free Cash Flow / market cap inputs above are from {asOf}, not {marketDate || "today"} — the live fetch had no data for {ticker} {marketDate ? `on ${marketDate}` : "today"} (yfinance was unavailable), so the model uses the most recent real values instead of blanking out.
+        </div>
+      ) : null}
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 14, lineHeight: 1.5, borderTop: "1px solid var(--hair)", paddingTop: 10 }}>
         Single-stage FCFE-style model: {ticker}&apos;s own reported Free Cash Flow (TTM) is grown at the FCF-growth assumption for the forecast horizon, discounted at the Cost of Equity (CAPM: risk-free + beta × equity risk premium), plus a Gordon-growth terminal value — summed to Equity Value, divided by shares outstanding (derived from market cap ÷ price, both real). Beta, FCF, revenue growth, price and share count are real published fields; risk-free rate, equity risk premium and terminal growth are macro assumptions you can adjust. This is one model, not a price target — a real DCF disagrees with market price for plenty of legitimate reasons (cyclicality, growth optionality, the market pricing risks this model doesn&apos;t capture).
       </div>

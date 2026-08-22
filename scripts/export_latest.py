@@ -703,6 +703,65 @@ def publish_ohlcv_cache(source: Path, target: Path, max_rows: int = 700) -> None
             continue
 
 
+def backfill_stale_fundamentals(fundamental: list[dict[str, Any]], market_date: str) -> int:
+    """
+    yfinance is rate-limited/blocked hard enough from the CI runner that ~65%
+    of tickers come back with an empty `info` dict on a given day, and both
+    documented fallback sources are now dead end-to-end (IDX.co.id retired
+    the ratio-summary endpoint it used to expose; Investing.com's API sits
+    behind Cloudflare bot management). Rather than publish "-" for a ticker
+    whose data we HAVE fetched successfully before, backfill it from the most
+    recent prior committed date that has real numbers for that ticker — never
+    a fabricated value, always something this pipeline itself published on an
+    earlier date. Every backfilled row is tagged with "Fundamentals As Of" so
+    staleness is disclosed, never silent. Returns the count backfilled.
+    """
+    dates_dir = DATA_DIR / "dates"
+    if not dates_dir.is_dir():
+        return 0
+    still_needed = {
+        str(row.get("Ticker") or "").upper()
+        for row in fundamental
+        if row.get("Market Cap") in (None, "-", "")
+    }
+    if not still_needed:
+        return 0
+    prior_dates = sorted(
+        (d.name for d in dates_dir.iterdir() if d.is_dir() and d.name < market_date),
+        reverse=True,
+    )
+    found: dict[str, tuple[dict[str, Any], str]] = {}
+    for d in prior_dates:
+        if not (still_needed - found.keys()):
+            break
+        prior_path = dates_dir / d / "fundamental.json"
+        if not prior_path.exists():
+            continue
+        try:
+            prior = json.loads(prior_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for rec in prior.get("records", []):
+            ticker = str(rec.get("Ticker") or "").upper()
+            if ticker in still_needed and ticker not in found and rec.get("Market Cap") not in (None, "-", ""):
+                found[ticker] = (rec, d)
+
+    backfilled = 0
+    for row in fundamental:
+        ticker = str(row.get("Ticker") or "").upper()
+        if ticker not in found or row.get("Market Cap") not in (None, "-", ""):
+            continue
+        prior_rec, prior_date = found[ticker]
+        for key, value in prior_rec.items():
+            if key in ("Ticker", "Fundamentals As Of"):
+                continue
+            if row.get(key) in (None, "-", "") and value not in (None, "-", ""):
+                row[key] = value
+        row["Fundamentals As Of"] = prior_date
+        backfilled += 1
+    return backfilled
+
+
 def export_workbook(workbook_path: Path) -> Path:
     from rebuild_backend.logic_reference import export_registry
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -724,6 +783,9 @@ def export_workbook(workbook_path: Path) -> Path:
     screener = parse_idx_screener(wb["IDX Screener"])
     technical = parse_table(wb["IDX Technical Detail"])
     fundamental = parse_table(wb["IDX Fundamental Detail"])
+    backfilled_count = backfill_stale_fundamentals(fundamental, market_date)
+    if backfilled_count:
+        print(f"[FUND_BACKFILL] {backfilled_count} tickers backfilled from a prior date's real fundamentals (today's fetch was empty).")
     processing = parse_table(processing_sheet)
     news = parse_table(wb["IDX News"]) if "IDX News" in wb.sheetnames else []
     workbook_sheets = {
