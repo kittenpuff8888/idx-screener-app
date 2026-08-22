@@ -95,18 +95,25 @@ export function MarketMapTreemap() {
   const [zoom, setZoom] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
 
-  const sectors = useMemo<Sector[]>(() => {
+  // A cap-weighted map can only size tickers that HAVE a published Market
+  // Cap. The workbook's yfinance pull still returns "-" for a large share of
+  // tickers (rate-limited upstream, even with the provider's retry) — those
+  // are real gaps, not something the map can invent a size for, so they're
+  // counted and disclosed rather than silently dropped.
+  const { sectors, noCapCount } = useMemo(() => {
     const bySector = new Map<string, Tile[]>();
+    let noCap = 0;
     bundle?.fundamentals.forEach((raw, ticker) => {
       const mcap = asNumber(raw["Market Cap"]);
       const change = asNumber(raw["Price Change %"]);
-      if (mcap === null || mcap <= 0 || change === null) return;
+      if (mcap === null || mcap <= 0) { noCap += 1; return; }
+      if (change === null) return;
       const sector = sectorByTicker.get(ticker) || normalizeSector(String(raw["IDX Sector"] ?? "Others"));
       const list = bySector.get(sector) || [];
       list.push({ ticker, mcap, change, sector, price: asNumber(raw["Price"]), pe: asNumber(raw["Current PE Ratio (TTM)"]), yld: asNumber(raw["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]) });
       bySector.set(sector, list);
     });
-    return [...bySector.entries()]
+    const sec = [...bySector.entries()]
       .map(([sector, list]) => {
         list.sort((a, b) => b.mcap - a.mcap);
         const weight = list.reduce((s, t) => s + t.mcap, 0);
@@ -114,9 +121,12 @@ export function MarketMapTreemap() {
         return { sector, count: list.length, weight, capChange, tiles: list };
       })
       .sort((a, b) => b.weight - a.weight);
+    return { sectors: sec, noCapCount: noCap };
   }, [bundle, sectorByTicker]);
 
   if (!sectors.length) return null;
+  const includedCount = sectors.reduce((n, s) => n + s.tiles.length, 0);
+  const scannedCount = includedCount + noCapCount;
 
   return (
     <div>
@@ -124,7 +134,7 @@ export function MarketMapTreemap() {
         <span style={KICKER}>MARKET MAP · CAP-WEIGHTED, COLOURED BY % CHANGE</span>
         <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>size = market cap · click a sector to see all its tickers · hover for detail</span>
         <div style={{ flex: 1 }} />
-        <button type="button" onClick={() => setDetailsOpen(true)} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>⤢ Show details · every ticker</button>
+        <button type="button" onClick={() => setDetailsOpen(true)} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>⤢ Show details · {includedCount} tickers</button>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5, color: "var(--faint)" }}>
           <span>−5%</span>
           <span style={{ width: 120, height: 9, borderRadius: 5, background: "linear-gradient(90deg,var(--down),var(--soft),var(--up))", border: "1px solid var(--border)" }} />
@@ -134,12 +144,15 @@ export function MarketMapTreemap() {
 
       <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))", padding: "14px 16px", marginBottom: 14 }}>
         <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={openTicker} dropTiny ratio={7 / 16} />
-        <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>Fundamentals · {marketDate} · click a tile to open the ticker · tickers too small to label here are folded into &ldquo;Show details&rdquo;</div>
+        <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>
+          Fundamentals · {marketDate} · click a tile to open the ticker · tickers too small to label here are folded into &ldquo;Show details&rdquo;.{" "}
+          {noCapCount > 0 ? <>{includedCount} of {scannedCount} scanned tickers have a published Market Cap to size by — the other {noCapCount} read &ldquo;-&rdquo; upstream (yfinance gap) and can&apos;t be placed on a cap-weighted map.</> : null}
+        </div>
       </div>
 
       {detailsOpen ? (
-        <Modal title="Market Map · every ticker" kicker={`${marketDate} · cap-weighted, coloured by % change`} onClose={() => setDetailsOpen(false)} maxWidth={1280}>
-          <DetailsTreemap sectors={sectors} openTicker={openTicker} onClose={() => setDetailsOpen(false)} />
+        <Modal title={`Market Map · ${includedCount} tickers`} kicker={`${marketDate} · cap-weighted, coloured by % change`} onClose={() => setDetailsOpen(false)} maxWidth={1280}>
+          <DetailsTreemap sectors={sectors} openTicker={openTicker} onClose={() => setDetailsOpen(false)} noCapCount={noCapCount} scannedCount={scannedCount} />
         </Modal>
       ) : null}
     </div>
@@ -148,14 +161,16 @@ export function MarketMapTreemap() {
 
 /** The details popup gets its own zoom state (always starts at the full
     all-sectors view) and closes before navigating to a ticker. */
-function DetailsTreemap({ sectors, openTicker, onClose }: { sectors: Sector[]; openTicker: (t: string) => void; onClose: () => void }) {
+function DetailsTreemap({ sectors, openTicker, onClose, noCapCount, scannedCount }: { sectors: Sector[]; openTicker: (t: string) => void; onClose: () => void; noCapCount: number; scannedCount: number }) {
   const [zoom, setZoom] = useState<string | null>(null);
   const jump = (ticker: string) => { onClose(); openTicker(ticker); };
+  const includedCount = sectors.reduce((n, s) => n + s.tiles.length, 0);
   return (
     <>
       <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={jump} dropTiny={false} ratio={7 / 16} />
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
-        Every scanned ticker is included here, even ones too small to carry a legible label at this size — hover any tile for its detail, click to open it. Double-click a sector header (or a tile) to zoom into that sector.
+        Every ticker with a published Market Cap is included here — {includedCount} of {scannedCount} scanned — even ones too small to carry a legible label at this size; hover any tile for its detail, click to open it. Double-click a sector header (or a tile) to zoom into that sector.
+        {noCapCount > 0 ? <> The remaining {noCapCount} scanned tickers have no Market Cap published (a &ldquo;-&rdquo; upstream, from yfinance rate-limiting) and can&apos;t be sized on a cap-weighted map — they&apos;re not omitted by choice.</> : null}
       </div>
     </>
   );
