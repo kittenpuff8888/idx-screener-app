@@ -5,7 +5,9 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import { useApp } from "@/components/providers/AppProvider";
 import { kseiSectorMap } from "@/lib/data/ksei";
-import { formatPercent, formatPrice } from "@/lib/format/number";
+import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
+import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
+import type { JsonRecord } from "@/lib/domain/types";
 import {
   CONTEXT_BY_KEY,
   CONTEXT_GROUPS,
@@ -29,7 +31,7 @@ const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))" };
 
 const PRESETS_KEY = "idxr:screenerPresets";
-const GRID = "132px 156px 1fr 1fr 1fr 1fr 78px 78px 78px 58px 62px";
+const GRID = "132px 156px 1fr 1fr 1fr 1fr 78px 78px 78px 58px 62px 84px";
 
 type Mode = "preset" | "custom";
 type Conf = "AND" | "OR";
@@ -59,8 +61,15 @@ function readPresets(): SavedPreset[] {
   }
 }
 
+// Fixed assumptions for the screener's DCF column — a table has no room for
+// per-row sliders, so every ticker uses the same macro assumptions (same
+// defaults as the ticker-detail DCF panel); only the FCF-growth input varies
+// per ticker, from that ticker's own real revenue growth. Open the ticker
+// page to adjust assumptions interactively.
+const SCREENER_DCF_ASSUMPTIONS = DEFAULT_ASSUMPTIONS;
+
 export function ScreenerPage() {
-  const { marketDate, openTicker, ksei } = useApp();
+  const { marketDate, openTicker, ksei, bundle } = useApp();
   // Real per-ticker sector (the workbook ships "IDX Sector" as "-").
   const kseiSec = useMemo(() => kseiSectorMap(ksei), [ksei]);
   const secLabel = (t: string, fallback: string) => kseiSec.get(t)?.label || fallback;
@@ -68,6 +77,27 @@ export function ScreenerPage() {
   const [universe, setUniverse] = useState<Universe | null>(null);
   const [history, setHistory] = useState<HistoryDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // ticker → DCF upside%, from the same model as the ticker-detail panel —
+  // real Free Cash Flow / beta / price / share count, fixed macro assumptions.
+  const dcfByTicker = useMemo(() => {
+    const m = new Map<string, number>();
+    if (!bundle) return m;
+    bundle.fundamentals.forEach((fund, ticker) => {
+      const stock = bundle.technical.get(ticker);
+      const price = asNumber(stock?.lastPrice ?? fund["Price"]);
+      const beta = asNumber(stock?.beta);
+      const fcfTtmBn = asNumber(fund["Free cash flow (TTM)"]);
+      const revenueGrowth = asNumber(fund["Revenue (Quarter YoY Growth)"]);
+      const marketCapAbs = asNumber((stock?.fundamentals as JsonRecord | undefined)?.["marketCap"]);
+      const sharesOutstanding = marketCapAbs != null && price != null && price > 0 ? marketCapAbs / price : null;
+      const inputs: DcfInputs = { ticker, price, beta, fcfTtmBn, revenueGrowth, sharesOutstanding, week52High: null, week52Low: null, currency: "IDR" };
+      const fcfGrowthRate = revenueGrowth == null || !isFinite(revenueGrowth) ? 0.05 : Math.max(-0.3, Math.min(0.4, revenueGrowth));
+      const result = computeDcf(inputs, { ...SCREENER_DCF_ASSUMPTIONS, fcfGrowthRate });
+      if (result.eligible) m.set(ticker, result.upsidePct);
+    });
+    return m;
+  }, [bundle]);
 
   const [mode, setMode] = useState<Mode>("preset");
   const [selectedSetups, setSelectedSetups] = useState<string[]>(["ema_trend"]);
@@ -78,6 +108,7 @@ export function ScreenerPage() {
   const [fTicker, setFTicker] = useState("");
   const [fSector, setFSector] = useState("");
   const [fLiq, setFLiq] = useState("");
+  const [fDcf, setFDcf] = useState("");
   const [sortCol, setSortCol] = useState("fresh");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [showN, setShowN] = useState(25);
@@ -112,10 +143,16 @@ export function ScreenerPage() {
       if (fTicker && !r.ticker.toLowerCase().includes(fTicker.toLowerCase())) return false;
       if (fSector && secCode(r.ticker, r.sectorCode) !== fSector) return false;
       if (!passLiquidity(r, fLiq)) return false;
+      if (fDcf) {
+        const up = dcfByTicker.get(r.ticker);
+        if (up === undefined) return false;
+        if (fDcf === "under" && up < 0.1) return false;
+        if (fDcf === "over" && up > -0.1) return false;
+      }
       return true;
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- secCode is stable per kseiSec
-    [fTicker, fSector, fLiq, kseiSec],
+    [fTicker, fSector, fLiq, fDcf, dcfByTicker, kseiSec],
   );
 
   const filtered = useMemo(() => {
@@ -166,6 +203,7 @@ export function ScreenerPage() {
         case "target": return r.target || 0;
         case "rr": return r.rr || 0;
         case "chg": return r.chg;
+        case "dcfUpside": { const v = dcfByTicker.get(r.ticker); return v ?? -Infinity; }
         default: return r.freshRank;
       }
     };
@@ -175,7 +213,7 @@ export function ScreenerPage() {
       if (typeof ka === "string") return ka.localeCompare(kb as string) * dir;
       return ((ka as number) - (kb as number)) * dir;
     });
-  }, [filtered, sortCol, sortDir]);
+  }, [filtered, sortCol, sortDir, dcfByTicker]);
 
   const matchCount = sorted.length;
   const pages = Math.max(1, Math.ceil(matchCount / showN));
@@ -228,16 +266,18 @@ export function ScreenerPage() {
   };
 
   const csv = () => {
-    const head = ["Ticker", "Sector", "Setups", "Trend", "Structure", "VWAP", "Liquidity", "Entry", "Invalid", "Target", "RR", "Chg%"];
+    const head = ["Ticker", "Sector", "Setups", "Trend", "Structure", "VWAP", "Liquidity", "Entry", "Invalid", "Target", "RR", "Chg%", "DCF Upside%"];
     const esc = (s: unknown) => `"${String(s ?? "").replace(/"/g, '""')}"`;
     const cell = (c: Cell) => (c.available ? `${c.label} (${c.val})` : "no data");
-    const lines = sorted.map((r) =>
-      [
+    const lines = sorted.map((r) => {
+      const up = dcfByTicker.get(r.ticker);
+      return [
         r.ticker, secLabel(r.ticker, r.sectorLabel), r.setupsMatched.join("|") || "-",
         cell(r.cellTrend), cell(r.cellStructure), cell(r.cellVwap), cell(r.cellLiquidity),
         r.entry ?? "", r.invalidation ?? "", r.target ?? "", r.rr ?? "", (r.chg * 100).toFixed(2),
-      ].map(esc).join(","),
-    );
+        up === undefined ? "no data" : (up * 100).toFixed(1),
+      ].map(esc).join(",");
+    });
     const blob = new Blob([`${head.map(esc).join(",")}\n${lines.join("\n")}`], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -277,6 +317,7 @@ export function ScreenerPage() {
     pills.push({ label: lo ? lo.label : fLiq, color: "var(--muted)", bg: "var(--soft)", border: "var(--border)", onRemove: () => setFLiq("") });
   }
   if (fTicker) pills.push({ label: `Ticker: "${fTicker}"`, color: "var(--muted)", bg: "var(--soft)", border: "var(--border)", onRemove: () => setFTicker("") });
+  if (fDcf) pills.push({ label: fDcf === "under" ? "DCF: Undervalued (≥10% upside)" : "DCF: Overvalued (≤10% downside)", color: "var(--accent)", bg: "var(--accentSoft)", border: "var(--accent-border)", onRemove: () => setFDcf("") });
 
   const headers: Array<[string, string, CSSProperties["justifyContent"], boolean]> = [
     ["ticker", "TICKER", "flex-start", true],
@@ -290,6 +331,7 @@ export function ScreenerPage() {
     ["target", "TARGET", "flex-end", false],
     ["rr", "R:R", "flex-end", false],
     ["chg", "CHG", "flex-end", false],
+    ["dcfUpside", "DCF UPSIDE", "flex-end", false],
   ];
 
   const addOptions = CONTEXT_GROUPS.map((g) => ({
@@ -357,8 +399,13 @@ export function ScreenerPage() {
         <select value={fLiq} onChange={(e) => setFLiq(e.target.value)} aria-label="Filter by liquidity" style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 11px", cursor: "pointer" }}>
           {LIQUIDITY_OPTIONS.map((o) => (<option key={o.v} value={o.v}>{o.label}</option>))}
         </select>
+        <select value={fDcf} onChange={(e) => setFDcf(e.target.value)} aria-label="Filter by DCF valuation" title="DCF model: real Free Cash Flow / beta / price, fixed macro assumptions — open a ticker to adjust" style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 11px", cursor: "pointer" }}>
+          <option value="">DCF: any</option>
+          <option value="under">DCF: Undervalued (≥10% upside)</option>
+          <option value="over">DCF: Overvalued (≤10% downside)</option>
+        </select>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 10, color: "var(--faint)" }}>Sector &amp; liquidity are real; konglo groups are not in the data.</span>
+        <span style={{ fontSize: 10, color: "var(--faint)" }}>Sector &amp; liquidity are real; konglo groups are not in the data. DCF uses fixed default assumptions here — open a ticker for adjustable sliders.</span>
       </div>
 
       {/* Past Setups card → dedicated page */}
@@ -504,7 +551,7 @@ export function ScreenerPage() {
       {/* results table */}
       <div style={{ ...CARD, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1240 }}>
+          <div style={{ minWidth: 1324 }}>
             <div style={{ position: "sticky", top: 0, zIndex: 20, display: "grid", gridTemplateColumns: GRID, background: "var(--soft)", borderBottom: "1px solid var(--border)" }}>
               {headers.map(([col, label, justify, sticky]) => (
                 <button key={col} type="button" onClick={() => setSort(col)} style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: justify, padding: "10px 12px", border: "none", background: sticky ? "var(--soft)" : "transparent", cursor: "pointer", fontSize: 9, fontWeight: 700, letterSpacing: ".06em", color: sortCol === col ? "var(--text)" : "var(--faint)", textAlign: "left", ...(sticky ? { position: "sticky", left: 0, zIndex: 6 } : {}) }}>
@@ -554,6 +601,11 @@ export function ScreenerPage() {
                   <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700, color: r.target == null ? "var(--faint)" : "var(--up)" }}>{r.target == null ? "—" : formatPrice(r.target)}</span></div>
                   <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 800, color: (r.rr || 0) >= 2 ? "var(--up)" : "var(--muted)" }}>{r.rr == null ? "—" : `${r.rr.toFixed(1)}×`}</span></div>
                   <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: r.chg > 0 ? "var(--up)" : r.chg < 0 ? "var(--down)" : "var(--flat)" }}>{r.chg > 0 ? "▲ " : r.chg < 0 ? "▼ " : ""}{formatPercent(r.chg)}</span></div>
+                  {(() => {
+                    const up = dcfByTicker.get(r.ticker);
+                    if (up === undefined) return <div style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontSize: 10, color: "var(--faint)", fontStyle: "italic" }}>no data</span></div>;
+                    return <div title="DCF: fixed default assumptions — open the ticker for adjustable sliders" style={{ padding: "9px 8px", textAlign: "right" }}><span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, color: up >= 0.1 ? "var(--up)" : up <= -0.1 ? "var(--down)" : "var(--flat)" }}>{formatPercent(up)}</span></div>;
+                  })()}
                 </div>
               );
             })}
@@ -571,7 +623,7 @@ export function ScreenerPage() {
       </div>
 
       <div style={{ fontSize: 10.5, color: "var(--faint)", lineHeight: 1.5, maxWidth: 900, marginTop: 14 }}>
-        Real IDX workbook · {universe?.marketDate || marketDate}. Every cell is an interpreted judgment from real fields — hover for the raw value. Blue = bullish/good, red = bearish/bad, gray = neutral. Ownership/flow uses KSEI foreign/local as a labelled proxy — broker-level buy/sell concentration does not exist in the data and is never invented. Missing fields render an explicit &ldquo;no data&rdquo;.
+        Real IDX workbook · {universe?.marketDate || marketDate}. Every cell is an interpreted judgment from real fields — hover for the raw value. Blue = bullish/good, red = bearish/bad, gray = neutral. Ownership/flow uses KSEI foreign/local as a labelled proxy — broker-level buy/sell concentration does not exist in the data and is never invented. Missing fields render an explicit &ldquo;no data&rdquo;. DCF Upside is a single-stage FCFE-style model on real Free Cash Flow, beta and price with fixed default assumptions (risk-free rate, equity risk premium, terminal growth) — open a ticker&apos;s detail page for the full, adjustable model.
       </div>
     </section>
   );
