@@ -417,7 +417,7 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
       </div>
       <div style={{ display: "flex", gap: 16, flex: "1 1 auto" }}>
         {/* Left: true-price spine (reward/risk zones + dots) + evenly-spaced leader rows */}
-        <div style={{ position: "relative", width: 232, flex: "none", height: H }}>
+        <div style={{ position: "relative", flex: "1 1 auto", minWidth: 0, height: H }}>
           <svg viewBox={`0 0 44 ${H}`} preserveAspectRatio="none" style={{ position: "absolute", left: 0, top: 0, width: 44, height: H, overflow: "visible" }}>
             {rewardH > 0.5 ? <rect x={4} y={rewardY} width={16} height={rewardH} rx={3} fill="var(--upSoft)" /> : null}
             {riskH > 0.5 ? <rect x={4} y={riskY} width={16} height={riskH} rx={3} fill="var(--downSoft)" /> : null}
@@ -446,19 +446,21 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
             </div>
           ))}
         </div>
-        {/* Right: reward / risk readout */}
-        <div style={{ flex: "1 1 auto", display: "flex", flexDirection: "column", justifyContent: "center", gap: 10, minWidth: 0 }}>
-          <div style={{ background: "var(--upSoft)", borderRadius: 11, padding: "11px 13px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--up)" }}>REWARD · to {targetRole}</div>
-            <div style={{ fontFamily: MONO, fontSize: 19, fontWeight: 800, color: "var(--up)" }}>{reward == null ? "—" : `+${formatNumber(Math.abs(reward), 0)}`} {reward != null && price ? <span style={{ fontSize: 12, fontWeight: 600 }}>({sPct(Math.abs(reward) / price, 1)})</span> : null}</div>
+        {/* Right: reward / risk readout — compact, fixed width so the ladder gets the room */}
+        <div style={{ width: 138, flex: "none", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, minWidth: 0 }}>
+          <div style={{ background: "var(--upSoft)", borderRadius: 9, padding: "8px 10px" }}>
+            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--up)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>REWARD · to {targetRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--up)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{reward == null ? "—" : `+${formatNumber(Math.abs(reward), 0)}`}</div>
+            {reward != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--up)" }}>({sPct(Math.abs(reward) / price, 1)})</div> : null}
           </div>
-          <div style={{ background: "var(--downSoft)", borderRadius: 11, padding: "11px 13px" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".06em", color: "var(--down)" }}>RISK · to {invalRole}</div>
-            <div style={{ fontFamily: MONO, fontSize: 19, fontWeight: 800, color: "var(--down)" }}>{risk == null ? "—" : `−${formatNumber(Math.abs(risk), 0)}`} {risk != null && price ? <span style={{ fontSize: 12, fontWeight: 600 }}>({sPct(-Math.abs(risk) / price, 1)})</span> : null}</div>
+          <div style={{ background: "var(--downSoft)", borderRadius: 9, padding: "8px 10px" }}>
+            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--down)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>RISK · to {invalRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--down)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{risk == null ? "—" : `−${formatNumber(Math.abs(risk), 0)}`}</div>
+            {risk != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--down)" }}>({sPct(-Math.abs(risk) / price, 1)})</div> : null}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "7px 9px" }}><div style={{ fontSize: 9, color: "var(--faint)" }}>ATR (14)</div><div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>{atr == null ? "—" : `${atr.toFixed(1)}%`}</div></div>
-            <div style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "7px 9px" }}><div style={{ fontSize: 9, color: "var(--faint)" }}>Reference</div><div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>Close {price == null ? "—" : formatPrice(price)}</div></div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ background: "var(--soft)", borderRadius: 8, padding: "6px 9px" }}><div style={{ fontSize: 8, color: "var(--faint)" }}>ATR (14)</div><div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700 }}>{atr == null ? "—" : `${atr.toFixed(1)}%`}</div></div>
+            <div style={{ background: "var(--soft)", borderRadius: 8, padding: "6px 9px" }}><div style={{ fontSize: 8, color: "var(--faint)" }}>Reference</div><div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700 }}>Close {price == null ? "—" : formatPrice(price)}</div></div>
           </div>
         </div>
       </div>
