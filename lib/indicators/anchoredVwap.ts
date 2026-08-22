@@ -2,11 +2,12 @@ import type { OhlcvRow } from "@/lib/domain/types";
 
 export type VwapAnchor = "week" | "month" | "quarter" | "year";
 
-export type AvwapPoint = { key: string; vwap: number; u1: number; l1: number; u2: number; l2: number };
+export type AvwapPoint = { key: string; vwap: number; u1: number; l1: number; u2: number; l2: number; u3: number; l3: number };
 export type AnchoredVwapResult = {
   points: (AvwapPoint | null)[]; // aligned 1:1 with rows (null until volume accrues)
   currentKey: string | null;
-  prevFinalVwap: number | null;  // final VWAP of the period before the current one (PQVWAP)
+  prevFinalVwap: number | null;      // final VWAP of the period before the current one (PQVWAP)
+  prevFinalPoint: AvwapPoint | null; // same, with the full band set — the "Previous Q/Y VWAP" profile, frozen at the prior period's last bar
 };
 
 export const VWAP_ANCHORS: Array<{ id: VwapAnchor; short: string; label: string }> = [
@@ -56,17 +57,18 @@ export function periodLabel(key: string | null, anchor: VwapAnchor): string {
  * anchor period, σ is the volume-weighted stdev of src about the VWAP, and bands
  * are vwap ± mult·σ. Rows must be ascending by date.
  */
-export function computeAnchoredVwap(rows: OhlcvRow[], anchor: VwapAnchor = "quarter", mult1 = 1, mult2 = 2): AnchoredVwapResult {
+export function computeAnchoredVwap(rows: OhlcvRow[], anchor: VwapAnchor = "quarter", mult1 = 1, mult2 = 2, mult3 = 3): AnchoredVwapResult {
   const points: (AvwapPoint | null)[] = [];
   let curKey: string | null = null;
   let cumPV = 0, cumV = 0, cumPV2 = 0;
   let prevFinal: number | null = null;
-  let lastVwap: number | null = null;
+  let prevFinalPoint: AvwapPoint | null = null;
+  let lastPoint: AvwapPoint | null = null;
 
   for (const r of rows) {
     const key = periodKey(String(r.date), anchor);
     if (key !== curKey) {
-      if (lastVwap != null) prevFinal = lastVwap;
+      if (lastPoint != null) { prevFinal = lastPoint.vwap; prevFinalPoint = lastPoint; }
       curKey = key;
       cumPV = 0; cumV = 0; cumPV2 = 0;
     }
@@ -77,11 +79,12 @@ export function computeAnchoredVwap(rows: OhlcvRow[], anchor: VwapAnchor = "quar
       const vwap = cumPV / cumV;
       const variance = Math.max(0, cumPV2 / cumV - vwap * vwap);
       const sd = Math.sqrt(variance);
-      points.push({ key, vwap, u1: vwap + mult1 * sd, l1: vwap - mult1 * sd, u2: vwap + mult2 * sd, l2: vwap - mult2 * sd });
-      lastVwap = vwap;
+      const point: AvwapPoint = { key, vwap, u1: vwap + mult1 * sd, l1: vwap - mult1 * sd, u2: vwap + mult2 * sd, l2: vwap - mult2 * sd, u3: vwap + mult3 * sd, l3: vwap - mult3 * sd };
+      points.push(point);
+      lastPoint = point;
     } else {
       points.push(null);
     }
   }
-  return { points, currentKey: curKey, prevFinalVwap: prevFinal };
+  return { points, currentKey: curKey, prevFinalVwap: prevFinal, prevFinalPoint };
 }

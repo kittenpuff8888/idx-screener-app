@@ -336,7 +336,20 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
   );
 
   const rows = [...core, ...extraRows];
-  const uniq = rows.filter((r, i, a) => a.findIndex((x) => Math.abs(x.v - r.v) < 0.5) === i).sort((a, b) => b.v - a.v);
+  // Merge levels that land on (near-)identical prices instead of silently
+  // dropping every label but the first — e.g. PWH and MDH are frequently the
+  // exact same real number, and both deserve to show on that rung.
+  const uniq: LadderRow[] = [];
+  for (const r of [...rows].sort((a, b) => b.v - a.v)) {
+    const last = uniq[uniq.length - 1];
+    if (last && r.label !== "CLOSE" && last.label !== "CLOSE" && Math.abs(last.v - r.v) < 0.5) {
+      last.label = `${last.label} · ${r.label}`;
+      const parts = [last.explain, r.explain].filter(Boolean);
+      last.explain = parts.length ? parts.join(" ") : undefined;
+      continue;
+    }
+    uniq.push({ ...r });
+  }
 
   // Selected (or default) target/invalidation — click any non-CLOSE row's T/S
   // button to override; R:R and the reward/risk readout recompute live.
