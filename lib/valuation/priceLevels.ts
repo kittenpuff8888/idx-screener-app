@@ -1,6 +1,6 @@
 import type { JsonRecord, OhlcvRow } from "@/lib/domain/types";
 import { asNumber } from "@/lib/format/number";
-import { computeAnchoredVwap } from "@/lib/indicators/anchoredVwap";
+import { computeAnchoredVwap, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
 
 // Extra reference levels for the ticker-page price ladder, grouped so they
 // can be toggled on/off. Every number here is either read directly from a
@@ -39,25 +39,32 @@ export function buildMaLevels(ma: JsonRecord | undefined): PriceLevel[] {
   return out;
 }
 
-/** Anchored VWAP + σ-band levels for Quarter and Year, computed client-side
-    from real OHLCV — the backend publishes the centerline (vwapProfiles.*.vwap)
-    but not the σ-band prices, so this reuses the exact same engine as the
-    chart's custom AVWAP overlay to derive them honestly. */
+/** Adds one VWAP profile's centerline + ±1σ/±2σ/±3σ bands to `out`. */
+function pushVwapProfile(out: PriceLevel[], idPrefix: string, label: string, period: string, pt: AvwapPoint): void {
+  out.push({ id: `${idPrefix}-c`, group: "vwap", label, price: pt.vwap, tone: "flat", explain: `Volume-weighted average price over ${period} — the average price institutions actually transacted at over that period.` });
+  const bands: Array<[1 | 2 | 3, "u1" | "u2" | "u3", "l1" | "l2" | "l3"]> = [[1, "u1", "l1"], [2, "u2", "l2"], [3, "u3", "l3"]];
+  for (const [n, uk, lk] of bands) {
+    out.push({ id: `${idPrefix}-u${n}`, group: "vwap", label: `${label} +${n}σ`, price: pt[uk], tone: "up", explain: `${n} standard deviation${n > 1 ? "s" : ""} above ${label} — a ${n === 3 ? "statistically extreme" : "common resistance / profit-taking"} zone.` });
+    out.push({ id: `${idPrefix}-l${n}`, group: "vwap", label: `${label} −${n}σ`, price: pt[lk], tone: "down", explain: `${n} standard deviation${n > 1 ? "s" : ""} below ${label} — a ${n === 3 ? "statistically extreme" : "common support / value-seeking"} zone.` });
+  }
+}
+
+/** Anchored VWAP + σ-band levels for the same three profiles the reference
+    workbook tracks — Current Quarter, Previous Quarter, and Previous Year —
+    computed client-side from real OHLCV. The backend publishes only the
+    centerline (vwapProfiles.*.vwap), not the σ-band prices, so this reuses
+    the exact engine behind the chart's AVWAP overlay to derive them honestly;
+    "previous" profiles use its frozen last-bar-of-period snapshot rather than
+    a live running value. */
 export function buildVwapLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
   if (!rows || rows.length < 5) return [];
   const out: PriceLevel[] = [];
-  const anchors: Array<["quarter" | "year", string]> = [["quarter", "PQ"], ["year", "PY"]];
-  for (const [anchor, prefix] of anchors) {
-    const res = computeAnchoredVwap(rows, anchor);
-    const last = [...res.points].reverse().find((p) => p);
-    if (!last) continue;
-    const period = anchor === "quarter" ? "quarter" : "year";
-    out.push({ id: `vwap-${anchor}-c`, group: "vwap", label: `${prefix}VWAP`, price: last.vwap, tone: "flat", explain: `Volume-weighted average price since the start of the current ${period} — the average price institutions actually transacted at over that period.` });
-    out.push({ id: `vwap-${anchor}-u1`, group: "vwap", label: `${prefix}VWAP +1σ`, price: last.u1, tone: "up", explain: `One standard deviation above the ${period}-anchored VWAP — a common resistance / profit-taking zone.` });
-    out.push({ id: `vwap-${anchor}-l1`, group: "vwap", label: `${prefix}VWAP −1σ`, price: last.l1, tone: "down", explain: `One standard deviation below the ${period}-anchored VWAP — a common support / value-seeking zone.` });
-    out.push({ id: `vwap-${anchor}-u2`, group: "vwap", label: `${prefix}VWAP +2σ`, price: last.u2, tone: "up", explain: `Two standard deviations above the ${period}-anchored VWAP — a statistically stretched, often mean-reversion extreme.` });
-    out.push({ id: `vwap-${anchor}-l2`, group: "vwap", label: `${prefix}VWAP −2σ`, price: last.l2, tone: "down", explain: `Two standard deviations below the ${period}-anchored VWAP — a statistically stretched, often mean-reversion extreme.` });
-  }
+  const q = computeAnchoredVwap(rows, "quarter");
+  const lastQ = [...q.points].reverse().find((p) => p);
+  if (lastQ) pushVwapProfile(out, "vwap-cq", "Current QVWAP", "the current quarter", lastQ);
+  if (q.prevFinalPoint) pushVwapProfile(out, "vwap-pq", "Prev QVWAP", "the previous (completed) quarter", q.prevFinalPoint);
+  const y = computeAnchoredVwap(rows, "year");
+  if (y.prevFinalPoint) pushVwapProfile(out, "vwap-py", "Prev Year VWAP", "the previous (completed) year", y.prevFinalPoint);
   return out;
 }
 
@@ -86,11 +93,15 @@ export function buildSmcLevels(technical: JsonRecord | undefined): PriceLevel[] 
     push("smc-eq-lo", "EQ Low", eq[0], "flat", "Equilibrium — the midpoint band of the current dealing range (Smart Money Concepts); a common reaction zone.");
   }
   push("smc-strong-high", "Strong High", asNumber(smc["strongHigh"]), "up", "Structural swing high defining the top of the current range — a break above often confirms a new leg up.");
+  push("smc-weak-high", "Weak High", asNumber(smc["weakHigh"]), "up", "A minor swing high inside the current range — less significant than Strong High, but still a local supply zone.");
+  push("smc-strong-low", "Strong Low", asNumber(smc["strongLow"]), "down", "Structural swing low defining the bottom of the current range — a break below often confirms a new leg down.");
   push("smc-weak-low", "Weak Low", asNumber(smc["weakLow"]), "down", "The most recent minor swing low — a break below it often confirms the range has failed to hold.");
   push("mp-pwh", "PWH", asNumber(mp["pwh"]), "up", "Previous week's high — a widely-watched short-term reference level.");
   push("mp-pwl", "PWL", asNumber(mp["pwl"]), "down", "Previous week's low — a widely-watched short-term reference level.");
   push("mp-ibh", "IBH", asNumber(mp["ibh"]), "up", "Today's Initial Balance high — the range set in the opening sessions; a breakout above often sets the day's directional bias.");
   push("mp-ibl", "IBL", asNumber(mp["ibl"]), "down", "Today's Initial Balance low — the range set in the opening sessions; a breakdown below often sets the day's directional bias.");
+  push("mp-mdh", "MDH", asNumber(mp["mdh"]), "up", "The current week's first trading day (Monday) high — an early-week reference level.");
+  push("mp-mdl", "MDL", asNumber(mp["mdl"]), "down", "The current week's first trading day (Monday) low — an early-week reference level.");
   return out;
 }
 

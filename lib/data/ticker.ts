@@ -45,9 +45,15 @@ export function buildResearchSummary(stock?: TechnicalRecord, ownership?: KseiIs
 export async function loadOhlcv(marketDate: string, ticker: string): Promise<OhlcvPayload | null> {
   try {
     const payload = await fetchJson<OhlcvPayload>(`/data/ohlcv/${marketDate}/${ticker.toUpperCase()}.json`);
+    // Keep the current calendar year plus the full previous one. Relative to
+    // marketDate (not a hardcoded literal) so this doesn't silently shrink at
+    // each year rollover, and long enough that "previous completed year"
+    // anchors (e.g. the price ladder's Prev Year VWAP) have a real prior-year
+    // boundary to freeze at, not just the in-progress current year.
+    const cutoff = `${Number(marketDate.slice(0, 4)) - 1}-01-01`;
     return {
       ...payload,
-      rows: (payload.rows || []).filter((row) => row.date >= "2026-01-01" && row.date <= marketDate),
+      rows: (payload.rows || []).filter((row) => row.date >= cutoff && row.date <= marketDate),
     };
   } catch {
     return null;
