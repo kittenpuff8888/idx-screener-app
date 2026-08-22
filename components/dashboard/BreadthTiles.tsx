@@ -4,14 +4,17 @@ import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Modal } from "@/components/shared/Modal";
+import { kseiSectorMap } from "@/lib/data/ksei";
+import { MoversExplorer, type MoveRow, type MoversBucket } from "./MoversExplorer";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
 /** Breadth tiles (DESIGN_SPEC §3.2). Advancers / Decliners / Unchanged share one
-    tile; New Highs / New Lows share another — both open a popup listing the
-    underlying tickers on click. Up/Down Volume stays a standalone tile. Every
-    count and every listed ticker is read from published fields — a tile or list
-    with no usable field reads `no data` / "no tickers" rather than a fabricated
-    zero. */
+    tile and open the page-sized MoversExplorer (bucket bubbles + a Screener-style
+    table) on click; New Highs / New Lows share another tile and open a smaller
+    two-column popup. Up/Down Volume stays a standalone, non-clickable tile.
+    Every count and every listed ticker is read from published fields — a tile
+    or list with no usable field reads `no data` / "no tickers" rather than a
+    fabricated zero. */
 
 const CARD: CSSProperties = {
   background: "var(--panel)",
@@ -26,7 +29,6 @@ const MONO = "var(--font-mono)";
 
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n)}`;
 
-type MoveRow = { ticker: string; companyName: string; price: number | null; changePct: number | null };
 type BoundRow = { ticker: string; companyName: string; price: number; bound: number; distancePct: number };
 
 function TickerRow({ ticker, companyName, right, rightColor, onOpen }: { ticker: string; companyName: string; right: string; rightColor: string; onOpen: (t: string) => void }) {
@@ -44,32 +46,40 @@ function TickerRow({ ticker, companyName, right, rightColor, onOpen }: { ticker:
 }
 
 export function BreadthTiles() {
-  const { bundle, openTicker } = useApp();
-  const [modal, setModal] = useState<null | "advDec" | "highLow">(null);
+  const { bundle, openTicker, ksei, marketDate } = useApp();
+  const [modal, setModal] = useState<null | MoversBucket | "highLow">(null);
+  const kseiSec = useMemo(() => kseiSectorMap(ksei), [ksei]);
 
   const model = useMemo(() => {
     const breadth = (bundle?.overview?.overview?.breadth || {}) as Record<string, unknown>;
 
-    // Advancers / decliners — walked per-ticker so the tile count always
-    // matches the list in the popup (same source as the up/down-volume tile).
+    // Advancers / decliners / unchanged — walked per-ticker so the tile count
+    // always matches the list in the popup (same source as up/down volume).
     const advancers: MoveRow[] = [];
     const decliners: MoveRow[] = [];
-    let unchangedCount: number | null = null;
+    const unchanged: MoveRow[] = [];
     if (bundle?.technical?.size) {
-      unchangedCount = 0;
       bundle.technical.forEach((rec) => {
         const chg = asNumber(rec.changePercent);
         if (chg === null) return;
-        const row: MoveRow = { ticker: rec.ticker, companyName: rec.companyName || rec.ticker, price: asNumber(rec.lastPrice), changePct: chg };
+        const row: MoveRow = {
+          ticker: rec.ticker,
+          companyName: rec.companyName || rec.ticker,
+          sector: kseiSec.get(rec.ticker)?.label || rec.sector || "Others",
+          price: asNumber(rec.lastPrice),
+          changePct: chg,
+        };
         if (chg > 0) advancers.push(row);
         else if (chg < 0) decliners.push(row);
-        else unchangedCount! += 1;
+        else unchanged.push(row);
       });
     }
     advancers.sort((a, b) => (b.changePct ?? 0) - (a.changePct ?? 0));
     decliners.sort((a, b) => (a.changePct ?? 0) - (b.changePct ?? 0));
+    unchanged.sort((a, b) => a.ticker.localeCompare(b.ticker));
     const advances = bundle?.technical?.size ? advancers.length : asNumber(breadth.advances);
     const declines = bundle?.technical?.size ? decliners.length : asNumber(breadth.declines);
+    const unchangedCount = bundle?.technical?.size ? unchanged.length : asNumber(breadth.unchanged);
     const advDec = advances !== null && declines !== null ? advances + declines : null;
 
     // New highs / lows — price at or through its published 52-week bound.
@@ -108,8 +118,8 @@ export function BreadthTiles() {
     }
     const volRatio = upVol !== null && downVol !== null && downVol > 0 ? upVol / downVol : null;
 
-    return { advancers, decliners, advances, declines, advDec, unchangedCount, newHighs, newLows, newHigh, newLow, netHL, upVol, downVol, volRatio };
-  }, [bundle]);
+    return { advancers, decliners, unchanged, advances, declines, advDec, unchangedCount, newHighs, newLows, newHigh, newLow, netHL, upVol, downVol, volRatio };
+  }, [bundle, kseiSec]);
 
   const advDecNoData = model.advances === null && model.declines === null;
   const hlNoData = model.newHigh === null && model.newLow === null;
@@ -132,14 +142,14 @@ export function BreadthTiles() {
               <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 3 }}>counted across the scanned universe</div>
             </>
           ) : (
-            <button type="button" onClick={() => setModal("advDec")} style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "transparent", border: "none", padding: 0 }}>
+            <button type="button" onClick={() => setModal("advancers")} style={{ display: "block", width: "100%", textAlign: "left", cursor: "pointer", background: "transparent", border: "none", padding: 0 }}>
               <div style={{ ...KICKER, display: "flex", alignItems: "center", gap: 6 }}>ADVANCERS / DECLINERS / UNCHANGED<span style={{ fontSize: 9, color: "var(--accent)", fontWeight: 700 }}>VIEW TICKERS →</span></div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
                 <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--up)" }}>{formatNumber(model.advances!, 0)}</span>
                 <span style={{ color: "var(--faint)", fontSize: 13 }}>/</span>
                 <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--down)" }}>{model.declines === null ? "—" : formatNumber(model.declines, 0)}</span>
                 <span style={{ color: "var(--faint)", fontSize: 13 }}>/</span>
-                <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--faint)" }} title="Unchanged breakdown not shown yet">—</span>
+                <span style={{ fontFamily: MONO, fontSize: 24, fontWeight: 800, color: "var(--flat)" }}>{model.unchangedCount === null ? "—" : formatNumber(model.unchangedCount, 0)}</span>
               </div>
               <div style={{ fontSize: 10.5, color: "var(--muted)", marginTop: 3 }}>
                 {model.advDec && model.advDec > 0 ? `${((model.advances! / model.advDec) * 100).toFixed(1)}% up` : "counted across the scanned universe"} · click to view tickers
@@ -183,30 +193,13 @@ export function BreadthTiles() {
         </div>
       </div>
 
-      {modal === "advDec" ? (
-        <Modal title="Advancers / Decliners" kicker={`${model.advDec ?? 0} names moved`} onClose={() => setModal(null)} maxWidth={640}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div>
-              <div style={{ ...KICKER, color: "var(--up)", marginBottom: 6 }}>ADVANCERS · {model.advancers.length}</div>
-              <div style={{ maxHeight: 380, overflowY: "auto" }}>
-                {model.advancers.length ? model.advancers.map((r) => (
-                  <TickerRow key={r.ticker} ticker={r.ticker} companyName={r.companyName} right={r.changePct !== null ? `+${r.changePct.toFixed(2)}%` : "—"} rightColor="var(--up)" onOpen={jump} />
-                )) : <div style={{ fontSize: 11.5, color: "var(--faint)", padding: "8px 4px" }}>no tickers</div>}
-              </div>
-            </div>
-            <div>
-              <div style={{ ...KICKER, color: "var(--down)", marginBottom: 6 }}>DECLINERS · {model.decliners.length}</div>
-              <div style={{ maxHeight: 380, overflowY: "auto" }}>
-                {model.decliners.length ? model.decliners.map((r) => (
-                  <TickerRow key={r.ticker} ticker={r.ticker} companyName={r.companyName} right={r.changePct !== null ? `${r.changePct.toFixed(2)}%` : "—"} rightColor="var(--down)" onOpen={jump} />
-                )) : <div style={{ fontSize: 11.5, color: "var(--faint)", padding: "8px 4px" }}>no tickers</div>}
-              </div>
-            </div>
-          </div>
-          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 14, lineHeight: 1.5 }}>
-            Unchanged names ({model.unchangedCount ?? "—"}) aren&apos;t broken out into a ticker list yet.
-          </div>
-        </Modal>
+      {modal === "advancers" || modal === "decliners" || modal === "unchanged" ? (
+        <MoversExplorer
+          initialBucket={modal}
+          lists={{ advancers: model.advancers, decliners: model.decliners, unchanged: model.unchanged }}
+          marketDate={marketDate || ""}
+          onClose={() => setModal(null)}
+        />
       ) : null}
 
       {modal === "highLow" ? (
