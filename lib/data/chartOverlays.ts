@@ -17,6 +17,11 @@ export const OVERLAYS: OverlayDef[] = [
     label: "IBH / IBL · Initial Balance",
     note: "Monthly initial-balance band — the high/low of each month's first 2 sessions, locked for the rest of the month (TSR × BuayaSerpong, Pine v6).",
   },
+  {
+    id: "macd4c",
+    label: "MACD 4C Smooth",
+    note: "MACD (12/26/9) with an EMA-smoothed histogram and 4-colour momentum states — silver ≥0 rising, red ≥0 falling, bright-red <0 falling, blue <0 rising. Drawn in an oscillator sub-pane below the candles.",
+  },
 ];
 
 const KEY = "idxr:chart:overlays";
