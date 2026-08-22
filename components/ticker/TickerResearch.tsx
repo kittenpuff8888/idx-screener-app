@@ -7,10 +7,12 @@ import { useApp } from "@/components/providers/AppProvider";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { fetchJson } from "@/lib/data/client";
 import { loadOhlcv } from "@/lib/data/ticker";
-import type { JsonRecord, OhlcvPayload } from "@/lib/domain/types";
+import type { JsonRecord, OhlcvPayload, TechnicalRecord } from "@/lib/domain/types";
 import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
 import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
 import { DcfPanel } from "@/components/ticker/DcfPanel";
+import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
+import { buildMaLevels, buildVwapLevels, buildSmcLevels, buildPivotLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
 import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
@@ -167,10 +169,9 @@ export function TickerResearch() {
         </div>
         <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span style={KICKER}>TRADE PLAN · PRICE LADDER</span><div style={{ flex: 1 }} />
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", borderRadius: 6, padding: "2px 8px" }}>R:R {rr(setup, price, VAL, VAH)}</span>
+            <span style={KICKER}>TRADE PLAN · PRICE LADDER</span>
           </div>
-          <TradePlan setup={setup} price={price} hi52={hi52} lo52={lo52} VAL={VAL} VAH={VAH} PoC={PoC} atr={n(t["atrPercent"])} />
+          <TradePlan setup={setup} price={price} hi52={hi52} lo52={lo52} VAL={VAL} VAH={VAH} PoC={PoC} atr={n(t["atrPercent"])} ma={ma} technical={t} ohlcv={ohlcv} stock={stock} fund={fund} />
         </div>
       </div>
 
@@ -243,12 +244,6 @@ function Back({ router, label, switcher }: { router: ReturnType<typeof useRouter
   );
 }
 
-function rr(setup: Setup | null, price: number | null, VAL: number | null, VAH: number | null): string {
-  if (setup) { const risk = setup.entryZone - setup.invalidation; const rew = setup.target - setup.entryZone; return risk > 0 ? `${(rew / risk).toFixed(1)}:1` : "—"; }
-  if (price != null && VAL != null && VAH != null && price - VAL > 0) return `${((VAH - price) / (price - VAL)).toFixed(1)}:1`;
-  return "—";
-}
-
 function SetupActive({ setup }: { setup: Setup }) {
   return (
     <div>
@@ -293,28 +288,75 @@ function SetupNone({ rangePos, offLow }: { rangePos: number | null; offLow: numb
   );
 }
 
-function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr }: { setup: Setup | null; price: number | null; hi52: number | null; lo52: number | null; VAL: number | null; VAH: number | null; PoC: number | null; atr: number | null }) {
-  const rows: Array<{ v: number; label: string; tone: "up" | "down" | "flat" }> = [];
-  const push = (v: number | null, label: string, tone: "up" | "down" | "flat") => { if (v != null && isFinite(v)) rows.push({ v, label, tone }); };
+type LadderRow = { id: string; v: number; label: string; tone: "up" | "down" | "flat"; explain?: string };
+
+function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical, ohlcv, stock, fund }: {
+  setup: Setup | null; price: number | null; hi52: number | null; lo52: number | null; VAL: number | null; VAH: number | null; PoC: number | null; atr: number | null;
+  ma?: JsonRecord; technical?: JsonRecord; ohlcv: OhlcvPayload | null; stock?: TechnicalRecord; fund?: JsonRecord;
+}) {
+  const [activeGroups, setActiveGroups] = useState<Set<LevelGroup>>(new Set());
+  const [targetSel, setTargetSel] = useState<string | null>(null);
+  const [invalSel, setInvalSel] = useState<string | null>(null);
+  const toggleGroup = (g: LevelGroup) => setActiveGroups((s) => { const n = new Set(s); n.has(g) ? n.delete(g) : n.add(g); return n; });
+
+  const core: LadderRow[] = [];
+  const push = (id: string, v: number | null, label: string, tone: "up" | "down" | "flat") => { if (v != null && isFinite(v)) core.push({ id, v, label, tone }); };
   if (setup) {
-    push(setup.target, "Target", "up"); push(VAH, "Value-area high", "up"); push(PoC, "PoC", "flat");
-    push(price, "CLOSE", "flat"); push(setup.entryZone, "Entry", "flat"); push(VAL, "Value-area low", "down"); push(setup.invalidation, "Stop · invalidation", "down");
+    push("core-target", setup.target, "Target", "up"); push("core-vah", VAH, "Value-area high", "up"); push("core-poc", PoC, "PoC", "flat");
+    push("core-close", price, "CLOSE", "flat"); push("core-entry", setup.entryZone, "Entry", "flat"); push("core-val", VAL, "Value-area low", "down"); push("core-stop", setup.invalidation, "Stop · invalidation", "down");
   } else {
-    push(hi52, "52w swing high", "up"); push(VAH, "Value-area high", "up"); push(PoC, "PoC · resistance", "flat");
-    push(price, "CLOSE", "flat"); push(VAL, "Value-area low", "down"); push(lo52, "52w swing low", "down");
+    push("core-hi52", hi52, "52w swing high", "up"); push("core-vah", VAH, "Value-area high", "up"); push("core-poc", PoC, "PoC · resistance", "flat");
+    push("core-close", price, "CLOSE", "flat"); push("core-val", VAL, "Value-area low", "down"); push("core-lo52", lo52, "52w swing low", "down");
   }
+
+  // Optional groups — real published/computed levels, opt-in via the chips below.
+  const dcfLevel = useMemo(() => {
+    const beta = n(stock?.beta);
+    const fcfTtmBn = n(fund?.["Free cash flow (TTM)"]);
+    const revenueGrowth = n(fund?.["Revenue (Quarter YoY Growth)"]);
+    const marketCapAbs = n((stock?.fundamentals as JsonRecord | undefined)?.["marketCap"]);
+    const sharesOutstanding = marketCapAbs != null && price != null && price > 0 ? marketCapAbs / price : null;
+    const inputs: DcfInputs = { ticker: "", price, beta, fcfTtmBn, revenueGrowth, sharesOutstanding, week52High: null, week52Low: null, currency: "IDR" };
+    const fcfGrowthRate = revenueGrowth == null || !isFinite(revenueGrowth) ? 0.05 : Math.max(-0.3, Math.min(0.4, revenueGrowth));
+    const result = computeDcf(inputs, { ...DEFAULT_ASSUMPTIONS, fcfGrowthRate });
+    return result.eligible ? buildDcfLevels(result.fairValuePerShare, result.bearFairValue, result.bullFairValue) : [];
+  }, [stock, fund, price]);
+
+  const extraByGroup: Record<LevelGroup, PriceLevel[]> = useMemo(() => ({
+    ma: buildMaLevels(ma),
+    vwap: buildVwapLevels(ohlcv?.rows),
+    smc: buildSmcLevels(technical),
+    pivot: buildPivotLevels(ohlcv?.rows),
+    dcf: dcfLevel,
+  }), [ma, ohlcv, technical, dcfLevel]);
+
+  const extraRows: LadderRow[] = useMemo(
+    () => (Object.keys(extraByGroup) as LevelGroup[]).filter((g) => activeGroups.has(g)).flatMap((g) => extraByGroup[g].map((l) => ({ id: l.id, v: l.price, label: l.label, tone: l.tone, explain: l.explain }))),
+    [activeGroups, extraByGroup],
+  );
+
+  const rows = [...core, ...extraRows];
   const uniq = rows.filter((r, i, a) => a.findIndex((x) => Math.abs(x.v - r.v) < 0.5) === i).sort((a, b) => b.v - a.v);
-  const rewardTo = setup ? setup.target : VAH; const riskTo = setup ? setup.invalidation : VAL;
+
+  // Selected (or default) target/invalidation — click any non-CLOSE row's T/S
+  // button to override; R:R and the reward/risk readout recompute live.
+  const defaultTargetId = setup ? "core-target" : "core-vah";
+  const defaultInvalId = setup ? "core-stop" : "core-val";
+  const targetRow = uniq.find((r) => r.id === (targetSel ?? defaultTargetId)) ?? uniq.find((r) => r.id === defaultTargetId);
+  const invalRow = uniq.find((r) => r.id === (invalSel ?? defaultInvalId)) ?? uniq.find((r) => r.id === defaultInvalId);
+  const rewardTo = targetRow?.v ?? null; const riskTo = invalRow?.v ?? null;
   const reward = rewardTo != null && price != null ? rewardTo - price : null;
   const risk = riskTo != null && price != null ? riskTo - price : null;
-  const targetRole = setup ? "target" : "VAH"; const invalRole = setup ? "stop" : "VAL";
+  const targetRole = targetRow?.label ?? (setup ? "target" : "VAH"); const invalRole = invalRow?.label ?? (setup ? "stop" : "VAL");
+  const rrRatio = reward != null && risk != null && risk !== 0 ? Math.abs(reward / risk) : null;
+  const isCustomSelection = targetSel != null || invalSel != null;
 
   // ── Ladder geometry (design/00): dots sit at TRUE price on the spine, label
-  //    rows are spaced perfectly evenly (MG + i·step → never overlap), connected
-  //    by elbow leader lines. Font-size + opacity fade with distance from close;
-  //    the % gap to the next level shows beneath each role. ──
-  const H = 300, MG = 14, spineX = 12;
-  const N = uniq.length, step = N > 1 ? (H - 2 * MG) / (N - 1) : 0;
+  //    rows are spaced evenly (MG + i·step → never overlap), connected by elbow
+  //    leader lines. Row height/ladder height scale with the row count so
+  //    toggling groups on doesn't cram the default (compact) view. ──
+  const ROW_H = 24, MG = 14, spineX = 12;
+  const N = uniq.length, H = Math.max(300, MG * 2 + Math.max(1, N - 1) * ROW_H), step = N > 1 ? (H - 2 * MG) / (N - 1) : 0;
   const pxs = uniq.map((r) => r.v);
   const hiP = Math.max(...pxs), loP = Math.min(...pxs), pad = (hiP - loP) * 0.06 || 1;
   const axMax = hiP + pad, axMin = loP - pad, axSpan = axMax - axMin || 1;
@@ -328,7 +370,8 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr }: { setup: Se
     const next = uniq[i + 1];
     const gap = next ? r.v / next.v - 1 : null;
     const dc = isClose ? "var(--text)" : r.tone === "up" ? "var(--up)" : r.tone === "down" ? "var(--down)" : "var(--flat)";
-    return { label: r.label, isClose, dotY: trueY(r.v), rowTop: MG + i * step, dotR: isClose ? 4 : 3, dotColor: dc,
+    const isTarget = r.id === (targetRow?.id); const isInval = r.id === (invalRow?.id);
+    return { id: r.id, label: r.label, explain: r.explain, isClose, isTarget, isInval, dotY: trueY(r.v), rowTop: MG + i * step, dotR: isClose ? 4 : 3, dotColor: dc,
       priceStr: formatPrice(r.v), priceColor: isClose ? "var(--text)" : "var(--muted)",
       rel: isClose ? "" : sPct(rel, 1), relColor: isClose ? "var(--faint)" : rel > 0 ? "var(--up)" : rel < 0 ? "var(--down)" : "var(--flat)",
       roleColor: isClose ? "var(--text)" : "var(--muted)",
@@ -340,35 +383,53 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr }: { setup: Se
   const invalY = riskTo != null ? trueY(riskTo) : closeY;
   const rewardY = Math.min(closeY, targetY), rewardH = Math.abs(closeY - targetY);
   const riskY = Math.min(closeY, invalY), riskH = Math.abs(closeY - invalY);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto" }}>
       {/* mode row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "2px 8px" }}>{setup ? "Active setup" : "Structural · no active setup"}</span>
-        <span style={{ fontSize: 10.5, color: "var(--faint)" }}>R:R {setup ? "from entry" : "from close"}</span>
+        <span style={{ fontSize: 10.5, color: "var(--faint)" }}>R:R {rrRatio != null ? `${rrRatio.toFixed(1)}:1` : "—"} {isCustomSelection ? "· custom levels" : `· ${setup ? "from entry" : "from close"}`}</span>
+        {isCustomSelection ? <button type="button" onClick={() => { setTargetSel(null); setInvalSel(null); }} style={{ fontSize: 9.5, fontWeight: 700, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>reset</button> : null}
+      </div>
+      {/* level-group toggles */}
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 12 }}>
+        {(Object.keys(GROUP_META) as LevelGroup[]).map((g) => {
+          const on = activeGroups.has(g);
+          const count = extraByGroup[g].length;
+          return (
+            <button key={g} type="button" onClick={() => toggleGroup(g)} disabled={!count} title={GROUP_META[g].label} style={{ fontSize: 9.5, fontWeight: 700, padding: "3px 9px", borderRadius: 999, border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accentSoft)" : "transparent", color: !count ? "var(--faint)" : on ? "var(--accent)" : "var(--muted)", cursor: count ? "pointer" : "not-allowed" }}>{GROUP_META[g].short}{count ? ` · ${count}` : ""}</button>
+          );
+        })}
       </div>
       <div style={{ display: "flex", gap: 16, flex: "1 1 auto" }}>
         {/* Left: true-price spine (reward/risk zones + dots) + evenly-spaced leader rows */}
-        <div style={{ position: "relative", width: 214, flex: "none", height: H }}>
+        <div style={{ position: "relative", width: 232, flex: "none", height: H }}>
           <svg viewBox={`0 0 44 ${H}`} preserveAspectRatio="none" style={{ position: "absolute", left: 0, top: 0, width: 44, height: H, overflow: "visible" }}>
             {rewardH > 0.5 ? <rect x={4} y={rewardY} width={16} height={rewardH} rx={3} fill="var(--upSoft)" /> : null}
             {riskH > 0.5 ? <rect x={4} y={riskY} width={16} height={riskH} rx={3} fill="var(--downSoft)" /> : null}
             <line x1={spineX} y1={MG} x2={spineX} y2={H - MG} stroke="var(--hair)" strokeWidth={2} />
             {rungs.map((r) => (
-              <g key={r.label}>
+              <g key={r.id}>
                 <polyline points={`${spineX},${r.dotY} ${spineX + 13},${r.dotY} ${spineX + 22},${r.rowTop} ${spineX + 30},${r.rowTop}`} fill="none" stroke={r.dotColor} strokeWidth={1} opacity={0.45} />
                 <circle cx={spineX} cy={r.dotY} r={r.dotR} fill={r.dotColor} />
               </g>
             ))}
           </svg>
           {rungs.map((r) => (
-            <div key={r.label} style={{ position: "absolute", left: 46, right: 0, top: r.rowTop, transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 6, opacity: r.opacity }}>
+            <div key={r.id} title={r.explain} style={{ position: "absolute", left: 46, right: 0, top: r.rowTop, transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 5, opacity: r.opacity, background: r.isTarget ? "var(--upSoft)" : r.isInval ? "var(--downSoft)" : "transparent", borderRadius: 6 }}>
               <span style={{ fontFamily: MONO, fontSize: r.fs, fontWeight: 800, width: 44, textAlign: "right", color: r.priceColor }}>{r.priceStr}</span>
               <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, width: 38, textAlign: "right", color: r.relColor }}>{r.rel}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: "block", fontSize: r.roleFs, fontWeight: 700, color: r.roleColor, lineHeight: 1.15, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
                 {r.gapShow ? <span style={{ display: "block", fontFamily: MONO, fontSize: 8, color: "var(--faint)" }}>{r.gapText}</span> : null}
               </span>
+              {!r.isClose ? (
+                <span style={{ display: "flex", gap: 2, flex: "none" }}>
+                  <button type="button" onClick={() => setTargetSel(r.id === defaultTargetId ? null : r.id)} title="Set as Target" style={{ width: 15, height: 15, fontSize: 8.5, fontWeight: 800, lineHeight: "13px", borderRadius: 4, border: `1px solid ${r.isTarget ? "var(--up)" : "var(--border)"}`, background: r.isTarget ? "var(--up)" : "transparent", color: r.isTarget ? "#fff" : "var(--faint)", cursor: "pointer", padding: 0 }}>T</button>
+                  <button type="button" onClick={() => setInvalSel(r.id === defaultInvalId ? null : r.id)} title="Set as Invalidation" style={{ width: 15, height: 15, fontSize: 8.5, fontWeight: 800, lineHeight: "13px", borderRadius: 4, border: `1px solid ${r.isInval ? "var(--down)" : "var(--border)"}`, background: r.isInval ? "var(--down)" : "transparent", color: r.isInval ? "#fff" : "var(--faint)", cursor: "pointer", padding: 0 }}>S</button>
+                </span>
+              ) : null}
             </div>
           ))}
         </div>
@@ -388,7 +449,9 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr }: { setup: Se
           </div>
         </div>
       </div>
-      <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--hair)", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.45 }}>{setup ? "Entry · stop · target" : "Value-area frame · VAH target / VAL invalidation"} · levels nearest the close are most prominent. Real structural levels only — nothing fabricated.</div>
+      <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--hair)", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.45 }}>
+        {setup ? "Entry · stop · target" : "Value-area frame · VAH target / VAL invalidation"} · levels nearest the close are most prominent. Hover any level for what it means; use T/S to make it the target/invalidation. Toggled groups are real published or computed levels — nothing fabricated.
+      </div>
     </div>
   );
 }
