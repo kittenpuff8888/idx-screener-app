@@ -8687,6 +8687,46 @@ def _merge_fallback_into_primary(primary: dict, fallback: dict) -> dict:
     return primary
 
 
+_YF_MIN_INTERVAL_SEC = 0.7   # floor spacing between yfinance requests
+_yf_last_call_ts = 0.0
+
+
+def _yf_pace() -> None:
+    """Block just long enough to keep yfinance requests >= _YF_MIN_INTERVAL_SEC
+    apart. A ~900-ticker scan calling yf.Ticker(...).info back-to-back with no
+    spacing trips Yahoo's rate limit partway through the run, after which every
+    remaining ticker comes back empty — this is the main reason fundamentals
+    coverage was stuck around 35% even with retries on individual calls."""
+    global _yf_last_call_ts
+    now = time.monotonic()
+    wait = _YF_MIN_INTERVAL_SEC - (now - _yf_last_call_ts)
+    if wait > 0:
+        time.sleep(wait)
+    _yf_last_call_ts = time.monotonic()
+
+
+def _fetch_yf_info(sym: str, retries: int = 3, backoff_seconds: float = 4.0) -> dict:
+    """yf.Ticker(sym).info, paced and retried with backoff. yfinance signals a
+    rate-limited request with an EMPTY dict, not an exception, so a bare retry
+    without checking for emptiness never fires — retry on empty here."""
+    last_exc: Optional[Exception] = None
+    for attempt in range(retries):
+        _yf_pace()
+        try:
+            info = yf.Ticker(sym).info or {}
+            if info:
+                return info
+        except Exception as exc:
+            last_exc = exc
+        if attempt + 1 < retries:
+            time.sleep(backoff_seconds * (2 ** attempt))
+    if last_exc:
+        print(f"[YF_RETRY] {sym}: empty/failed after {retries} attempts ({last_exc})")
+    else:
+        print(f"[YF_RETRY] {sym}: empty info after {retries} attempts")
+    return {}
+
+
 def _fetch_fundamental_data(ticker: str) -> dict:
     """Fetch yfinance fundamentals for a single IDX ticker."""
     try:
@@ -8694,7 +8734,7 @@ def _fetch_fundamental_data(ticker: str) -> dict:
         if not sym.endswith(".JK"):
             sym = sym + ".JK"
         tk = yf.Ticker(sym)
-        info = tk.info or {}
+        info = _fetch_yf_info(sym)
         _ext = _compute_extended_fundamentals(sym, info)
 
         def _g(key, default=np.nan):
