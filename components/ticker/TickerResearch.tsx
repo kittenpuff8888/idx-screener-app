@@ -648,7 +648,9 @@ function StructureTab({ stock, t }: { stock?: JsonRecord; t: JsonRecord }) {
         <div style={{ ...KICKER, fontSize: 9, marginBottom: 4 }}>SMC LEVELS</div>
         <KV k="Strong / Weak high" v={`${px(n(smc["strongHigh"]))} · ${px(n(smc["weakHigh"]))}`} />
         <KV k="Strong / Weak low" v={`${px(n(smc["strongLow"]))} · ${px(n(smc["weakLow"]))}`} />
+        <KV k="Premium zone" v={String(smc["premiumZone"] ?? "—")} tone="var(--down)" />
         <KV k="Equilibrium" v={String(smc["equilibrium"] ?? "—")} />
+        <KV k="Discount zone" v={String(smc["discountZone"] ?? "—")} tone="var(--up)" />
         <KV k="Bull OB" v={<>{String(smc["closestBullishBlock"] ?? "—")} {smc["bullishBlockAgeDays"] != null ? <span style={{ color: "var(--faint)", fontSize: 9 }}>· {String(smc["bullishBlockAgeDays"])}d</span> : null}</>} tone="var(--up)" />
         <KV k="Bear OB" v={<>{String(smc["closestBearishBlock"] ?? "—")} {smc["bearishBlockAgeDays"] != null ? <span style={{ color: "var(--faint)", fontSize: 9 }}>· {String(smc["bearishBlockAgeDays"])}d</span> : null}</>} tone="var(--down)" />
       </div>
@@ -712,23 +714,44 @@ function MomentumTab({ t }: { t: JsonRecord }) {
   );
 }
 
+// Horizontal −3σ..+3σ position gauge — same visual language as the RSI dial
+// in MomentumTab, applied to how many standard deviations price currently
+// sits from each period's anchored VWAP (a real published field, priceSigma).
+function SigmaGauge({ sigma }: { sigma: number }) {
+  const clamped = Math.max(-3, Math.min(3, sigma));
+  const pos = ((clamped + 3) / 6) * 100;
+  const color = sigma >= 1 ? "var(--up)" : sigma <= -1 ? "var(--down)" : "var(--muted)";
+  return (
+    <div style={{ position: "relative", height: 5, background: "linear-gradient(90deg,var(--down),var(--soft),var(--up))", borderRadius: 3, margin: "5px 0" }}>
+      <div style={{ position: "absolute", left: `${pos}%`, top: -2, width: 9, height: 9, borderRadius: "50%", background: color, transform: "translateX(-50%)" }} />
+    </div>
+  );
+}
+
 function VwapTab({ t, price }: { t: JsonRecord; price: number | null }) {
   const vp = (t["vwapProfiles"] || {}) as JsonRecord;
-  const periods = [["currentMonth", "Month"], ["currentQuarter", "Quarter"], ["previousMonth", "Prev month"]] as const;
+  // All 5 real published profiles — previousQuarter/previousYear were
+  // computed but never shown here despite carrying real, sometimes striking
+  // reads (e.g. price several σ below the previous-year VWAP).
+  const periods = [["currentMonth", "Current month"], ["previousMonth", "Previous month"], ["currentQuarter", "Current quarter"], ["previousQuarter", "Previous quarter"], ["previousYear", "Previous year"]] as const;
+  const rows = periods.map(([k, label]) => ({ k, label, p: (vp[k] || {}) as JsonRecord, v: n((vp[k] as JsonRecord | undefined)?.["vwap"]) })).filter((r) => r.v != null);
+  if (!rows.length) return <div style={{ fontSize: 12, color: "var(--muted)" }}>No VWAP profile data in this snapshot.</div>;
   return (
     <div>
-      {periods.map(([k, label], i) => {
-        const p = (vp[k] || {}) as JsonRecord; const v = n(p["vwap"]);
-        if (v == null) return null;
+      {rows.map(({ k, label, p, v }, i) => {
+        const sigma = n(p["priceSigma"]);
         return (
-          <div key={k} style={{ display: "grid", gridTemplateColumns: "80px 90px 1fr", gap: 10, alignItems: "center", padding: "8px 0", borderTop: i ? HAIR : "none", fontSize: 12 }}>
-            <span style={{ color: "var(--muted)" }}>{label} VWAP</span>
-            <span style={{ fontFamily: MONO, fontWeight: 700, color: price != null ? (price >= v ? "var(--up)" : "var(--down)") : undefined }}>{formatPrice(v)}</span>
-            <span style={{ fontSize: 10.5, color: "var(--faint)" }}>{String(p["zone"] ?? "")}{p["priceSigma"] != null ? ` · σ ${n(p["priceSigma"])!.toFixed(2)}` : ""}</span>
+          <div key={k} style={{ padding: "9px 0", borderTop: i ? HAIR : "none" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "110px 90px 1fr", gap: 10, alignItems: "center", fontSize: 12 }}>
+              <span style={{ color: "var(--muted)" }}>{label}</span>
+              <span style={{ fontFamily: MONO, fontWeight: 700, color: price != null && v != null ? (price >= v ? "var(--up)" : "var(--down)") : undefined }}>{v == null ? "—" : formatPrice(v)}</span>
+              <span style={{ fontSize: 10.5, color: "var(--faint)" }}>{String(p["zone"] ?? "")}{sigma != null ? ` · ${sigma >= 0 ? "+" : ""}${sigma.toFixed(2)}σ` : ""}{p["runningDays"] != null ? ` · ${String(p["runningDays"])}d` : ""}</span>
+            </div>
+            {sigma != null ? <SigmaGauge sigma={sigma} /> : null}
           </div>
         );
       })}
-      <p style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>Price vs the volume-weighted average and its standard-deviation bands, per period.</p>
+      <p style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>Price vs the volume-weighted average and its standard-deviation bands, per period. Gauge spans −3σ to +3σ.</p>
     </div>
   );
 }
