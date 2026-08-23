@@ -71,7 +71,7 @@ export function computeRrgSeries(assetSeries: Pt[], benchSeries: Pt[], opts?: Rr
     return (r / prev - 1) * 100;
   });
   const validMomentum = momentumRaw.filter((v): v is number => v != null);
-  const momStats = rollingMeanStd(validMomentum, ratioWindow);
+  const momStats = rollingMeanStd(validMomentum, momentumWindow);
   let mi = 0;
   const momentum: Array<number | null> = momentumRaw.map((v) => {
     if (v == null) return null;

@@ -15,6 +15,7 @@ export type MarketBreadth = {
   pct200: number | null;    // share of stocks above their 200-day SMA (0..1)
   pct50: number | null;     // share above their 50-day/EMA (0..1)
   coverage: number;         // # stocks with a usable 200-day MA
+  coverage50: number;       // # stocks with a usable 50-day MA (can differ from coverage — independent gates)
   sectors: SectorBreadth[]; // per IDX sector, % above 200-day, richest → thinnest
   medianRet1M: number | null; // median 1-month stock return (the "typical stock")
   ihsgRet1M: number | null;   // IHSG 1-month return (the cap-weighted index)
@@ -76,7 +77,7 @@ export function computeMarketBreadth(
   const ihsgRet1M = ihsg.length >= 22 && ihsg[ihsg.length - 22] ? ihsg.at(-1)! / ihsg[ihsg.length - 22] - 1 : null;
 
   const { label: regimeLabel, note: regimeNote } = breadthRegime(pct200, pct50);
-  return { pct200, pct50, coverage: n200, sectors, medianRet1M, ihsgRet1M, regimeLabel, regimeNote };
+  return { pct200, pct50, coverage: n200, coverage50: n50, sectors, medianRet1M, ihsgRet1M, regimeLabel, regimeNote };
 }
 
 /** Descriptive regime read from the two breadth measures (IDX-calibrated bands).
@@ -92,4 +93,7 @@ export function breadthRegime(pct200: number | null, pct50: number | null): { la
   return { label: "MIXED", note: `Short-term breadth ${Math.round(p50)}%, structural breadth ${Math.round(p200)}% — the two honestly disagree.` };
 }
 
-export type BreadthHistory = { universeSize: number; method: string; points: Array<{ date: string; pct200: number | null; pct50: number | null; n: number }> };
+// n200 always equals universeSize by construction (the fixed liquid universe is
+// pre-filtered on having sma200); n50 is independently gated and can be smaller
+// (optional — absent on points written before this field existed).
+export type BreadthHistory = { universeSize: number; method: string; points: Array<{ date: string; pct200: number | null; pct50: number | null; n: number; n50?: number }> };

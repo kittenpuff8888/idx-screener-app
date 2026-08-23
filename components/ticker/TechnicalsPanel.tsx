@@ -11,7 +11,13 @@ function renderValue(value: unknown): string {
 }
 
 const groups: Array<[string, (stock: TechnicalRecord) => Record<string, unknown>]> = [
-  ["Stock Regime", (s) => ({ "Market Cap": (s.technical?.regime as JsonRecord | undefined)?.marketCap, "Market Cap Category": (s.technical?.regime as JsonRecord | undefined)?.marketCapCategory, "Liquidity": s.liquidityCategory, "RS Rating": s.rsRating })],
+  // "Market Cap" itself is deliberately NOT shown here: this record's regime.marketCap
+  // comes from a different worksheet (IDX Screener) than FundamentalsPanel's "Market
+  // Cap" (IDX Fundamental Detail) and the two can disagree for the same ticker/date —
+  // showing both side by side on the ticker page is confusing, not informative. The
+  // category bucket is still useful and isn't a numeric duplicate of anything shown
+  // elsewhere, so it stays.
+  ["Stock Regime", (s) => ({ "Market Cap Category": (s.technical?.regime as JsonRecord | undefined)?.marketCapCategory, "Liquidity": s.liquidityCategory, "RS Rating": s.rsRating })],
   ["Market Structure & SMC", (s) => ({ "Internal Trend": s.trend?.internal, "Swing Trend": s.trend?.swing, "Latest Internal": s.structure?.internal, "Latest Swing": s.structure?.swing, ...(s.technical?.smc as JsonRecord | undefined || {}) })],
   ["Liquidity", (s) => ({ "Volume": s.volumeDisplay || s.volume, "Average Volume 20D": s.averageVolume20, "RVOL 20D": s.rvol, "RVOL Change": s.rvolChangePercent, ...((s.technical?.liquidity as JsonRecord | undefined) || {}) })],
   ["Market Profile", (s) => ((s.technical?.marketProfile as JsonRecord | undefined) || {})],

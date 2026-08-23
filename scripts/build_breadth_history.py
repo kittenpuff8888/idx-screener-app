@@ -62,6 +62,12 @@ def breadth_for(path: Path):
         "pct200": round(a200 / n200, 4) if n200 else None,
         "pct50": round(a50 / n50, 4) if n50 else None,
         "n": n200,
+        # n200 == universeSize by construction (the universe is filtered on
+        # having sma200 before selection); n50 is independently gated and can
+        # be smaller (a top-300-by-liquidity ticker can lack a 50-day EMA) —
+        # kept separately so the frontend can disclose the right denominator
+        # for the 50-day tile instead of reusing n200/universeSize for both.
+        "n50": n50,
     }
 
 

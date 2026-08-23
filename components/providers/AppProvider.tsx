@@ -162,7 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setError(null);
       try {
         const membership = buildKongloMembership(indexes);
-        const nextBundle = await loadResearchBundle(marketDate, membership);
+        const nextBundle = await loadResearchBundle(marketDate, membership, ksei);
         if (!cancelled) setBundle(nextBundle);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : `Unable to load ${marketDate}.`);
@@ -174,7 +174,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [marketDate, indexes]);
+  }, [marketDate, indexes, ksei]);
 
   // Live quote overlay. Inert unless NEXT_PUBLIC_LIVE_ENDPOINT is configured.
   // Polls only while the IDX session is open; outside hours the last snapshot
