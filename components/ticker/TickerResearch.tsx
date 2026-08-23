@@ -13,7 +13,7 @@ import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
 import { DcfPanel } from "@/components/ticker/DcfPanel";
 import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
 import { computeSetupVerdict, type SetupVerdict } from "@/lib/valuation/setupVerdict";
-import { buildMaLevels, buildVwapLevels, buildSmcLevels, buildPivotLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
+import { buildMaLevels, buildVwapLevels, buildSmcLevels, buildMarketProfileLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
 import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
@@ -377,7 +377,7 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
     ma: buildMaLevels(ma),
     vwap: buildVwapLevels(ohlcv?.rows),
     smc: buildSmcLevels(technical),
-    pivot: buildPivotLevels(ohlcv?.rows),
+    profile: buildMarketProfileLevels(technical),
     dcf: dcfLevel,
   }), [ma, ohlcv, technical, dcfLevel]);
 
