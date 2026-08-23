@@ -17,11 +17,11 @@ export type Phase =
   | "Gaining Momentum" | "Deepening Weakness" // Lagging
   | "Building Momentum" | "Losing Momentum";  // Improving
 
-export const QUADRANT_META: Record<Quadrant, { label: string; color: string }> = {
-  leading: { label: "Leading", color: "var(--up)" },
-  weakening: { label: "Weakening", color: "var(--warning, #b45309)" },
-  lagging: { label: "Lagging", color: "var(--down)" },
-  improving: { label: "Improving", color: "var(--accent)" },
+export const QUADRANT_META: Record<Quadrant, { label: string; color: string; tint: string }> = {
+  leading: { label: "Leading", color: "var(--up)", tint: "var(--upSoft)" },
+  weakening: { label: "Weakening", color: "var(--warning)", tint: "var(--warnSoft)" },
+  lagging: { label: "Lagging", color: "var(--down)", tint: "var(--downSoft)" },
+  improving: { label: "Improving", color: "var(--cyan)", tint: "var(--cyanSoft)" },
 };
 
 function rollingMeanStd(values: number[], window: number): Array<{ mean: number; std: number } | null> {

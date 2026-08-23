@@ -25,9 +25,17 @@ const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var
 type Mode = "sectors" | "konglo" | "stocks";
 type Interval = "weekly" | "daily";
 
-type PlotItem = { id: string; label: string; sublabel?: string; series: RrgPoint[]; trajectory: Trajectory };
+type PlotItem = { id: string; label: string; sublabel?: string; series: RrgPoint[]; trajectory: Trajectory; constituents?: string[] };
 
 const CAT = ["#2962FF", "#F23645", "#16A34A", "#D97706", "#9333EA", "#0891B2", "#DB2777", "#65A30D", "#7C3AED", "#EA580C"];
+
+// Slow/Moderate/Fast buckets for the single-period trajectory speed, calibrated
+// to real tercile boundaries of weekly-resampled RRG output across all
+// sector/konglo groups (n=56, p33≈1.4, p67≈2.2, median 1.66, max 6.47) — not
+// the design prototype's mock-data thresholds, which were tuned to a
+// synthetic random-walk generator and would bucket nearly everything "Fast".
+const SPEED_SLOW_MAX = 1.4;
+const SPEED_MODERATE_MAX = 2.2;
 
 function resampleWeekly(series: Pt[]): Pt[] {
   const byWeek = new Map<string, Pt>();
@@ -41,7 +49,28 @@ function resampleWeekly(series: Pt[]): Pt[] {
   return [...byWeek.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, p]) => p);
 }
 
+function trendOf(t: Trajectory) {
+  const arrow = t.deltaRatio >= 0 && t.deltaMomentum >= 0 ? "↗" : t.deltaRatio >= 0 && t.deltaMomentum < 0 ? "↘" : t.deltaRatio < 0 && t.deltaMomentum >= 0 ? "↖" : "↙";
+  const label = t.speed < SPEED_SLOW_MAX ? "Slow" : t.speed < SPEED_MODERATE_MAX ? "Moderate" : "Fast";
+  const color = t.speed < SPEED_SLOW_MAX ? "var(--faint)" : t.speed < SPEED_MODERATE_MAX ? "var(--muted)" : QUADRANT_META[t.quadrant].color;
+  return { arrow, label, color };
+}
+
+/** Smooth trail: each interior point is a quadratic-bezier control point,
+    the midpoint between consecutive points is the curve anchor. */
+function smoothPath(pts: Array<[number, number]>): string {
+  if (!pts.length) return "";
+  let d = `M ${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)}`;
+  for (let k = 1; k < pts.length; k += 1) {
+    const [cx0, cy0] = pts[k - 1], [cx1, cy1] = pts[k];
+    if (k === pts.length - 1) d += ` L ${cx1.toFixed(1)} ${cy1.toFixed(1)}`;
+    else { const mx = (cx0 + cx1) / 2, my = (cy0 + cy1) / 2; d += ` Q ${cx0.toFixed(1)} ${cy0.toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`; }
+  }
+  return d;
+}
+
 const PHASE_ORDER: Phase[] = ["Strengthening", "Fading", "Stabilizing", "Deteriorating", "Gaining Momentum", "Deepening Weakness", "Building Momentum", "Losing Momentum"];
+const DIST_ORDER: Quadrant[] = ["leading", "improving", "weakening", "lagging"];
 
 export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, marketDate, openTicker, technicalByTicker }: {
   ihsg: Pt[];
@@ -58,6 +87,7 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
   const [filterSub, setFilterSub] = useState("");
   const [filterKonglo, setFilterKonglo] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [quadrantFilter, setQuadrantFilter] = useState<Quadrant | null>(null);
   const [phaseFilter, setPhaseFilter] = useState<Set<Phase>>(new Set());
   const [search, setSearch] = useState("");
   const [ohlcvByTicker, setOhlcvByTicker] = useState<Map<string, Pt[]>>(new Map());
@@ -129,14 +159,14 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
 
   // ── build plotted items for the active mode ──
   const { items, hiddenCount } = useMemo(() => {
-    let candidates: Array<{ id: string; label: string; sublabel?: string; series: Pt[] }> = [];
+    let candidates: Array<{ id: string; label: string; sublabel?: string; series: Pt[]; constituents?: string[] }> = [];
     if (mode === "sectors") {
-      candidates = sectoralGroups.map((g) => ({ id: g.id, label: normalizeSector(g.label), series: g.series }));
+      candidates = sectoralGroups.map((g) => ({ id: g.id, label: normalizeSector(g.label), series: g.series, constituents: g.constituents.map((c) => c.ticker) }));
     } else if (mode === "konglo") {
       let groups = kongloGroups;
       if (filterSector) groups = groups.filter((g) => g.constituents.some((c) => tickerSectorIndex.get(c.ticker)?.sector === filterSector));
       if (filterSub) groups = groups.filter((g) => g.constituents.some((c) => tickerSectorIndex.get(c.ticker)?.industry === filterSub));
-      candidates = groups.map((g) => ({ id: g.id, label: g.label.replace(/\s*\(.*\)$/, ""), series: g.series }));
+      candidates = groups.map((g) => ({ id: g.id, label: g.label.replace(/\s*\(.*\)$/, ""), series: g.series, constituents: g.constituents.map((c) => c.ticker) }));
     } else {
       candidates = stockCandidates.map((t) => ({ id: t, label: t, sublabel: technicalByTicker.get(t)?.companyName, series: ohlcvByTicker.get(t) || [] }));
     }
@@ -150,17 +180,18 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
       const tail = full.slice(-Math.max(3, tailPeriods));
       const trajectory = computeTrajectory(tail);
       if (!trajectory) { hidden += 1; continue; }
-      built.push({ id: c.id, label: c.label, sublabel: c.sublabel, series: tail, trajectory });
+      built.push({ id: c.id, label: c.label, sublabel: c.sublabel, series: tail, trajectory, constituents: c.constituents });
     }
     return { items: built, hiddenCount: hidden };
   }, [mode, sectoralGroups, kongloGroups, stockCandidates, ohlcvByTicker, filterSector, filterSub, interval, tailPeriods, ihsgR, technicalByTicker, tickerSectorIndex]);
 
   const filteredItems = useMemo(() => {
     let list = items;
+    if (quadrantFilter) list = list.filter((it) => it.trajectory.quadrant === quadrantFilter);
     if (phaseFilter.size) list = list.filter((it) => phaseFilter.has(it.trajectory.phase));
     if (search.trim()) { const q = search.trim().toUpperCase(); list = list.filter((it) => it.id.toUpperCase().includes(q) || it.label.toUpperCase().includes(q)); }
     return list;
-  }, [items, phaseFilter, search]);
+  }, [items, quadrantFilter, phaseFilter, search]);
 
   const distribution = useMemo(() => {
     const d: Record<Quadrant, number> = { leading: 0, improving: 0, weakening: 0, lagging: 0 };
@@ -171,21 +202,23 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
   const selected = filteredItems.find((it) => it.id === selectedId) || null;
 
   // ── chart geometry ──
+  const VW = 1100, VH = 700;
   const allPts = filteredItems.flatMap((it) => it.series);
   const ratios = allPts.map((p) => p.ratio).concat([100]);
   const moms = allPts.map((p) => p.momentum).concat([100]);
   const rMin = Math.min(...ratios), rMax = Math.max(...ratios);
   const mMin = Math.min(...moms), mMax = Math.max(...moms);
-  const rPad = (rMax - rMin) * 0.15 || 3, mPad = (mMax - mMin) * 0.15 || 3;
+  const rPad = (rMax - rMin) * 0.18 || 3, mPad = (mMax - mMin) * 0.18 || 3;
   const rLo = rMin - rPad, rHi = rMax + rPad, mLo = mMin - mPad, mHi = mMax + mPad;
-  const VW = 640, VH = 480;
   const xPx = (r: number) => ((r - rLo) / (rHi - rLo || 1)) * VW;
   const yPx = (m: number) => VH - ((m - mLo) / (mHi - mLo || 1)) * VH;
   const zeroX = xPx(100), zeroY = yPx(100);
+  const rightW = VW - zeroX, bottomH = VH - zeroY;
 
   const modeLabel = mode === "sectors" ? "Sectors" : mode === "konglo" ? "Konglo" : "Stocks";
+  const kongloName = kongloGroups.find((g) => g.id === filterKonglo)?.label.replace(/\s*\(.*\)$/, "") || "";
   const subtitle = mode === "stocks" && (filterSector || filterKonglo)
-    ? `Constituents vs ${filterSector || (kongloGroups.find((g) => g.id === filterKonglo)?.label.replace(/\s*\(.*\)$/, "") || "")}`
+    ? `${filterSector || kongloName} constituents`
     : `${modeLabel} vs Jakarta Composite Index`;
 
   const drill = (item: PlotItem) => {
@@ -194,118 +227,147 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
     else openTicker(item.id);
   };
 
+  const resetToSectors = () => { setMode("sectors"); setFilterSector(""); setFilterSub(""); setFilterKonglo(""); setSelectedId(null); setQuadrantFilter(null); };
+  const chartEmpty = mode === "stocks" && !filterSector && !filterKonglo;
+
   return (
     <div style={{ ...CARD, padding: "16px 18px", marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
         <div>
-          <span style={KICKER}>SECTOR ROTATION</span>
-          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3 }}>{subtitle} · as of {marketDate}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={KICKER}>SECTOR ROTATION</span>
+            {mode !== "sectors" ? (
+              <button type="button" onClick={resetToSectors} style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "none", borderRadius: 999, cursor: "pointer", padding: "3px 10px" }}>← All sectors</button>
+            ) : null}
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-.005em", marginTop: 4, color: "var(--text)" }}>{subtitle}</div>
+          <div style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 2 }}>Relative strength vs momentum, both indexed to IHSG · as of {marketDate}</div>
         </div>
-      </div>
-      <div style={{ fontSize: 10, color: "var(--faint)", marginBottom: 10 }}>Where money is rotating — relative strength (x) against its momentum (y), both vs IHSG. The benchmark sits at the crosshair (100,100).</div>
-
-      {/* mode row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-        {mode !== "sectors" ? (
-          <button type="button" onClick={() => { setMode("sectors"); setFilterSector(""); setFilterSub(""); setFilterKonglo(""); setSelectedId(null); }} style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>Sectors ›</button>
-        ) : null}
-        <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
-          {(["sectors", "konglo", "stocks"] as Mode[]).map((m) => (
-            <button key={m} type="button" onClick={() => { setMode(m); setSelectedId(null); }} style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: mode === m ? "var(--accent)" : "transparent", color: mode === m ? "#fff" : "var(--muted)", textTransform: "capitalize" }}>{m}</button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
-          {(["weekly", "daily"] as Interval[]).map((iv) => (
-            <button key={iv} type="button" onClick={() => setInterval_(iv)} style={{ fontSize: 10.5, fontWeight: 700, padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: interval === iv ? "var(--accent)" : "transparent", color: interval === iv ? "#fff" : "var(--muted)", textTransform: "capitalize" }}>{iv}</button>
-          ))}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <span style={{ fontSize: 10, color: "var(--faint)" }}>TAIL</span>
-          <input type="range" min={3} max={20} value={tailPeriods} onChange={(e) => setTailPeriods(Number(e.target.value))} style={{ width: 80, accentColor: "var(--accent)" }} />
-          <span style={{ fontFamily: MONO, fontSize: 10.5, color: "var(--muted)" }}>{tailPeriods} periods</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
+            {(["sectors", "konglo", "stocks"] as Mode[]).map((m) => (
+              <button key={m} type="button" onClick={() => { setMode(m); setSelectedId(null); setQuadrantFilter(null); }} style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: mode === m ? "var(--accent)" : "transparent", color: mode === m ? "#fff" : "var(--muted)", textTransform: "capitalize" }}>{m}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
+            {(["weekly", "daily"] as Interval[]).map((iv) => (
+              <button key={iv} type="button" onClick={() => setInterval_(iv)} style={{ fontSize: 10.5, fontWeight: 700, padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: interval === iv ? "var(--accent)" : "transparent", color: interval === iv ? "#fff" : "var(--muted)", textTransform: "capitalize" }}>{iv}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, background: "var(--soft)", borderRadius: 8, padding: "5px 10px" }}>
+            <span style={{ fontSize: 10, color: "var(--faint)", fontWeight: 700 }}>TAIL</span>
+            <input type="range" min={3} max={20} value={tailPeriods} onChange={(e) => setTailPeriods(Number(e.target.value))} style={{ width: 70, accentColor: "var(--accent)" }} />
+            <span style={{ fontFamily: MONO, fontSize: 10.5, color: "var(--muted)" }}>{tailPeriods}p</span>
+          </div>
         </div>
       </div>
 
       {/* filter row */}
       {mode !== "sectors" ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--faint)", letterSpacing: ".08em" }}>SECTOR</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
           <select value={filterSector} onChange={(e) => { setFilterSector(e.target.value); setFilterSub(""); }} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 9px", cursor: "pointer" }}>
             <option value="">{mode === "stocks" ? "Choose a sector…" : "All sectors"}</option>
             {Object.values(IDX_SECTOR_MAP).map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--faint)", letterSpacing: ".08em" }}>SUB-SECTOR</span>
           <select value={filterSub} onChange={(e) => setFilterSub(e.target.value)} disabled={!subOptions.length} style={{ fontSize: 11.5, fontWeight: 600, color: subOptions.length ? "var(--text)" : "var(--faint)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 9px", cursor: subOptions.length ? "pointer" : "not-allowed" }}>
             <option value="">All sub-sectors</option>
             {subOptions.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           {mode === "stocks" ? (
-            <>
-              <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--faint)", letterSpacing: ".08em" }}>KONGLO</span>
-              <select value={filterKonglo} onChange={(e) => { setFilterKonglo(e.target.value); setFilterSub(""); }} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 9px", cursor: "pointer" }}>
-                <option value="">{filterSector ? "Any group" : "Choose a group…"}</option>
-                {kongloGroups.map((g) => <option key={g.id} value={g.id}>{g.label.replace(/\s*\(.*\)$/, "")}</option>)}
-              </select>
-            </>
+            <select value={filterKonglo} onChange={(e) => { setFilterKonglo(e.target.value); setFilterSub(""); }} style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8, padding: "5px 9px", cursor: "pointer" }}>
+              <option value="">{filterSector ? "Any group" : "Choose a group…"}</option>
+              {kongloGroups.map((g) => <option key={g.id} value={g.id}>{g.label.replace(/\s*\(.*\)$/, "")}</option>)}
+            </select>
           ) : null}
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search symbol…" style={{ fontSize: 11.5, fontFamily: MONO, border: "1px solid var(--border)", borderRadius: 8, padding: "5px 9px", background: "var(--panel)", color: "var(--text)", width: 140 }} />
         </div>
       ) : null}
 
-      <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
         {/* chart */}
-        <div style={{ flex: "1 1 500px", minWidth: 320, position: "relative", background: "var(--soft)", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden" }}>
-          {mode === "stocks" && !filterSector && !filterKonglo ? (
-            <div style={{ padding: 60, textAlign: "center", color: "var(--faint)", fontSize: 12.5 }}>Pick a sector or konglo group above to see its stocks — {`{full universe}`} is too many names to plot meaningfully at once.</div>
+        <div style={{ flex: "1 1 500px", minWidth: 320, aspectRatio: `${VW} / ${VH}`, position: "relative", background: "var(--soft)", borderRadius: 10, border: "1px solid var(--border)", overflow: "hidden" }}>
+          {chartEmpty ? (
+            <div style={{ padding: 70, textAlign: "center", color: "var(--faint)", fontSize: 13 }}>Pick a sector or konglo group above to see its stocks.</div>
           ) : (
-            <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" style={{ display: "block" }} role="img" aria-label={`Relative rotation graph: ${subtitle}`}>
-              <rect x={0} y={0} width={VW} height={zeroY} fill="var(--upSoft, rgba(22,163,74,.06))" />
-              <rect x={0} y={zeroY} width={VW} height={VH - zeroY} fill="var(--downSoft, rgba(220,38,38,.05))" />
-              <line x1={zeroX} y1={0} x2={zeroX} y2={VH} stroke="var(--hair)" strokeWidth={1.2} />
-              <line x1={0} y1={zeroY} x2={VW} y2={zeroY} stroke="var(--hair)" strokeWidth={1.2} />
-              <text x={8} y={14} fontSize={10} fontWeight={700} fill="var(--accent)">Improving</text>
-              <text x={VW - 8} y={14} fontSize={10} fontWeight={700} fill="var(--up)" textAnchor="end">Leading</text>
-              <text x={8} y={VH - 8} fontSize={10} fontWeight={700} fill="var(--down)" textAnchor="start">Lagging</text>
-              <text x={VW - 8} y={VH - 8} fontSize={10} fontWeight={700} fill="var(--warning, #b45309)" textAnchor="end">Weakening</text>
-              <text x={VW - 4} y={zeroY - 4} fontSize={9} fill="var(--faint)" textAnchor="end">RS-Ratio →</text>
-              <text x={zeroX + 4} y={10} fontSize={9} fill="var(--faint)">↑ RS-Momentum</text>
+            <>
+              <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" height="100%" preserveAspectRatio="none" style={{ display: "block" }} role="img" aria-label={`Relative rotation graph: ${subtitle}`}>
+                <rect x={0} y={0} width={zeroX} height={zeroY} fill={QUADRANT_META.improving.tint} />
+                <rect x={zeroX} y={0} width={rightW} height={zeroY} fill={QUADRANT_META.leading.tint} />
+                <rect x={0} y={zeroY} width={zeroX} height={bottomH} fill={QUADRANT_META.lagging.tint} />
+                <rect x={zeroX} y={zeroY} width={rightW} height={bottomH} fill={QUADRANT_META.weakening.tint} />
+                <line x1={zeroX} y1={0} x2={zeroX} y2={VH} stroke="var(--hair)" strokeWidth={1.4} />
+                <line x1={0} y1={zeroY} x2={VW} y2={zeroY} stroke="var(--hair)" strokeWidth={1.4} />
+                <text x={18} y={26} fontSize={13} fontWeight={800} fill={QUADRANT_META.improving.color}>Improving</text>
+                <text x={VW - 18} y={26} fontSize={13} fontWeight={800} fill={QUADRANT_META.leading.color} textAnchor="end">Leading</text>
+                <text x={18} y={VH - 18} fontSize={13} fontWeight={800} fill={QUADRANT_META.lagging.color}>Lagging</text>
+                <text x={VW - 18} y={VH - 18} fontSize={13} fontWeight={800} fill={QUADRANT_META.weakening.color} textAnchor="end">Weakening</text>
+                <text x={VW / 2} y={18} fontSize={10.5} fill="var(--faint)" textAnchor="middle">↑ Relative Momentum</text>
+                <text x={VW - 18} y={zeroY - 8} fontSize={10.5} fill="var(--faint)" textAnchor="end">Relative Strength →</text>
+                <circle cx={zeroX} cy={zeroY} r={4} fill="var(--faint)" />
+                <text x={zeroX + 8} y={zeroY - 8} fontSize={10} fontWeight={700} fill="var(--faint)">IHSG</text>
 
-              {filteredItems.map((it, i) => {
-                const color = CAT[i % CAT.length];
-                const path = it.series.map((p, k) => `${k ? "L" : "M"} ${xPx(p.ratio).toFixed(1)} ${yPx(p.momentum).toFixed(1)}`).join(" ");
-                const last = it.series[it.series.length - 1];
-                const on = selectedId === it.id;
-                return (
-                  <g key={it.id} style={{ cursor: "pointer" }} onClick={() => setSelectedId(it.id)} onDoubleClick={() => drill(it)}>
-                    <path d={path} fill="none" stroke={color} strokeWidth={on ? 2 : 1.1} opacity={on || !selectedId ? 0.85 : 0.25} />
-                    <circle cx={xPx(last.ratio)} cy={yPx(last.momentum)} r={on ? 6 : 4} fill={color} stroke="var(--panel)" strokeWidth={1.5} opacity={!selectedId || on ? 1 : 0.35} />
-                    <text x={xPx(last.ratio) + 8} y={yPx(last.momentum) + 3} fontSize={9.5} fontWeight={700} fill={color} opacity={!selectedId || on ? 1 : 0.35}>{it.label}</text>
-                  </g>
-                );
-              })}
-            </svg>
+                {filteredItems.map((it, i) => {
+                  const color = CAT[i % CAT.length];
+                  const pxPts = it.series.map((p) => [xPx(p.ratio), yPx(p.momentum)] as [number, number]);
+                  const path = smoothPath(pxPts);
+                  const last = it.series[it.series.length - 1];
+                  const on = selectedId === it.id;
+                  const dim = !!selectedId && !on;
+                  return (
+                    <g key={it.id} style={{ cursor: "pointer" }} onClick={() => setSelectedId(it.id)} onDoubleClick={() => drill(it)}>
+                      <path d={path} fill="none" stroke={color} strokeWidth={on ? 2.6 : 1} opacity={on ? 0.95 : dim ? 0.1 : 0.26} strokeLinecap="round" />
+                      <circle cx={xPx(last.ratio)} cy={yPx(last.momentum)} r={on ? 7 : 4.5} fill={color} stroke="var(--panel)" strokeWidth={2} opacity={on ? 1 : dim ? 0.35 : 0.85} />
+                    </g>
+                  );
+                })}
+              </svg>
+              <div style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+                {filteredItems.map((it, i) => {
+                  const color = CAT[i % CAT.length];
+                  const last = it.series[it.series.length - 1];
+                  const on = selectedId === it.id;
+                  const dim = !!selectedId && !on;
+                  const lx = xPx(last.ratio) + 9, ly = yPx(last.momentum) + 4;
+                  return (
+                    <span key={it.id} style={{ position: "absolute", left: `${((lx / VW) * 100).toFixed(2)}%`, top: `${(((ly + 3) / VH) * 100).toFixed(2)}%`, transform: "translateY(-50%)", fontSize: 10.5, fontWeight: 800, color, opacity: on ? 1 : dim ? 0.3 : 0.92, background: "var(--panel)", padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap", boxShadow: "0 1px 4px rgba(11,14,20,.14)" }}>{it.label}</span>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
 
         {/* right rail: distribution + detail */}
-        <div style={{ width: 220, flex: "none", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ width: 260, flex: "none", display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
-            <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", color: "var(--faint)", marginBottom: 6 }}>DISTRIBUTION</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              {(Object.keys(QUADRANT_META) as Quadrant[]).map((q) => (
-                <div key={q} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--soft)", borderRadius: 7, padding: "5px 8px" }}>
-                  <span style={{ fontSize: 10.5, color: QUADRANT_META[q].color, fontWeight: 700 }}>{QUADRANT_META[q].label}</span>
-                  <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 800 }}>{distribution[q]}</span>
-                </div>
-              ))}
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", color: "var(--faint)" }}>DISTRIBUTION</span>
+              <span style={{ fontSize: 9.5, color: "var(--faint)" }}>{items.length} plotted</span>
             </div>
-            <div style={{ fontSize: 9.5, color: "var(--faint)", marginTop: 5, textAlign: "right" }}>{items.length} plotted</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {DIST_ORDER.map((q) => {
+                const on = quadrantFilter === q;
+                return (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => { setQuadrantFilter((cur) => (cur === q ? null : q)); setSelectedId(null); }}
+                    title={`Show only ${QUADRANT_META[q].label}`}
+                    style={{ display: "flex", flexDirection: "column", gap: 3, textAlign: "left", background: QUADRANT_META[q].tint, border: `1.5px solid ${on ? QUADRANT_META[q].color : "transparent"}`, borderRadius: 10, padding: "9px 10px", cursor: "pointer" }}
+                  >
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: QUADRANT_META[q].color }}>{QUADRANT_META[q].label}</span>
+                    <span style={{ fontFamily: MONO, fontSize: 17, fontWeight: 800, color: "var(--text)" }}>{distribution[q]}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div style={{ background: "var(--soft)", borderRadius: 9, padding: "10px 11px", minHeight: 150 }}>
+          <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 12, padding: 16, flex: 1, minHeight: 0, overflow: "auto" }}>
             {!selected ? (
-              <div style={{ fontSize: 11, color: "var(--faint)", textAlign: "center", paddingTop: 40 }}>Click an item for details</div>
+              <div style={{ fontSize: 11, color: "var(--faint)", textAlign: "center", paddingTop: 60 }}>Click a point for details · double-click to drill in</div>
             ) : (
-              <DetailPanel item={selected} onClose={() => setSelectedId(null)} />
+              <DetailPanel item={selected} mode={mode} onClose={() => setSelectedId(null)} openTicker={openTicker} onDrill={() => drill(selected)} />
             )}
           </div>
         </div>
@@ -313,84 +375,117 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
 
       {hiddenCount > 0 ? <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>{hiddenCount} asset(s) hidden — not enough history vs IHSG to compute a rotation tail.</div> : null}
 
-      {/* phase chips + search */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--hair)" }}>
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search symbol…" style={{ fontSize: 11, fontFamily: MONO, border: "1px solid var(--border)", borderRadius: 8, padding: "5px 9px", background: "var(--panel)", color: "var(--text)", width: 130 }} />
+      {/* phase chips */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 16 }}>
         {PHASE_ORDER.map((p) => {
           const on = phaseFilter.has(p);
           return (
-            <button key={p} type="button" onClick={() => setPhaseFilter((s) => { const n = new Set(s); n.has(p) ? n.delete(p) : n.add(p); return n; })} style={{ fontSize: 10, fontWeight: 700, padding: "4px 10px", borderRadius: 999, border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accentSoft)" : "transparent", color: on ? "var(--accent)" : "var(--muted)", cursor: "pointer" }}>{p}</button>
+            <button key={p} type="button" onClick={() => setPhaseFilter((s) => { const n = new Set(s); n.has(p) ? n.delete(p) : n.add(p); return n; })} style={{ fontSize: 10.5, fontWeight: 700, padding: "5px 11px", borderRadius: 999, border: `1px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--muted)", cursor: "pointer" }}>{p}</button>
           );
         })}
       </div>
 
       {/* positions table */}
-      <div style={{ marginTop: 10 }}>
-        <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", color: "var(--faint)", marginBottom: 6 }}>POSITIONS · {filteredItems.length}</div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, minWidth: 480 }}>
+      <div style={{ marginTop: 16 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6 }}>
+          <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".1em", color: "var(--faint)" }}>POSITIONS · {filteredItems.length}</span>
+          {mode === "stocks" ? <span style={{ fontSize: 9.5, color: "var(--faint)" }}>Click a symbol to open its ticker page</span> : null}
+        </div>
+        <div style={{ overflow: "auto", maxHeight: 285, border: "1px solid var(--hair)", borderRadius: 8 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, minWidth: 560 }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                {["SYMBOL", "QUADRANT", "RS-RATIO", "RS-MOM", "PHASE"].map((h) => <th key={h} style={{ textAlign: h === "SYMBOL" ? "left" : "right", padding: "6px 8px", fontSize: 9.5, fontWeight: 700, color: "var(--faint)" }}>{h}</th>)}
+                {["SYMBOL", "QUADRANT", "RS-RATIO", "RS-MOM", "PHASE", "TREND"].map((h) => <th key={h} style={{ position: "sticky", top: 0, background: "var(--panel)", textAlign: h === "SYMBOL" || h === "PHASE" ? "left" : "right", padding: "8px 10px", fontSize: 9.5, fontWeight: 700, color: "var(--faint)", letterSpacing: ".06em" }}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {filteredItems.slice().sort((a, b) => a.trajectory.quadrant.localeCompare(b.trajectory.quadrant)).map((it) => {
                 const last = it.series[it.series.length - 1];
+                const trend = trendOf(it.trajectory);
                 return (
                   <tr key={it.id} onClick={() => setSelectedId(it.id)} style={{ borderBottom: "1px solid var(--hair)", cursor: "pointer", background: selectedId === it.id ? "var(--accentSoft)" : "transparent" }}>
-                    <td style={{ padding: "6px 8px", fontFamily: MONO, fontWeight: 700 }}>{it.label}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right" }}><span style={{ fontSize: 10, fontWeight: 700, color: QUADRANT_META[it.trajectory.quadrant].color, background: "var(--soft)", borderRadius: 5, padding: "2px 7px" }}>{QUADRANT_META[it.trajectory.quadrant].label}</span></td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: MONO }}>{last.ratio.toFixed(1)}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", fontFamily: MONO }}>{last.momentum.toFixed(1)}</td>
-                    <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)" }}>{it.trajectory.phase}</td>
+                    <td style={{ padding: "8px 10px", fontFamily: MONO, fontWeight: 700 }}>
+                      {mode === "stocks" ? (
+                        <a onClick={(e) => { e.stopPropagation(); openTicker(it.id); }} style={{ color: "var(--accent)", textDecoration: "none", cursor: "pointer" }}>{it.label}</a>
+                      ) : it.label}
+                    </td>
+                    <td style={{ padding: "8px 10px" }}><span style={{ fontSize: 10, fontWeight: 700, color: QUADRANT_META[it.trajectory.quadrant].color, background: QUADRANT_META[it.trajectory.quadrant].tint, borderRadius: 6, padding: "3px 8px" }}>{QUADRANT_META[it.trajectory.quadrant].label}</span></td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", fontFamily: MONO }}>{last.ratio.toFixed(1)}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", fontFamily: MONO }}>{last.momentum.toFixed(1)}</td>
+                    <td style={{ padding: "8px 10px", color: "var(--muted)" }}>{it.trajectory.phase}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: trend.color }}>{trend.arrow} {trend.label}</td>
                   </tr>
                 );
               })}
-              {!filteredItems.length ? <tr><td colSpan={5} style={{ padding: 24, textAlign: "center", color: "var(--faint)" }}>No positions match the current filters.</td></tr> : null}
+              {!filteredItems.length ? <tr><td colSpan={6} style={{ padding: 26, textAlign: "center", color: "var(--faint)" }}>No positions match the current filters.</td></tr> : null}
             </tbody>
           </table>
         </div>
       </div>
 
-      <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 12, lineHeight: 1.5 }}>
-        RS-Ratio / RS-Momentum: our own implementation of the standard rotation-graph concept — a rolling z-score-normalized relative-strength ratio and a z-score-normalized rate-of-change of that ratio, both centered at 100 (see lib/indicators/rrg.ts). Real price series, real benchmark (IHSG) — not a copy of any specific commercial tool&apos;s proprietary constants. Double-click a Sector or Konglo point to drill into its Stocks. Phase/Rotation labels are our own interpretive scheme from quadrant + short-term trajectory direction.
+      <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 14, lineHeight: 1.5 }}>
+        RS-Ratio / RS-Momentum: our own implementation of the standard rotation-graph concept — a rolling z-score-normalized relative-strength ratio and a z-score-normalized rate-of-change of that ratio, both centered at 100 (see lib/indicators/rrg.ts). Real price series, real benchmark (IHSG) — not a copy of any specific commercial tool&apos;s proprietary constants. Double-click a Sector or Konglo point to drill into its Stocks. Phase/Trend labels are our own interpretive scheme from quadrant + short-term trajectory direction.
       </div>
     </div>
   );
 }
 
-function DetailPanel({ item, onClose }: { item: PlotItem; onClose: () => void }) {
+function DetailPanel({ item, mode, onClose, openTicker, onDrill }: {
+  item: PlotItem; mode: Mode; onClose: () => void; openTicker: (t: string) => void; onDrill: () => void;
+}) {
+  const onOpenTicker = () => openTicker(item.id);
   const last = item.series[item.series.length - 1];
   const t = item.trajectory;
+  const trend = trendOf(t);
   const ratios = item.series.map((p) => p.ratio), moms = item.series.map((p) => p.momentum);
   const lo = Math.min(...ratios, ...moms), hi = Math.max(...ratios, ...moms), spread = hi - lo || 1;
   const spark = (vals: number[]) => vals.map((v, i) => `${i ? "L" : "M"} ${((i / (vals.length - 1 || 1)) * 100).toFixed(1)} ${(28 - ((v - lo) / spread) * 26).toFixed(1)}`).join(" ");
+  const constituents = item.constituents || [];
+  const SHOWN_CONSTITUENTS = 14;
   return (
     <div>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontFamily: MONO, fontWeight: 800, fontSize: 13 }}>{item.label}</span>
+        {mode === "stocks" ? (
+          <a onClick={onOpenTicker} style={{ fontFamily: MONO, fontWeight: 800, fontSize: 14, color: "var(--accent)", textDecoration: "none", cursor: "pointer" }}>{item.label}</a>
+        ) : (
+          <span style={{ fontFamily: MONO, fontWeight: 800, fontSize: 14 }}>{item.label}</span>
+        )}
         <div style={{ flex: 1 }} />
-        <button type="button" onClick={onClose} aria-label="Close" style={{ border: "none", background: "transparent", color: "var(--faint)", cursor: "pointer", fontSize: 13 }}>✕</button>
+        <button type="button" onClick={onClose} aria-label="Close" style={{ border: "none", background: "transparent", color: "var(--faint)", cursor: "pointer", fontSize: 14 }}>✕</button>
       </div>
-      {item.sublabel ? <div style={{ fontSize: 10, color: "var(--muted)" }}>{item.sublabel}</div> : null}
-      <span style={{ display: "inline-block", marginTop: 6, fontSize: 10, fontWeight: 700, color: QUADRANT_META[t.quadrant].color, background: "var(--panel)", borderRadius: 6, padding: "2px 8px" }}>{QUADRANT_META[t.quadrant].label}</span>
-      <svg viewBox="0 0 100 30" preserveAspectRatio="none" style={{ width: "100%", height: 34, marginTop: 8 }} aria-hidden>
-        <path d={spark(ratios)} fill="none" stroke="#2962FF" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
-        <path d={spark(moms)} fill="none" stroke="#F23645" strokeWidth={1.4} vectorEffect="non-scaling-stroke" />
+      {item.sublabel ? <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.sublabel}</div> : null}
+      <span style={{ display: "inline-block", marginTop: 6, fontSize: 10, fontWeight: 700, color: QUADRANT_META[t.quadrant].color, background: QUADRANT_META[t.quadrant].tint, borderRadius: 6, padding: "3px 9px" }}>{QUADRANT_META[t.quadrant].label}</span>
+
+      {mode === "stocks" ? (
+        <button type="button" onClick={onOpenTicker} style={{ display: "block", width: "100%", marginTop: 9, fontSize: 11, fontWeight: 700, color: "#fff", background: "var(--accent)", border: "none", borderRadius: 7, padding: "6px 0", cursor: "pointer" }}>Open ticker page →</button>
+      ) : (
+        <button type="button" onClick={onDrill} style={{ display: "block", width: "100%", marginTop: 9, fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "none", borderRadius: 7, padding: "6px 0", cursor: "pointer" }}>View constituent stocks →</button>
+      )}
+
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" style={{ width: "100%", height: 36, marginTop: 10 }} aria-hidden>
+        <path d={spark(ratios)} fill="none" stroke="#2962FF" strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
+        <path d={spark(moms)} fill="none" stroke="#F23645" strokeWidth={1.6} vectorEffect="non-scaling-stroke" />
       </svg>
       <div style={{ display: "flex", gap: 10, fontSize: 9, color: "var(--faint)", marginTop: 2 }}><span><span style={{ color: "#2962FF" }}>—</span> RS-Ratio</span><span><span style={{ color: "#F23645" }}>—</span> RS-Mom</span></div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "3px 8px", fontSize: 11, marginTop: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "4px 8px", fontSize: 11.5, marginTop: 10 }}>
         <span style={{ color: "var(--muted)" }}>RS-Ratio</span><span style={{ fontFamily: MONO, fontWeight: 700, textAlign: "right" }}>{last.ratio.toFixed(1)}</span>
         <span style={{ color: "var(--muted)" }}>RS-Momentum</span><span style={{ fontFamily: MONO, fontWeight: 700, textAlign: "right" }}>{last.momentum.toFixed(1)}</span>
-      </div>
-      <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", marginTop: 10, marginBottom: 4 }}>TRAJECTORY</div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "3px 8px", fontSize: 11 }}>
         <span style={{ color: "var(--muted)" }}>Phase</span><span style={{ fontWeight: 700, textAlign: "right" }}>{t.phase}</span>
-        <span style={{ color: "var(--muted)" }}>Rotation</span><span style={{ fontWeight: 700, textAlign: "right", color: t.rotation === "counter" ? "var(--down)" : t.rotation === "clockwise" ? "var(--up)" : "var(--muted)" }}>{t.rotation === "clockwise" ? "↻ Normal" : t.rotation === "counter" ? "↺ Counter" : "— Flat"}</span>
-        <span style={{ color: "var(--muted)" }}>Direction</span><span style={{ fontFamily: MONO, fontWeight: 700, textAlign: "right", fontSize: 10 }}>{t.deltaRatio >= 0 ? "+" : ""}{t.deltaRatio.toFixed(2)} R, {t.deltaMomentum >= 0 ? "+" : ""}{t.deltaMomentum.toFixed(2)} M</span>
+        <span style={{ color: "var(--muted)" }}>Trend</span><span style={{ fontWeight: 700, textAlign: "right", color: trend.color }}>{trend.arrow} {trend.label}</span>
         <span style={{ color: "var(--muted)" }}>Speed</span><span style={{ fontFamily: MONO, fontWeight: 700, textAlign: "right" }}>{t.speed.toFixed(2)} u/period</span>
       </div>
+
+      {mode === "konglo" && constituents.length ? (
+        <>
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", marginTop: 12, marginBottom: 5 }}>CONSTITUENTS · {constituents.length}</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+            {constituents.slice(0, SHOWN_CONSTITUENTS).map((tk) => (
+              <a key={tk} onClick={() => openTicker(tk)} style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 7px", cursor: "pointer", textDecoration: "none" }}>{tk}</a>
+            ))}
+            {constituents.length > SHOWN_CONSTITUENTS ? <span style={{ fontSize: 10, color: "var(--faint)", padding: "2px 4px" }}>+{constituents.length - SHOWN_CONSTITUENTS} more</span> : null}
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
