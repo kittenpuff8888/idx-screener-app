@@ -153,7 +153,7 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
   const xTicks = xIdx.map((idx) => { let lab = fmtTick(dates[idx], rangeKey); if (rangeKey !== "1W" && lab === lastLabel) lab = ""; else lastLabel = lab; return { left: (idx / (dates.length - 1)) * 100, lab }; });
 
   return (
-    <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "16px 18px", boxShadow: "var(--shadow)", marginBottom: 16 }}>
+    <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", padding: "16px 18px", boxShadow: "var(--shadow)", marginBottom: 16, display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 11 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
@@ -173,7 +173,7 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 14, alignItems: "stretch", flexWrap: "wrap", flex: 1 }}>
         <div style={{ flex: "1 1 460px", minWidth: 300, display: "flex", gap: 6 }}>
           <div style={{ display: "flex", alignItems: "center", flex: "none" }}>
             <span style={{ fontFamily: MONO, fontSize: 8.5, letterSpacing: ".14em", color: "var(--faint)", writingMode: "vertical-rl", transform: "rotate(180deg)", whiteSpace: "nowrap" }}>% RETURN SINCE START</span>
