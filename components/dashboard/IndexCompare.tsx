@@ -117,6 +117,9 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
           </div>
         </div>
       ) : null}
+      {entry.group?.weightMethod ? (
+        <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10 }}>Weighted by: {entry.group.weightMethod}{entry.group.weightMethod.toLowerCase().includes("equal fallback") ? " — falls back to equal weighting for any constituent without a real market cap." : "."}</div>
+      ) : null}
       <div style={{ marginTop: 12 }}><Provenance source="Local research index · fundamentals" asOf={marketDate} /></div>
     </Modal>
   );
