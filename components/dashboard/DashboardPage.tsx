@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
+import { SectorRotationSection } from "./SectorRotation";
 import { TradingViewChart, ChartIndicatorPicker } from "./TradingViewChart";
 import { MarketBreadthPanel } from "./MarketBreadthPanel";
 import { MarketsCarousel } from "./MarketsCarousel";
@@ -142,6 +143,12 @@ export function DashboardPage() {
     .filter((g): g is NonNullable<typeof g> => Boolean(g && g.series.length))
     .map((g) => ({ id: g.id, label: g.label.replace(/\s*\(.*\)$/, ""), group: g, series: g.series.filter((p) => !marketDate || p.date <= marketDate) })), [indexes, marketDate]);
 
+  // Raw groups (not the CompareEntry-transformed subset above) — Sector
+  // Rotation needs every real sector and every real konglo group, plus each
+  // group's constituent tickers, to drive its filters and Stocks drill-down.
+  const sectoralGroupsRaw = useMemo(() => (indexes?.groups || []).filter((g) => g.section === "SECTORAL INDEX" && g.series.length), [indexes]);
+  const kongloGroupsRaw = useMemo(() => (indexes?.groups || []).filter((g) => g.section === "KONGLO INDEX" && g.series.length), [indexes]);
+
   if (loading && !bundle) {
     return <section style={{ display: "grid", gap: 14 }}><SkeletonCard /><SkeletonCard /></section>;
   }
@@ -252,6 +259,9 @@ export function DashboardPage() {
         <IndexCompareSection title="SECTORAL INDICES vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={sectoralEntries} ihsg={ihsgSeries} />
         <IndexCompareSection title="KONGLO INDEX vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={kongloEntries} ihsg={ihsgSeries} />
       </div>
+
+      {/* SECTOR ROTATION — relative rotation graph: Sectors / Konglo / Stocks */}
+      <SectorRotationSection ihsg={ihsgSeries} sectoralGroups={sectoralGroupsRaw} kongloGroups={kongloGroupsRaw} marketDate={marketDate || ""} openTicker={openTicker} technicalByTicker={bundle?.technical || new Map()} />
 
       {/* MARKET MAP — squarified, cap-weighted treemap */}
       <MarketMapTreemap />
