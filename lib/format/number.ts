@@ -78,6 +78,16 @@ export function formatAsOf(value: string | null | undefined): string {
   }).format(date);
 }
 
+// Parse counts that may carry a K/M/B/T suffix (e.g. "7.79 B" shares outstanding).
+const COUNT_SUFFIX: Record<string, number> = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
+export function parseCount(v: unknown): number | null {
+  if (v == null) return null;
+  const m = String(v).replace(/,/g, "").trim().match(/^(-?[\d.]+)\s*([KMBT])?/i);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n * (m[2] ? COUNT_SUFFIX[m[2].toUpperCase()] : 1) : null;
+}
+
 export function directionClass(value: unknown): "text-positive" | "text-negative" | "text-muted" {
   const parsed = asNumber(value);
   if (parsed === null || parsed === 0) return "text-muted";

@@ -50,7 +50,18 @@ export function MarketBreadthPanel({ data, asOf }: { data: MarketBreadth | null;
   const headline50 = last?.pct50 ?? data.pct50;
   const slope20 = last?.pct200 != null && prior20?.pct200 != null ? last.pct200 - prior20.pct200 : null;
   const series200 = pts.map((p) => p.pct200).filter((v): v is number => v != null);
-  const uni = hist ? `top ${hist.universeSize} by liquidity` : `${data.coverage} stocks`;
+  // The 50-day and 200-day tiles are independently gated (a ticker can have
+  // one moving average without the other) — n200/universeSize is always the
+  // full fixed-liquid-universe count by construction, but n50 can be smaller
+  // (a top-300-by-liquidity ticker can lack a 50-day EMA). Disclose both
+  // counts whenever they actually differ, instead of reusing one number
+  // (200-day coverage) as the caption for both tiles.
+  const histN50 = last?.n50;
+  const struct200N = hist ? hist.universeSize : data.coverage;
+  const short50N = hist ? (histN50 ?? hist.universeSize) : data.coverage50;
+  const uni = short50N === struct200N
+    ? (hist ? `top ${struct200N} by liquidity` : `${struct200N} stocks`)
+    : (hist ? `top ${struct200N} by liquidity (${short50N} for the 50-day read)` : `${short50N} stocks (50-day) / ${struct200N} stocks (200-day)`);
   const regime = breadthRegime(headline200, headline50);
   const gap = medianRet1M != null && ihsgRet1M != null ? medianRet1M - ihsgRet1M : null;
 

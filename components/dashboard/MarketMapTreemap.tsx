@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Modal } from "@/components/shared/Modal";
 import { normalizeSector } from "@/lib/domain/sectors";
-import { asNumber, formatNumber, formatPercent } from "@/lib/format/number";
+import { asNumber, formatNumber, formatPercent, parseCount } from "@/lib/format/number";
 
 const MONO = "var(--font-mono)";
 const KICKER: CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" };
@@ -109,8 +109,19 @@ export function MarketMapTreemap() {
     const noCapBy = new Map<string, number>();
     let noCap = 0;
     bundle?.fundamentals.forEach((raw, ticker) => {
-      const mcap = asNumber(raw["Market Cap"]);
       const change = asNumber(raw["Price Change %"]);
+      const price = asNumber(raw["Price"]);
+      // Same real-field fallback as the Dashboard's Leaders/Laggards table
+      // (components/dashboard/DashboardPage.tsx): when the workbook's own
+      // "Market Cap" column is a yfinance-gap "-", recompute it from two
+      // OTHER real fields (Price × Shares Outstanding) rather than drop a
+      // ticker that has genuine data. Keeps both pages counting the same
+      // "has a market cap" universe instead of two different ones.
+      let mcap = asNumber(raw["Market Cap"]);
+      if (mcap === null && price !== null) {
+        const sh = parseCount(raw["Current Share Outstanding"]) ?? parseCount(raw["Shares Outstanding"]);
+        if (sh !== null) mcap = (price * sh) / 1e9;
+      }
       const sector = sectorByTicker.get(ticker) || normalizeSector(String(raw["IDX Sector"] ?? "Others"));
       if (mcap === null || mcap <= 0) {
         noCap += 1;
@@ -119,7 +130,7 @@ export function MarketMapTreemap() {
       }
       if (change === null) return;
       const list = bySector.get(sector) || [];
-      list.push({ ticker, mcap, change, sector, price: asNumber(raw["Price"]), pe: asNumber(raw["Current PE Ratio (TTM)"]), yld: asNumber(raw["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]) });
+      list.push({ ticker, mcap, change, sector, price, pe: asNumber(raw["Current PE Ratio (TTM)"]), yld: asNumber(raw["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]) });
       bySector.set(sector, list);
     });
     const sec = [...bySector.entries()]
@@ -155,7 +166,7 @@ export function MarketMapTreemap() {
         <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={openTicker} dropTiny ratio={7 / 16} noCapBySector={noCapBySector} />
         <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>
           Fundamentals · {marketDate} · click a tile to open the ticker · tickers too small to label here are folded into &ldquo;Show details&rdquo;.{" "}
-          {noCapCount > 0 ? <>{includedCount} of {scannedCount} scanned tickers have a published Market Cap to size by — the other {noCapCount} read &ldquo;-&rdquo; upstream (yfinance gap) and can&apos;t be placed on a cap-weighted map.</> : null}
+          {noCapCount > 0 ? <>{includedCount} of {scannedCount} scanned tickers have a Market Cap to size by (published, or computed from Price × Shares Outstanding when the field itself reads &ldquo;-&rdquo;) — the other {noCapCount} have neither and can&apos;t be placed on a cap-weighted map.</> : null}
         </div>
       </div>
 
@@ -178,8 +189,8 @@ function DetailsTreemap({ sectors, openTicker, onClose, noCapCount, scannedCount
     <>
       <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={jump} dropTiny={false} ratio={7 / 16} noCapBySector={noCapBySector} />
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
-        Every ticker with a published Market Cap is included here — {includedCount} of {scannedCount} scanned — even ones too small to carry a legible label at this size; hover any tile for its detail, click to open it. Double-click a sector header (or a tile) to zoom into that sector.
-        {noCapCount > 0 ? <> The remaining {noCapCount} scanned tickers have no Market Cap published (a &ldquo;-&rdquo; upstream, from yfinance rate-limiting) and can&apos;t be sized on a cap-weighted map — they&apos;re not omitted by choice.</> : null}
+        Every ticker with a Market Cap (published, or computed from Price × Shares Outstanding) is included here — {includedCount} of {scannedCount} scanned — even ones too small to carry a legible label at this size; hover any tile for its detail, click to open it. Double-click a sector header (or a tile) to zoom into that sector.
+        {noCapCount > 0 ? <> The remaining {noCapCount} scanned tickers have neither a published Market Cap nor enough data (Price, Shares Outstanding) to compute one — a &ldquo;-&rdquo; upstream from yfinance rate-limiting — and can&apos;t be sized on a cap-weighted map; they&apos;re not omitted by choice.</> : null}
       </div>
     </>
   );
@@ -337,7 +348,7 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio, noCa
 
       {zoomInfo && zoomNoCap > 0 ? (
         <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 8, lineHeight: 1.5 }}>
-          {zoom} has {zoomRealTotal} real tickers in the KSEI registry — {zoomNoCap} of them have no Market Cap published (the same yfinance gap noted below) and can&apos;t be sized on a cap-weighted map, so only the remaining {zoomInfo.tiles.length} are shown here.
+          {zoom} has {zoomRealTotal} real tickers in the KSEI registry — {zoomNoCap} of them have no Market Cap, published or computable (the same yfinance gap noted below), and can&apos;t be sized on a cap-weighted map, so only the remaining {zoomInfo.tiles.length} are shown here.
         </div>
       ) : null}
 

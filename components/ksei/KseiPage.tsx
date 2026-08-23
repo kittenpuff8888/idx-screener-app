@@ -18,7 +18,7 @@ type Tab = "ringkasan" | "investor" | "konglo" | "metrik" | "changelog";
 const TABS: Array<[Tab, string]> = [
   ["ringkasan", "Stock Summary"],
   ["investor", "By Investor"],
-  ["konglo", "Conglomerate Stocks"],
+  ["konglo", "Shared-Holder Groups"],
   ["metrik", "Metrics"],
   ["changelog", "Changelog"],
 ];
@@ -327,7 +327,7 @@ export function KseiPage() {
               })}
               {!kongloList.length ? <div style={{ padding: 24, textAlign: "center", color: "var(--faint)", fontSize: 12 }}>No group spans ≥3 issuers in this snapshot.</div> : null}
             </div>
-            <div style={{ padding: "9px 14px", fontSize: 9.5, color: "var(--faint)", lineHeight: 1.4 }}>Proxy for conglomerate footprints: the same investor name across ≥3 stocks (real KSEI holder lists). Named-family grouping &amp; share counts require the registry mapping.</div>
+            <div style={{ padding: "9px 14px", fontSize: 9.5, color: "var(--faint)", lineHeight: 1.4 }}>Proxy for conglomerate footprints: the same investor name across ≥3 stocks (real KSEI holder lists) — grouped by registered holder name, not by named business-family membership. This is a different, narrower method from the curated Konglo Index groups shown on the Dashboard (Sector Rotation, Konglo vs IHSG) and won&apos;t match them ticker-for-ticker.</div>
           </div>
           {/* RIGHT: selected group — stocks + connection network */}
           <div style={{ ...CARD, minHeight: 320 }}>

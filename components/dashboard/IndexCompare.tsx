@@ -25,19 +25,26 @@ const RANGES: Range[] = [
 type Pt = { date: string; value: number };
 export type CompareEntry = { id: string; label: string; series: Pt[]; group?: IndexGroup };
 
-/** % -return series over the last `steps` sessions, normalized to the range start (starts at 0). */
-function windowPct(series: Pt[], steps: number): number[] | null {
-  const pts = series.map((p) => p.value).filter(Number.isFinite);
-  if (pts.length < steps + 1) return null;
-  const win = pts.slice(-(steps + 1));
-  const base = win[0];
-  if (!base) return null;
-  return win.map((v) => (v / base - 1) * 100);
-}
 function windowDates(series: Pt[], steps: number): string[] {
   const pts = series.filter((p) => Number.isFinite(p.value));
   if (pts.length < steps + 1) return [];
   return pts.slice(-(steps + 1)).map((p) => p.date);
+}
+
+/** % -return series over the last `steps` sessions, normalized to the range start (starts at 0).
+    When `benchDates` is given (the benchmark's own trailing window), the series' own trailing
+    window must land on those EXACT calendar dates in the same order, or this returns null —
+    two index series sourced from pipelines that drifted out of sync (a real failure mode seen
+    in this repo: docs/data/market-context.json vs indexes.json on different refresh cadences)
+    must never get silently plotted against each other at the wrong x-position. */
+function windowPct(series: Pt[], steps: number, benchDates?: string[]): number[] | null {
+  const pts = series.filter((p) => Number.isFinite(p.value));
+  if (pts.length < steps + 1) return null;
+  const win = pts.slice(-(steps + 1));
+  if (benchDates && !(win.length === benchDates.length && win.every((p, i) => p.date === benchDates[i]))) return null;
+  const base = win[0].value;
+  if (!base) return null;
+  return win.map((p) => (p.value / base - 1) * 100);
 }
 const relFmt = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}%`;
 
@@ -129,19 +136,25 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
   const toggle = (id: string) => setOff((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const model = useMemo(() => {
-    const series = entries.map((entry, i) => ({ entry, color: CAT[i % CAT.length], pct: windowPct(entry.series, range.steps) }))
-      .filter((s): s is { entry: CompareEntry; color: string; pct: number[] } => s.pct !== null);
+    const dates = windowDates(ihsg, range.steps);
     const ihsgPct = windowPct(ihsg, range.steps);
+    // Entries must land on IHSG's exact trailing dates to be plotted against
+    // it — a series whose pipeline fell out of sync with IHSG's (different
+    // latest date, a gap, etc.) is dropped from this range rather than
+    // silently drawn at the wrong x-position (see windowPct's doc comment).
+    const benchDates = dates.length ? dates : undefined; // IHSG itself short on data for this range → don't suppress entries that have their own
+    const series = entries.map((entry, i) => ({ entry, color: CAT[i % CAT.length], pct: windowPct(entry.series, range.steps, benchDates) }))
+      .filter((s): s is { entry: CompareEntry; color: string; pct: number[] } => s.pct !== null);
+    const droppedForStaleness = dates.length > 0 && entries.length > series.length;
     const onVals = series.filter((s) => !off.has(s.entry.id)).flatMap((s) => s.pct);
     const allVals = [...onVals, ...(ihsgPct || []), 0];
     const min = Math.min(...allVals), max = Math.max(...allVals);
     const spread = max - min || 1;
-    const dates = windowDates(ihsg, range.steps) || (series[0] ? windowDates(series[0].entry.series, range.steps) : []);
-    return { series, ihsgPct, min, max, spread, dates };
+    return { series, ihsgPct, min, max, spread, dates, droppedForStaleness };
   }, [entries, ihsg, range, off]);
 
   if (!entries.length) return null;
-  const { series, ihsgPct, min, max, spread, dates } = model;
+  const { series, ihsgPct, min, max, spread, dates, droppedForStaleness } = model;
   const selCount = series.filter((s) => !off.has(s.entry.id)).length;
 
   // y gridlines (5) labelled as % vs the 0 start
@@ -161,6 +174,11 @@ export function IndexCompareSection({ title, badge, hint, entries, ihsg, default
             <span style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "2px 7px" }}>{badge}</span>
           </div>
           <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 4 }}>{hint}</div>
+          {droppedForStaleness ? (
+            <div style={{ fontSize: 10, color: "var(--warning)", marginTop: 4 }}>
+              {entries.length - series.length} of {entries.length} series hidden for this range — their data doesn&apos;t line up on IHSG&apos;s trading dates (a source out of sync), so they&apos;re dropped rather than plotted at the wrong date.
+            </div>
+          ) : null}
         </div>
         <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
           {RANGES.map((r) => {

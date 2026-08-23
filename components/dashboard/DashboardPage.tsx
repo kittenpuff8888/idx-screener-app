@@ -14,7 +14,7 @@ import { MarketMapTreemap } from "./MarketMapTreemap";
 import { computeMarketBreadth } from "@/lib/data/marketBreadth";
 import { normalizeSector } from "@/lib/domain/sectors";
 import type { JsonRecord } from "@/lib/domain/types";
-import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
+import { asNumber, formatPercent, formatPrice, parseCount } from "@/lib/format/number";
 import { PageHeader } from "@/components/shared/PageHeader";
 
 const CARD: CSSProperties = {
@@ -37,16 +37,6 @@ function fmtMcapBn(bn: number | null): string {
   if (bn === null) return "—";
   if (bn >= 1000) return `Rp ${(bn / 1000).toFixed(bn >= 100000 ? 0 : 1)} T`;
   return `Rp ${Math.round(bn)} B`;
-}
-
-// Parse counts that may carry a K/M/B/T suffix (e.g. "7.79 B" shares outstanding).
-const COUNT_SUFFIX: Record<string, number> = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
-function parseCount(v: unknown): number | null {
-  if (v == null) return null;
-  const m = String(v).replace(/,/g, "").trim().match(/^(-?[\d.]+)\s*([KMBT])?/i);
-  if (!m) return null;
-  const n = Number(m[1]);
-  return Number.isFinite(n) ? n * (m[2] ? COUNT_SUFFIX[m[2].toUpperCase()] : 1) : null;
 }
 
 const KONGLO_FEATURED = ["Barito", "Salim", "Sinarmas", "Astra", "Djarum", "Saratoga", "Bakrie", "Lippo"];

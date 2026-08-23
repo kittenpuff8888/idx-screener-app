@@ -2,6 +2,7 @@ import { asNumber } from "@/lib/format/number";
 import { normalizeSector, sectorCode } from "@/lib/domain/sectors";
 import type {
   JsonRecord,
+  KseiPayload,
   OverviewPayload,
   ResearchBundle,
   ScreenerRow,
@@ -9,6 +10,7 @@ import type {
   TradePlan,
 } from "@/lib/domain/types";
 import { fetchJson } from "./client";
+import { kseiSectorMap } from "./ksei";
 
 type RawScreener = {
   marketDate: string;
@@ -56,12 +58,20 @@ export function normalizeScreenerRows(
   rows: JsonRecord[],
   technical: Map<string, TechnicalRecord>,
   kongloMembership: Map<string, string[]>,
+  ksei: KseiPayload | null = null,
 ): ScreenerRow[] {
+  // The workbook's own "Sector"/"IDX Sector" fields ship as literal "Others"
+  // placeholders (not real classification) — KSEI is the reliable per-ticker
+  // sector source used everywhere else in the app (lib/data/ksei.ts); this
+  // was the one live data-loading path that fell back to the placeholder
+  // text instead, so bundle.screener[].sector silently disagreed with every
+  // other page's sector for the same ticker.
+  const sectorFromKsei = kseiSectorMap(ksei);
   return rows.map((row) => {
     const ticker = rowTicker(row);
     const stock = technical.get(ticker);
     const nested = (stock?.technical || {}) as JsonRecord;
-    const sectorRaw = text(row.Sector || row["IDX Sector"] || stock?.sector, "Others");
+    const sectorRaw = sectorFromKsei.get(ticker)?.label || text(row.Sector || row["IDX Sector"] || stock?.sector, "Others");
     const signalLabel = text(row["Filter Label"] || row.signalType || row.Section, "Research signal");
     return {
       ticker,
@@ -91,7 +101,7 @@ export function normalizeScreenerRows(
     .filter((row, index, all) => all.findIndex((r) => r.ticker === row.ticker) === index);
 }
 
-export async function loadResearchBundle(marketDate: string, kongloMembership: Map<string, string[]>): Promise<ResearchBundle> {
+export async function loadResearchBundle(marketDate: string, kongloMembership: Map<string, string[]>, ksei: KseiPayload | null = null): Promise<ResearchBundle> {
   const base = `/data/dates/${marketDate}`;
   const [overview, screener, technical, fundamental, news] = await Promise.all([
     fetchJson<OverviewPayload>(`${base}/overview.json`),
@@ -121,7 +131,7 @@ export async function loadResearchBundle(marketDate: string, kongloMembership: M
   return {
     marketDate,
     overview,
-    screener: normalizeScreenerRows(screener.records || [], technicalMap, kongloMembership),
+    screener: normalizeScreenerRows(screener.records || [], technicalMap, kongloMembership, ksei),
     technical: technicalMap,
     fundamentals,
     news: newsMap,
