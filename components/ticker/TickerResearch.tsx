@@ -12,6 +12,7 @@ import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/T
 import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
 import { DcfPanel } from "@/components/ticker/DcfPanel";
 import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
+import { computeSetupVerdict, type SetupVerdict } from "@/lib/valuation/setupVerdict";
 import { buildMaLevels, buildVwapLevels, buildSmcLevels, buildPivotLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
 import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
@@ -84,6 +85,7 @@ export function TickerResearch() {
   }, [marketDate]);
 
   const setup = useMemo(() => (setups || []).find((s) => s.ticker === ticker) || null, [setups, ticker]);
+  const verdict = useMemo(() => (setup ? null : computeSetupVerdict(stock, fund)), [setup, stock, fund]);
   const firstLive = useMemo(() => (setups || [])[0]?.ticker, [setups]);
 
   // IHSG series for benchmark returns
@@ -165,7 +167,7 @@ export function TickerResearch() {
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.15fr) minmax(0,1fr)", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
         <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
           <div style={{ ...KICKER, marginBottom: 12 }}>SETUP VERDICT</div>
-          {setup ? <SetupActive setup={setup} /> : <SetupNone rangePos={rangePos} offLow={offLow} />}
+          {setup ? <SetupActive setup={setup} /> : <SetupVerdictCard verdict={verdict} rangePos={rangePos} offLow={offLow} />}
         </div>
         <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -276,13 +278,62 @@ function SetupActive({ setup }: { setup: Setup }) {
   );
 }
 
+const TILT_COLOR: Record<SetupVerdict["tilt"], string> = {
+  "Bullish Tilt": "var(--up)", "Constructive": "var(--up)", "Neutral / Mixed": "var(--muted)", "Cautious": "var(--warning)", "Bearish Tilt": "var(--down)",
+};
+
+/** Shown when the signal engine hasn't flagged a triggered entry (no row in
+    setups.json — that only means "no tradeable pattern today", not "no
+    opinion"). computeSetupVerdict blends technical + fundamental signals
+    (real, published fields) into a directional tilt; SetupNone (below) is
+    the true last-resort when there isn't even enough data for that. */
+function SetupVerdictCard({ verdict, rangePos, offLow }: { verdict: SetupVerdict | null; rangePos: number | null; offLow: number | null }) {
+  if (!verdict) return <SetupNone rangePos={rangePos} offLow={offLow} />;
+  const color = TILT_COLOR[verdict.tilt];
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 12 }}>
+        <span style={{ fontFamily: MONO, fontSize: 34, fontWeight: 800, color, lineHeight: 1 }}>{verdict.score >= 0 ? "+" : ""}{Math.round(verdict.score)}</span>
+        <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: ".02em", color, paddingBottom: 4 }}>{verdict.tilt.toUpperCase()}</span>
+      </div>
+      <div style={{ fontSize: 9, color: "var(--faint)", marginTop: 4 }}>fundamental + technical blend · −100 to +100 · not an active setup</div>
+      <div style={{ display: "flex", gap: 6, margin: "12px 0" }}>
+        <div style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "8px 10px" }}>
+          <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800 }}>{verdict.technicalScore >= 0 ? "+" : ""}{Math.round(verdict.technicalScore)}</div>
+          <div style={{ fontSize: 8.5, color: "var(--muted)", marginTop: 1 }}>Technical · {Math.round(verdict.technicalWeight * 100)}% weight</div>
+        </div>
+        <div style={{ flex: 1, background: "var(--soft)", borderRadius: 9, padding: "8px 10px" }}>
+          <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: verdict.fundamentalScore == null ? "var(--faint)" : undefined }}>{verdict.fundamentalScore == null ? "—" : `${verdict.fundamentalScore >= 0 ? "+" : ""}${Math.round(verdict.fundamentalScore)}`}</div>
+          <div style={{ fontSize: 8.5, color: "var(--muted)", marginTop: 1 }}>Fundamental · {Math.round(verdict.fundamentalWeight * 100)}% weight</div>
+        </div>
+      </div>
+      <div style={{ fontSize: 9.5, color: "var(--faint)", marginBottom: 8 }}>Weighting profile: {verdict.weightProfile}{verdict.dcfIneligibleReason ? ` · DCF not eligible (${verdict.dcfIneligibleReason.toLowerCase()}) — fundamental score dropped, all weight on technical` : ""}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        {verdict.factors.map((f) => {
+          const pts = Math.round(f.points);
+          return (
+            <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+              <span style={{ fontFamily: MONO, fontWeight: 700, width: 34, textAlign: "right", color: pts > 0 ? "var(--up)" : "var(--down)" }}>{pts > 0 ? "+" : ""}{pts}</span>
+              <span style={{ color: "var(--muted)", flex: 1 }}>{f.label}</span>
+              <span style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)" }}>{f.detail}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p style={{ fontSize: 10, color: "var(--faint)", lineHeight: 1.5, marginTop: 10 }}>
+        Our own interpretive scoring from real technical + fundamental fields (not a triggered entry signal) — not investment advice. {rangePos != null ? `At ${Math.round(rangePos)}% of its 52-week range${offLow != null ? ` and ${offLow.toFixed(0)}% off the low` : ""}.` : ""}
+      </p>
+    </div>
+  );
+}
+
 function SetupNone({ rangePos, offLow }: { rangePos: number | null; offLow: number | null }) {
   return (
     <div>
       <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>No active setup</div>
       <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>Not flagged by the signal engine — monitoring.</div>
       <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.55, marginTop: 12 }}>
-        {rangePos != null ? `At ${Math.round(rangePos)}% of its 52-week range${offLow != null ? ` and ${offLow.toFixed(0)}% off the low` : ""} — a value location. ` : ""}The signal engine has not flagged a triggered entry.
+        {rangePos != null ? `At ${Math.round(rangePos)}% of its 52-week range${offLow != null ? ` and ${offLow.toFixed(0)}% off the low` : ""} — a value location. ` : ""}The signal engine has not flagged a triggered entry, and there isn&apos;t enough technical or fundamental data for an independent read either.
       </p>
     </div>
   );
