@@ -35,6 +35,7 @@
   --warnSoft: rgba(245, 158, 11, 0.12);
   --neutral: #5b6472;
   --cyan: #0891b2;
+  --cyanSoft: rgba(8, 145, 178, 0.1);
   /* Token aliases (light) */
   --frame: #ffffff;
   --panel: #ffffff;
@@ -93,6 +94,7 @@
   --warnSoft: rgba(243, 176, 60, 0.14);
   --neutral: #8a93a3;
   --cyan: #0891b2;
+  --cyanSoft: rgba(8, 145, 178, 0.16);
   /* Token aliases (dark) */
   --frame: #080a0d;
   --panel: #11151b;
