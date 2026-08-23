@@ -203,8 +203,20 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio }: {
     return () => ro.disconnect();
   }, []);
 
-  const H = W * ratio;
-  const mapH = mapW * ratio;
+  // Zooming into one sector must show EVERY ticker in it — never drop any,
+  // regardless of which parent view (compact card or "Show details") the
+  // zoom was triggered from — and give it real room: the box grows taller
+  // with ticker count rather than staying pinned to the all-sectors ratio,
+  // scrolling internally past a cap so one big sector can't blow out the page.
+  const zoomedSector = zoom ? sectors.find((s) => s.sector === zoom) : null;
+  const effectiveDropTiny = zoom ? false : dropTiny;
+  const ZOOM_BASELINE_COUNT = 14; // ticker count the normal ratio already handles well
+  const MAX_SCROLL_PX = 640;
+  const effectiveRatio = zoom && zoomedSector ? ratio * Math.max(1, zoomedSector.tiles.length / ZOOM_BASELINE_COUNT) : ratio;
+
+  const H = W * effectiveRatio;
+  const mapH = mapW * effectiveRatio;
+  const scrollCapped = zoom !== null && mapH > MAX_SCROLL_PX;
   // Clamp each rect to the container so accumulated squarify rounding can't push a
   // tile past the right/bottom edge (which the container would otherwise shave off).
   const pct = (r: Rect) => {
@@ -224,7 +236,7 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio }: {
   function layoutTickers(tickers: Tile[], inner: Rect): Array<Tile & { rect: Rect }> {
     const run = (list: Tile[]) => squarify(list.map((t) => ({ ...t, value: t.mcap })), inner.x, inner.y, inner.w, inner.h);
     const first = run(tickers);
-    if (!dropTiny) return first;
+    if (!effectiveDropTiny) return first;
     const survivors = first.filter((t) => (t.rect.w / W) * mapW >= MIN_TILE_W && (t.rect.h / H) * mapH >= MIN_TILE_H);
     if (survivors.length === first.length) return first;
     if (!survivors.length) return run(tickers.slice(0, 1));
@@ -250,7 +262,7 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio }: {
     });
     return { tiles, bands };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- layoutTickers closes over dropTiny/mapW/mapH/ratio, already listed
-  }, [sectors, zoom, dropTiny, mapW, mapH, H]);
+  }, [sectors, zoom, effectiveDropTiny, mapW, mapH, H]);
 
   const zoomInfo = zoom ? sectors.find((s) => s.sector === zoom) : null;
 
@@ -263,13 +275,15 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio }: {
             <span style={{ color: "var(--faint)" }}>›</span>
             <span style={{ fontWeight: 800 }}>{zoom}</span>
             {zoomInfo ? <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: zoomInfo.capChange >= 0 ? "var(--up)" : "var(--down)" }}>{formatPercent(zoomInfo.capChange)}</span> : null}
+            {zoomInfo ? <span style={{ fontSize: 10, color: "var(--faint)" }}>· {zoomInfo.tiles.length} tickers{scrollCapped ? " · scroll for more" : ""}</span> : null}
             <div style={{ flex: 1 }} />
             <button type="button" onClick={() => setZoom(null)} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>‹ Back to market</button>
           </>
         ) : null}
       </div>
 
-      <div ref={boxRef} style={{ position: "relative", width: "100%", aspectRatio: `1 / ${ratio}`, borderRadius: 10, overflow: "hidden", background: "var(--soft)" }} onMouseLeave={() => setTip(null)}>
+      <div ref={boxRef} style={{ width: "100%", maxHeight: scrollCapped ? MAX_SCROLL_PX : undefined, overflowY: scrollCapped ? "auto" : "visible", borderRadius: 10 }}>
+      <div style={{ position: "relative", width: "100%", height: zoom ? mapH : undefined, aspectRatio: zoom ? undefined : `1 / ${ratio}`, borderRadius: 10, overflow: "hidden", background: "var(--soft)" }} onMouseLeave={() => setTip(null)}>
         {layout.bands.map((b) => {
           const p = pct(b.rect);
           const showHead = b.hasHead && p.wFrac * mapW > 76;
@@ -302,6 +316,7 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio }: {
             </div>
           );
         })}
+      </div>
       </div>
 
       {tip ? (
