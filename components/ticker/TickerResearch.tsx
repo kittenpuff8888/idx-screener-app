@@ -14,7 +14,7 @@ import { DcfPanel } from "@/components/ticker/DcfPanel";
 import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
 import { computeSetupVerdict, type SetupVerdict } from "@/lib/valuation/setupVerdict";
 import { computeAnchoredVolumeProfile, type VolumeProfileResult } from "@/lib/indicators/volumeProfile";
-import { buildVolumeProfileLevels, buildMaLevels, buildQuarterVwapLevels, buildYearVwapLevels, buildInitialBalanceLevels, buildPreviousWeekLevels, buildCurrentWeekLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
+import { buildVolumeProfileLevels, buildMaLevels, buildQuarterVwapLevels, buildYearVwapLevels, buildInitialBalanceLevels, buildPreviousWeekLevels, buildCurrentWeekLevels, buildFiftyTwoWeekLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
 import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
@@ -360,23 +360,23 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
   // Volume Profile is the default basis for the core Target/Invalidation
   // rows (see VAL/VAH above) — pre-enabled here too so its own VAH/POC/VAL
   // rows are visible by default, consistent with the other opt-in groups.
-  const [activeGroups, setActiveGroups] = useState<Set<LevelGroup>>(new Set<LevelGroup>(["vp"]));
+  // 52-Week Range defaults on too since it used to be an always-on core row.
+  const [activeGroups, setActiveGroups] = useState<Set<LevelGroup>>(new Set<LevelGroup>(["vp", "w52"]));
   const [targetSel, setTargetSel] = useState<string | null>(null);
   const [invalSel, setInvalSel] = useState<string | null>(null);
   const toggleGroup = (g: LevelGroup) => setActiveGroups((s) => { const n = new Set(s); n.has(g) ? n.delete(g) : n.add(g); return n; });
 
-  // VAH/POC/VAL are no longer pushed into core directly — they're now the
-  // "vp" (Volume Profile) toggle group below, defaulted on, so they still
-  // show by default without duplicating the same price rows under two labels.
+  // VAH/POC/VAL and 52w swing high/low are no longer pushed into core
+  // directly — they're now the "vp" and "w52" toggle groups below, both
+  // defaulted on, so they still show by default without duplicating the
+  // same price rows under two labels.
   const core: LadderRow[] = [];
   const push = (id: string, v: number | null, label: string, tone: "up" | "down" | "flat") => { if (v != null && isFinite(v)) core.push({ id, v, label, tone }); };
   if (setup) {
     push("core-target", setup.target, "Target", "up");
     push("core-close", price, "CLOSE", "flat"); push("core-entry", setup.entryZone, "Entry", "flat"); push("core-stop", setup.invalidation, "Stop · invalidation", "down");
   } else {
-    push("core-hi52", hi52, "52w swing high", "up");
     push("core-close", price, "CLOSE", "flat");
-    push("core-lo52", lo52, "52w swing low", "down");
   }
 
   // Optional groups — real published/computed levels, opt-in via the chips below.
@@ -405,9 +405,10 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
       ib: buildInitialBalanceLevels(technical),
       pwmp: buildPreviousWeekLevels(technical),
       cwmp: buildCurrentWeekLevels(technical),
+      w52: buildFiftyTwoWeekLevels(hi52, lo52),
       dcf: dcfLevel,
     };
-  }, [volumeProfile, ma, ohlcv, technical, dcfLevel]);
+  }, [volumeProfile, ma, ohlcv, technical, dcfLevel, hi52, lo52]);
 
   const extraRows: LadderRow[] = useMemo(
     () => (Object.keys(extraByGroup) as LevelGroup[]).filter((g) => activeGroups.has(g)).flatMap((g) => extraByGroup[g].map((l) => ({ id: l.id, v: l.price, label: l.label, tone: l.tone, explain: l.explain }))),
@@ -498,6 +499,11 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
           );
         })}
       </div>
+      {activeGroups.has("vp") && volumeProfile ? (
+        <div style={{ fontSize: 10, color: "var(--faint)", marginTop: -6, marginBottom: 12 }}>
+          VP anchored {volumeProfile.anchor.startDate} → {volumeProfile.anchor.endDate} · consolidation before the {volumeProfile.anchor.direction === "up" ? "breakout up" : "breakdown"}
+        </div>
+      ) : null}
       <div style={{ display: "flex", gap: 16, flex: "1 1 auto" }}>
         {/* Left: true-price spine (reward/risk zones + dots) + evenly-spaced leader rows */}
         <div style={{ position: "relative", flex: "1 1 auto", minWidth: 0, height: H }}>
@@ -529,16 +535,17 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
             </div>
           ))}
         </div>
-        {/* Right: reward / risk readout — compact, fixed width so the ladder gets the room */}
-        <div style={{ width: 138, flex: "none", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, minWidth: 0 }}>
+        {/* Right: reward / risk readout — fixed width so the ladder gets the room, but wide
+            enough (and wrapping, not truncating) for longer role labels like "PQVWAP +1σ" */}
+        <div style={{ width: 168, flex: "none", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, minWidth: 0 }}>
           <div style={{ background: "var(--upSoft)", borderRadius: 9, padding: "8px 10px" }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--up)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>REWARD · to {targetRole}</div>
-            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--up)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{reward == null ? "—" : `+${formatNumber(Math.abs(reward), 0)}`}</div>
+            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--up)", lineHeight: 1.35 }}>REWARD · to {targetRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--up)" }}>{reward == null ? "—" : `+${formatNumber(Math.abs(reward), 0)}`}</div>
             {reward != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--up)" }}>({sPct(Math.abs(reward) / price, 1)})</div> : null}
           </div>
           <div style={{ background: "var(--downSoft)", borderRadius: 9, padding: "8px 10px" }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--down)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>RISK · to {invalRole}</div>
-            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--down)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{risk == null ? "—" : `−${formatNumber(Math.abs(risk), 0)}`}</div>
+            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--down)", lineHeight: 1.35 }}>RISK · to {invalRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--down)" }}>{risk == null ? "—" : `−${formatNumber(Math.abs(risk), 0)}`}</div>
             {risk != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--down)" }}>({sPct(-Math.abs(risk) / price, 1)})</div> : null}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>

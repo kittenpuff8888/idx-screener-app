@@ -91,9 +91,9 @@ export function GuidePage() {
             export to CSV exactly as displayed.
           </p>
           <p style={P}>
-            Every ticker cell links to that symbol&apos;s research page. The footer link opens
-            Past Setups · Forward Outcomes, which tracks what previously published setups
-            actually did.
+            Every ticker cell links to that symbol&apos;s research page. Past Setups now lives on
+            the Watchlist page — it&apos;s a log of your own watchlist adds that later hit their
+            locked-in target or invalidation, not a screener history.
           </p>
         </>
       ),
