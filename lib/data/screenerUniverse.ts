@@ -553,27 +553,3 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
   ]);
   return buildUniverse(scr, setupsDoc);
 }
-
-// ── past published setups + forward outcomes (docs/data/setups-history.json) ──
-export interface HistoryEntry {
-  date: string;
-  ticker: string;
-  score: number;
-  close: number;
-  target: number;
-  invalidation: number;
-  outcome: string;
-  barsObserved: number;
-}
-export interface HistoryDoc {
-  asOf?: string;
-  entries: HistoryEntry[];
-  summary: { total: number; decided: number; targetFirst: number; hitRate: number | null };
-  note?: string;
-}
-
-export async function loadHistory(): Promise<HistoryDoc> {
-  return fetchJson<HistoryDoc>("/data/setups-history.json").catch(
-    () => ({ entries: [], summary: { total: 0, decided: 0, targetFirst: 0, hitRate: null } }) as HistoryDoc,
-  );
-}
