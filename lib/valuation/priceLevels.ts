@@ -1,31 +1,44 @@
 import type { JsonRecord, OhlcvRow } from "@/lib/domain/types";
 import { asNumber } from "@/lib/format/number";
 import { computeAnchoredVwap, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
+import type { VolumeProfileResult } from "@/lib/indicators/volumeProfile";
 
 // Extra reference levels for the ticker-page price ladder, grouped so they
 // can be toggled on/off. Every number here is either read directly from a
 // published field, or computed client-side from real OHLCV using the exact
 // same formulas already shipped elsewhere in this app (anchored VWAP + σ
-// bands from the chart overlay). Nothing is invented — a group with no
+// bands from the chart overlay, the anchored Volume Profile from
+// lib/indicators/volumeProfile.ts). Nothing is invented — a group with no
 // usable input simply contributes no levels.
 
-export type LevelGroup = "ma" | "vwap" | "smc" | "profile" | "dcf";
+export type LevelGroup = "vp" | "ma" | "cqvwap" | "pqvwap" | "cyvwap" | "pyvwap" | "ib" | "pwmp" | "cwmp" | "dcf";
 export type PriceLevel = { id: string; group: LevelGroup; label: string; price: number; tone: "up" | "down" | "flat"; explain: string };
 
 export const GROUP_META: Record<LevelGroup, { label: string; short: string }> = {
+  vp: { label: "Volume Profile", short: "VP" },
   ma: { label: "Moving Averages", short: "MA" },
-  vwap: { label: "Anchored VWAP", short: "AVWAP" },
-  smc: { label: "SMC / Structure", short: "SMC" },
-  profile: { label: "Market Profile", short: "MP" },
+  cqvwap: { label: "Current Quarter VWAP", short: "CQ" },
+  pqvwap: { label: "Previous Quarter VWAP", short: "PQ" },
+  cyvwap: { label: "Current Year VWAP", short: "CY" },
+  pyvwap: { label: "Previous Year VWAP", short: "PY" },
+  ib: { label: "Initial Balance", short: "IB" },
+  pwmp: { label: "Previous Week", short: "PW" },
+  cwmp: { label: "Current Week", short: "CW" },
   dcf: { label: "DCF Fair Value", short: "DCF" },
 };
 
-function parseRange(v: unknown): [number, number] | null {
-  if (typeof v !== "string") return null;
-  const m = v.match(/(-?[\d,.]+)\s*-\s*(-?[\d,.]+)/);
-  if (!m) return null;
-  const a = asNumber(m[1]), b = asNumber(m[2]);
-  return a != null && b != null ? [Math.min(a, b), Math.max(a, b)] : null;
+/** VAH / POC / VAL from the anchored Volume Profile (real volume-at-price
+    histogram over the most recent qualifying consolidation — see
+    lib/indicators/volumeProfile.ts). Null input (no qualifying anchor found
+    in the lookback) contributes no levels rather than a guess. */
+export function buildVolumeProfileLevels(vp: VolumeProfileResult | null): PriceLevel[] {
+  if (!vp) return [];
+  const range = `${vp.anchor.startDate} → ${vp.anchor.endDate}`;
+  return [
+    { id: "vp-vah", group: "vp", label: "VAH", price: vp.vah, tone: "up", explain: `Value Area High — top of the zone holding 70% of volume, anchored to the last consolidation before the ${vp.anchor.direction === "up" ? "breakout up" : "breakdown"} (${range}).` },
+    { id: "vp-poc", group: "vp", label: "POC", price: vp.poc, tone: "flat", explain: `Point of Control — the single price with the most traded volume in that same anchored range (${range}).` },
+    { id: "vp-val", group: "vp", label: "VAL", price: vp.val, tone: "down", explain: `Value Area Low — bottom of the 70%-volume zone, same anchored range (${range}).` },
+  ];
 }
 
 export function buildMaLevels(ma: JsonRecord | undefined): PriceLevel[] {
@@ -39,79 +52,68 @@ export function buildMaLevels(ma: JsonRecord | undefined): PriceLevel[] {
   return out;
 }
 
-/** Adds one VWAP profile's centerline + ±1σ/±2σ/±3σ bands to `out`. */
-function pushVwapProfile(out: PriceLevel[], idPrefix: string, label: string, period: string, pt: AvwapPoint): void {
-  out.push({ id: `${idPrefix}-c`, group: "vwap", label, price: pt.vwap, tone: "flat", explain: `Volume-weighted average price over ${period} — the average price institutions actually transacted at over that period.` });
-  const bands: Array<[1 | 2 | 3, "u1" | "u2" | "u3", "l1" | "l2" | "l3"]> = [[1, "u1", "l1"], [2, "u2", "l2"], [3, "u3", "l3"]];
-  for (const [n, uk, lk] of bands) {
-    out.push({ id: `${idPrefix}-u${n}`, group: "vwap", label: `${label} +${n}σ`, price: pt[uk], tone: "up", explain: `${n} standard deviation${n > 1 ? "s" : ""} above ${label} — a ${n === 3 ? "statistically extreme" : "common resistance / profit-taking"} zone.` });
-    out.push({ id: `${idPrefix}-l${n}`, group: "vwap", label: `${label} −${n}σ`, price: pt[lk], tone: "down", explain: `${n} standard deviation${n > 1 ? "s" : ""} below ${label} — a ${n === 3 ? "statistically extreme" : "common support / value-seeking"} zone.` });
-  }
+/** One VWAP profile's ±2σ/±1σ/centerline bands, tagged to the given group. */
+function vwapProfileLevels(group: LevelGroup, label: string, period: string, pt: AvwapPoint): PriceLevel[] {
+  return [
+    { id: `${group}-u2`, group, label: `${label} +2σ`, price: pt.u2, tone: "up", explain: `2 standard deviations above ${label} — a statistically extreme zone, over ${period}.` },
+    { id: `${group}-u1`, group, label: `${label} +1σ`, price: pt.u1, tone: "up", explain: `1 standard deviation above ${label} — a common resistance / profit-taking zone, over ${period}.` },
+    { id: `${group}-c`, group, label, price: pt.vwap, tone: "flat", explain: `Volume-weighted average price over ${period} — the average price institutions actually transacted at over that period.` },
+    { id: `${group}-l1`, group, label: `${label} −1σ`, price: pt.l1, tone: "down", explain: `1 standard deviation below ${label} — a common support / value-seeking zone, over ${period}.` },
+    { id: `${group}-l2`, group, label: `${label} −2σ`, price: pt.l2, tone: "down", explain: `2 standard deviations below ${label} — a statistically extreme zone, over ${period}.` },
+  ];
 }
 
-/** Anchored VWAP + σ-band levels for the same three profiles the reference
-    workbook tracks — Current Quarter, Previous Quarter, and Previous Year —
-    computed client-side from real OHLCV. The backend publishes only the
-    centerline (vwapProfiles.*.vwap), not the σ-band prices, so this reuses
-    the exact engine behind the chart's AVWAP overlay to derive them honestly;
-    "previous" profiles use its frozen last-bar-of-period snapshot rather than
-    a live running value. */
-export function buildVwapLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
-  if (!rows || rows.length < 5) return [];
-  const out: PriceLevel[] = [];
+/** Current + Previous Quarter/Year anchored-VWAP bands, computed client-side
+    from real OHLCV with the same engine behind the chart's AVWAP overlay.
+    "Current" is the live, still-accruing period; "Previous" is frozen at the
+    prior period's last bar. */
+export function buildQuarterVwapLevels(rows: OhlcvRow[] | undefined): { current: PriceLevel[]; previous: PriceLevel[] } {
+  if (!rows || rows.length < 5) return { current: [], previous: [] };
   const q = computeAnchoredVwap(rows, "quarter");
   const lastQ = [...q.points].reverse().find((p) => p);
-  if (lastQ) pushVwapProfile(out, "vwap-cq", "Current QVWAP", "the current quarter", lastQ);
-  if (q.prevFinalPoint) pushVwapProfile(out, "vwap-pq", "Prev QVWAP", "the previous (completed) quarter", q.prevFinalPoint);
+  return {
+    current: lastQ ? vwapProfileLevels("cqvwap", "CQVWAP", "the current quarter", lastQ) : [],
+    previous: q.prevFinalPoint ? vwapProfileLevels("pqvwap", "PQVWAP", "the previous (completed) quarter", q.prevFinalPoint) : [],
+  };
+}
+
+export function buildYearVwapLevels(rows: OhlcvRow[] | undefined): { current: PriceLevel[]; previous: PriceLevel[] } {
+  if (!rows || rows.length < 5) return { current: [], previous: [] };
   const y = computeAnchoredVwap(rows, "year");
-  if (y.prevFinalPoint) pushVwapProfile(out, "vwap-py", "Prev Year VWAP", "the previous (completed) year", y.prevFinalPoint);
-  return out;
+  const lastY = [...y.points].reverse().find((p) => p);
+  return {
+    current: lastY ? vwapProfileLevels("cyvwap", "CYVWAP", "the current year", lastY) : [],
+    previous: y.prevFinalPoint ? vwapProfileLevels("pyvwap", "PYVWAP", "the previous (completed) year", y.prevFinalPoint) : [],
+  };
 }
 
-/** SMC / market-structure levels already published per ticker: order blocks,
-    equilibrium, premium/discount bounds, and structural swing extremes. */
-export function buildSmcLevels(technical: JsonRecord | undefined): PriceLevel[] {
-  const out: PriceLevel[] = [];
-  const smc = (technical?.["smc"] || {}) as JsonRecord;
-  const push = (id: string, label: string, price: number | null | undefined, tone: "up" | "down" | "flat", explain: string) => {
-    if (price != null && isFinite(price)) out.push({ id, group: "smc", label, price, tone, explain });
-  };
-  const ob = (key: string, side: "Bull" | "Bear") => {
-    const range = parseRange(smc[key]);
-    if (!range) return;
-    const tone = side === "Bull" ? "up" : "down";
-    push(`smc-${key}-hi`, `OB ${side} High`, range[1], tone, `${side === "Bull" ? "Bullish" : "Bearish"} order block — the last ${side === "Bull" ? "down" : "up"}-close candle before an aggressive ${side === "Bull" ? "rally" : "selloff"}; price often returns here before continuing.`);
-    push(`smc-${key}-lo`, `OB ${side} Low`, range[0], tone, `${side === "Bull" ? "Bullish" : "Bearish"} order block boundary — see OB ${side} High for context.`);
-  };
-  ob("closestBullishBlock", "Bull");
-  ob("closestBearishBlock", "Bear");
-  const eq = parseRange(smc["equilibrium"]);
-  if (eq) {
-    push("smc-eq-hi", "EQ High", eq[1], "flat", "Equilibrium — the midpoint band of the current dealing range (Smart Money Concepts); a common reaction zone.");
-    push("smc-eq-lo", "EQ Low", eq[0], "flat", "Equilibrium — the midpoint band of the current dealing range (Smart Money Concepts); a common reaction zone.");
-  }
-  push("smc-strong-high", "Strong High", asNumber(smc["strongHigh"]), "up", "Structural swing high defining the top of the current range — a break above often confirms a new leg up.");
-  push("smc-weak-high", "Weak High", asNumber(smc["weakHigh"]), "up", "A minor swing high inside the current range — less significant than Strong High, but still a local supply zone.");
-  push("smc-strong-low", "Strong Low", asNumber(smc["strongLow"]), "down", "Structural swing low defining the bottom of the current range — a break below often confirms a new leg down.");
-  push("smc-weak-low", "Weak Low", asNumber(smc["weakLow"]), "down", "The most recent minor swing low — a break below it often confirms the range has failed to hold.");
-  return out;
-}
-
-/** Market Profile levels already published per ticker: today's Initial
-    Balance (opening-session range), the previous week's high/low, and the
-    current week's first-session (Monday) high/low. */
-export function buildMarketProfileLevels(technical: JsonRecord | undefined): PriceLevel[] {
-  const out: PriceLevel[] = [];
+/** Today's Initial Balance (opening-session range). */
+export function buildInitialBalanceLevels(technical: JsonRecord | undefined): PriceLevel[] {
   const mp = (technical?.["marketProfile"] || {}) as JsonRecord;
-  const push = (id: string, label: string, price: number | null | undefined, tone: "up" | "down" | "flat", explain: string) => {
-    if (price != null && isFinite(price)) out.push({ id, group: "profile", label, price, tone, explain });
-  };
-  push("mp-ibh", "IBH", asNumber(mp["ibh"]), "up", "Today's Initial Balance high — the range set in the opening sessions; a breakout above often sets the day's directional bias.");
-  push("mp-ibl", "IBL", asNumber(mp["ibl"]), "down", "Today's Initial Balance low — the range set in the opening sessions; a breakdown below often sets the day's directional bias.");
-  push("mp-pwh", "PWH", asNumber(mp["pwh"]), "up", "Previous week's high — a widely-watched short-term reference level.");
-  push("mp-pwl", "PWL", asNumber(mp["pwl"]), "down", "Previous week's low — a widely-watched short-term reference level.");
-  push("mp-mdh", "MDH", asNumber(mp["mdh"]), "up", "The current week's first trading day (Monday) high — an early-week reference level.");
-  push("mp-mdl", "MDL", asNumber(mp["mdl"]), "down", "The current week's first trading day (Monday) low — an early-week reference level.");
+  const out: PriceLevel[] = [];
+  const ibh = asNumber(mp["ibh"]), ibl = asNumber(mp["ibl"]);
+  if (ibh != null) out.push({ id: "ib-ibh", group: "ib", label: "IBH", price: ibh, tone: "up", explain: "Today's Initial Balance high — the range set in the opening sessions; a breakout above often sets the day's directional bias." });
+  if (ibl != null) out.push({ id: "ib-ibl", group: "ib", label: "IBL", price: ibl, tone: "down", explain: "Today's Initial Balance low — the range set in the opening sessions; a breakdown below often sets the day's directional bias." });
+  return out;
+}
+
+/** Previous week's high/low. */
+export function buildPreviousWeekLevels(technical: JsonRecord | undefined): PriceLevel[] {
+  const mp = (technical?.["marketProfile"] || {}) as JsonRecord;
+  const out: PriceLevel[] = [];
+  const pwh = asNumber(mp["pwh"]), pwl = asNumber(mp["pwl"]);
+  if (pwh != null) out.push({ id: "pw-pwh", group: "pwmp", label: "PWH", price: pwh, tone: "up", explain: "Previous week's high — a widely-watched short-term reference level." });
+  if (pwl != null) out.push({ id: "pw-pwl", group: "pwmp", label: "PWL", price: pwl, tone: "down", explain: "Previous week's low — a widely-watched short-term reference level." });
+  return out;
+}
+
+/** Current week's first trading day (Monday) high/low. */
+export function buildCurrentWeekLevels(technical: JsonRecord | undefined): PriceLevel[] {
+  const mp = (technical?.["marketProfile"] || {}) as JsonRecord;
+  const out: PriceLevel[] = [];
+  const mdh = asNumber(mp["mdh"]), mdl = asNumber(mp["mdl"]);
+  if (mdh != null) out.push({ id: "cw-mdh", group: "cwmp", label: "MDH", price: mdh, tone: "up", explain: "The current week's first trading day (Monday) high — an early-week reference level." });
+  if (mdl != null) out.push({ id: "cw-mdl", group: "cwmp", label: "MDL", price: mdl, tone: "down", explain: "The current week's first trading day (Monday) low — an early-week reference level." });
   return out;
 }
 
