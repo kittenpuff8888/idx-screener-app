@@ -11,7 +11,7 @@ import type { VolumeProfileResult } from "@/lib/indicators/volumeProfile";
 // lib/indicators/volumeProfile.ts). Nothing is invented — a group with no
 // usable input simply contributes no levels.
 
-export type LevelGroup = "vp" | "ma" | "cqvwap" | "pqvwap" | "cyvwap" | "pyvwap" | "ib" | "pwmp" | "cwmp" | "dcf";
+export type LevelGroup = "vp" | "ma" | "cqvwap" | "pqvwap" | "cyvwap" | "pyvwap" | "ib" | "pwmp" | "cwmp" | "w52" | "dcf";
 export type PriceLevel = { id: string; group: LevelGroup; label: string; price: number; tone: "up" | "down" | "flat"; explain: string };
 
 export const GROUP_META: Record<LevelGroup, { label: string; short: string }> = {
@@ -24,6 +24,7 @@ export const GROUP_META: Record<LevelGroup, { label: string; short: string }> = 
   ib: { label: "Initial Balance", short: "IB" },
   pwmp: { label: "Previous Week", short: "PW" },
   cwmp: { label: "Current Week", short: "CW" },
+  w52: { label: "52-Week Range", short: "52W" },
   dcf: { label: "DCF Fair Value", short: "DCF" },
 };
 
@@ -114,6 +115,16 @@ export function buildCurrentWeekLevels(technical: JsonRecord | undefined): Price
   const mdh = asNumber(mp["mdh"]), mdl = asNumber(mp["mdl"]);
   if (mdh != null) out.push({ id: "cw-mdh", group: "cwmp", label: "MDH", price: mdh, tone: "up", explain: "The current week's first trading day (Monday) high — an early-week reference level." });
   if (mdl != null) out.push({ id: "cw-mdl", group: "cwmp", label: "MDL", price: mdl, tone: "down", explain: "The current week's first trading day (Monday) low — an early-week reference level." });
+  return out;
+}
+
+/** 52-week swing high/low — a published field, promoted from an always-on
+    core row to an opt-in group like every other level, so it can be toggled
+    off the same way. */
+export function buildFiftyTwoWeekLevels(hi52: number | null, lo52: number | null): PriceLevel[] {
+  const out: PriceLevel[] = [];
+  if (hi52 != null && isFinite(hi52)) out.push({ id: "w52-hi", group: "w52", label: "52w swing high", price: hi52, tone: "up", explain: "Highest close in the published 52-week window." });
+  if (lo52 != null && isFinite(lo52)) out.push({ id: "w52-lo", group: "w52", label: "52w swing low", price: lo52, tone: "down", explain: "Lowest close in the published 52-week window." });
   return out;
 }
 
