@@ -12,6 +12,17 @@ export type WatchlistRow = {
       modelled one — without it there is nothing to measure against. */
   addedAt: string;
   addedClose: number | null;
+  /** Reward:Risk locked in at the moment this row was added — from the real
+      signal-engine setup if one was active for this ticker that day, else
+      from the ticker's own anchored Volume Profile ladder (entry=close,
+      target=VAH, invalidation=VAL). Optional: rows added before this field
+      existed simply have none, rather than needing a migration. Used by the
+      Past Setups tracker to detect when the row later hits target/stop. */
+  entry?: number | null;
+  target?: number | null;
+  invalidation?: number | null;
+  rr?: number | null;
+  rrSource?: "setup" | "volume-profile" | null;
 };
 
 export type WatchlistGroup = {

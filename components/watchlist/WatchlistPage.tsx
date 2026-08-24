@@ -15,6 +15,10 @@ import {
   saveWatchlist,
   type WatchlistState,
 } from "@/lib/data/watchlistStore";
+import { computeAnchoredVolumeProfile } from "@/lib/indicators/volumeProfile";
+import { computeRewardRisk } from "@/lib/valuation/rewardRisk";
+import { loadPastSetups, savePastSetups, resolveWatchlistOutcomes, type PastSetupEntry } from "@/lib/data/pastSetupsStore";
+import { WatchlistPastSetups } from "@/components/watchlist/WatchlistPastSetups";
 
 /** Watchlist (DESIGN_SPEC §3.4). Groups are user-created and persisted locally;
     nothing is seeded. Every column is measured off published bars — where the
@@ -50,6 +54,35 @@ export function WatchlistPage() {
     setState(loadWatchlist());
     setHydrated(true);
   }, []);
+
+  const [pastSetups, setPastSetups] = useState<PastSetupEntry[]>([]);
+  useEffect(() => { setPastSetups(loadPastSetups()); }, []);
+
+  // Client-side hit-detection: no server can see what's on any user's
+  // watchlist (it lives only in this browser's localStorage), so this has to
+  // run here — check every row with a locked-in target/invalidation against
+  // real OHLCV since it was added, and graduate any hit into Past Setups.
+  // Keyed on the set of checkable symbols (not the whole `state` object) so
+  // unrelated interactions (selecting a row, searching) don't re-trigger a
+  // fresh round of OHLCV fetches.
+  const pendingSymbols = useMemo(
+    () => state.groups.flatMap((g) => g.rows.filter((r) => r.target != null || r.invalidation != null).map((r) => r.symbol)).sort().join(","),
+    [state],
+  );
+  useEffect(() => {
+    if (!hydrated || !marketDate || !pendingSymbols) return;
+    let cancelled = false;
+    resolveWatchlistOutcomes(state, marketDate).then(({ nextState, resolved }) => {
+      if (cancelled || !resolved.length) return;
+      setState(nextState);
+      saveWatchlist(nextState);
+      const merged = [...loadPastSetups(), ...resolved];
+      savePastSetups(merged);
+      setPastSetups(merged);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on pendingSymbols, not the full `state` object (see comment above)
+  }, [hydrated, marketDate, pendingSymbols]);
 
   // Screener universe → per-ticker setup / price / chg / R:R for the design columns.
   useEffect(() => {
@@ -100,6 +133,44 @@ export function WatchlistPage() {
     return id;
   }
 
+  // Patches entry/target/invalidation/rr onto an already-inserted row, once
+  // computed — done as a follow-up so adding a ticker stays instant (no
+  // perceptible delay waiting on an OHLCV fetch before the row appears).
+  // Functional setState so a slow fetch can't clobber other edits made in
+  // the meantime (stale-closure safe).
+  const attachRewardRisk = useCallback((symbol: string, groupId: string) => {
+    const uni = uniMap.get(symbol);
+    const patchRow = (r: { entry: number | null; target: number | null; invalidation: number | null; rr: number | null; rrSource: "setup" | "volume-profile" | null }) => {
+      setState((prev) => {
+        const next: WatchlistState = {
+          ...prev,
+          groups: prev.groups.map((g) => g.id !== groupId ? g : {
+            ...g,
+            rows: g.rows.map((row) => row.symbol !== symbol ? row : { ...row, ...r }),
+          }),
+        };
+        saveWatchlist(next);
+        return next;
+      });
+    };
+    // A real signal-engine setup for this ticker today is richer/preferred;
+    // fall back to the ticker's own anchored Volume Profile (entry=close,
+    // target=VAH, invalidation=VAL — same basis as the ticker page's default
+    // ladder) when there's no active setup.
+    if (uni?.entry != null && uni?.target != null && uni?.invalidation != null) {
+      patchRow({ entry: uni.entry, target: uni.target, invalidation: uni.invalidation, rr: uni.rr ?? computeRewardRisk(uni.entry, uni.target, uni.invalidation), rrSource: "setup" });
+      return;
+    }
+    if (!marketDate) return;
+    loadOhlcv(marketDate, symbol).then((payload) => {
+      const rows = payload?.rows || [];
+      const vp = computeAnchoredVolumeProfile(rows);
+      if (!vp) return;
+      const entry = rows.length ? rows[rows.length - 1].close : null;
+      patchRow({ entry, target: vp.vah, invalidation: vp.val, rr: computeRewardRisk(entry, vp.vah, vp.val), rrSource: "volume-profile" });
+    }).catch(() => {});
+  }, [uniMap, marketDate]);
+
   function addTicker(symbolRaw: string, groupId: string) {
     const symbol = symbolRaw.trim().toUpperCase();
     if (!symbol) return;
@@ -110,6 +181,7 @@ export function WatchlistPage() {
         : { ...g, rows: [...g.rows, { symbol, addedAt: marketDate || new Date().toISOString().slice(0, 10), addedClose: typeof close === "number" ? close : null }] },
     );
     persist({ ...state, groups, activeGroupId: groupId, selectedSymbol: symbol });
+    attachRewardRisk(symbol, groupId);
   }
 
   function removeRow(symbol: string) {
@@ -268,6 +340,8 @@ export function WatchlistPage() {
           {selected ? <IndicatorCompanion ohlcv={selOhlcv} symbol={selected} sessions={130} /> : null}
         </div>
       )}
+
+      <div style={{ marginTop: 20 }}><WatchlistPastSetups entries={pastSetups} /></div>
     </section>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import Link from "next/link";
 import { useApp } from "@/components/providers/AppProvider";
 import { kseiSectorMap } from "@/lib/data/ksei";
 import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
@@ -15,13 +14,11 @@ import {
   LIQUIDITY_OPTIONS,
   SECTOR_OPTIONS,
   SETUPS,
-  loadHistory,
   loadUniverse,
   passLiquidity,
   setupByKey,
   soloCounts,
   type Cell,
-  type HistoryDoc,
   type Tone,
   type Universe,
   type UniverseRow,
@@ -75,7 +72,6 @@ export function ScreenerPage() {
   const secLabel = (t: string, fallback: string) => kseiSec.get(t)?.label || fallback;
   const secCode = (t: string, fallback: string) => kseiSec.get(t)?.code || fallback;
   const [universe, setUniverse] = useState<Universe | null>(null);
-  const [history, setHistory] = useState<HistoryDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // ticker → DCF upside%, from the same model as the ticker-detail panel —
@@ -129,10 +125,6 @@ export function ScreenerPage() {
       cancelled = true;
     };
   }, [marketDate]);
-
-  useEffect(() => {
-    loadHistory().then(setHistory).catch(() => setHistory(null));
-  }, []);
 
   const rows = universe?.rows ?? [];
   const solo = useMemo(() => soloCounts(rows), [rows]);
@@ -285,15 +277,6 @@ export function ScreenerPage() {
     a.click();
   };
 
-  // ── derived view data ──
-  const wHit = history?.summary.hitRate ?? null;
-  const hist = {
-    published: history?.summary.total ?? 0,
-    decided: history?.summary.decided ?? 0,
-    hitRate: wHit == null ? "—" : `${Math.round(wHit * 100)}%`,
-    hitColor: wHit == null ? "var(--faint)" : wHit >= 0.5 ? "var(--up)" : wHit >= 0.4 ? "var(--flat)" : "var(--down)",
-  };
-
   const pills: Array<{ label: string; color: string; bg: string; border: string; onRemove: () => void }> = [];
   if (mode === "preset") {
     selectedSetups.forEach((k) => {
@@ -407,21 +390,6 @@ export function ScreenerPage() {
         <div style={{ flex: 1 }} />
         <span style={{ fontSize: 10, color: "var(--faint)" }}>Sector &amp; liquidity are real; konglo groups are not in the data. DCF uses fixed default assumptions here — open a ticker for adjustable sliders.</span>
       </div>
-
-      {/* Past Setups card → dedicated page */}
-      <Link href="/screener/history" style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", ...CARD, padding: "14px 18px", marginBottom: 16, textDecoration: "none", color: "var(--text)" }}>
-        <span style={{ width: 34, height: 34, flex: "none", borderRadius: 9, background: "var(--accentSoft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }} aria-hidden>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M7 14l4-4 3 3 5-6" /></svg>
-        </span>
-        <div>
-          <div style={{ fontSize: 12.5, fontWeight: 800 }}>Past Setups · Forward Outcomes</div>
-          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-            <strong style={{ fontFamily: MONO, color: "var(--text)" }}>{hist.published}</strong> published · <strong style={{ fontFamily: MONO, color: "var(--text)" }}>{hist.decided}</strong> decided · hit-rate <strong style={{ fontFamily: MONO, color: hist.hitColor }}>{hist.hitRate}</strong>
-          </div>
-        </div>
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "6px 12px" }}>Open full history →</span>
-      </Link>
 
       {/* (A) preset library */}
       {mode === "preset" ? (

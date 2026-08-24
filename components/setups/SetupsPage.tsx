@@ -36,52 +36,6 @@ function CvdSpark({ values }: { values: number[] | null }) {
   );
 }
 
-type HistoryEntry = { date: string; ticker: string; score: number; outcome: string; barsObserved: number };
-type HistoryPayload = { asOf: string; entries: HistoryEntry[]; summary: { total: number; decided: number; targetFirst: number; hitRate: number | null }; note: string };
-
-const OUTCOME_STYLE: Record<string, { color: string; label: string }> = {
-  target: { color: "var(--up)", label: "TARGET" },
-  invalidated: { color: "var(--down)", label: "INVALIDATED" },
-  undecided: { color: "var(--muted)", label: "UNDECIDED (5 bars)" },
-  open: { color: "var(--warning)", label: "OPEN" },
-};
-
-function HistorySection() {
-  const [hist, setHist] = useState<HistoryPayload | null>(null);
-  useEffect(() => {
-    fetchJson<HistoryPayload>("/data/setups-history.json").then(setHist).catch(() => setHist(null));
-  }, []);
-  if (!hist) return null;
-  return (
-    <div style={{ ...CARD, marginTop: 18 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-        <span style={KICKER}>PAST SETUPS · FORWARD OUTCOMES</span>
-        <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)" }}>
-          {hist.summary.total} published · {hist.summary.decided} decided · hit-rate {hist.summary.hitRate === null ? "—" : `${Math.round(hist.summary.hitRate * 100)}%`}
-        </span>
-      </div>
-      {!hist.entries.length ? (
-        <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No archived setups yet — outcomes accumulate as the daily pipeline publishes new sessions.</div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {hist.entries.slice().reverse().slice(0, 30).map((e, i) => {
-            const st = OUTCOME_STYLE[e.outcome] || OUTCOME_STYLE.open;
-            return (
-              <div key={`${e.date}-${e.ticker}`} style={{ display: "flex", gap: 12, alignItems: "baseline", padding: "6px 0", borderTop: i ? "1px solid var(--hair)" : "none", fontSize: 12 }}>
-                <span style={{ fontFamily: MONO, fontSize: 10.5, color: "var(--faint)", width: 82 }}>{e.date}</span>
-                <span style={{ fontFamily: MONO, fontWeight: 700, width: 52 }}>{e.ticker}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 34 }}>{e.score}</span>
-                <span style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, color: st.color }}>{st.label}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      <p style={{ margin: "10px 0 0", fontSize: 10, color: "var(--faint)" }}>{hist.note}</p>
-    </div>
-  );
-}
-
 export function SetupsPage() {
   const { marketDate, openTicker } = useApp();
   const [payload, setPayload] = useState<SetupsPayload | null>(null);
@@ -183,8 +137,6 @@ export function SetupsPage() {
           </div>
         ))}
       </div>
-
-      <HistorySection />
     </section>
   );
 }
