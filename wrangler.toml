@@ -1,0 +1,7 @@
+name = "idx-screener"
+pages_build_output_dir = "out"
+compatibility_date = "2026-08-25"
+
+[[r2_buckets]]
+binding = "DATA_BUCKET"
+bucket_name = "idx-screener-data"
