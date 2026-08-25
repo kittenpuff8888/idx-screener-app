@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -80,6 +80,36 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./out
+
+      # ── Mirror deploy to Cloudflare Pages (password-gated) ──────────────
+      # Runs from the same build output, after the GitHub Pages artifact is
+      # already captured above (so the later `rm -rf out/data` below can't
+      # affect it). data/ is excluded from the Pages upload itself — a
+      # Cloudflare Pages deployment caps out at 20,000 files and this
+      # archive alone is 30,000+ — and served instead from R2 by
+      # functions/data/[[path]].ts.
+      - name: Sync data archive to Cloudflare R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/sync_data_to_r2.mjs
+
+      - name: Commit updated R2 sync manifest
+        run: |
+          if ! git diff --quiet -- data-manifest.json; then
+            git config user.name "idx-data-bot"
+            git config user.email "idx-data-bot@users.noreply.github.com"
+            git add data-manifest.json
+            git commit -m "chore(data): update R2 sync manifest [skip ci]"
+            git push
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          rm -rf out/data
+          npx wrangler pages deploy out --project-name=idx-screener --branch=main --commit-dirty=true
 
   deploy:
     environment:
