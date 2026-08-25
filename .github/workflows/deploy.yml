@@ -1,4 +1,4 @@
-name: Deploy Next.js Static Export to GitHub Pages
+name: Deploy Next.js Static Export to Cloudflare Pages
 
 on:
   push:
@@ -16,8 +16,6 @@ on:
 
 permissions:
   contents: write
-  pages: write
-  id-token: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -76,18 +74,9 @@ jobs:
       - name: Build static site
         run: pnpm build
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./out
-
-      # ── Mirror deploy to Cloudflare Pages (password-gated) ──────────────
-      # Runs from the same build output, after the GitHub Pages artifact is
-      # already captured above (so the later `rm -rf out/data` below can't
-      # affect it). data/ is excluded from the Pages upload itself — a
-      # Cloudflare Pages deployment caps out at 20,000 files and this
-      # archive alone is 30,000+ — and served instead from R2 by
-      # functions/data/[[path]].ts.
+      # data/ is excluded from the Pages upload itself — a Cloudflare Pages
+      # deployment caps out at 20,000 files and this archive alone is
+      # 30,000+ — and served instead from R2 by functions/data/[[path]].ts.
       - name: Sync data archive to Cloudflare R2
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -110,14 +99,3 @@ jobs:
         run: |
           rm -rf out/data
           npx wrangler pages deploy out --project-name=idx-screener --branch=main --commit-dirty=true
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
