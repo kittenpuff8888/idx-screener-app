@@ -1,117 +1,259 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import {
+  createChart, CandlestickSeries, HistogramSeries, LineSeries,
+  LineStyle, LineType, CrosshairMode,
+  type IChartApi, type Time, type MouseEventParams,
+} from "lightweight-charts";
 import type { OhlcvPayload } from "@/lib/domain/types";
 import { loadOverlays, subscribeOverlays, loadVwapAnchor, saveVwapAnchor, subscribeVwapAnchor } from "@/lib/data/chartOverlays";
-import { computeInitialBalance } from "@/lib/indicators/initialBalance";
-import { computeMacd4c, MACD4C_COLORS } from "@/lib/indicators/macd4c";
-import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor } from "@/lib/indicators/anchoredVwap";
-import { formatPrice } from "@/lib/format/number";
+import { computeInitialBalance, type IbBand } from "@/lib/indicators/initialBalance";
+import { computeMacd4c, MACD4C_COLORS, type Macd4cPoint } from "@/lib/indicators/macd4c";
+import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
+import { formatPrice, formatCompact } from "@/lib/format/number";
 
 // Companion chart for custom overlays that can't run in the TradingView embed
-// (Pine only executes on tradingview.com). Renders NOTHING until a custom overlay
-// is switched on in the ƒx picker, then draws our own candles from published
-// OHLCV with each overlay stacked in its pane. Honest about gaps: no bars ⇒ an
+// (Pine only executes on tradingview.com). Renders NOTHING until a custom
+// overlay is switched on in the ƒx picker. Built on TradingView's own
+// lightweight-charts engine — same panning, zoom, and hover-legend feel as
+// the embed above it, even though the indicators are our own re-implementation
+// drawn over our own published OHLCV JSON. Honest about gaps: no bars ⇒ an
 // explicit note, never a fabricated series.
 
 const MONO = "var(--font-mono)";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r, 12px)", boxShadow: "var(--sh, var(--shadow))", padding: "14px 16px", marginBottom: 14 };
 const KICKER: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" };
 const GOLD = "#D6A100";
+const VWAP_BLUE = "#2962FF";
+const VWAP_GREEN = "#16A34A";
+const VWAP_CYAN = "#0891B2";
+const MACD_BLUE = "#2962FF";
+const MACD_RED = "#F23645";
 
-// Shared horizontal geometry (uniform scale — width:100% keeps text proportional).
-const VW = 1000, PL = 8, GUTTER = 74, PR = VW - GUTTER;
-// price pane
-const PT = 14, PRICE_B = 206, VOL_T = 214, VOL_B = 248;
-const GAP = 16;
-// oscillator pane
-const OSC_H = 150;
+// Caps series count for very long histories under a fine anchor (e.g. weekly
+// VWAP over years, or IB bands over many years) — keeps the chart responsive
+// without silently truncating the visible-by-default window.
+const MAX_VWAP_SEGMENTS = 60;
+const MAX_IB_BANDS = 48;
 
 function chip(label: string, color: string): CSSProperties {
   return { fontSize: 8.5, fontWeight: 800, letterSpacing: ".06em", color, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" };
 }
 
+// Canvas rendering needs literal colors, not CSS var() references — resolve
+// the site's theme tokens once per (re)build so the chart matches light/dark.
+function themeColors() {
+  const cs = typeof document !== "undefined" ? getComputedStyle(document.documentElement) : null;
+  const v = (name: string, fallback: string) => (cs?.getPropertyValue(name).trim() || fallback);
+  const dark = typeof document !== "undefined" && document.documentElement.dataset.theme === "dark";
+  return {
+    bg: v("--panel", dark ? "#11151b" : "#ffffff"),
+    text: v("--text", dark ? "#e6e9ef" : "#0b0e14"),
+    muted: v("--muted", dark ? "#9aa4b2" : "#5b6472"),
+    faint: v("--faint", "#94a3b8"),
+    border: v("--border", "rgba(148,163,184,.24)"),
+    hair: v("--hair", "rgba(148,163,184,.16)"),
+    up: v("--up", "#16a34a"),
+    down: v("--down", "#dc2626"),
+  };
+}
+
+type Legend = {
+  date: string; o: number; h: number; l: number; c: number; vol: number;
+  ib: IbBand | null; vwap: AvwapPoint | null; macd: Macd4cPoint | null;
+};
+
 export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: OhlcvPayload | null; symbol?: string; sessions?: number }) {
   const [overlays, setOverlays] = useState<string[]>([]);
   const [anchor, setAnchor] = useState<string>("quarter");
+  const [legend, setLegend] = useState<Legend | null>(null);
+  const [themeTick, setThemeTick] = useState(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const macdContainerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const macdChartRef = useRef<IChartApi | null>(null);
+
+  useEffect(() => { setOverlays(loadOverlays()); return subscribeOverlays(setOverlays); }, []);
+  useEffect(() => { setAnchor(loadVwapAnchor()); return subscribeVwapAnchor(setAnchor); }, []);
   useEffect(() => {
-    setOverlays(loadOverlays());
-    return subscribeOverlays(setOverlays);
-  }, []);
-  useEffect(() => {
-    setAnchor(loadVwapAnchor());
-    return subscribeVwapAnchor(setAnchor);
+    const obs = new MutationObserver(() => setThemeTick((t) => t + 1));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
   }, []);
 
   const hasIb = overlays.includes("ibhl");
   const hasMacd = overlays.includes("macd4c");
   const hasVwap = overlays.includes("avwap");
   const anyOn = hasIb || hasMacd || hasVwap;
-  const allRows = ohlcv?.rows ?? [];
+  const rows = ohlcv?.rows;
+  const priceHeight = 320;
+  const macdHeight = 130;
 
-  const view = useMemo(() => {
-    if (!anyOn || allRows.length < 2) return null;
-    const n = Math.min(allRows.length, Math.max(20, sessions));
-    const off = allRows.length - n;
-    const rows = allRows.slice(off);
+  // Label-only metadata for the header badge — cheap to recompute separately
+  // from the imperative chart build below, which needs the same call anyway.
+  const vwapKeyLabel = useMemo(() => {
+    if (!hasVwap || !rows || rows.length < 5) return "";
+    return periodLabel(computeAnchoredVwap(rows, anchor as VwapAnchor).currentKey, anchor as VwapAnchor);
+  }, [hasVwap, rows, anchor]);
 
-    // IB bands over the full series, clipped to the visible window.
-    const bands = hasIb
-      ? computeInitialBalance(allRows, 2)
-          .map((b) => ({ ...b, vStart: Math.max(b.startIdx, off), vEnd: Math.min(b.endIdx, allRows.length - 1) }))
-          .filter((b) => b.vEnd >= off)
-      : [];
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!anyOn || !el || !rows || rows.length < 2) { setLegend(null); return; }
 
-    // MACD over the full series (EMA warmup), visible slice only.
-    const macd = hasMacd ? computeMacd4c(allRows).slice(off) : [];
+    const colors = themeColors();
+    const chart = createChart(el, {
+      autoSize: true,
+      layout: { background: { color: colors.bg }, textColor: colors.muted, panes: { separatorColor: colors.hair, separatorHoverColor: colors.border } },
+      grid: { vertLines: { color: colors.hair }, horzLines: { color: colors.hair } },
+      rightPriceScale: { borderColor: colors.border },
+      // When the MACD sub-chart is present it owns the shared bottom time axis
+      // (see below) — hiding this one avoids showing the same dates twice.
+      timeScale: { borderColor: colors.border, rightOffset: 3, visible: !hasMacd },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: colors.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: colors.muted },
+        horzLine: { color: colors.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: colors.muted },
+      },
+    });
+    chartRef.current = chart;
 
-    // Anchored VWAP over the full series; split the visible window into per-period
-    // segments so the line + bands break (reset) at each anchor boundary.
-    const vw = hasVwap ? computeAnchoredVwap(allRows, anchor as VwapAnchor) : null;
-    const vwapVis = vw ? vw.points.slice(off) : [];
-    const vwapSegs: Array<{ key: string; pts: Array<{ i: number; p: NonNullable<typeof vwapVis[number]> }> }> = [];
+    const candles = chart.addSeries(CandlestickSeries, {
+      upColor: colors.up, downColor: colors.down, borderVisible: false, wickUpColor: colors.up, wickDownColor: colors.down,
+    });
+    candles.setData(rows.map((r) => ({ time: r.date as Time, open: r.open, high: r.high, low: r.low, close: r.close })));
+
+    const volume = chart.addSeries(HistogramSeries, { priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
+    volume.priceScale().applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
+    volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? "rgba(22,163,74,.35)" : "rgba(220,38,38,.35)" })));
+
+    // ── Initial Balance bands — one short 2-point step line per month so
+    //    each period's band draws independently (no cross-month connector). ──
+    const bands: IbBand[] = hasIb ? computeInitialBalance(rows, 2).slice(-MAX_IB_BANDS) : [];
+    bands.forEach((b, bi) => {
+      const start = rows[b.startIdx]?.date, end = rows[Math.min(b.endIdx, rows.length - 1)]?.date;
+      if (!start || !end) return;
+      const isLast = bi === bands.length - 1;
+      const color = isLast ? GOLD : "rgba(214,161,0,.5)";
+      const hi = chart.addSeries(LineSeries, { color, lineWidth: isLast ? 2 : 1, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: isLast, title: isLast ? "IBH" : "" });
+      const lo = chart.addSeries(LineSeries, { color, lineWidth: isLast ? 2 : 1, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: isLast, title: isLast ? "IBL" : "" });
+      hi.setData([{ time: start as Time, value: b.ibHigh }, { time: end as Time, value: b.ibHigh }]);
+      lo.setData([{ time: start as Time, value: b.ibLow }, { time: end as Time, value: b.ibLow }]);
+      if (isLast) {
+        hi.createPriceLine({ price: b.ibHigh, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: "IBH", axisLabelVisible: true });
+        lo.createPriceLine({ price: b.ibLow, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: "IBL", axisLabelVisible: true });
+      }
+    });
+
+    // ── Anchored VWAP — one center-line series per anchor period (breaks
+    //    naturally at resets); ±1σ/±2σ bands only for the current period. ──
+    const vw = hasVwap ? computeAnchoredVwap(rows, anchor as VwapAnchor) : null;
     if (vw) {
-      let seg: (typeof vwapSegs)[number] | null = null;
-      vwapVis.forEach((p, k) => {
-        if (!p) { seg = null; return; }
-        if (!seg || seg.key !== p.key) { seg = { key: p.key, pts: [] }; vwapSegs.push(seg); }
-        seg.pts.push({ i: off + k, p });
+      const segs: Array<{ key: string; idxs: number[] }> = [];
+      vw.points.forEach((p, i) => {
+        if (!p) return;
+        const last = segs[segs.length - 1];
+        if (!last || last.key !== p.key) segs.push({ key: p.key, idxs: [i] });
+        else last.idxs.push(i);
+      });
+      const visSegs = segs.slice(-MAX_VWAP_SEGMENTS);
+      visSegs.forEach((seg, si) => {
+        const isCurrent = si === visSegs.length - 1;
+        const center = chart.addSeries(LineSeries, {
+          color: isCurrent ? VWAP_BLUE : "rgba(41,98,255,.4)", lineWidth: isCurrent ? 2 : 1,
+          crosshairMarkerVisible: isCurrent, lastValueVisible: isCurrent, priceLineVisible: false, title: isCurrent ? "VWAP" : "",
+        });
+        center.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).vwap })));
+        if (isCurrent) {
+          const band = (color: string, key: "u1" | "l1" | "u2" | "l2", title: string) => {
+            const s = chart.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: LineStyle.Dashed, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title });
+            s.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint)[key] })));
+          };
+          band(VWAP_GREEN, "u1", "+1σ"); band(VWAP_GREEN, "l1", "−1σ");
+          band(VWAP_CYAN, "u2", "+2σ"); band(VWAP_CYAN, "l2", "−2σ");
+          if (vw.prevFinalVwap != null) {
+            center.createPriceLine({ price: vw.prevFinalVwap, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: "PQVWAP", axisLabelVisible: true });
+          }
+        }
       });
     }
-    const vwapCurrent = [...vwapVis].reverse().find((p) => p) || null;
 
-    let min = Infinity, max = -Infinity, maxVol = 1;
-    for (const r of rows) { min = Math.min(min, r.low); max = Math.max(max, r.high); maxVol = Math.max(maxVol, r.volume || 0); }
-    for (const b of bands) { min = Math.min(min, b.ibLow); max = Math.max(max, b.ibHigh); }
-    for (const p of vwapVis) { if (p) { min = Math.min(min, p.l2); max = Math.max(max, p.u2); } }
-    const spread = max - min || 1;
+    // ── Initial view: last `sessions` bars, fully pannable/zoomable beyond it. ──
+    const fromIdx = Math.max(0, rows.length - sessions);
+    const initialRange = { from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time };
+    chart.timeScale().setVisibleRange(initialRange);
 
-    const xStep = (PR - PL) / n;
-    const xLeft = (i: number) => PL + (i - off) * xStep;
-    const xMid = (i: number) => xLeft(i) + xStep / 2;
-    const yP = (v: number) => PT + (1 - (v - min) / spread) * (PRICE_B - PT);
-    const vy = (v: number) => VOL_B - ((v || 0) / maxVol) * (VOL_B - VOL_T);
+    // ── MACD 4C — a second, separately-created chart stacked below the price
+    //    chart and pan/zoom-synced to it (lightweight-charts' own multi-pane
+    //    API doesn't reliably materialize a pane added after chart creation —
+    //    a dual-chart-instance sub-pane is the well-established fallback). ──
+    const macdArr: Macd4cPoint[] = hasMacd ? computeMacd4c(rows) : [];
+    const macdEl = macdContainerRef.current;
+    const macdChart = hasMacd && macdEl ? createChart(macdEl, {
+      autoSize: true,
+      layout: { background: { color: colors.bg }, textColor: colors.muted },
+      grid: { vertLines: { color: colors.hair }, horzLines: { color: colors.hair } },
+      rightPriceScale: { borderColor: colors.border },
+      timeScale: { borderColor: colors.border, rightOffset: 3 },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: colors.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: colors.muted },
+        horzLine: { color: colors.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: colors.muted },
+      },
+    }) : null;
+    macdChartRef.current = macdChart;
+    if (macdChart) {
+      const hist = macdChart.addSeries(HistogramSeries, { priceLineVisible: false, lastValueVisible: false });
+      hist.setData(rows.map((r, i) => ({ time: r.date as Time, value: macdArr[i].hist, color: MACD4C_COLORS[macdArr[i].color] })));
+      const macdLine = macdChart.addSeries(LineSeries, { color: MACD_BLUE, lineWidth: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "MACD" });
+      macdLine.setData(rows.map((r, i) => ({ time: r.date as Time, value: macdArr[i].macd })));
+      const sigLine = macdChart.addSeries(LineSeries, { color: MACD_RED, lineWidth: 2, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "Signal" });
+      sigLine.setData(rows.map((r, i) => ({ time: r.date as Time, value: macdArr[i].signal })));
+      macdChart.timeScale().setVisibleRange(initialRange);
+    }
 
-    // MACD pane mapping
-    const macdTop = PRICE_B + 42 + GAP;         // below the volume strip
-    const macdBottom = macdTop + OSC_H;
-    let mmin = 0, mmax = 0;
-    for (const p of macd) { mmin = Math.min(mmin, p.macd, p.signal, p.hist); mmax = Math.max(mmax, p.macd, p.signal, p.hist); }
-    const mspread = mmax - mmin || 1;
-    const oscTop = macdTop + 12, oscBot = macdBottom - 12;
-    const yM = (v: number) => oscTop + (1 - (v - mmin) / mspread) * (oscBot - oscTop);
+    // Two-way pan/zoom sync between the price and MACD charts, guarded against
+    // the infinite loop a naive bidirectional subscription would cause.
+    let syncingRange = false;
+    const syncRange = (from: IChartApi, to: IChartApi) => {
+      from.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        if (syncingRange || !range) return;
+        syncingRange = true;
+        to.timeScale().setVisibleLogicalRange(range);
+        syncingRange = false;
+      });
+    };
+    if (macdChart) { syncRange(chart, macdChart); syncRange(macdChart, chart); }
 
-    const VH = (hasMacd ? macdBottom : (PRICE_B + 42)) + 8;
-    const last = rows[rows.length - 1];
-    const current = bands[bands.length - 1] || null;
-    const lastMacd = macd[macd.length - 1] || null;
-    return { rows, off, bands, macd, xStep, xLeft, xMid, yP, vy, yM, VH, macdTop, macdBottom, last, current, lastMacd, vwapSegs, vwapCurrent, vwapPrevFinal: vw?.prevFinalVwap ?? null, vwapKey: vw?.currentKey ?? null };
-  }, [anyOn, hasIb, hasMacd, hasVwap, anchor, allRows, sessions]);
+    // ── Live hover legend — TradingView-style readout that updates with the
+    //    crosshair; defaults to the last bar when the pointer isn't over the chart. ──
+    const legendAt = (idx: number): Legend => {
+      const r = rows[idx];
+      const ib = bands.find((b) => idx >= b.startIdx && idx <= Math.min(b.endIdx, rows.length - 1)) ?? null;
+      return { date: r.date, o: r.open, h: r.high, l: r.low, c: r.close, vol: r.volume, ib, vwap: vw?.points[idx] ?? null, macd: macdArr[idx] ?? null };
+    };
+    setLegend(legendAt(rows.length - 1));
+    const onMove = (param: MouseEventParams) => {
+      if (param.logical == null) { setLegend(legendAt(rows.length - 1)); return; }
+      setLegend(legendAt(Math.max(0, Math.min(rows.length - 1, Math.round(param.logical)))));
+    };
+    chart.subscribeCrosshairMove(onMove);
+    macdChart?.subscribeCrosshairMove(onMove);
+
+    return () => {
+      chart.unsubscribeCrosshairMove(onMove);
+      macdChart?.unsubscribeCrosshairMove(onMove);
+      chart.remove();
+      macdChart?.remove();
+      chartRef.current = null;
+      macdChartRef.current = null;
+    };
+  }, [anyOn, hasIb, hasMacd, hasVwap, anchor, rows, sessions, themeTick]);
 
   if (!anyOn) return null;
 
-  if (!view) {
+  if (!rows || rows.length < 2) {
     return (
       <div style={CARD}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -125,159 +267,64 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     );
   }
 
-  const { rows, bands, xStep, xLeft, xMid, yP, vy, yM, VH, macdTop, current, last, lastMacd, vwapSegs, vwapCurrent, vwapPrevFinal, vwapKey } = view;
-  const cw = Math.max(1, xStep * 0.62);
-  const macdPts = view.macd.map((p, k) => `${xMid(view.off + k)},${yM(p.macd)}`).join(" ");
-  const sigPts = view.macd.map((p, k) => `${xMid(view.off + k)},${yM(p.signal)}`).join(" ");
-  const pct = (v: number) => (last && last.close ? `${v >= last.close ? "+" : ""}${(((v - last.close) / last.close) * 100).toFixed(2)}%` : "");
-  const rightX = view.xLeft(rows.length - 1 + view.off) + xStep; // right edge of the last candle slot
-  const vwapAnchorLabel = periodLabel(vwapKey, anchor as VwapAnchor);
+  const up = legend ? legend.c >= legend.o : true;
+  const priceCol = up ? "var(--up)" : "var(--down)";
 
   return (
     <div style={CARD}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
         <span style={KICKER}>CUSTOM OVERLAYS</span>
-        <span style={chip("OUR CHART", GOLD)}>OUR CHART</span>
+        <span style={chip("CUSTOM", GOLD)}>CUSTOM</span>
         {hasIb ? <span style={chip("IBH / IBL", GOLD)}>IBH / IBL</span> : null}
-        {hasMacd ? <span style={chip("MACD 4C", "#2962FF")}>MACD 4C</span> : null}
-        {hasVwap ? <span style={chip("VWAP", "#2962FF")}>A-VWAP{vwapAnchorLabel ? ` · ${vwapAnchorLabel}` : ""}</span> : null}
+        {hasMacd ? <span style={chip("MACD 4C", MACD_BLUE)}>MACD 4C</span> : null}
+        {hasVwap ? <span style={chip("VWAP", VWAP_BLUE)}>A-VWAP{vwapKeyLabel ? ` · ${vwapKeyLabel}` : ""}</span> : null}
         {hasVwap ? (
           <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
             {VWAP_ANCHORS.map((a) => (
               <button key={a.id} type="button" title={`Anchor VWAP ${a.label}`} onClick={() => { setAnchor(a.id); saveVwapAnchor(a.id); }}
-                style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: anchor === a.id ? "#2962FF" : "transparent", color: anchor === a.id ? "#fff" : "var(--muted)" }}>{a.short}</button>
+                style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: anchor === a.id ? VWAP_BLUE : "transparent", color: anchor === a.id ? "#fff" : "var(--muted)" }}>{a.short}</button>
             ))}
           </div>
         ) : null}
         <div style={{ flex: 1 }} />
-        {last ? <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)" }}><strong style={{ color: "var(--text)" }}>{formatPrice(last.close)}</strong> · {String(last.date)}</span> : null}
+        <button type="button" onClick={() => { chartRef.current?.timeScale().fitContent(); macdChartRef.current?.timeScale().fitContent(); }} title="Fit all history"
+          style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 7, padding: "3px 9px", cursor: "pointer" }}>⤢ Fit</button>
+        <button type="button" onClick={() => { const fromIdx = Math.max(0, rows.length - sessions); const range = { from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time }; chartRef.current?.timeScale().setVisibleRange(range); macdChartRef.current?.timeScale().setVisibleRange(range); }} title="Reset zoom"
+          style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 7, padding: "3px 9px", cursor: "pointer" }}>↺ Reset</button>
       </div>
 
-      <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" style={{ height: "auto", display: "block" }} role="img" aria-label={`${symbol || ""} companion chart with custom overlays`}>
-        {/* price gridlines */}
-        {[0, 1, 2, 3, 4].map((g) => { const yy = PT + (g / 4) * (PRICE_B - PT); return <line key={g} x1={PL} x2={PR} y1={yy} y2={yy} stroke="var(--hair, rgba(148,163,184,.18))" strokeWidth="1" />; })}
+      {/* Live legend — mirrors the embed's own hover readout; updates with the crosshair. */}
+      {legend ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 14px", fontFamily: MONO, fontSize: 11, marginBottom: 8, color: "var(--muted)" }}>
+          <span style={{ color: "var(--faint)" }}>{legend.date}</span>
+          <span style={{ color: priceCol }}>O {formatPrice(legend.o)} H {formatPrice(legend.h)} L {formatPrice(legend.l)} C {formatPrice(legend.c)}</span>
+          <span>Vol {formatCompact(legend.vol)}</span>
+          {hasIb && legend.ib ? <span style={{ color: GOLD }}>IBH {formatPrice(legend.ib.ibHigh)} IBL {formatPrice(legend.ib.ibLow)}</span> : null}
+          {hasVwap && legend.vwap ? (
+            <span>
+              <span style={{ color: VWAP_BLUE }}>VWAP {formatPrice(legend.vwap.vwap)}</span>{" "}
+              <span style={{ color: VWAP_GREEN }}>±1σ {formatPrice(legend.vwap.l1)}–{formatPrice(legend.vwap.u1)}</span>{" "}
+              <span style={{ color: VWAP_CYAN }}>±2σ {formatPrice(legend.vwap.l2)}–{formatPrice(legend.vwap.u2)}</span>
+            </span>
+          ) : null}
+          {hasMacd && legend.macd ? (
+            <span>
+              <span style={{ color: MACD_BLUE }}>MACD {legend.macd.macd.toFixed(1)}</span>{" "}
+              <span style={{ color: MACD_RED }}>SIG {legend.macd.signal.toFixed(1)}</span>{" "}
+              <span>HIST {legend.macd.hist.toFixed(1)}</span>
+            </span>
+          ) : null}
+        </div>
+      ) : null}
 
-        {/* IB bands under the candles */}
-        {bands.map((b) => {
-          const x0 = xLeft(b.vStart), x1 = xLeft(b.vEnd) + xStep;
-          const yh = yP(b.ibHigh), yl = yP(b.ibLow);
-          return (
-            <g key={b.monthKey}>
-              <rect x={x0} y={yh} width={Math.max(0, x1 - x0)} height={Math.max(0, yl - yh)} fill="rgba(214,161,0,.12)" />
-              <line x1={x0} x2={x1} y1={yh} y2={yh} stroke={GOLD} strokeWidth="1.4" />
-              <line x1={x0} x2={x1} y1={yl} y2={yl} stroke={GOLD} strokeWidth="1.4" />
-            </g>
-          );
-        })}
-
-        {/* current-month IB levels extended + tags */}
-        {current ? (() => {
-          const yh = yP(current.ibHigh), yl = yP(current.ibLow);
-          const xr = xLeft(current.vEnd) + xStep;
-          return (
-            <g>
-              <line x1={xr} x2={PR} y1={yh} y2={yh} stroke={GOLD} strokeWidth="1.2" strokeDasharray="5 4" />
-              <line x1={xr} x2={PR} y1={yl} y2={yl} stroke={GOLD} strokeWidth="1.2" strokeDasharray="5 4" />
-              <text x={PR + 6} y={yh + 3.5} fill={GOLD} fontSize="12" fontFamily="var(--font-mono)" fontWeight={700}>IBH {formatPrice(current.ibHigh)}</text>
-              <text x={PR + 6} y={yl + 3.5} fill={GOLD} fontSize="12" fontFamily="var(--font-mono)" fontWeight={700}>IBL {formatPrice(current.ibLow)}</text>
-            </g>
-          );
-        })() : null}
-
-        {/* Anchored-VWAP σ bands + period boundaries (under candles) */}
-        {hasVwap ? vwapSegs.slice(1).map((seg) => { const x = xLeft(seg.pts[0].i); return <line key={`vb-${seg.key}`} x1={x} x2={x} y1={PT} y2={PRICE_B} stroke="var(--hair, rgba(148,163,184,.28))" strokeWidth="1" strokeDasharray="3 3" />; }) : null}
-        {hasVwap ? vwapSegs.map((seg) => {
-          const up2 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.u2)}`);
-          const lo2 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.l2)}`);
-          const up1 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.u1)}`);
-          const lo1 = seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.l1)}`);
-          return (
-            <g key={`vw-${seg.key}`}>
-              <polygon points={up2.concat(lo2.slice().reverse()).join(" ")} fill="rgba(41,98,255,.05)" />
-              <polygon points={up1.concat(lo1.slice().reverse()).join(" ")} fill="rgba(41,98,255,.10)" />
-              <polyline points={up1.join(" ")} fill="none" stroke="rgba(22,163,74,.5)" strokeWidth="0.8" />
-              <polyline points={lo1.join(" ")} fill="none" stroke="rgba(22,163,74,.5)" strokeWidth="0.8" />
-              <polyline points={up2.join(" ")} fill="none" stroke="rgba(8,145,178,.45)" strokeWidth="0.8" />
-              <polyline points={lo2.join(" ")} fill="none" stroke="rgba(8,145,178,.45)" strokeWidth="0.8" />
-            </g>
-          );
-        }) : null}
-
-        {/* candles + volume */}
-        {rows.map((r, k) => {
-          const i = view.off + k;
-          const x = xMid(i);
-          const up = r.close >= r.open;
-          const col = up ? "var(--up, var(--positive))" : "var(--down, var(--negative))";
-          const yo = yP(r.open), yc = yP(r.close);
-          const top = Math.min(yo, yc);
-          const h = Math.max(1.2, Math.abs(yo - yc));
-          return (
-            <g key={r.date}>
-              <line x1={x} x2={x} y1={yP(r.high)} y2={yP(r.low)} stroke={col} strokeWidth="1.2" />
-              <rect x={x - cw / 2} y={top} width={cw} height={h} fill={col} />
-              <rect x={x - cw / 2} y={vy(r.volume)} width={cw} height={VOL_B - vy(r.volume)} fill="rgba(148,163,184,.42)" />
-            </g>
-          );
-        })}
-
-        {/* Anchored-VWAP centre line (on top) + current-period levels */}
-        {hasVwap ? vwapSegs.map((seg) => (
-          <polyline key={`vl-${seg.key}`} points={seg.pts.map(({ i, p }) => `${xMid(i)},${yP(p.vwap)}`).join(" ")} fill="none" stroke="#2962FF" strokeWidth="1.7" />
-        )) : null}
-        {hasVwap && vwapPrevFinal != null ? (
-          <g>
-            <line x1={PL} x2={PR} y1={yP(vwapPrevFinal)} y2={yP(vwapPrevFinal)} stroke="var(--faint, #94a3b8)" strokeWidth="1" strokeDasharray="2 4" opacity={0.7} />
-            <text x={PR + 6} y={yP(vwapPrevFinal) - 2} fill="var(--faint)" fontSize="10.5" fontFamily="var(--font-mono)" fontWeight={700}>PQVWAP {formatPrice(vwapPrevFinal)}</text>
-          </g>
-        ) : null}
-        {hasVwap && vwapCurrent ? (() => {
-          const vlabels: Array<[string, number, string]> = [
-            ["VWAP", vwapCurrent.vwap, "#2962FF"],
-            ["+1σ", vwapCurrent.u1, "#16A34A"],
-            ["+2σ", vwapCurrent.u2, "#0891B2"],
-            ["−1σ", vwapCurrent.l1, "#16A34A"],
-            ["−2σ", vwapCurrent.l2, "#0891B2"],
-          ];
-          return (
-            <g>
-              {vlabels.map(([lab, val, col]) => (
-                <g key={lab}>
-                  <line x1={rightX} x2={PR} y1={yP(val)} y2={yP(val)} stroke={col} strokeWidth="1" strokeDasharray="4 3" opacity={0.85} />
-                  <text x={PR + 6} y={yP(val) + 3.5} fill={col} fontSize="11" fontFamily="var(--font-mono)" fontWeight={700}>{lab} {formatPrice(val)} · {pct(val)}</text>
-                </g>
-              ))}
-            </g>
-          );
-        })() : null}
-
-        {/* ── MACD 4C oscillator sub-pane ─────────────────────────── */}
-        {hasMacd ? (
-          <g>
-            <text x={PL} y={macdTop - 2} fill="var(--faint)" fontSize="11" fontWeight={700} letterSpacing=".08em">MACD 4C · 12·26·9</text>
-            <line x1={PL} x2={PR} y1={yM(0)} y2={yM(0)} stroke="var(--hair, rgba(148,163,184,.3))" strokeWidth="1" />
-            {view.macd.map((p, k) => {
-              const x = xMid(view.off + k);
-              const y0 = yM(0), yh = yM(p.hist);
-              return <rect key={k} x={x - cw / 2} y={Math.min(y0, yh)} width={cw} height={Math.max(0.6, Math.abs(yh - y0))} fill={MACD4C_COLORS[p.color]} />;
-            })}
-            <polyline points={macdPts} fill="none" stroke="#2962FF" strokeWidth="1.4" />
-            <polyline points={sigPts} fill="none" stroke="#F23645" strokeWidth="1.4" />
-            {lastMacd ? (
-              <text x={PR + 6} y={yM(lastMacd.macd) + 3.5} fill="#2962FF" fontSize="11" fontFamily="var(--font-mono)" fontWeight={700}>MACD {lastMacd.macd.toFixed(1)}</text>
-            ) : null}
-            {lastMacd ? (
-              <text x={PR + 6} y={yM(lastMacd.signal) + 3.5} fill="#F23645" fontSize="11" fontFamily="var(--font-mono)" fontWeight={700}>SIG {lastMacd.signal.toFixed(1)}</text>
-            ) : null}
-          </g>
-        ) : null}
-      </svg>
+      <div ref={containerRef} style={{ width: "100%", height: priceHeight, borderRadius: hasMacd ? "8px 8px 0 0" : 8, overflow: "hidden" }} />
+      {hasMacd ? <div ref={macdContainerRef} style={{ width: "100%", height: macdHeight, borderRadius: "0 0 8px 8px", overflow: "hidden", borderTop: "1px solid var(--hair)" }} /> : null}
 
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
-        {hasIb ? <>Initial Balance = the high–low range of each month&apos;s first 2 trading sessions, held for the rest of the month (dashed = current month&apos;s IBH/IBL). </> : null}
+        {hasIb ? <>Initial Balance = the high–low range of each month&apos;s first 2 trading sessions, held for the rest of the month (bright gold = current month). </> : null}
         {hasMacd ? <>MACD 4C: EMA 12/26 with a signal-9 line and EMA-3 smoothed histogram — silver ≥0 rising, red ≥0 falling, bright-red &lt;0 falling, blue &lt;0 rising. </> : null}
-        {hasVwap ? <>Anchored VWAP on hlc3·volume, reset each {({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (vertical dashes = anchor resets), with ±1σ/±2σ bands; PQVWAP = the previous period&apos;s closing VWAP. Right-axis % is distance from last close. </> : null}
-        Computed from our published daily EOD bars. Latest {rows.length} sessions.
+        {hasVwap ? <>Anchored VWAP on hlc3·volume, reset each {({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (each period is its own line, so it breaks cleanly at the reset), with ±1σ/±2σ bands on the current period; PQVWAP = the previous period&apos;s closing VWAP. </> : null}
+        Computed from our published daily EOD bars, {rows.length} sessions total — drag to pan, scroll/pinch to zoom, hover for the readout above.
       </div>
     </div>
   );
