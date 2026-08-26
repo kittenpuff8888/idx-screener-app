@@ -37,6 +37,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The build now writes a ~33k-file data/ archive plus node_modules and
+      # a Python venv to the same runner disk that GitHub preloads with
+      # several GB of unused SDKs (.NET, Android, Haskell) -- ran out of
+      # space twice in a row without this.
+      - name: Free up runner disk space
+        run: |
+          echo "Before:"; df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup "${AGENT_TOOLSDIRECTORY:-}" || true
+          echo "After:"; df -h /
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -73,6 +83,9 @@ jobs:
 
       - name: Build static site
         run: pnpm build
+
+      - name: Disk usage after build
+        run: df -h / && du -sh out node_modules 2>/dev/null || true
 
       # data/ is excluded from the Pages upload itself — a Cloudflare Pages
       # deployment caps out at 20,000 files and this archive alone is
