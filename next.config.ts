@@ -1,15 +1,14 @@
 import type { NextConfig } from "next";
 
-const isProd = process.env.NODE_ENV === "production";
-
+// Cloudflare Pages serves this site from the domain root, unlike the old
+// GitHub Pages project-site hosting (username.github.io/IDXScreener/) this
+// config used to target with a subpath prefix.
 const nextConfig: NextConfig = {
   output: "export",
   trailingSlash: true,
-  basePath: isProd ? "/IDXScreener" : "",
-  assetPrefix: isProd ? "/IDXScreener/" : "",
   images: { unoptimized: true },
   env: {
-    NEXT_PUBLIC_BASE_PATH: isProd ? "/IDXScreener" : "",
+    NEXT_PUBLIC_BASE_PATH: "",
   },
 };
 

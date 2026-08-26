@@ -37,11 +37,13 @@ class V13NextContractTests(unittest.TestCase):
         self.assertIn("tailwindcss", deps)
         self.assertIn("react", deps)
 
-    def test_next_config_static_export_for_github_pages(self):
+    def test_next_config_static_export_for_cloudflare_pages(self):
+        # Deployed to Cloudflare Pages at the domain root (not a GitHub Pages
+        # project subpath), so no basePath/assetPrefix.
         config = (ROOT / "next.config.ts").read_text(encoding="utf-8")
         self.assertIn('output: "export"', config)
-        self.assertIn('basePath: isProd ? "/IDXScreener" : ""', config)
-        self.assertIn('assetPrefix: isProd ? "/IDXScreener/" : ""', config)
+        self.assertNotIn("basePath", config)
+        self.assertNotIn("assetPrefix", config)
 
     def test_next_shell_uses_8888_screener_nav(self):
         # The 8888 Screener design (IDX Research.dc.html) sidebar: MENU nav
