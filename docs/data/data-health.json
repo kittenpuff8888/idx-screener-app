@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-08-25T21:13:15.032846+07:00",
+ "generatedAt": "2026-08-28T04:16:10.435374+07:00",
  "marketDate": "2026-08-24",
  "universe": {
   "size": 962,
@@ -15,33 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-08-25T21:13:04.234201+07:00"
+  "auditedAt": "2026-08-28T04:15:57.724044+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-22T12:26:43.026967+07:00",
-   "marketDate": "2026-08-21",
-   "status": "NO_CHANGE",
-   "message": "Dataset already published; last successful snapshot preserved."
-  },
-  {
-   "timestamp": "2026-08-24T18:21:19.790823+07:00",
-   "marketDate": "2026-08-24",
-   "status": "STARTED",
-   "message": "Daily update pipeline started."
-  },
-  {
-   "timestamp": "2026-08-24T19:24:54.525084+07:00",
-   "marketDate": "2026-08-24",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
-  },
-  {
-   "timestamp": "2026-08-24T19:27:28.779725+07:00",
-   "marketDate": "2026-08-24",
-   "status": "NO_CHANGE",
-   "message": "Dataset already published; last successful snapshot preserved."
-  },
   {
    "timestamp": "2026-08-25T18:24:37.336184+07:00",
    "marketDate": "2026-08-25",
@@ -65,6 +41,30 @@
    "marketDate": "2026-08-25",
    "status": "NO_DATA",
    "message": "No valid IDX session was available for 2026-08-25; latest observed OHLCV date was 2026-08-24. The last successful snapshot was preserved."
+  },
+  {
+   "timestamp": "2026-08-26T17:06:36.279978+07:00",
+   "marketDate": "2026-08-26",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-08-26T19:27:50.446966+07:00",
+   "marketDate": "2026-08-26",
+   "status": "FAILED",
+   "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.16/x64/bin/python', '/home/runner/work/idx-screener-app/idx-screener-app/scripts/validate_data.py']' returned non-zero exit status 1."
+  },
+  {
+   "timestamp": "2026-08-28T02:56:07.087866+07:00",
+   "marketDate": "2026-08-27",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-08-28T04:15:31.256968+07:00",
+   "marketDate": "2026-08-27",
+   "status": "NO_DATA",
+   "message": "No valid IDX session was available for 2026-08-27; latest observed OHLCV date was 2026-08-26. The last successful snapshot was preserved."
   }
  ],
  "qaSummary": {
@@ -92,7 +92,7 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-08-25T21:13:06.672998+07:00",
+  "lastChecked": "2026-08-28T04:15:59.368726+07:00",
   "checked": 10,
   "failures": [],
   "results": [
@@ -105,6 +105,10 @@
     "status": "ERROR: TypeError"
    },
    {
+    "ticker": "ASSA",
+    "status": "ERROR: TypeError"
+   },
+   {
     "ticker": "BBCA",
     "status": "ERROR: TypeError"
    },
@@ -113,28 +117,24 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "EMTK",
+    "ticker": "BUKK",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "FILM",
+    "ticker": "ERAA",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "INTD",
+    "ticker": "HEXA",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "MAHA",
+    "ticker": "MENN",
     "status": "ERROR: TypeError"
    },
    {
     "ticker": "TLKM",
     "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "WSKT",
-    "status": "NO_FRESH_DATA"
    }
   ],
   "note": "Price exact-match required (discrete IDX ticks); volume tolerance 0.5%. PARITY_FAIL tickers are excluded from swing setups this run."
