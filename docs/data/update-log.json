@@ -1,12 +1,6 @@
 {
   "entries": [
     {
-      "timestamp": "2026-07-28T19:20:54.861162+07:00",
-      "marketDate": "2026-07-28",
-      "status": "STARTED",
-      "message": "Daily update pipeline started."
-    },
-    {
       "timestamp": "2026-07-28T19:20:58.081860+07:00",
       "marketDate": "2026-07-28",
       "status": "FAILED",
@@ -599,6 +593,12 @@
       "marketDate": "2026-09-01",
       "status": "SUCCESS",
       "message": "Created and validated a new dated snapshot."
+    },
+    {
+      "timestamp": "2026-09-01T23:41:46.386513+07:00",
+      "marketDate": "2026-09-01",
+      "status": "NO_CHANGE",
+      "message": "Dataset already published; last successful snapshot preserved."
     }
   ]
 }
