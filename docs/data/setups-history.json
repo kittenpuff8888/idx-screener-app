@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-09-01",
+ "asOf": "2026-09-02",
  "entries": [
   {
    "date": "2026-07-10",
@@ -521,13 +521,93 @@
    "invalidation": 340.56,
    "outcome": "undecided",
    "barsObserved": 5
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "AKRA",
+   "score": 75,
+   "close": 1400.0,
+   "target": 1445,
+   "invalidation": 1382,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "ESSA",
+   "score": 75,
+   "close": 695.0,
+   "target": 735,
+   "invalidation": 671,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "CNMA",
+   "score": 65,
+   "close": 93.0,
+   "target": 97,
+   "invalidation": 92,
+   "outcome": "invalidated",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "BJBR",
+   "score": 60,
+   "close": 795.0,
+   "target": 790,
+   "invalidation": 764.4,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "PNLF",
+   "score": 60,
+   "close": 228.0,
+   "target": 233,
+   "invalidation": 217.56,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "TSPC",
+   "score": 60,
+   "close": 2750.0,
+   "target": 2775,
+   "invalidation": 2626.4,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "HEXA",
+   "score": 55,
+   "close": 4490.0,
+   "target": 4400,
+   "invalidation": 4237.2,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-01",
+   "ticker": "MBSS",
+   "score": 55,
+   "close": 2810.0,
+   "target": 2825,
+   "invalidation": 2724.4,
+   "outcome": "target",
+   "barsObserved": 1
   }
  ],
  "summary": {
-  "total": 52,
-  "decided": 40,
-  "targetFirst": 14,
-  "hitRate": 0.35
+  "total": 60,
+  "decided": 45,
+  "targetFirst": 18,
+  "hitRate": 0.4
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
