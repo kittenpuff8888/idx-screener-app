@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-09-02T23:04:43.202862+07:00",
+ "generatedAt": "2026-09-02T23:07:56.018001+07:00",
  "marketDate": "2026-09-02",
  "universe": {
   "size": 962,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-09-02T23:04:29.430951+07:00"
+  "auditedAt": "2026-09-02T23:07:40.176801+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-08-29T07:21:56.551115+07:00",
-   "marketDate": "2026-08-28",
-   "status": "NO_DATA",
-   "message": "No valid IDX session was available for 2026-08-28; latest observed OHLCV date was 2026-08-27. The last successful snapshot was preserved."
-  },
   {
    "timestamp": "2026-09-01T01:20:15.908484+07:00",
    "marketDate": "2026-08-31",
@@ -65,6 +59,12 @@
    "marketDate": "2026-09-02",
    "status": "SUCCESS",
    "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-09-02T23:07:13.815311+07:00",
+   "marketDate": "2026-09-02",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
   }
  ],
  "qaSummary": {
@@ -92,14 +92,10 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-09-02T23:04:31.542114+07:00",
+  "lastChecked": "2026-09-02T23:07:45.228351+07:00",
   "checked": 15,
   "failures": [],
   "results": [
-   {
-    "ticker": "AKRA",
-    "status": "ERROR: TypeError"
-   },
    {
     "ticker": "ANTM",
     "status": "ERROR: TypeError"
@@ -117,10 +113,6 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "BJBR",
-    "status": "ERROR: TypeError"
-   },
-   {
     "ticker": "CNMA",
     "status": "ERROR: TypeError"
    },
@@ -133,7 +125,15 @@
     "status": "ERROR: TypeError"
    },
    {
+    "ticker": "HEXA",
+    "status": "ERROR: TypeError"
+   },
+   {
     "ticker": "INAI",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "LIVE",
     "status": "ERROR: TypeError"
    },
    {
@@ -145,11 +145,11 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "PNLF",
+    "ticker": "PTRO",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "PTRO",
+    "ticker": "RGAS",
     "status": "ERROR: TypeError"
    },
    {
