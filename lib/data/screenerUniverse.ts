@@ -64,6 +64,10 @@ export interface UniverseRow {
   emaAboveKey: boolean;
   emaBelowKey: boolean;
   reclaim: boolean;
+  // monthly Initial Balance (technical.json marketProfile join). null until
+  // the month's first 2 sessions lock the band (IDX_Screener.py "ibh"/"ibl").
+  ibh: number | null;
+  ibl: number | null;
   // engine (setups.json) join:
   score: number | null;
   hasEngineSetup: boolean;
@@ -108,6 +112,9 @@ type EngineSetup = {
   kseiFootprint?: { available?: boolean; netDeltaPP?: number; accumulation?: boolean } | null;
 };
 type SetupsDoc = { setups?: EngineSetup[]; scanned?: number };
+type TechnicalRecord = { technical?: { marketProfile?: { ibh?: unknown; ibl?: unknown } } };
+type TechnicalDoc = { records?: Record<string, TechnicalRecord> };
+type IbMap = Record<string, { ibh: number | null; ibl: number | null }>;
 
 function str(v: unknown): string {
   return v === null || v === undefined ? "" : String(v);
@@ -162,63 +169,13 @@ export const SETUPS: SetupDef[] = [
     bull: (r) => r.hasEngineSetup,
   },
   {
-    key: "ema_trend",
-    label: "EMA Trend up",
-    icon: "↗",
+    key: "ib_break",
+    label: "Break Monthly IBH/IBL",
+    icon: "⇕",
     hasBear: true,
-    req: "Close > EMA25 AND EMA25 > EMA50 AND RSI > 50",
-    bull: (r) => r.signalType === "EMA Trend" || (r.emaAboveKey && (r.rsi ?? 0) > 50),
-    bear: (r) => r.emaBelowKey && (r.rsi ?? 100) < 50,
-  },
-  {
-    key: "golden_cross",
-    label: "Golden Cross",
-    icon: "✦",
-    hasBear: false,
-    req: "EMA golden cross OR MACD line crossed above signal",
-    bull: (r) => r.signalType === "Golden Cross" || /golden cross|macd line crossed above/i.test(r.summary),
-  },
-  {
-    key: "bos",
-    label: "BOS Swing + Internal",
-    icon: "⇱",
-    hasBear: false,
-    inferred: true, // no dedicated BOS column — inferred from reclaim + EMA stack
-    req: "Bullish break of structure (swing or internal) — inferred from reclaim + EMA stack",
-    bull: (r) => r.reclaim && r.emaAboveKey,
-  },
-  {
-    key: "poi_reclaim",
-    label: "POI Reclaim",
-    icon: "⤺",
-    hasBear: false,
-    req: "Low touched a POI (VWAP / EMA / OB EQ) and close reclaimed above it",
-    bull: (r) => r.reclaim && /vwap|ema|ob|eq/i.test(r.entryPOI),
-  },
-  {
-    key: "eq_breakout",
-    label: "EQ Breakout",
-    icon: "▩",
-    hasBear: false,
-    req: "Price broke out of the VWAP equilibrium zone",
-    bull: (r) => /^EQ/.test(r.entryPOI) || (/equilibrium/i.test(r.summary) && r.chg > 0),
-  },
-  {
-    key: "near_vwap",
-    label: "Near VWAP",
-    icon: "◈",
-    hasBear: true,
-    req: "Price near Prev-Q or Prev-Y VWAP zone (current Q excluded)",
-    bull: (r) => r.signalType === "Near VWAP" && (r.vwapSigma ?? 0) <= 0,
-    bear: (r) => r.signalType === "Near VWAP" && (r.vwapSigma ?? 0) > 0,
-  },
-  {
-    key: "smc",
-    label: "SMC Location",
-    icon: "◰",
-    hasBear: false,
-    req: "SMC zone: In Bull OB OR Equilibrium OR Discount",
-    bull: (r) => /OB Bull/i.test(r.entryPOI) || /^EQ/.test(r.entryPOI) || (r.vwapSigma ?? 9) < -0.75,
+    req: "Close breaks above the monthly Initial Balance High (IBH) / below the Initial Balance Low (IBL) — no matches on the month's first 2 sessions, before the band locks",
+    bull: (r) => r.price != null && r.ibh != null && r.price > r.ibh,
+    bear: (r) => r.price != null && r.ibl != null && r.price < r.ibl,
   },
 ];
 
@@ -424,7 +381,7 @@ function flowCell(r: UniverseRow): Cell {
 }
 
 // ── build the typed universe from the raw workbook + engine docs ──
-export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc): Universe {
+export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbMap = {}): Universe {
   const setupByTicker: Record<string, EngineSetup> = {};
   (setupsDoc.setups || []).forEach((s) => (setupByTicker[s.ticker] = s));
 
@@ -481,6 +438,8 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc): Universe 
       kseiDelta: su && su.kseiFootprint && su.kseiFootprint.available ? su.kseiFootprint.netDeltaPP ?? null : null,
       kseiAccum: su && su.kseiFootprint && su.kseiFootprint.available ? !!su.kseiFootprint.accumulation : null,
       capTier: (price ?? 0) > 3000 ? "Large cap" : (price ?? 0) >= 200 ? "Mid cap" : "Small cap",
+      ibh: ibMap[str(rec.Ticker).toUpperCase()]?.ibh ?? null,
+      ibl: ibMap[str(rec.Ticker).toUpperCase()]?.ibl ?? null,
       smcZone: "",
       setupsMatched: [],
       setupsBear: [],
@@ -547,9 +506,15 @@ export function soloCounts(rows: UniverseRow[]): Record<string, { bull: number; 
 // ── loader: fetch the workbook + engine docs for a market date ──
 export async function loadUniverse(marketDate: string): Promise<Universe> {
   const base = `/data/dates/${marketDate}`;
-  const [scr, setupsDoc] = await Promise.all([
+  const [scr, setupsDoc, technicalDoc] = await Promise.all([
     fetchJson<ScreenerDoc>(`${base}/screener.json`),
     fetchJson<SetupsDoc>(`${base}/setups.json`).catch(() => ({ setups: [] }) as SetupsDoc),
+    fetchJson<TechnicalDoc>(`${base}/technical.json`).catch(() => ({ records: {} }) as TechnicalDoc),
   ]);
-  return buildUniverse(scr, setupsDoc);
+  const ibMap: IbMap = {};
+  Object.entries(technicalDoc.records || {}).forEach(([ticker, rec]) => {
+    const mp = rec.technical?.marketProfile;
+    ibMap[ticker.toUpperCase()] = { ibh: num(mp?.ibh), ibl: num(mp?.ibl) };
+  });
+  return buildUniverse(scr, setupsDoc, ibMap);
 }

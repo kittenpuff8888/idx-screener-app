@@ -96,7 +96,7 @@ export function ScreenerPage() {
   }, [bundle]);
 
   const [mode, setMode] = useState<Mode>("preset");
-  const [selectedSetups, setSelectedSetups] = useState<string[]>(["ema_trend"]);
+  const [selectedSetups, setSelectedSetups] = useState<string[]>([]);
   const [setupDir, setSetupDir] = useState<Record<string, Dir>>({});
   const [conf, setConf] = useState<Conf>("AND");
   const [contextConds, setContextConds] = useState<string[]>([]);
