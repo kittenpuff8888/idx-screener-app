@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-09-02",
+ "asOf": "2026-09-04",
  "entries": [
   {
    "date": "2026-07-10",
@@ -530,7 +530,7 @@
    "target": 1445,
    "invalidation": 1382,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 3
   },
   {
    "date": "2026-09-01",
@@ -540,7 +540,7 @@
    "target": 735,
    "invalidation": 671,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 3
   },
   {
    "date": "2026-09-01",
@@ -550,7 +550,7 @@
    "target": 97,
    "invalidation": 92,
    "outcome": "invalidated",
-   "barsObserved": 1
+   "barsObserved": 3
   },
   {
    "date": "2026-09-01",
@@ -560,7 +560,7 @@
    "target": 790,
    "invalidation": 764.4,
    "outcome": "target",
-   "barsObserved": 1
+   "barsObserved": 3
   },
   {
    "date": "2026-09-01",
@@ -570,7 +570,7 @@
    "target": 233,
    "invalidation": 217.56,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 3
   },
   {
    "date": "2026-09-01",
@@ -580,7 +580,7 @@
    "target": 2775,
    "invalidation": 2626.4,
    "outcome": "target",
-   "barsObserved": 1
+   "barsObserved": 3
   },
   {
    "date": "2026-09-01",
@@ -590,7 +590,7 @@
    "target": 4400,
    "invalidation": 4237.2,
    "outcome": "target",
-   "barsObserved": 1
+   "barsObserved": 3
   },
   {
    "date": "2026-09-01",
@@ -600,14 +600,64 @@
    "target": 2825,
    "invalidation": 2724.4,
    "outcome": "target",
-   "barsObserved": 1
+   "barsObserved": 3
+  },
+  {
+   "date": "2026-09-02",
+   "ticker": "ESSA",
+   "score": 75,
+   "close": 715.0,
+   "target": 760,
+   "invalidation": 685,
+   "outcome": "invalidated",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-09-02",
+   "ticker": "RGAS",
+   "score": 65,
+   "close": 121.0,
+   "target": 200,
+   "invalidation": 119.78999999999999,
+   "outcome": "invalidated",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-09-02",
+   "ticker": "LIVE",
+   "score": 60,
+   "close": 190.0,
+   "target": 216,
+   "invalidation": 181.17,
+   "outcome": "open",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-09-02",
+   "ticker": "CNMA",
+   "score": 55,
+   "close": 92.0,
+   "target": 97,
+   "invalidation": 89.17999999999999,
+   "outcome": "open",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-09-02",
+   "ticker": "HEXA",
+   "score": 55,
+   "close": 4490.0,
+   "target": 4400,
+   "invalidation": 4237.2,
+   "outcome": "target",
+   "barsObserved": 2
   }
  ],
  "summary": {
-  "total": 60,
-  "decided": 45,
-  "targetFirst": 18,
-  "hitRate": 0.4
+  "total": 65,
+  "decided": 48,
+  "targetFirst": 19,
+  "hitRate": 0.396
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
