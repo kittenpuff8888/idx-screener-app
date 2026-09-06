@@ -358,6 +358,15 @@ def build_stock(
             ),
             "priceLocation": f"{internal} trend, {vwap_position.lower()}",
         },
+        # Fundamentals/beta don't move meaningfully day-to-day (unlike price/
+        # technicals, which this function recomputes fresh from OHLCV every
+        # time) -- carrying them forward from the nearest full-workbook fetch
+        # is far more useful than leaving every ticker's fundamentals blank on
+        # every day this lighter reconstruction path runs, which is the
+        # majority of days. Never fabricated: only ever a real value this
+        # pipeline already fetched and published on some other date.
+        "beta": static.get("beta"),
+        "fundamentals": static.get("fundamentals"),
     }
 
 

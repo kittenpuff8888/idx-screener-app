@@ -200,6 +200,7 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
       // intraday resolution for short spans (e.g. "3M" → 1h) that overrides
       // `interval`, tripping "Only D, W, M intervals are available". Verified in
       // the live embed: interval "D" with no range renders daily correctly.
+      const overrides = buildStudyOverrides(lengths);
       s.innerHTML = JSON.stringify({
         autosize: true,
         symbol,
@@ -216,12 +217,15 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
         details: false,
         // NB: do NOT add `calendar: true`. TradingView documents it as an
         // earnings/dividends/splits-marker toggle, but live-testing against
-        // this embed's IDX symbols breaks the whole chart (all-zero OHLC) --
-        // confirmed by isolating it from studies_overrides below, which is
-        // safe on its own. Documented behavior isn't always the real behavior
-        // for this symbol set; verify live before trusting the docs again.
+        // this embed's IDX symbols breaks the whole chart (all-zero OHLC).
+        // Documented behavior isn't always the real behavior for this symbol
+        // set; verify live before trusting the docs again.
         studies,
-        studies_overrides: buildStudyOverrides(lengths),
+        // Sending `studies_overrides: {}` (empty object) -- the default case,
+        // before any indicator length is customized -- silently breaks every
+        // study's legend/render (candles still load, but no indicator lines
+        // at all, confirmed live). Only include the key when it's non-empty.
+        ...(Object.keys(overrides).length ? { studies_overrides: overrides } : {}),
         backgroundColor: dark ? "#11151b" : "#ffffff",
         gridColor: dark ? "rgba(255,255,255,0.06)" : "rgba(11,14,20,0.06)",
         support_host: "https://www.tradingview.com",
