@@ -1,6 +1,6 @@
 {
   "generatedFrom": "docs/data/ksei/dates/*/ownership.json",
-  "generatedAt": "2026-08-05T14:29:07.514Z",
+  "generatedAt": "2026-09-06T15:48:10.455Z",
   "note": "Investor-type composition is real (KSEI category); foreign/local is a labelled name-proxy, not authoritative.",
   "snapshots": [
     {
@@ -113,6 +113,33 @@
       "proxyForeignPct": 15.84,
       "proxyLocalPct": 84.16,
       "coverageIssuers": 955
+    },
+    {
+      "asOf": "2026-08-31",
+      "totalIssuers": 962,
+      "avgFreeFloat": 16.07,
+      "avgHHI": 3654.9,
+      "highConcentrationIssuers": 618,
+      "ownershipTypes": {
+        "Mayoritas": 534,
+        "Moderat": 134,
+        "Terkonsentrasi": 134,
+        "Oligopoli": 87,
+        "Tersebar": 73
+      },
+      "investorTypeShare": {
+        "Individual": 18.93,
+        "Corporate": 52.76,
+        "Bank": 1.63,
+        "Insurance": 1.14,
+        "Securities": 0,
+        "Mutual Fund": 0,
+        "Pension Fund": 0,
+        "Other": 25.54
+      },
+      "proxyForeignPct": 16,
+      "proxyLocalPct": 84,
+      "coverageIssuers": 961
     }
   ]
 }

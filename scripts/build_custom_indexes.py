@@ -59,18 +59,22 @@ def number(value: Any) -> float | None:
 
 def normalize_weights(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     positive = [row for row in rows if (number(row.get("weight")) or 0) > 0]
+    zero = [row for row in rows if not (number(row.get("weight")) or 0) > 0]
     total = sum(float(row["weight"]) for row in positive)
     if not total:
         equal = 1 / len(rows) if rows else 0
         return [{**row, "weight": equal, "weightSource": "equal_fallback"} for row in rows]
-    return [
-        {
-            **row,
-            "weight": (float(row.get("weight") or 0) / total),
-        }
-        for row in rows
-        if (number(row.get("weight")) or 0) > 0
-    ]
+    normalized = [{**row, "weight": (float(row.get("weight") or 0) / total)} for row in positive]
+    if zero:
+        # A real constituent with no published weight (e.g. not yet in this
+        # official sector index) still belongs in the list -- dropping it
+        # here is the exact "constituent count doesn't match the real
+        # membership" gap already fixed once on the frontend (see
+        # IndexCompare.tsx). A small floor keeps it visible without
+        # meaningfully distorting the real weighted average.
+        floor = min(row["weight"] for row in normalized) * 0.1
+        normalized += [{**row, "weight": floor, "weightSource": "floor_no_published_weight"} for row in zero]
+    return normalized
 
 
 def weighted_index_value(

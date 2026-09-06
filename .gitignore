@@ -12,6 +12,3 @@ public/data/
 public/assets/
 *.tsbuildinfo
 
-# ownership adapter scratch
-_dryrun_ksei/
-data_sources/**/_holders_normalized.csv

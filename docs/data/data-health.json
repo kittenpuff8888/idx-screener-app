@@ -3,19 +3,21 @@
  "generatedAt": "2026-09-05T01:02:25.050118+07:00",
  "marketDate": "2026-09-04",
  "universe": {
-  "size": 962,
+  "size": 963,
   "source": "KSEI workbook roster",
   "liveIdxRosterDiff": {
-   "rosterSource": "data_sources/idx-listed.json (IDX Daftar Saham)",
-   "rosterAsOf": "2026-07-20",
-   "liveCount": 963,
+   "rosterSource": "data_sources/idx-listed.json (IDX Daftar Saham (data_sources/ksei-data-source.xlsx, TICKER LIST))",
+   "rosterAsOf": "2026-08-31",
+   "liveCount": 962,
    "missingFromUniverse": [],
    "missingCount": 0,
-   "inUniverseNotListed": [],
-   "delistedCount": 0
+   "inUniverseNotListed": [
+    "CNTX"
+   ],
+   "delistedCount": 1
   },
-  "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-09-05T01:02:10.680896+07:00"
+  "liveIdxRosterDiffReason": null,
+  "auditedAt": "2026-09-06T22:46:50.493316+07:00"
  },
  "runLog": [
   {
