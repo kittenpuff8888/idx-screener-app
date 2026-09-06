@@ -72,11 +72,12 @@ function smoothPath(pts: Array<[number, number]>): string {
 const PHASE_ORDER: Phase[] = ["Strengthening", "Fading", "Stabilizing", "Deteriorating", "Gaining Momentum", "Deepening Weakness", "Building Momentum", "Losing Momentum"];
 const DIST_ORDER: Quadrant[] = ["leading", "improving", "weakening", "lagging"];
 
-export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, marketDate, openTicker, technicalByTicker }: {
+export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, marketDate, latestMarketDate, openTicker, technicalByTicker }: {
   ihsg: Pt[];
   sectoralGroups: IndexGroup[];
   kongloGroups: IndexGroup[];
   marketDate: string;
+  latestMarketDate?: string;
   openTicker: (t: string) => void;
   technicalByTicker: Map<string, TechnicalRecord>;
 }) {
@@ -128,7 +129,7 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
   useEffect(() => {
     if (mode !== "stocks" || !stockCandidates.length || !marketDate) { setOhlcvByTicker(new Map()); return; }
     let cancelled = false;
-    Promise.all(stockCandidates.map((t) => loadOhlcv(marketDate, t).then((p) => [t, p] as const))).then((results) => {
+    Promise.all(stockCandidates.map((t) => loadOhlcv(marketDate, t, latestMarketDate).then((p) => [t, p] as const))).then((results) => {
       if (cancelled) return;
       const m = new Map<string, Pt[]>();
       for (const [t, payload] of results) {
@@ -138,7 +139,7 @@ export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, mark
       setOhlcvByTicker(m);
     });
     return () => { cancelled = true; };
-  }, [mode, stockCandidates, marketDate]);
+  }, [mode, stockCandidates, marketDate, latestMarketDate]);
 
   // sub-sector (industry) options for the active filter context. The SECTOR
   // filter is what scopes this in both Konglo and Stocks mode (Konglo mode

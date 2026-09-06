@@ -42,7 +42,7 @@ function fmtMcapBn(bn: number | null): string {
 const KONGLO_FEATURED = ["Barito", "Salim", "Sinarmas", "Astra", "Djarum", "Saratoga", "Bakrie", "Lippo"];
 
 export function DashboardPage() {
-  const { loading, bundle, ksei, indexes, marketContext, marketDate, openTicker } = useApp();
+  const { loading, bundle, ksei, indexes, marketContext, marketDate, manifest, openTicker } = useApp();
 
   const overview = (bundle?.overview?.overview || {}) as JsonRecord;
   const summary = (bundle?.overview?.summary || {}) as JsonRecord;
@@ -251,7 +251,7 @@ export function DashboardPage() {
       </div>
 
       {/* SECTOR ROTATION — relative rotation graph: Sectors / Konglo / Stocks */}
-      <SectorRotationSection ihsg={ihsgSeries} sectoralGroups={sectoralGroupsRaw} kongloGroups={kongloGroupsRaw} marketDate={marketDate || ""} openTicker={openTicker} technicalByTicker={bundle?.technical || new Map()} />
+      <SectorRotationSection ihsg={ihsgSeries} sectoralGroups={sectoralGroupsRaw} kongloGroups={kongloGroupsRaw} marketDate={marketDate || ""} latestMarketDate={manifest?.latestMarketDate} openTicker={openTicker} technicalByTicker={bundle?.technical || new Map()} />
 
       {/* MARKET MAP — squarified, cap-weighted treemap */}
       <MarketMapTreemap />
