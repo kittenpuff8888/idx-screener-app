@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Modal } from "@/components/shared/Modal";
 import { Provenance } from "@/components/shared/Metric";
+import { UniverseTable, type UniverseTableRow } from "@/components/shared/UniverseTable";
 import type { IndexGroup, JsonRecord } from "@/lib/domain/types";
-import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
+import { loadUniverse, type Universe, type UniverseRow } from "@/lib/data/screenerUniverse";
+import { asNumber, formatMarketCapBn, formatPercent } from "@/lib/format/number";
 
 const MONO = "var(--mono, var(--font-mono))";
 const KICKER: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: ".08em", color: "var(--faint)" };
@@ -65,22 +67,40 @@ function linePath(vals: number[], min: number, spread: number, w = 100, h = 60):
 }
 const yPct = (v: number, min: number, spread: number, h = 60) => { const pT = 7, pB = 6; return (pT + (1 - (v - min) / spread) * (h - pT - pB)) / h * 100; };
 
-/** Detail modal: range area chart + top constituents joined against fundamentals. */
+/** Detail modal: range area chart + every constituent, in the same
+    Screener-style table every other ticker-list popup uses (see
+    UniverseTable), ordered by market cap and carrying an extra MKT CAP
+    column — the index-specific context "you can adjust it" covers. */
 function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntry; steps: number; marketDate: string; onClose: () => void }) {
   const { bundle, openTicker } = useApp();
+  const [universe, setUniverse] = useState<Universe | null>(null);
   const pct = windowPct(entry.series, steps);
   const chg = pct ? pct[pct.length - 1] / 100 : null;
+
+  useEffect(() => {
+    if (!marketDate) return;
+    let cancelled = false;
+    loadUniverse(marketDate).then((u) => !cancelled && setUniverse(u)).catch(() => {});
+    return () => { cancelled = true; };
+  }, [marketDate]);
+
+  const universeByTicker = useMemo(() => {
+    const m = new Map<string, UniverseRow>();
+    (universe?.rows || []).forEach((r) => m.set(r.ticker, r));
+    return m;
+  }, [universe]);
 
   const constituents = useMemo(() => {
     const rows = (entry.group?.constituents || []).map((c) => {
       const raw = bundle?.fundamentals.get(c.ticker.toUpperCase()) as JsonRecord | undefined;
-      return { ticker: c.ticker.toUpperCase(), mcap: asNumber(raw?.["Market Cap"]) ?? 0, price: asNumber(raw?.["Price"]), chg: asNumber(raw?.["Price Change %"]) };
+      return { ticker: c.ticker.toUpperCase(), mcap: asNumber(raw?.["Market Cap"]) ?? 0 };
     }).filter((r) => r.mcap > 0);
     rows.sort((a, b) => b.mcap - a.mcap);
     return rows; // all constituents of the index, not just the top few
   }, [entry, bundle]);
   const totalConstituents = entry.group?.constituents?.length ?? 0;
-  const mcapMax = Math.max(1, ...constituents.map((c) => c.mcap));
+  const mcapByTicker = useMemo(() => new Map(constituents.map((c) => [c.ticker, c.mcap])), [constituents]);
+  const tableRows: UniverseTableRow[] = constituents.map((c) => ({ ticker: c.ticker, ur: universeByTicker.get(c.ticker) }));
 
   let area: React.ReactNode = <div style={{ fontSize: 12.5, color: "var(--muted)" }}>No data for this range.</div>;
   if (pct) {
@@ -96,25 +116,21 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
   }
 
   return (
-    <Modal title={entry.label} kicker="INDEX DETAIL" onClose={onClose} maxWidth={680}>
+    <Modal title={entry.label} kicker="INDEX DETAIL" onClose={onClose} maxWidth={1180}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
         <span style={{ fontFamily: MONO, fontSize: 20, fontWeight: 600, color: chg === null ? "var(--muted)" : chg >= 0 ? "var(--up)" : "var(--down)" }}>{chg === null ? "—" : formatPercent(chg)}</span>
         <span style={{ fontSize: 11.5, color: "var(--faint)" }}>% return over the selected range</span>
       </div>
       {area}
-      {constituents.length ? (
+      {tableRows.length ? (
         <div style={{ marginTop: 16 }}>
-          <div style={{ ...KICKER, marginBottom: 9 }}>CONSTITUENTS · {constituents.length}{totalConstituents > constituents.length ? ` OF ${totalConstituents}` : ""} · BY MARKET CAP</div>
-          <div style={{ display: "flex", flexDirection: "column", maxHeight: 340, overflowY: "auto" }}>
-            {constituents.map((c) => (
-              <button key={c.ticker} type="button" onClick={() => { onClose(); openTicker(c.ticker); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", background: "transparent", border: "none", borderTop: "1px solid var(--hair)", cursor: "pointer", color: "var(--text)", textAlign: "left" }}>
-                <span style={{ fontFamily: MONO, fontWeight: 700, fontSize: 12.5, width: 52 }}>{c.ticker}</span>
-                <div style={{ flex: 1, height: 6, background: "var(--soft)", borderRadius: 4, overflow: "hidden" }}><div style={{ width: `${(c.mcap / mcapMax) * 100}%`, height: "100%", background: "var(--accent)", borderRadius: 4 }} /></div>
-                <span style={{ fontFamily: MONO, fontSize: 11, color: "var(--muted)", width: 58, textAlign: "right" }}>{c.price === null ? "—" : formatPrice(c.price)}</span>
-                <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 600, width: 60, textAlign: "right", color: c.chg === null ? "var(--muted)" : c.chg >= 0 ? "var(--up)" : "var(--down)" }}>{c.chg === null ? "—" : formatPercent(c.chg)}</span>
-              </button>
-            ))}
-          </div>
+          <div style={{ ...KICKER, marginBottom: 9 }}>CONSTITUENTS · {tableRows.length}{totalConstituents > tableRows.length ? ` OF ${totalConstituents}` : ""} · BY MARKET CAP</div>
+          <UniverseTable
+            rows={tableRows}
+            onOpenTicker={(t) => { onClose(); openTicker(t); }}
+            emptyLabel="No constituents with a published market cap."
+            extraColumn={{ header: "MKT CAP", width: "82px", render: (row) => <span style={{ fontFamily: MONO, fontSize: 11, fontWeight: 700 }}>Rp {formatMarketCapBn(mcapByTicker.get(row.ticker))}</span> }}
+          />
         </div>
       ) : null}
       {entry.group?.weightMethod ? (

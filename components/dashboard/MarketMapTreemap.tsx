@@ -6,7 +6,7 @@ import { useApp } from "@/components/providers/AppProvider";
 import { Modal } from "@/components/shared/Modal";
 import { buildKongloMembership } from "@/lib/data/indexes";
 import { normalizeSector } from "@/lib/domain/sectors";
-import { asNumber, formatNumber, formatPercent, parseCount } from "@/lib/format/number";
+import { asNumber, formatMarketCapBn, formatNumber, formatPercent, parseCount } from "@/lib/format/number";
 
 type GroupMode = "sectors" | "konglo";
 
@@ -78,13 +78,6 @@ function uniformGrid<T>(items: T[], x: number, y: number, w: number, h: number):
   return items.map((it, i) => ({ ...it, rect: { x: x + (i % cols) * cellW, y: y + Math.floor(i / cols) * cellH, w: cellW, h: cellH } }));
 }
 
-// Compact market-cap for the tile caption: billions → "258 T" / "87.7 T" / "500 B".
-// Keeps the tile from cramming a long raw number (was "Rp 258.282").
-function fmtCap(bn: number): string {
-  if (bn >= 1000) return `${(bn / 1000).toFixed(bn >= 100000 ? 0 : 1)} T`;
-  return `${Math.round(bn)} B`;
-}
-
 function tileColor(change: number): string {
   const inten = 0.5 + Math.min(1, Math.abs(change) / 0.045) * 0.45;
   const rgb = change >= 0 ? "37, 99, 235" : "229, 72, 77";
@@ -112,7 +105,7 @@ const W = 1000, GAP = 2.4, HEAD = 20;
 export function MarketMapTreemap() {
   const { bundle, indexes, marketDate, openTicker } = useApp();
   // Classify each ticker from the same SECTORAL INDEX groups Sector Rotation
-  // and "SECTORAL INDICES vs IHSG" already use (docs/data/indexes.json), not
+  // and "SECTORAL INDEX vs IHSG" already use (docs/data/indexes.json), not
   // a separately-derived KSEI lookup — the two views now share one universe,
   // one partition, and one label per ticker, so a sector's tile count here
   // always matches its constituent count there. Real IDX sectors are a
@@ -422,7 +415,7 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio, excl
               style={{ position: "absolute", left: p.left, top: p.top, width: p.width, height: p.height, background: tileColor(t.change), color: "#fff", border: "1px solid var(--panel)", borderRadius: 4, padding: "3px 5px", overflow: "hidden", cursor: "pointer", display: "flex", flexDirection: "column", justifyContent: "center", textShadow: "0 1px 2px rgba(0,0,0,.32)" }}>
               {lab.showTicker ? <strong style={{ fontFamily: MONO, fontSize: lab.fsT, fontWeight: 700, letterSpacing: ".02em", lineHeight: 1.05 }}>{t.ticker}</strong> : null}
               {lab.showPct ? <span style={{ fontFamily: MONO, fontSize: lab.fsP, fontWeight: 600, opacity: 0.92, lineHeight: 1.1 }}>{formatPercent(t.change)}</span> : null}
-              {lab.showCap && t.mcap !== null ? <span style={{ fontFamily: MONO, fontSize: 9, opacity: 0.72, lineHeight: 1.1 }}>Rp {fmtCap(t.mcap)}</span> : null}
+              {lab.showCap && t.mcap !== null ? <span style={{ fontFamily: MONO, fontSize: 9, opacity: 0.72, lineHeight: 1.1 }}>Rp {formatMarketCapBn(t.mcap)}</span> : null}
             </div>
           );
         })}
