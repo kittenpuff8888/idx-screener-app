@@ -636,21 +636,39 @@ def split_payload(
             "records": payload.get("news") or [],
         }
     else:
+        # Incremental days don't re-fetch fundamentals/news, but they don't
+        # need to -- neither moves meaningfully day to day. Load the real
+        # records from the referenced date's own already-published file
+        # instead of leaving every ticker blank site-wide until the next
+        # full-workbook day (previously: recordCount always 0 here, on
+        # roughly half of all archived dates). Falls back to the old empty
+        # stub only if that file is genuinely unavailable (e.g. the
+        # referenced date itself was cleaned up) -- disclosed either way via
+        # referenceMarketDate/pointInTime, never presented as fresh.
+        def _load_referenced(filename: str) -> list[Any]:
+            try:
+                ref_path = DATES_DIR / source_date / filename
+                return json.loads(ref_path.read_text(encoding="utf-8")).get("records") or []
+            except (OSError, json.JSONDecodeError, KeyError):
+                return []
+
+        fundamental_records = _load_referenced("fundamental.json")
         fundamental = {
             **common,
             "dataMode": "latest_reference_not_point_in_time",
             "referenceMarketDate": source_date,
             "referencePath": f"../{source_date}/fundamental.json",
-            "recordCount": 0,
-            "records": [],
+            "recordCount": len(fundamental_records),
+            "records": fundamental_records,
         }
+        news_records = _load_referenced("news.json")
         news = {
             **common,
             "dataMode": "latest_reference_not_point_in_time",
             "referenceMarketDate": source_date,
             "referencePath": f"../{source_date}/news.json",
-            "recordCount": 0,
-            "records": [],
+            "recordCount": len(news_records),
+            "records": news_records,
         }
     qa = build_qa(market_date, stocks, signals, prepared)
     files = {
