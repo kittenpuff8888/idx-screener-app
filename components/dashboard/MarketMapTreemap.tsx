@@ -4,8 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
 import { Modal } from "@/components/shared/Modal";
+import { buildKongloMembership } from "@/lib/data/indexes";
 import { normalizeSector } from "@/lib/domain/sectors";
 import { asNumber, formatNumber, formatPercent, parseCount } from "@/lib/format/number";
+
+type GroupMode = "sectors" | "konglo";
 
 const MONO = "var(--font-mono)";
 const KICKER: CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" };
@@ -86,7 +89,7 @@ function labelFit(ticker: string, pxW: number, pxH: number) {
 const W = 1000, GAP = 2.4, HEAD = 20;
 
 export function MarketMapTreemap() {
-  const { bundle, ksei, marketDate, openTicker } = useApp();
+  const { bundle, ksei, indexes, marketDate, openTicker } = useApp();
   // The fundamentals workbook ships "IDX Sector" as "-", so classify each
   // ticker from the KSEI registry instead (issuer.sector is the display name,
   // e.g. "Energy"). Without this every name collapses into a single "Others".
@@ -95,20 +98,34 @@ export function MarketMapTreemap() {
     ksei?.records.forEach((r) => { if (r.sector && r.sector !== "Others") m.set(r.ticker, r.sector); });
     return m;
   }, [ksei]);
+  // Konglo groups are NOT a partition — a ticker can be a "sharing" holding
+  // across several groups at once (same membership data Sector Rotation's
+  // Konglo mode reads), so in Konglo grouping a ticker can legitimately be
+  // placed in more than one group's box.
+  const kongloLabelById = useMemo(() => {
+    const m = new Map<string, string>();
+    (indexes?.groups || []).filter((g) => g.section === "KONGLO INDEX").forEach((g) => m.set(g.id, g.label.replace(/\s*\(.*\)$/, "")));
+    return m;
+  }, [indexes]);
+  const kongloMembership = useMemo(() => buildKongloMembership(indexes), [indexes]);
+  const [groupMode, setGroupMode] = useState<GroupMode>("sectors");
   const [zoom, setZoom] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const groupNoun = groupMode === "sectors" ? "sector" : "group";
 
   // Every ticker with a real price change is placed on the map — cap-weighted
   // when it has a Market Cap (published, or computed from Price × Shares
   // Outstanding when the field itself reads "-", same fallback as the
   // Dashboard's Leaders/Laggards table), and at a small floor size otherwise
-  // (see layoutTickers) rather than dropped. Only a ticker with NEITHER a
-  // Market Cap NOR a price change is genuinely unplaceable — that's the only
-  // thing counted/disclosed as excluded now.
-  const { sectors, excludedCount, excludedBySector } = useMemo(() => {
+  // (see layoutTickers) rather than dropped. In Sectors mode, only a ticker
+  // with NEITHER a Market Cap NOR a price change is genuinely unplaceable. In
+  // Konglo mode, a ticker also has to belong to a tracked Konglo group —
+  // tracked separately as `noGroupCount`, since most tickers aren't in one.
+  const { sectors, excludedCount, excludedBySector, noGroupCount } = useMemo(() => {
     const bySector = new Map<string, Tile[]>();
     const excludedBy = new Map<string, number>();
     let excluded = 0;
+    let noGroup = 0;
     bundle?.fundamentals.forEach((raw, ticker) => {
       const change = asNumber(raw["Price Change %"]);
       const price = asNumber(raw["Price"]);
@@ -120,12 +137,18 @@ export function MarketMapTreemap() {
       const sector = sectorByTicker.get(ticker) || normalizeSector(String(raw["IDX Sector"] ?? "Others"));
       if (change === null) {
         excluded += 1;
-        if (sector !== "Others") excludedBy.set(sector, (excludedBy.get(sector) || 0) + 1);
+        if (groupMode === "sectors" && sector !== "Others") excludedBy.set(sector, (excludedBy.get(sector) || 0) + 1);
         return;
       }
-      const list = bySector.get(sector) || [];
-      list.push({ ticker, mcap: mcap !== null && mcap > 0 ? mcap : null, change, sector, price, pe: asNumber(raw["Current PE Ratio (TTM)"]), yld: asNumber(raw["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]) });
-      bySector.set(sector, list);
+      const groupNames = groupMode === "sectors"
+        ? [sector]
+        : (kongloMembership.get(ticker) || []).map((id) => kongloLabelById.get(id)).filter((x): x is string => !!x);
+      if (!groupNames.length) { noGroup += 1; return; }
+      groupNames.forEach((name) => {
+        const list = bySector.get(name) || [];
+        list.push({ ticker, mcap: mcap !== null && mcap > 0 ? mcap : null, change, sector: name, price, pe: asNumber(raw["Current PE Ratio (TTM)"]), yld: asNumber(raw["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]) });
+        bySector.set(name, list);
+      });
     });
     const sec = [...bySector.entries()]
       .map(([sector, list]) => {
@@ -136,40 +159,49 @@ export function MarketMapTreemap() {
         return { sector, count: list.length, flooredCount, weight, capChange, tiles: list };
       })
       .sort((a, b) => b.weight - a.weight);
-    return { sectors: sec, excludedCount: excluded, excludedBySector: excludedBy };
-  }, [bundle, sectorByTicker]);
+    return { sectors: sec, excludedCount: excluded, excludedBySector: excludedBy, noGroupCount: noGroup };
+  }, [bundle, sectorByTicker, groupMode, kongloMembership, kongloLabelById]);
 
   if (!sectors.length) return null;
   const includedCount = sectors.reduce((n, s) => n + s.tiles.length, 0);
   const flooredTotal = sectors.reduce((n, s) => n + s.flooredCount, 0);
-  const scannedCount = includedCount + excludedCount;
+  const scannedCount = includedCount + excludedCount + (groupMode === "konglo" ? noGroupCount : 0);
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 10px", flexWrap: "wrap" }}>
-        <span style={KICKER}>MARKET MAP · CAP-WEIGHTED, COLOURED BY % CHANGE</span>
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "3px 8px" }}>size ≈ market cap (dampened) · click a sector to see all its tickers · hover for detail</span>
-        <div style={{ flex: 1 }} />
-        <button type="button" onClick={() => setDetailsOpen(true)} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>⤢ Show details · {includedCount} tickers</button>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5, color: "var(--faint)" }}>
-          <span>−5%</span>
-          <span style={{ width: 120, height: 9, borderRadius: 5, background: "linear-gradient(90deg,var(--down),var(--soft),var(--up))", border: "1px solid var(--border)" }} />
-          <span>+5%</span>
+      <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))", padding: "16px 18px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+          <div>
+            <span style={KICKER}>MARKET MAP · CAP-WEIGHTED, COLOURED BY % CHANGE</span>
+            <div style={{ fontSize: 11.5, color: "var(--faint)", marginTop: 4 }}>size ≈ market cap (dampened) · click a {groupNoun} to see all its tickers · hover for detail</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
+              {(["sectors", "konglo"] as GroupMode[]).map((m) => (
+                <button key={m} type="button" onClick={() => { setGroupMode(m); setZoom(null); }} style={{ fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", background: groupMode === m ? "var(--accent)" : "transparent", color: groupMode === m ? "#fff" : "var(--muted)", textTransform: "capitalize" }}>{m}</button>
+              ))}
+            </div>
+            <button type="button" onClick={() => setDetailsOpen(true)} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>⤢ Show details · {includedCount} tickers</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 9.5, color: "var(--faint)" }}>
+              <span>−5%</span>
+              <span style={{ width: 120, height: 9, borderRadius: 5, background: "linear-gradient(90deg,var(--down),var(--soft),var(--up))", border: "1px solid var(--border)" }} />
+              <span>+5%</span>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div style={{ background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))", padding: "14px 16px", marginBottom: 14 }}>
-        <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={openTicker} dropTiny ratio={7 / 16} excludedBySector={excludedBySector} />
+        <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={openTicker} dropTiny ratio={7 / 16} excludedBySector={excludedBySector} groupNoun={groupNoun} />
         <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 8 }}>
           Fundamentals · {marketDate} · click a tile to open the ticker · tickers too small to label here are folded into &ldquo;Show details&rdquo;. Tile area uses a dampened (square-root) scale so one dominant name never swallows the view — bigger is still bigger, hover for the exact figures.{" "}
           {flooredTotal > 0 ? <>{flooredTotal} of {includedCount} shown tickers have no Market Cap (published or computable) and render at a small floor size instead of being sized by cap.</> : null}
           {excludedCount > 0 ? <> {excludedCount} of {scannedCount} scanned tickers have no price change data at all and can&apos;t be placed on the map.</> : null}
+          {groupMode === "konglo" && noGroupCount > 0 ? <> {noGroupCount} of {scannedCount} scanned tickers aren&apos;t part of any tracked Konglo group and aren&apos;t shown in this view.</> : null}
         </div>
       </div>
 
       {detailsOpen ? (
         <Modal title={`Market Map · ${includedCount} tickers`} kicker={`${marketDate} · cap-weighted, coloured by % change`} onClose={() => setDetailsOpen(false)} maxWidth={1280}>
-          <DetailsTreemap sectors={sectors} openTicker={openTicker} onClose={() => setDetailsOpen(false)} excludedCount={excludedCount} flooredTotal={flooredTotal} scannedCount={scannedCount} excludedBySector={excludedBySector} />
+          <DetailsTreemap sectors={sectors} openTicker={openTicker} onClose={() => setDetailsOpen(false)} excludedCount={excludedCount} flooredTotal={flooredTotal} scannedCount={scannedCount} excludedBySector={excludedBySector} groupNoun={groupNoun} />
         </Modal>
       ) : null}
     </div>
@@ -178,15 +210,15 @@ export function MarketMapTreemap() {
 
 /** The details popup gets its own zoom state (always starts at the full
     all-sectors view) and closes before navigating to a ticker. */
-function DetailsTreemap({ sectors, openTicker, onClose, excludedCount, flooredTotal, scannedCount, excludedBySector }: { sectors: Sector[]; openTicker: (t: string) => void; onClose: () => void; excludedCount: number; flooredTotal: number; scannedCount: number; excludedBySector: Map<string, number> }) {
+function DetailsTreemap({ sectors, openTicker, onClose, excludedCount, flooredTotal, scannedCount, excludedBySector, groupNoun }: { sectors: Sector[]; openTicker: (t: string) => void; onClose: () => void; excludedCount: number; flooredTotal: number; scannedCount: number; excludedBySector: Map<string, number>; groupNoun: string }) {
   const [zoom, setZoom] = useState<string | null>(null);
   const jump = (ticker: string) => { onClose(); openTicker(ticker); };
   const includedCount = sectors.reduce((n, s) => n + s.tiles.length, 0);
   return (
     <>
-      <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={jump} dropTiny={false} ratio={7 / 16} excludedBySector={excludedBySector} />
+      <TreemapView sectors={sectors} zoom={zoom} setZoom={setZoom} openTicker={jump} dropTiny={false} ratio={7 / 16} excludedBySector={excludedBySector} groupNoun={groupNoun} />
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
-        Every real ticker with a price change is included here — {includedCount} of {scannedCount} scanned — even ones too small to carry a legible label at this size; hover any tile for its detail, click to open it. Double-click a sector header (or a tile) to zoom into that sector.
+        Every real ticker with a price change is included here — {includedCount} of {scannedCount} scanned — even ones too small to carry a legible label at this size; hover any tile for its detail, click to open it. Double-click a {groupNoun} header (or a tile) to zoom into that {groupNoun}.
         {flooredTotal > 0 ? <> {flooredTotal} of them have no Market Cap (published or computable) and render at a small floor size rather than a cap-weighted one.</> : null}
         {excludedCount > 0 ? <> The remaining {excludedCount} scanned tickers have no price change data at all — a gap upstream — and can&apos;t be placed on the map; they&apos;re not omitted by choice.</> : null}
       </div>
@@ -194,15 +226,16 @@ function DetailsTreemap({ sectors, openTicker, onClose, excludedCount, flooredTo
   );
 }
 
-/** One treemap instance: sector bands + ticker tiles + hover tooltip + zoom
-    breadcrumb. `dropTiny` reflows each sector's tickers to only the ones large
-    enough to carry a legible label (used by the compact card); the details
-    popup passes `dropTiny={false}` so nothing is left out. */
-function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio, excludedBySector }: {
+/** One treemap instance: sector/group bands + ticker tiles + hover tooltip +
+    zoom breadcrumb. `dropTiny` reflows each group's tickers to only the ones
+    large enough to carry a legible label (used by the compact card); the
+    details popup passes `dropTiny={false}` so nothing is left out. */
+function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio, excludedBySector, groupNoun }: {
   sectors: Sector[];
   zoom: string | null;
   setZoom: (s: string | null) => void;
   openTicker: (t: string) => void;
+  groupNoun: string;
   dropTiny: boolean;
   ratio: number;
   excludedBySector: Map<string, number>;
@@ -313,7 +346,7 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio, excl
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 11.5 }}>
-        <button type="button" onClick={() => setZoom(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "none", background: "transparent", cursor: zoom ? "pointer" : "default", fontSize: 11.5, fontWeight: 700, color: zoom ? "var(--accent)" : "var(--muted)", padding: "2px 0" }}>▦ All sectors</button>
+        <button type="button" onClick={() => setZoom(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "none", background: "transparent", cursor: zoom ? "pointer" : "default", fontSize: 11.5, fontWeight: 700, color: zoom ? "var(--accent)" : "var(--muted)", padding: "2px 0", textTransform: "capitalize" }}>▦ All {groupNoun}s</button>
         {zoom ? (
           <>
             <span style={{ color: "var(--faint)" }}>›</span>
