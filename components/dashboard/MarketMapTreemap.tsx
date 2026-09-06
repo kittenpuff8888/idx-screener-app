@@ -57,6 +57,27 @@ function squarify<T extends { value: number }>(items: T[], x: number, y: number,
   return out;
 }
 
+// Equal-size grid, row-major, filled in the given item order (already sorted
+// by weight descending, so the biggest groups still read top-left first).
+// Used for the top-level group bands instead of squarify-by-weight: a
+// group's real aggregate market cap can be a tiny fraction of the biggest
+// one's — Transportation & Logistics vs Financials among the 11 official
+// sectors, or a 3-ticker Konglo group vs Salim/Djarum among the 45 — and
+// weight-proportional bands shrank the small ones into sub-labelable
+// slivers (their header never rendered, and "drop tiny tiles" folded all
+// but their single biggest name out of view). A uniform grid keeps every
+// group's header and top tickers legible regardless of its weight; tickers
+// *within* a group still size by market cap via layoutTickers below, so the
+// "detail" stays cap-weighted — just not the group boxes themselves.
+function uniformGrid<T>(items: T[], x: number, y: number, w: number, h: number): Array<T & { rect: Rect }> {
+  const n = items.length;
+  if (!n) return [];
+  const cols = Math.max(1, Math.round(Math.sqrt((n * w) / h)));
+  const rows = Math.ceil(n / cols);
+  const cellW = w / cols, cellH = h / rows;
+  return items.map((it, i) => ({ ...it, rect: { x: x + (i % cols) * cellW, y: y + Math.floor(i / cols) * cellH, w: cellW, h: cellH } }));
+}
+
 // Compact market-cap for the tile caption: billions → "258 T" / "87.7 T" / "500 B".
 // Keeps the tile from cramming a long raw number (was "Rp 258.282").
 function fmtCap(bn: number): string {
@@ -89,15 +110,23 @@ function labelFit(ticker: string, pxW: number, pxH: number) {
 const W = 1000, GAP = 2.4, HEAD = 20;
 
 export function MarketMapTreemap() {
-  const { bundle, ksei, indexes, marketDate, openTicker } = useApp();
-  // The fundamentals workbook ships "IDX Sector" as "-", so classify each
-  // ticker from the KSEI registry instead (issuer.sector is the display name,
-  // e.g. "Energy"). Without this every name collapses into a single "Others".
+  const { bundle, indexes, marketDate, openTicker } = useApp();
+  // Classify each ticker from the same SECTORAL INDEX groups Sector Rotation
+  // and "SECTORAL INDICES vs IHSG" already use (docs/data/indexes.json), not
+  // a separately-derived KSEI lookup — the two views now share one universe,
+  // one partition, and one label per ticker, so a sector's tile count here
+  // always matches its constituent count there. Real IDX sectors are a
+  // strict partition (each ticker lands in at most one), so anything absent
+  // from every group's constituent list falls through to "Others" below —
+  // same real gap as Sectoral Indices silently drops, just made visible.
   const sectorByTicker = useMemo(() => {
     const m = new Map<string, string>();
-    ksei?.records.forEach((r) => { if (r.sector && r.sector !== "Others") m.set(r.ticker, r.sector); });
+    (indexes?.groups || []).filter((g) => g.section === "SECTORAL INDEX").forEach((g) => {
+      const label = normalizeSector(g.label);
+      g.constituents.forEach((c) => { if (!m.has(c.ticker)) m.set(c.ticker, label); });
+    });
     return m;
-  }, [ksei]);
+  }, [indexes]);
   // Konglo groups are NOT a partition — a ticker can be a "sharing" holding
   // across several groups at once (same membership data Sector Rotation's
   // Konglo mode reads), so in Konglo grouping a ticker can legitimately be
@@ -326,7 +355,7 @@ function TreemapView({ sectors, zoom, setZoom, openTicker, dropTiny, ratio, excl
       const tiles = layoutTickers(g.tiles, { x: GAP, y: GAP, w: W - GAP * 2, h: H - GAP * 2 });
       return { tiles, bands: [] };
     }
-    const secRects = squarify(sectors.map((g) => ({ ...g, value: g.weight })), 0, 0, W, H);
+    const secRects = uniformGrid(sectors, 0, 0, W, H);
     const tiles: Array<Tile & { rect: Rect }> = [];
     const bands: Array<{ sector: string; rect: Rect; capChange: number; hasHead: boolean }> = [];
     secRects.forEach((g) => {
