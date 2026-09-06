@@ -173,10 +173,22 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
+    // Guards against a real failure mode: TradingView's embed script attaches
+    // its iframe asynchronously, then wires up postMessage-based resize
+    // listeners against it. If this effect re-runs (theme flips, a picker
+    // change, or React re-mounting the component) before that finishes, and
+    // the old container gets torn down mid-load, the script's callback fires
+    // against an already-detached iframe — "Cannot listen to the event from
+    // the provided iframe, contentWindow is not available" — leaving the
+    // chart blank with no toolbar and no indicators. `disposed` stops a build
+    // in flight from touching a container this effect has already walked
+    // away from, and the cleanup below always leaves a clean, empty mount
+    // point rather than a half-initialized one for the next build to race.
+    let disposed = false;
 
     function build() {
       const el = mountRef.current;
-      if (!el) return;
+      if (!el || disposed) return;
       setUnavailable(false);
       el.innerHTML = "";
       const dark = CURRENT_THEME() === "dark";
@@ -234,16 +246,42 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
       el.appendChild(container);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
-        if (el && !el.querySelector("iframe")) setUnavailable(true);
+        if (!disposed && el && !el.querySelector("iframe")) setUnavailable(true);
       }, 3800);
     }
 
-    build();
-    const obs = new MutationObserver(() => build());
+    // Debounced, not called directly: the header restores the user's saved
+    // theme in its own effect right after mount (default is "light" until
+    // that runs), so a real light→dark flip lands here within milliseconds
+    // of this effect's own first build — two builds racing the same
+    // container, the exact scenario `disposed`/cleanup above guard against.
+    // Collapsing both into one build of the FINAL settled theme avoids the
+    // race outright instead of just cleaning up after it.
+    let scheduleTimer: ReturnType<typeof setTimeout> | null = null;
+    function scheduleBuild() {
+      if (scheduleTimer) clearTimeout(scheduleTimer);
+      scheduleTimer = setTimeout(build, 50);
+    }
+
+    scheduleBuild();
+    // Only rebuild on a theme change that actually flips light/dark — a
+    // MutationObserver fires on any attribute write, including ones that set
+    // the same value (e.g. an unrelated re-render touching data-theme), and
+    // every extra rebuild is another chance to race the teardown above.
+    let lastTheme = CURRENT_THEME();
+    const obs = new MutationObserver(() => {
+      const next = CURRENT_THEME();
+      if (next === lastTheme) return;
+      lastTheme = next;
+      scheduleBuild();
+    });
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => {
+      disposed = true;
       obs.disconnect();
+      if (scheduleTimer) clearTimeout(scheduleTimer);
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (mount) mount.innerHTML = "";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key on contents, not identity
   }, [symbol, interval, studies.join(","), JSON.stringify(lengths)]);
