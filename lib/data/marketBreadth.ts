@@ -81,16 +81,73 @@ export function computeMarketBreadth(
 }
 
 /** Descriptive regime read from the two breadth measures (IDX-calibrated bands).
-    Exported so the panel can apply it to the liquid-universe headline. */
-export function breadthRegime(pct200: number | null, pct50: number | null): { label: string; note: string } {
+    Exported so the panel can apply it to the liquid-universe headline.
+    `elaboration` spells out what the pattern typically means for trading
+    conditions in plain language -- still explicitly non-predictive, same as
+    `note`, because breadth has shown ~zero forward correlation on IDX
+    (klinikpenyesalan breadth study, 2026-07-27). It describes today, not
+    tomorrow, and is not a signal to act on by itself. */
+export function breadthRegime(pct200: number | null, pct50: number | null): { label: string; note: string; elaboration: string } {
   const p200 = pct200 == null ? null : pct200 * 100;
   const p50 = pct50 == null ? null : pct50 * 100;
-  if (p200 == null || p50 == null) return { label: "—", note: "Breadth unavailable in this snapshot." };
-  if (p200 >= 50) return { label: "BROAD STRENGTH", note: "Most stocks are above both their 50- and 200-day averages — participation is wide." };
-  if (p50 >= 50 && p200 < 35) return { label: "EARLY RECOVERY", note: `Near-term breadth is broad (${Math.round(p50)}% above 50-day), but ${Math.round(100 - p200)}% of stocks are still below their 200-day average — a young, structurally-incomplete recovery.` };
-  if (p50 < 40 && p200 < 30) return { label: "BROADLY WEAK", note: "Both short- and long-term breadth are thin — the typical stock is in a downtrend." };
-  if (p50 < 45 && p200 >= 35) return { label: "COOLING", note: "Long-term breadth is holding up but near-term participation is fading." };
-  return { label: "MIXED", note: `Short-term breadth ${Math.round(p50)}%, structural breadth ${Math.round(p200)}% — the two honestly disagree.` };
+  if (p200 == null || p50 == null) {
+    return { label: "—", note: "Breadth unavailable in this snapshot.", elaboration: "" };
+  }
+  if (p200 >= 50) {
+    return {
+      label: "BROAD STRENGTH",
+      note: "Most stocks are above both their 50- and 200-day averages — participation is wide.",
+      elaboration:
+        "Most stocks participating on both timeframes usually reflects a market where broad, " +
+        "index-level exposure has been rewarded, not just selective picks. Still, breadth has " +
+        "~zero forward predictive power on IDX historically — a broad picture today says " +
+        "nothing about tomorrow, so this describes where the market has been, not where it's going.",
+    };
+  }
+  if (p50 >= 50 && p200 < 35) {
+    return {
+      label: "EARLY RECOVERY",
+      note: `Near-term breadth is broad (${Math.round(p50)}% above 50-day), but ${Math.round(100 - p200)}% of stocks are still below their 200-day average — a young, structurally-incomplete recovery.`,
+      elaboration:
+        `With ${Math.round(p50)}% of stocks above their 50-day average but only ${Math.round(p200)}% ` +
+        "above their 200-day average, near-term momentum is broadening but the recovery hasn't " +
+        "proven itself structurally yet. Historically this pattern favors selective, " +
+        "name-by-name setups over broad index-level conviction — but breadth alone has shown " +
+        "~zero forward predictive power on IDX, so treat this as context, not a signal.",
+    };
+  }
+  if (p50 < 40 && p200 < 30) {
+    return {
+      label: "BROADLY WEAK",
+      note: "Both short- and long-term breadth are thin — the typical stock is in a downtrend.",
+      elaboration:
+        "With both short- and long-term participation this thin, the typical stock is being " +
+        "sold off rather than rotated, and staying selective (or in cash) is more defensible " +
+        "than broad exposure. As always, breadth doesn't forecast a bottom or a further leg " +
+        "down — it only confirms today's damage is broad, not narrow.",
+    };
+  }
+  if (p50 < 45 && p200 >= 35) {
+    return {
+      label: "COOLING",
+      note: "Long-term breadth is holding up but near-term participation is fading.",
+      elaboration:
+        "Long-term breadth holding while near-term participation fades usually marks a pause " +
+        "or rotation inside an established trend, not a reversal by itself — worth watching " +
+        "whether the 20-day slope confirms or reverses this. Not a timing signal on its own; " +
+        "breadth doesn't predict which way a cooling phase resolves on IDX.",
+    };
+  }
+  return {
+    label: "MIXED",
+    note: `Short-term breadth ${Math.round(p50)}%, structural breadth ${Math.round(p200)}% — the two honestly disagree.`,
+    elaboration:
+      "Short-term and structural breadth disagree enough that neither a clean 'broad strength' " +
+      "nor 'broad weakness' read applies — conditions likely vary a lot by ticker and sector " +
+      "right now, so leaning on individual setups is probably more useful than forcing a " +
+      "single market-wide label. This describes the current split, not a forecast of which " +
+      "side resolves it.",
+  };
 }
 
 // n200 always equals universeSize by construction (the fixed liquid universe is
