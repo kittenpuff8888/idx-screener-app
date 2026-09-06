@@ -92,6 +92,29 @@ def run_stage(label: str, command: list[str]) -> None:
     subprocess.run(command, cwd=ROOT, check=True)
 
 
+def session_data_is_ready(market_date: str) -> bool:
+    """Cheap probe for whether yfinance has actually published `market_date`'s
+    session yet -- one index symbol instead of running the full ~1.5h,
+    963-ticker pipeline just to discover it isn't ready. IHSG updates as
+    early as any IDX symbol, since it's an aggregate of the same session."""
+    import yfinance as yf
+    from datetime import date
+
+    exclusive_end = (date.fromisoformat(market_date) + timedelta(days=1)).isoformat()
+    frame = yf.download(
+        "^JKSE",
+        start=market_date,
+        end=exclusive_end,
+        interval="1d",
+        auto_adjust=False,
+        progress=False,
+        threads=False,
+    )
+    if frame.empty:
+        return False
+    return frame.index[-1].date().isoformat() == market_date
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Update the latest completed IDX dataset.")
     parser.add_argument("--timezone", default="Asia/Jakarta")
@@ -126,6 +149,15 @@ def main() -> None:
     if manifest_has_date(market_date, MANIFEST):
         append_log("NO_CHANGE", market_date, "Dataset already published; last successful snapshot preserved.")
         print(f"{market_date} is already published; no files were overwritten.")
+        return
+
+    if not args.market_date and not session_data_is_ready(market_date):
+        message = (
+            f"{market_date} session not yet published upstream (checked IHSG); "
+            "skipping this attempt without running the full pipeline. Retried at the next scheduled slot."
+        )
+        append_log("NO_DATA", market_date, message)
+        print(f"[update_daily] {message}", flush=True)
         return
 
     try:
