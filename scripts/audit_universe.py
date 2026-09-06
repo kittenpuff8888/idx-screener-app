@@ -25,7 +25,8 @@ def _load(p: Path):
 
 def main() -> None:
     manifest = _load(DATA / "manifest.json") or {}
-    md = manifest.get("latestMarketDate") or manifest.get("latest")
+    entry_dates = [e.get("marketDate") for e in (manifest.get("dates") or []) if e.get("marketDate")]
+    md = (max(entry_dates) if entry_dates else None) or manifest.get("latestMarketDate") or manifest.get("latest")
     tech = (_load(DATA / "dates" / md / "technical.json") or {}).get("records") or {}
     universe = set(tech.keys())
 

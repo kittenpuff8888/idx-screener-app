@@ -454,7 +454,13 @@ def main() -> None:
     args = ap.parse_args()
 
     manifest = _load(DATA / "manifest.json") or {}
-    market_date = args.date or manifest.get("latestMarketDate") or manifest.get("latest")
+    entry_dates = [e.get("marketDate") for e in (manifest.get("dates") or []) if e.get("marketDate")]
+    market_date = (
+        args.date
+        or (max(entry_dates) if entry_dates else None)
+        or manifest.get("latestMarketDate")
+        or manifest.get("latest")
+    )
     tech_all = (_load(DATA / "dates" / market_date / "technical.json") or {}).get("records") or {}
     ohlcv_dir = latest_dir(DATA / "ohlcv")
     if not ohlcv_dir or not tech_all:
