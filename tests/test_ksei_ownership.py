@@ -2,22 +2,13 @@ import json
 import unittest
 from pathlib import Path
 
-from scripts.export_ksei_ownership import compare, parse_investors
+from scripts.export_ksei_ownership import compare
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class KseiOwnershipTests(unittest.TestCase):
-    def test_investor_parser_accepts_optional_percent_sign(self):
-        rows = parse_investors(
-            "1. HOLDER ONE - Corporate - 51.25%\n"
-            "2. HOLDER TWO - Individual - 2.5"
-        )
-        self.assertEqual([item["percentage"] for item in rows], [51.25, 2.5])
-        self.assertEqual([item["rank"] for item in rows], [1, 2])
-        self.assertEqual(rows[0]["originalLine"], "1. HOLDER ONE - Corporate - 51.25%")
-
     def test_comparison_does_not_invent_changes(self):
         record = {
             "ticker": "TEST",
@@ -42,19 +33,22 @@ class KseiOwnershipTests(unittest.TestCase):
         ksei = ROOT / "docs" / "data" / "ksei"
         manifest = json.loads((ksei / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["latestAsOf"], max(manifest["availableDates"]))
+        # Older dated archives (from the retired multi-file source) stay valid
+        # published history even after the single-workbook rebuild -- they're
+        # what gives docs/data/ksei/trend.json more than one point.
         self.assertIn("2026-05-14", manifest["availableDates"])
         latest = json.loads((ksei / "latest.json").read_text(encoding="utf-8"))
         self.assertEqual(latest["asOf"], manifest["latestAsOf"])
         self.assertGreater(latest["summary"]["totalIssuers"], 900)
         self.assertGreater(len(latest["investorDirectory"]), 5000)
-        self.assertEqual(latest["schemaVersion"], 3)
-        self.assertIn("changesByTicker", latest)
-        self.assertIn("changesByInvestor", latest)
+        self.assertEqual(latest["schemaVersion"], 4)
         self.assertIn("schemaWarnings", latest)
+        issuers_with_investors = [r for r in latest["records"] if r["investors"]]
+        self.assertGreater(len(issuers_with_investors), 900)
         self.assertTrue(
             all(
                 "rank" in row and "originalLine" in row
-                for row in latest["records"][0]["investors"]
+                for row in issuers_with_investors[0]["investors"]
             )
         )
 
@@ -76,6 +70,29 @@ class KseiOwnershipTests(unittest.TestCase):
             sectors.get("Others", 0),
             total * 0.25,
             "more than a quarter of issuers are unclassified - sector join likely broke",
+        )
+
+    def test_ticker_list_and_konglo_groups_regenerated(self):
+        # Guards the single-workbook rebuild: idx-listed.json (every yfinance
+        # fetch's universe) and index-definitions.json's Konglo groups both
+        # come from data_sources/ksei-data-source.xlsx now, not hand-maintained
+        # JSON -- a broken join here would silently shrink the scanned universe
+        # or empty out every Konglo group.
+        listed = json.loads((ROOT / "data_sources" / "idx-listed.json").read_text(encoding="utf-8"))
+        self.assertGreater(listed["count"], 900)
+        self.assertEqual(len(listed["records"]), listed["count"])
+        self.assertTrue(all(r["ticker"] for r in listed["records"]))
+
+        definitions = json.loads((ROOT / "data_sources" / "index-definitions.json").read_text(encoding="utf-8"))
+        konglo = definitions.get("konglo") or {}
+        self.assertGreater(len(konglo), 20)
+        self.assertTrue(all(row.get("ticker") for group in konglo.values() for row in group))
+
+        latest = json.loads((ROOT / "docs" / "data" / "ksei" / "latest.json").read_text(encoding="utf-8"))
+        weighted = sum(1 for r in latest["records"] if r.get("idxSectorWeight") is not None)
+        self.assertGreater(
+            weighted, latest["summary"]["totalIssuers"] * 0.5,
+            "most issuers should carry a real published sector-index weight now",
         )
 
 

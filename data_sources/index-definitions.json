@@ -4,940 +4,817 @@
   "konglo": {
     "Agung Sedayu Group": [
       {
-        "ticker": "PANI",
-        "category": "main"
+        "ticker": "PANI"
       },
       {
-        "ticker": "CBDK",
-        "category": "main"
+        "ticker": "CBDK"
       },
       {
-        "ticker": "ERAA",
-        "category": "small"
+        "ticker": "ERAA"
       },
       {
-        "ticker": "ERAL",
-        "category": "small"
+        "ticker": "ERAL"
       },
       {
-        "ticker": "PDPP",
-        "category": "sharing"
+        "ticker": "PDPP"
       },
       {
-        "ticker": "INPC",
-        "category": "sharing"
+        "ticker": "INPC"
       },
       {
-        "ticker": "JIHD",
-        "category": "sharing"
+        "ticker": "JIHD"
       }
     ],
     "Alfa Corp": [
       {
-        "ticker": "AMRT",
-        "category": "main"
+        "ticker": "AMRT"
       },
       {
-        "ticker": "MIDI",
-        "category": "main"
+        "ticker": "MIDI"
       },
       {
-        "ticker": "BLOG",
-        "category": "small"
+        "ticker": "BLOG"
       },
       {
-        "ticker": "BANK",
-        "category": "sharing"
+        "ticker": "BANK"
       },
       {
-        "ticker": "LAJU",
-        "category": "sharing"
+        "ticker": "LAJU"
       }
     ],
     "Aneka Kimia Raya Group (AKR)": [
       {
-        "ticker": "AKRA",
-        "category": "main"
+        "ticker": "AKRA"
       }
     ],
     "Artha Graha Group": [
       {
-        "ticker": "INPC",
-        "category": "small"
+        "ticker": "INPC"
       },
       {
-        "ticker": "JIHD",
-        "category": "small"
+        "ticker": "JIHD"
       },
       {
-        "ticker": "ECII",
-        "category": "small"
+        "ticker": "ECII"
       },
       {
-        "ticker": "TRUS",
-        "category": "small"
+        "ticker": "TRUS"
       }
     ],
-    "Astra – Jardine Matheson Corp.": [
+    "Astra - Jardine Matheson Corp.": [
       {
-        "ticker": "ASII",
-        "category": "main"
+        "ticker": "ASII"
       },
       {
-        "ticker": "UNTR",
-        "category": "main"
+        "ticker": "UNTR"
       },
       {
-        "ticker": "AALI",
-        "category": "main"
+        "ticker": "AALI"
       },
       {
-        "ticker": "AUTO",
-        "category": "main"
+        "ticker": "AUTO"
       },
       {
-        "ticker": "ASGR",
-        "category": "small"
+        "ticker": "ASGR"
       },
       {
-        "ticker": "ACST",
-        "category": "small"
+        "ticker": "ACST"
       },
       {
-        "ticker": "HERO",
-        "category": "small"
+        "ticker": "HERO"
       },
       {
-        "ticker": "HEAL",
-        "category": "sharing"
+        "ticker": "HEAL"
       },
       {
-        "ticker": "ARKO",
-        "category": "sharing"
+        "ticker": "ARKO"
       }
     ],
     "Bakrie Group": [
       {
-        "ticker": "BUMI",
-        "category": "main"
+        "ticker": "BUMI"
       },
       {
-        "ticker": "BRMS",
-        "category": "main"
+        "ticker": "BRMS"
       },
       {
-        "ticker": "VKTR",
-        "category": "main"
+        "ticker": "VKTR"
       },
       {
-        "ticker": "BNBR",
-        "category": "main"
+        "ticker": "BNBR"
       },
       {
-        "ticker": "ENRG",
-        "category": "main"
+        "ticker": "ENRG"
       },
       {
-        "ticker": "DEWA",
-        "category": "main"
+        "ticker": "DEWA"
       },
       {
-        "ticker": "MDIA",
-        "category": "small"
+        "ticker": "MDIA"
       },
       {
-        "ticker": "VIVA",
-        "category": "small"
+        "ticker": "VIVA"
       },
       {
-        "ticker": "UNSP",
-        "category": "small"
+        "ticker": "UNSP"
       },
       {
-        "ticker": "BTEL",
-        "category": "small"
+        "ticker": "BTEL"
       },
       {
-        "ticker": "ELTY",
-        "category": "small"
+        "ticker": "ELTY"
+      },
+      {
+        "ticker": "KOTA"
       }
     ],
-    "Barito Group (Prajogo Pangestu)": [
+    "Barito Group (PP)": [
       {
-        "ticker": "BRPT",
-        "category": "main"
+        "ticker": "BRPT"
       },
       {
-        "ticker": "BREN",
-        "category": "main"
+        "ticker": "BREN"
       },
       {
-        "ticker": "TPIA",
-        "category": "main"
+        "ticker": "TPIA"
       },
       {
-        "ticker": "CUAN",
-        "category": "main"
+        "ticker": "CUAN"
       },
       {
-        "ticker": "PTRO",
-        "category": "main"
+        "ticker": "PTRO"
       },
       {
-        "ticker": "CDIA",
-        "category": "main"
+        "ticker": "CDIA"
       },
       {
-        "ticker": "RATU",
-        "category": "sharing"
+        "ticker": "RATU"
       },
       {
-        "ticker": "SSIA",
-        "category": "sharing"
+        "ticker": "SSIA"
       }
     ],
     "Bayan Resources Group": [
       {
-        "ticker": "BYAN",
-        "category": "main"
+        "ticker": "BYAN"
       },
       {
-        "ticker": "TRJA",
-        "category": "small"
+        "ticker": "TRJA"
       },
       {
-        "ticker": "MYOH",
-        "category": "small"
+        "ticker": "MYOH"
       },
       {
-        "ticker": "VOKS",
-        "category": "sharing"
+        "ticker": "VOKS"
       },
       {
-        "ticker": "TOTL",
-        "category": "sharing"
+        "ticker": "TOTL"
       }
     ],
     "Charoen Pokphand Group": [
       {
-        "ticker": "CPIN",
-        "category": "main"
+        "ticker": "CPIN"
       },
       {
-        "ticker": "CPRO",
-        "category": "small"
+        "ticker": "CPRO"
       }
     ],
     "Ciputra Group": [
       {
-        "ticker": "CTRA",
-        "category": "main"
+        "ticker": "CTRA"
       }
     ],
-    "CT Corp (Chairul Tanjung)": [
+    "CT Corp": [
       {
-        "ticker": "MEGA",
-        "category": "main"
+        "ticker": "MEGA"
       },
       {
-        "ticker": "BBHI",
-        "category": "main"
+        "ticker": "BBHI"
       },
       {
-        "ticker": "GIAA",
-        "category": "sharing"
+        "ticker": "GIAA"
       }
     ],
-    "Djarum Group (Hartono Brothers)": [
+    "Djarum Group": [
       {
-        "ticker": "BBCA",
-        "category": "main"
+        "ticker": "BBCA"
       },
       {
-        "ticker": "TOWR",
-        "category": "main"
+        "ticker": "TOWR"
       },
       {
-        "ticker": "BELI",
-        "category": "main"
+        "ticker": "BELI"
       },
       {
-        "ticker": "SUPR",
-        "category": "main"
+        "ticker": "SUPR"
       },
       {
-        "ticker": "RANC",
-        "category": "small"
+        "ticker": "RANC"
       },
       {
-        "ticker": "IBST",
-        "category": "small"
+        "ticker": "IBST"
       },
       {
-        "ticker": "DATA",
-        "category": "sharing"
+        "ticker": "DATA"
       },
       {
-        "ticker": "SSIA",
-        "category": "sharing"
+        "ticker": "SSIA"
       },
       {
-        "ticker": "HEAL",
-        "category": "sharing"
+        "ticker": "HEAL"
       },
       {
-        "ticker": "ARKO",
-        "category": "sharing"
+        "ticker": "ARKO"
       }
     ],
-    "Emtek Group (Elang Mahkota Teknologi)": [
+    "Emtek Group": [
       {
-        "ticker": "EMTK",
-        "category": "main"
+        "ticker": "EMTK"
       },
       {
-        "ticker": "SCMA",
-        "category": "main"
+        "ticker": "SCMA"
       },
       {
-        "ticker": "BUKA",
-        "category": "main"
+        "ticker": "BUKA"
       },
       {
-        "ticker": "ANJT",
-        "category": "small"
+        "ticker": "ANJT"
       },
       {
-        "ticker": "CASS",
-        "category": "small"
+        "ticker": "CASS"
       }
     ],
     "First Resources": [
       {
-        "ticker": "FAPA",
-        "category": "main"
+        "ticker": "FAPA"
       },
       {
-        "ticker": "ANJT",
-        "category": "small"
+        "ticker": "ANJT"
       }
     ],
     "FKS Group": [
       {
-        "ticker": "FISH",
-        "category": "main"
+        "ticker": "FISH"
       },
       {
-        "ticker": "AISA",
-        "category": "small"
+        "ticker": "AISA"
       }
     ],
-    "Gajah Tunggal – MAP Group": [
+    "Gajah Tunggal - MAP Group": [
       {
-        "ticker": "MAPA",
-        "category": "main"
+        "ticker": "MAPA"
       },
       {
-        "ticker": "MAPI",
-        "category": "main"
+        "ticker": "MAPI"
       },
       {
-        "ticker": "BGTG",
-        "category": "small"
+        "ticker": "BGTG"
       },
       {
-        "ticker": "GJTL",
-        "category": "small"
+        "ticker": "GJTL"
       },
       {
-        "ticker": "GSMF",
-        "category": "small"
+        "ticker": "GSMF"
       },
       {
-        "ticker": "MAPB",
-        "category": "small"
+        "ticker": "MAPB"
       },
       {
-        "ticker": "ADMG",
-        "category": "small"
+        "ticker": "ADMG"
       }
     ],
     "Garuda Food": [
       {
-        "ticker": "GOOD",
-        "category": "main"
+        "ticker": "GOOD"
       },
       {
-        "ticker": "KEJU",
-        "category": "small"
+        "ticker": "KEJU"
       }
     ],
     "Gunung Sewu Group | Sequis": [
       {
-        "ticker": "SIPD",
-        "category": "small"
+        "ticker": "SIPD"
       }
     ],
     "Harita Group": [
       {
-        "ticker": "NCKL",
-        "category": "main"
+        "ticker": "NCKL"
       },
       {
-        "ticker": "CITA",
-        "category": "main"
+        "ticker": "CITA"
       },
       {
-        "ticker": "TIRT",
-        "category": "small"
+        "ticker": "TIRT"
       }
     ],
     "Harum Energy Group": [
       {
-        "ticker": "HRUM",
-        "category": "main"
+        "ticker": "HRUM"
       }
     ],
     "Indika Group": [
       {
-        "ticker": "INDY",
-        "category": "main"
+        "ticker": "INDY"
       }
     ],
     "Japfa Group": [
       {
-        "ticker": "JPFA",
-        "category": "main"
+        "ticker": "JPFA"
       }
     ],
-    "Karunia Prima Nastari (KPN) – Wilmar Corp.": [
+    "Jhonlin Group (H. Isam)": [
       {
-        "ticker": "CMNT",
-        "category": "main"
+        "ticker": "PACK"
       },
       {
-        "ticker": "CEKA",
-        "category": "small"
+        "ticker": "JARR"
+      },
+      {
+        "ticker": "PGUN"
+      },
+      {
+        "ticker": "TEBE"
+      },
+      {
+        "ticker": "FAST"
+      }
+    ],
+    "Kalbe": [
+      {
+        "ticker": "KLBF"
+      },
+      {
+        "ticker": "EPMT"
+      },
+      {
+        "ticker": "IGAR"
+      },
+      {
+        "ticker": "MIKA"
       }
     ],
     "Kawan Lama Group": [
       {
-        "ticker": "ACES",
-        "category": "small"
+        "ticker": "ACES"
+      }
+    ],
+    "KPN - Wilmar Corp.": [
+      {
+        "ticker": "CMNT"
+      },
+      {
+        "ticker": "CEKA"
       }
     ],
     "Lippo Group": [
       {
-        "ticker": "MLPT",
-        "category": "main"
+        "ticker": "MLPT"
       },
       {
-        "ticker": "MLPL",
-        "category": "small"
+        "ticker": "MLPL"
       },
       {
-        "ticker": "LPPF",
-        "category": "small"
+        "ticker": "LPPF"
       },
       {
-        "ticker": "MPPA",
-        "category": "small"
+        "ticker": "MPPA"
       },
       {
-        "ticker": "KBLV",
-        "category": "small"
+        "ticker": "KBLV"
       },
       {
-        "ticker": "LPIN",
-        "category": "small"
+        "ticker": "LPIN"
       },
       {
-        "ticker": "LPLI",
-        "category": "small"
+        "ticker": "LPLI"
       },
       {
-        "ticker": "LPPS",
-        "category": "small"
+        "ticker": "LPPS"
       },
       {
-        "ticker": "LPCK",
-        "category": "small"
+        "ticker": "LPCK"
       },
       {
-        "ticker": "LPKR",
-        "category": "small"
+        "ticker": "LPKR"
       },
       {
-        "ticker": "GMTD",
-        "category": "small"
+        "ticker": "GMTD"
       },
       {
-        "ticker": "LPGI",
-        "category": "sharing"
+        "ticker": "LPGI"
       },
       {
-        "ticker": "NOBU",
-        "category": "sharing"
+        "ticker": "NOBU"
       },
       {
-        "ticker": "SILO",
-        "category": "sharing"
+        "ticker": "SILO"
       }
     ],
     "Mandiri Coal Group": [
       {
-        "ticker": "MCOL",
-        "category": "main"
+        "ticker": "MCOL"
       },
       {
-        "ticker": "MAHA",
-        "category": "small"
+        "ticker": "MAHA"
       }
     ],
     "Mayapada Group": [
       {
-        "ticker": "SRAJ",
-        "category": "main"
+        "ticker": "SRAJ"
       },
       {
-        "ticker": "MPRO",
-        "category": "main"
+        "ticker": "MPRO"
       },
       {
-        "ticker": "MAYA",
-        "category": "small"
+        "ticker": "MAYA"
       },
       {
-        "ticker": "SONA",
-        "category": "small"
+        "ticker": "SONA"
       }
     ],
     "Mayora Group": [
       {
-        "ticker": "MYOR",
-        "category": "main"
+        "ticker": "MYOR"
       }
     ],
-    "Medco – Amman Mineral": [
+    "Medco - Amman Mineral": [
       {
-        "ticker": "MEDC",
-        "category": "main"
+        "ticker": "MEDC"
       },
       {
-        "ticker": "AMMN",
-        "category": "main"
+        "ticker": "AMMN"
       }
     ],
     "Meratus Line": [
       {
-        "ticker": "KARW",
-        "category": "small"
+        "ticker": "KARW"
+      }
+    ],
+    "MNC": [
+      {
+        "ticker": "BHIT"
+      },
+      {
+        "ticker": "BMTR"
+      },
+      {
+        "ticker": "IATA"
+      },
+      {
+        "ticker": "BCAP"
+      },
+      {
+        "ticker": "BABP"
+      },
+      {
+        "ticker": "KPIG"
+      },
+      {
+        "ticker": "MNCN"
+      },
+      {
+        "ticker": "MSKY"
+      },
+      {
+        "ticker": "CMNP"
       }
     ],
     "Pakuwon Group": [
       {
-        "ticker": "PWON",
-        "category": "main"
+        "ticker": "PWON"
       },
       {
-        "ticker": "SAME",
-        "category": "sharing"
+        "ticker": "SAME"
+      }
+    ],
+    "Panin Group": [
+      {
+        "ticker": "PNBN"
+      },
+      {
+        "ticker": "PNIN"
+      },
+      {
+        "ticker": "PNLF"
+      },
+      {
+        "ticker": "PNBS"
+      },
+      {
+        "ticker": "VRNA"
+      },
+      {
+        "ticker": "AMAG"
+      },
+      {
+        "ticker": "PANS"
+      },
+      {
+        "ticker": "CFIN"
       }
     ],
     "Raja Garuda Mas | Royal Golden Eagle Group": [
       {
-        "ticker": "INRU",
-        "category": "small"
+        "ticker": "INRU"
       }
     ],
     "Rajawali Corp": [
       {
-        "ticker": "ARCI",
-        "category": "main"
+        "ticker": "ARCI"
       },
       {
-        "ticker": "BWPT",
-        "category": "small"
+        "ticker": "BWPT"
       },
       {
-        "ticker": "FORU",
-        "category": "small"
+        "ticker": "FORU"
       }
     ],
-    "Rukun Raharja Group (Happy Hapsoro)": [
+    "Rukun Raharja Group (HH)": [
       {
-        "ticker": "RAJA",
-        "category": "main"
+        "ticker": "RAJA"
       },
       {
-        "ticker": "RATU",
-        "category": "main"
+        "ticker": "RATU"
       },
       {
-        "ticker": "BUVA",
-        "category": "main"
+        "ticker": "BUVA"
       },
       {
-        "ticker": "ARCI",
-        "category": "small"
+        "ticker": "ARCI"
       },
       {
-        "ticker": "PSKT",
-        "category": "small"
+        "ticker": "PSKT"
       },
       {
-        "ticker": "PADI",
-        "category": "small"
+        "ticker": "PADI"
       },
       {
-        "ticker": "MINA",
-        "category": "small"
+        "ticker": "MINA"
       },
       {
-        "ticker": "SINI",
-        "category": "small"
+        "ticker": "SINI"
       },
       {
-        "ticker": "PTRO",
-        "category": "sharing"
+        "ticker": "PTRO"
       },
       {
-        "ticker": "CBRE",
-        "category": "sharing"
+        "ticker": "CBRE"
       }
     ],
     "Salim Group": [
       {
-        "ticker": "INDF",
-        "category": "main"
+        "ticker": "INDF"
       },
       {
-        "ticker": "ICBP",
-        "category": "main"
+        "ticker": "ICBP"
       },
       {
-        "ticker": "DNET",
-        "category": "main"
+        "ticker": "DNET"
       },
       {
-        "ticker": "AMMN",
-        "category": "main"
+        "ticker": "AMMN"
       },
       {
-        "ticker": "BINA",
-        "category": "main"
+        "ticker": "BINA"
       },
       {
-        "ticker": "LSIP",
-        "category": "small"
+        "ticker": "LSIP"
       },
       {
-        "ticker": "SIMP",
-        "category": "small"
+        "ticker": "SIMP"
       },
       {
-        "ticker": "IMAS",
-        "category": "small"
+        "ticker": "IMAS"
       },
       {
-        "ticker": "IMJS",
-        "category": "small"
+        "ticker": "IMJS"
       },
       {
-        "ticker": "DCII",
-        "category": "sharing"
+        "ticker": "DCII"
       },
       {
-        "ticker": "PANI",
-        "category": "sharing"
+        "ticker": "PANI"
       },
       {
-        "ticker": "MEDC",
-        "category": "sharing"
+        "ticker": "MEDC"
       },
       {
-        "ticker": "EMTK",
-        "category": "sharing"
+        "ticker": "EMTK"
       },
       {
-        "ticker": "MEGA",
-        "category": "sharing"
+        "ticker": "MEGA"
       },
       {
-        "ticker": "BUMI",
-        "category": "sharing"
+        "ticker": "BUMI"
       },
       {
-        "ticker": "BRMS",
-        "category": "sharing"
+        "ticker": "BRMS"
       },
       {
-        "ticker": "DEWA",
-        "category": "sharing"
+        "ticker": "DEWA"
       },
       {
-        "ticker": "UNIC",
-        "category": "sharing"
+        "ticker": "UNIC"
       },
       {
-        "ticker": "FAST",
-        "category": "sharing"
+        "ticker": "FAST"
       },
       {
-        "ticker": "JECC",
-        "category": "sharing"
+        "ticker": "JECC"
       }
     ],
     "Sampoerna Group": [
       {
-        "ticker": "SGRO",
-        "category": "small"
+        "ticker": "SGRO"
       }
     ],
     "Sinarmas Group": [
       {
-        "ticker": "DSSA",
-        "category": "main"
+        "ticker": "DSSA"
       },
       {
-        "ticker": "GEMS",
-        "category": "main"
+        "ticker": "GEMS"
       },
       {
-        "ticker": "SMMA",
-        "category": "main"
+        "ticker": "SMMA"
       },
       {
-        "ticker": "BSDE",
-        "category": "main"
+        "ticker": "BSDE"
       },
       {
-        "ticker": "INKP",
-        "category": "main"
+        "ticker": "INKP"
       },
       {
-        "ticker": "TKIM",
-        "category": "main"
+        "ticker": "TKIM"
       },
       {
-        "ticker": "EXCL",
-        "category": "main"
+        "ticker": "EXCL"
       },
       {
-        "ticker": "SMAR",
-        "category": "main"
+        "ticker": "SMAR"
       },
       {
-        "ticker": "LIFE",
-        "category": "main"
+        "ticker": "LIFE"
       },
       {
-        "ticker": "BSIM",
-        "category": "main"
+        "ticker": "BSIM"
       },
       {
-        "ticker": "DUTI",
-        "category": "small"
+        "ticker": "DUTI"
       },
       {
-        "ticker": "SMDM",
-        "category": "small"
+        "ticker": "SMDM"
       },
       {
-        "ticker": "PYFA",
-        "category": "small"
+        "ticker": "PYFA"
       },
       {
-        "ticker": "DMAS",
-        "category": "small"
+        "ticker": "DMAS"
       },
       {
-        "ticker": "PLIN",
-        "category": "sharing"
+        "ticker": "PLIN"
       }
     ],
     "Summarecon Group": [
       {
-        "ticker": "SMRA",
-        "category": "main"
+        "ticker": "SMRA"
       }
     ],
     "Sungai Budi Group": [
       {
-        "ticker": "TBLA",
-        "category": "small"
+        "ticker": "TBLA"
       },
       {
-        "ticker": "BUDI",
-        "category": "small"
+        "ticker": "BUDI"
       }
     ],
     "Tanoko Group": [
       {
-        "ticker": "RISE",
-        "category": "main"
+        "ticker": "RISE"
       },
       {
-        "ticker": "AVIA",
-        "category": "main"
+        "ticker": "AVIA"
       },
       {
-        "ticker": "CAKK",
-        "category": "small"
+        "ticker": "CAKK"
       },
       {
-        "ticker": "PEVE",
-        "category": "small"
+        "ticker": "PEVE"
       },
       {
-        "ticker": "CLEO",
-        "category": "small"
+        "ticker": "CLEO"
       },
       {
-        "ticker": "DEPO",
-        "category": "small"
+        "ticker": "DEPO"
       },
       {
-        "ticker": "ABMM",
-        "category": "sharing"
+        "ticker": "ABMM"
       },
       {
-        "ticker": "MERI",
-        "category": "sharing"
+        "ticker": "MERI"
       },
       {
-        "ticker": "BLES",
-        "category": "sharing"
+        "ticker": "BLES"
       },
       {
-        "ticker": "ZONE",
-        "category": "sharing"
+        "ticker": "ZONE"
       }
     ],
     "Tempo Scan Pacific": [
       {
-        "ticker": "TSPC",
-        "category": "main"
+        "ticker": "TSPC"
       }
     ],
-    "TNT-Saratoga-Adaro": [
+    "Thohir - Saratoga - Adaro": [
       {
-        "ticker": "ADRO",
-        "category": "main"
+        "ticker": "ADRO"
       },
       {
-        "ticker": "AADI",
-        "category": "main"
+        "ticker": "AADI"
       },
       {
-        "ticker": "ADMR",
-        "category": "main"
+        "ticker": "ADMR"
       },
       {
-        "ticker": "MDKA",
-        "category": "main"
+        "ticker": "MDKA"
       },
       {
-        "ticker": "MBMA",
-        "category": "main"
+        "ticker": "MBMA"
       },
       {
-        "ticker": "EMAS",
-        "category": "main"
+        "ticker": "EMAS"
       },
       {
-        "ticker": "ESSA",
-        "category": "main"
+        "ticker": "ESSA"
       },
       {
-        "ticker": "SRTG",
-        "category": "main"
+        "ticker": "SRTG"
       },
       {
-        "ticker": "TBIG",
-        "category": "main"
+        "ticker": "TBIG"
       },
       {
-        "ticker": "BFIN",
-        "category": "small"
+        "ticker": "BFIN"
       },
       {
-        "ticker": "TRIM",
-        "category": "small"
+        "ticker": "TRIM"
       },
       {
-        "ticker": "MPMX",
-        "category": "small"
+        "ticker": "MPMX"
       },
       {
-        "ticker": "WOMF",
-        "category": "sharing"
+        "ticker": "WOMF"
       },
       {
-        "ticker": "GOTO",
-        "category": "sharing"
+        "ticker": "GOTO"
       },
       {
-        "ticker": "PALM",
-        "category": "sharing"
+        "ticker": "PALM"
       },
       {
-        "ticker": "GHON",
-        "category": "sharing"
+        "ticker": "GHON"
       },
       {
-        "ticker": "GOLD",
-        "category": "sharing"
+        "ticker": "GOLD"
       }
     ],
     "Trakindo Group": [
       {
-        "ticker": "ABMM",
-        "category": "main"
+        "ticker": "ABMM"
       },
       {
-        "ticker": "HDFA",
-        "category": "small"
+        "ticker": "HDFA"
       },
       {
-        "ticker": "GEMS",
-        "category": "sharing"
+        "ticker": "GEMS"
       }
     ],
-    "Triputra Group – Adaro Group": [
+    "Triputra Group - Adaro": [
       {
-        "ticker": "TAPG",
-        "category": "main"
+        "ticker": "TAPG"
       },
       {
-        "ticker": "ADRO",
-        "category": "main"
+        "ticker": "ADRO"
       },
       {
-        "ticker": "ASSA",
-        "category": "small"
+        "ticker": "ASSA"
       },
       {
-        "ticker": "ESSA",
-        "category": "small"
+        "ticker": "ESSA"
       },
       {
-        "ticker": "KMTR",
-        "category": "small"
+        "ticker": "KMTR"
       },
       {
-        "ticker": "DAYA",
-        "category": "small"
+        "ticker": "DAYA"
       },
       {
-        "ticker": "ASLC",
-        "category": "small"
+        "ticker": "ASLC"
       }
     ],
     "Wings Group": [
       {
-        "ticker": "MASB",
-        "category": "small"
+        "ticker": "MASB"
       }
     ]
   },
