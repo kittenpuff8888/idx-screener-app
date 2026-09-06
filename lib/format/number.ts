@@ -29,6 +29,16 @@ export function formatPrice(value: unknown): string {
   return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 }).format(parsed);
 }
 
+/** Market Cap fields are published in billions of Rupiah — compact that for
+    a tile/table caption: billions → "258 T" / "87.7 T" / "500 B" (was a raw
+    "Rp 258.282", cramped and unreadable at small sizes). */
+export function formatMarketCapBn(value: unknown): string {
+  const parsed = asNumber(value);
+  if (parsed === null) return "—";
+  if (parsed >= 1000) return `${(parsed / 1000).toFixed(parsed >= 100000 ? 0 : 1)} T`;
+  return `${Math.round(parsed)} B`;
+}
+
 /**
  * Signed percentage for RATIO inputs (the repo's price/change/sector/screener
  * convention, e.g. 0.0176 → "+1,76%"). Input is a fraction of 1; it is scaled

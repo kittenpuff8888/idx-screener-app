@@ -246,7 +246,7 @@ export function DashboardPage() {
 
       {/* SECTORAL | KONGLO vs IHSG — side by side (design/1), interactive multi-line % return */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(420px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
-        <IndexCompareSection title="SECTORAL INDICES vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={sectoralEntries} ihsg={ihsgSeries} />
+        <IndexCompareSection title="SECTORAL INDEX vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={sectoralEntries} ihsg={ihsgSeries} />
         <IndexCompareSection title="KONGLO INDEX vs IHSG" badge="basis: % return" hint="click a series to toggle · % vs window start" entries={kongloEntries} ihsg={ihsgSeries} />
       </div>
 
