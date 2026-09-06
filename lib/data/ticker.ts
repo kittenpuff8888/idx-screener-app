@@ -42,20 +42,30 @@ export function buildResearchSummary(stock?: TechnicalRecord, ownership?: KseiIs
   ]);
 }
 
-export async function loadOhlcv(marketDate: string, ticker: string): Promise<OhlcvPayload | null> {
-  try {
-    const payload = await fetchJson<OhlcvPayload>(`/data/ohlcv/${marketDate}/${ticker.toUpperCase()}.json`);
-    // Keep the current calendar year plus the full previous one. Relative to
-    // marketDate (not a hardcoded literal) so this doesn't silently shrink at
-    // each year rollover, and long enough that "previous completed year"
-    // anchors (e.g. the price ladder's Prev Year VWAP) have a real prior-year
-    // boundary to freeze at, not just the in-progress current year.
-    const cutoff = `${Number(marketDate.slice(0, 4)) - 1}-01-01`;
+/** `docs/data/ohlcv/<date>/` is a rolling cache, not a full per-date archive
+    — most historical dates' own directories get pruned as newer ones are
+    added. Every surviving directory still holds each ticker's *cumulative*
+    row history through that date, so any later snapshot that does exist
+    covers an earlier marketDate just as well once re-clipped below. Pass
+    `fallbackDate` (e.g. the manifest's overall latest date) so a browsed
+    historical date whose own snapshot has rotated out still resolves. */
+export async function loadOhlcv(marketDate: string, ticker: string, fallbackDate?: string): Promise<OhlcvPayload | null> {
+  const cutoff = `${Number(marketDate.slice(0, 4)) - 1}-01-01`;
+  const fetchFrom = async (date: string) => {
+    const payload = await fetchJson<OhlcvPayload>(`/data/ohlcv/${date}/${ticker.toUpperCase()}.json`);
     return {
       ...payload,
       rows: (payload.rows || []).filter((row) => row.date >= cutoff && row.date <= marketDate),
     };
+  };
+  try {
+    return await fetchFrom(marketDate);
   } catch {
-    return null;
+    if (!fallbackDate || fallbackDate === marketDate) return null;
+    try {
+      return await fetchFrom(fallbackDate);
+    } catch {
+      return null;
+    }
   }
 }
