@@ -89,6 +89,164 @@ def last_valid(values: list[float | None], index: int) -> float | None:
     return values[index]
 
 
+def rolling_min(values: list[float | None], period: int) -> list[float | None]:
+    output: list[float | None] = []
+    for i in range(len(values)):
+        window = [v for v in values[max(0, i - period + 1):i + 1] if v is not None]
+        output.append(min(window) if len(window) == min(period, i + 1) and window else None)
+    return output
+
+
+def rolling_max(values: list[float | None], period: int) -> list[float | None]:
+    output: list[float | None] = []
+    for i in range(len(values)):
+        window = [v for v in values[max(0, i - period + 1):i + 1] if v is not None]
+        output.append(max(window) if len(window) == min(period, i + 1) and window else None)
+    return output
+
+
+def _swing_high_positions(values: list[float | None], window: int = 2) -> list[int]:
+    positions = []
+    for i in range(window, len(values) - window):
+        c = values[i]
+        if c is None:
+            continue
+        left = [v for v in values[i - window:i] if v is not None]
+        right = [v for v in values[i + 1:i + window + 1] if v is not None]
+        if left and right and c >= max(left) and c >= max(right):
+            positions.append(i)
+    return positions
+
+
+def _swing_low_positions(values: list[float | None], window: int = 2) -> list[int]:
+    positions = []
+    for i in range(window, len(values) - window):
+        c = values[i]
+        if c is None:
+            continue
+        left = [v for v in values[i - window:i] if v is not None]
+        right = [v for v in values[i + 1:i + window + 1] if v is not None]
+        if left and right and c <= min(left) and c <= min(right):
+            positions.append(i)
+    return positions
+
+
+def _cluster_positions(positions: list[int], max_gap: int = 6) -> list[list[int]]:
+    if not positions:
+        return []
+    clusters = [[positions[0]]]
+    for p in positions[1:]:
+        if p - clusters[-1][-1] <= max_gap:
+            clusters[-1].append(p)
+        else:
+            clusters.append([p])
+    return clusters
+
+
+def compute_rsi_divergence(
+    highs: list[float | None],
+    lows: list[float | None],
+    rsi_values: list[float | None],
+    index: int,
+    *,
+    lookback: int = 75,
+    swing_window: int = 2,
+    cluster_gap: int = 6,
+    min_separation: int = 4,
+    price_tol: float = 0.0075,
+    rsi_tol: float = 2.0,
+    max_last_swing_age: int = 20,
+) -> dict[str, str | None]:
+    """
+    Pure-Python port of rebuild_backend.IDX_Screener.divergence_signals()'s
+    lifecycle-cluster method -- ported rather than reimplemented from scratch
+    so incremental-day results match full-workbook-day results for the same
+    price action, instead of two different divergence definitions disagreeing
+    with each other on different dates for the same ticker.
+
+    Bearish = last 2 RSI-high clusters where cluster max RSI > 70.
+    Bullish = last 2 RSI-low clusters where cluster min RSI < 30.
+    Anchored at `index` (this date), not always the end of the full series.
+    """
+    empty = {"signal": None, "strength": None}
+    start = max(0, index - lookback + 1)
+    end = index + 1
+    if end - start < 25:
+        return empty
+
+    high_tail = highs[start:end]
+    low_tail = lows[start:end]
+    rsi_tail = rsi_values[start:end]
+
+    candidates = []
+
+    hi_pos = _swing_high_positions(rsi_tail, swing_window)
+    bear_valid = []
+    for cl in _cluster_positions(hi_pos, cluster_gap):
+        vals = [(p, rsi_tail[p]) for p in cl if rsi_tail[p] is not None]
+        if not vals:
+            continue
+        rep, rep_val = max(vals, key=lambda item: item[1])
+        if rep_val > 70:
+            bear_valid.append(rep)
+    if len(bear_valid) >= 2:
+        i1, i2 = bear_valid[-2], bear_valid[-1]
+        if (i2 - i1) >= min_separation and (len(rsi_tail) - 1 - i2) <= max_last_swing_age:
+            p1, p2, r1, r2 = high_tail[i1], high_tail[i2], rsi_tail[i1], rsi_tail[i2]
+            if None not in (p1, p2, r1, r2):
+                tol_abs = abs(p1) * price_tol
+                price_pat = "Higher High" if p2 > p1 + tol_abs else "Lower High" if p2 < p1 - tol_abs else "Equal High"
+                rsi_pat = "Higher High" if r2 > r1 + rsi_tol else "Lower High" if r2 < r1 - rsi_tol else "Equal High"
+                strength = None
+                if price_pat == "Higher High" and rsi_pat == "Lower High":
+                    strength = "Strong"
+                elif price_pat == "Equal High" and rsi_pat == "Lower High":
+                    strength = "Medium"
+                elif price_pat == "Higher High" and rsi_pat == "Equal High":
+                    strength = "Weak"
+                elif price_pat == "Lower High" and rsi_pat == "Higher High":
+                    strength = "Hidden"
+                if strength:
+                    candidates.append({"signal": "Bearish", "strength": strength, "age": len(rsi_tail) - 1 - i2})
+
+    lo_pos = _swing_low_positions(rsi_tail, swing_window)
+    bull_valid = []
+    for cl in _cluster_positions(lo_pos, cluster_gap):
+        vals = [(p, rsi_tail[p]) for p in cl if rsi_tail[p] is not None]
+        if not vals:
+            continue
+        rep, rep_val = min(vals, key=lambda item: item[1])
+        if rep_val < 30:
+            bull_valid.append(rep)
+    if len(bull_valid) >= 2:
+        i1, i2 = bull_valid[-2], bull_valid[-1]
+        if (i2 - i1) >= min_separation and (len(rsi_tail) - 1 - i2) <= max_last_swing_age:
+            p1, p2, r1, r2 = low_tail[i1], low_tail[i2], rsi_tail[i1], rsi_tail[i2]
+            if None not in (p1, p2, r1, r2):
+                tol_abs = abs(p1) * price_tol
+                price_pat = "Lower Low" if p2 < p1 - tol_abs else "Higher Low" if p2 > p1 + tol_abs else "Equal Low"
+                rsi_pat = "Lower Low" if r2 < r1 - rsi_tol else "Higher Low" if r2 > r1 + rsi_tol else "Equal Low"
+                strength = None
+                if price_pat == "Lower Low" and rsi_pat == "Higher Low":
+                    strength = "Strong"
+                elif price_pat == "Equal Low" and rsi_pat == "Higher Low":
+                    strength = "Medium"
+                elif price_pat == "Lower Low" and rsi_pat == "Equal Low":
+                    strength = "Weak"
+                elif price_pat == "Higher Low" and rsi_pat == "Lower Low":
+                    strength = "Hidden"
+                if strength:
+                    candidates.append({"signal": "Bullish", "strength": strength, "age": len(rsi_tail) - 1 - i2})
+
+    if not candidates:
+        return empty
+
+    strength_rank = {"Strong": 4, "Medium": 3, "Weak": 2, "Hidden": 1}
+    candidates.sort(key=lambda x: (x["age"], -strength_rank.get(x["strength"], 0)))
+    chosen = candidates[0]
+    return {"signal": chosen["signal"], "strength": chosen["strength"]}
+
+
 def round_value(value: float | None, digits: int = 4) -> float | None:
     return round(value, digits) if value is not None and math.isfinite(value) else None
 
@@ -150,6 +308,20 @@ def prepare_ticker(rows: list[dict[str, Any]]) -> dict[str, Any]:
         for line, signal in zip(macd_line, macd_signal)
     ]
     macd_histogram = ema(macd_raw_histogram, 3)
+
+    # Stochastic (14, 3, 3) -- same parameters as TradingView's built-in
+    # Stochastic study, matching rebuild_backend.IDX_Screener.compute_stochastic.
+    highs = [row["high"] for row in rows]
+    lows = [row["low"] for row in rows]
+    lowest_low_14 = rolling_min(lows, 14)
+    highest_high_14 = rolling_max(highs, 14)
+    stoch_k_raw = [
+        None if close is None or ll is None or hh is None or hh == ll
+        else 100 * (close - ll) / (hh - ll)
+        for close, ll, hh in zip(closes, lowest_low_14, highest_high_14)
+    ]
+    stoch_k = sma(stoch_k_raw, 3)
+    stoch_d = sma(stoch_k, 3)
 
     true_ranges: list[float | None] = []
     daily_ranges: list[float | None] = []
@@ -249,6 +421,10 @@ def prepare_ticker(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "monthly_vwap": monthly_vwap,
         "ibh": ibh,
         "ibl": ibl,
+        "highs": highs,
+        "lows": lows,
+        "stoch_k": stoch_k,
+        "stoch_d": stoch_d,
         "previous_week": previous_week,
         "previous_month": previous_month,
     }
@@ -299,6 +475,22 @@ def build_stock(
             macd_cross = "Dead Cross"
         else:
             macd_cross = "-"
+
+    stoch_k_value = last_valid(prepared["stoch_k"], index)
+    stoch_d_value = last_valid(prepared["stoch_d"], index)
+    prev_stoch_k = last_valid(prepared["stoch_k"], index - 1) if index else None
+    prev_stoch_d = last_valid(prepared["stoch_d"], index - 1) if index else None
+    stoch_cross = "N/A"
+    if None not in (stoch_k_value, stoch_d_value, prev_stoch_k, prev_stoch_d):
+        if prev_stoch_k <= prev_stoch_d and stoch_k_value > stoch_d_value:
+            stoch_cross = "Golden Cross"
+        elif prev_stoch_k >= prev_stoch_d and stoch_k_value < stoch_d_value:
+            stoch_cross = "Dead Cross"
+        else:
+            stoch_cross = "-"
+
+    divergence = compute_rsi_divergence(prepared["highs"], prepared["lows"], prepared["rsi"], index)
+
     vwap = last_valid(prepared["monthly_vwap"], index)
     lookback = rows[max(0, index - 20):index]
     prior_support = min((item["low"] for item in lookback if item["low"] is not None), default=row["low"])
@@ -368,6 +560,11 @@ def build_stock(
             ),
             "priceLocation": f"{internal} trend, {vwap_position.lower()}",
             "macdDetail": {"cross": macd_cross},
+            "stochDetail": {"cross": stoch_cross},
+            "rsiDetail": {
+                "divergenceSignal": divergence["signal"],
+                "divergenceStrength": divergence["strength"],
+            },
         },
         # Fundamentals/beta don't move meaningfully day-to-day (unlike price/
         # technicals, which this function recomputes fresh from OHLCV every
