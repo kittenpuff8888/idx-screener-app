@@ -44,17 +44,23 @@ _MISSING = {"", "-", "N/A", "NA", "NONE", "NULL", "UNDEFINED", "UNKNOWN", "UNCLA
 
 
 def normalize_idx_sector(value: Any, fallback: Any = None) -> str:
-    """Return one of the 11 official IDX sector codes or ``Others``."""
-    candidate = fallback if value is None else value
-    if candidate is None:
-        return "Others"
-    normalized = " ".join(str(candidate).strip().upper().split())
-    if normalized in _MISSING:
-        return "Others"
-    if normalized in OFFICIAL_IDX_SECTORS:
-        return normalized
-    if normalized in _ALIASES:
-        return _ALIASES[normalized]
+    """Return one of the 11 official IDX sector codes or ``Others``.
+
+    Tries `value` first, then `fallback` — but a candidate that's merely the
+    workbook's missing-value placeholder ("-", "", "N/A", ...) must be treated
+    as absent just like `None`, or `fallback` never actually gets a turn: the
+    real "IDX Sector" column virtually always reads "-" rather than `None`.
+    """
+    for candidate in (value, fallback):
+        if candidate is None:
+            continue
+        normalized = " ".join(str(candidate).strip().upper().split())
+        if normalized in _MISSING:
+            continue
+        if normalized in OFFICIAL_IDX_SECTORS:
+            return normalized
+        if normalized in _ALIASES:
+            return _ALIASES[normalized]
     return "Others"
 
 

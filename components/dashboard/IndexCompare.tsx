@@ -91,12 +91,18 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
   }, [universe]);
 
   const constituents = useMemo(() => {
+    // Every real constituent is listed — a ticker with no published Market
+    // Cap still appears (MKT CAP reads "—" for it) rather than being dropped,
+    // same "don't silently shrink the real membership" rule Market Map
+    // follows for its own treemap tiles. Sorted by market cap descending;
+    // the mcap-less tail keeps the group's original constituent order.
     const rows = (entry.group?.constituents || []).map((c) => {
       const raw = bundle?.fundamentals.get(c.ticker.toUpperCase()) as JsonRecord | undefined;
-      return { ticker: c.ticker.toUpperCase(), mcap: asNumber(raw?.["Market Cap"]) ?? 0 };
-    }).filter((r) => r.mcap > 0);
-    rows.sort((a, b) => b.mcap - a.mcap);
-    return rows; // all constituents of the index, not just the top few
+      return { ticker: c.ticker.toUpperCase(), mcap: asNumber(raw?.["Market Cap"]) };
+    });
+    const withCap = rows.filter((r) => r.mcap !== null && r.mcap > 0).sort((a, b) => (b.mcap as number) - (a.mcap as number));
+    const withoutCap = rows.filter((r) => r.mcap === null || r.mcap <= 0);
+    return [...withCap, ...withoutCap];
   }, [entry, bundle]);
   const totalConstituents = entry.group?.constituents?.length ?? 0;
   const mcapByTicker = useMemo(() => new Map(constituents.map((c) => [c.ticker, c.mcap])), [constituents]);
@@ -124,7 +130,7 @@ function DetailModal({ entry, steps, marketDate, onClose }: { entry: CompareEntr
       {area}
       {tableRows.length ? (
         <div style={{ marginTop: 16 }}>
-          <div style={{ ...KICKER, marginBottom: 9 }}>CONSTITUENTS · {tableRows.length}{totalConstituents > tableRows.length ? ` OF ${totalConstituents}` : ""} · BY MARKET CAP</div>
+          <div style={{ ...KICKER, marginBottom: 9 }}>CONSTITUENTS · {totalConstituents} · BY MARKET CAP</div>
           <UniverseTable
             rows={tableRows}
             onOpenTicker={(t) => { onClose(); openTicker(t); }}
