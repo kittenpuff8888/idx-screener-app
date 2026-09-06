@@ -127,6 +127,11 @@ type TechnicalRecord = {
     rsiDetail?: { cross?: unknown; divergenceSignal?: unknown; divergenceStrength?: unknown };
     stochDetail?: { cross?: unknown };
   };
+  // On incremental-day snapshots (build_historical_snapshots.py's lighter
+  // path, roughly half of all archived dates), ibh/ibl live here instead of
+  // technical.marketProfile -- that nested object doesn't exist at all on
+  // those days. Read both; prefer marketProfile, fall back to levels.
+  levels?: { ibh?: unknown; ibl?: unknown };
 };
 type TechnicalDoc = { records?: Record<string, TechnicalRecord> };
 type TechExtra = {
@@ -579,8 +584,8 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
     const macdCrossRaw = str(rec.technical?.macdDetail?.cross);
     const rsiDivRaw = str(rec.technical?.rsiDetail?.divergenceSignal);
     ibMap[ticker.toUpperCase()] = {
-      ibh: num(mp?.ibh),
-      ibl: num(mp?.ibl),
+      ibh: num(mp?.ibh) ?? num(rec.levels?.ibh),
+      ibl: num(mp?.ibl) ?? num(rec.levels?.ibl),
       macdCross: macdCrossRaw && macdCrossRaw !== "N/A" ? macdCrossRaw : null,
       rsiDivergence: rsiDivRaw || null,
       rsiDivergenceHidden: str(rec.technical?.rsiDetail?.divergenceStrength) === "Hidden",
