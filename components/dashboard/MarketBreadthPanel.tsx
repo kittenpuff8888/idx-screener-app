@@ -76,6 +76,9 @@ export function MarketBreadthPanel({ data, asOf }: { data: MarketBreadth | null;
       <div>
         <div style={{ fontFamily: MONO, fontSize: 22, fontWeight: 800, letterSpacing: "-.01em" }}>{regime.label}</div>
         <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5, marginTop: 4 }}>{regime.note}</div>
+        {regime.elaboration ? (
+          <div style={{ fontSize: 10.5, color: "var(--faint)", lineHeight: 1.55, marginTop: 6 }}>{regime.elaboration}</div>
+        ) : null}
       </div>
 
       {/* Short vs long breadth — the "80% yes, 25% no" headline */}
