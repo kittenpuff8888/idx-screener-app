@@ -75,6 +75,7 @@ export interface UniverseRow {
   // true when the backend classified the current divergence as "Hidden"
   // (continuation pattern) rather than regular Strong/Medium/Weak (reversal).
   rsiDivergenceHidden: boolean;
+  stochCross: string | null; // "Golden Cross" | "Dead Cross" | null
   // engine (setups.json) join:
   score: number | null;
   hasEngineSetup: boolean;
@@ -124,6 +125,7 @@ type TechnicalRecord = {
     marketProfile?: { ibh?: unknown; ibl?: unknown };
     macdDetail?: { cross?: unknown };
     rsiDetail?: { cross?: unknown; divergenceSignal?: unknown; divergenceStrength?: unknown };
+    stochDetail?: { cross?: unknown };
   };
 };
 type TechnicalDoc = { records?: Record<string, TechnicalRecord> };
@@ -133,6 +135,7 @@ type TechExtra = {
   macdCross: string | null;
   rsiDivergence: string | null;
   rsiDivergenceHidden: boolean;
+  stochCross: string | null;
 };
 type IbMap = Record<string, TechExtra>;
 
@@ -214,6 +217,15 @@ export const SETUPS: SetupDef[] = [
     req: "Regular RSI divergence vs. price over the last ~75 sessions (lifecycle-cluster method) — bullish: price lower low, RSI higher low (reversal); bearish: price higher high, RSI lower high",
     bull: (r) => r.rsiDivergence === "Bullish" && !r.rsiDivergenceHidden,
     bear: (r) => r.rsiDivergence === "Bearish" && !r.rsiDivergenceHidden,
+  },
+  {
+    key: "stoch_golden_cross",
+    label: "Stochastic Golden Cross",
+    icon: "✦",
+    hasBear: true,
+    req: "Stochastic %K crossed above (Golden) / below (Dead) %D (14, 3, 3 — same as the chart's built-in Stochastic study)",
+    bull: (r) => r.stochCross === "Golden Cross",
+    bear: (r) => r.stochCross === "Dead Cross",
   },
   {
     key: "rsi_hidden_divergence",
@@ -489,6 +501,7 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
       macdCross: ibMap[str(rec.Ticker).toUpperCase()]?.macdCross ?? null,
       rsiDivergence: ibMap[str(rec.Ticker).toUpperCase()]?.rsiDivergence ?? null,
       rsiDivergenceHidden: ibMap[str(rec.Ticker).toUpperCase()]?.rsiDivergenceHidden ?? false,
+      stochCross: ibMap[str(rec.Ticker).toUpperCase()]?.stochCross ?? null,
       smcZone: "",
       setupsMatched: [],
       setupsBear: [],
@@ -571,6 +584,10 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
       macdCross: macdCrossRaw && macdCrossRaw !== "N/A" ? macdCrossRaw : null,
       rsiDivergence: rsiDivRaw || null,
       rsiDivergenceHidden: str(rec.technical?.rsiDetail?.divergenceStrength) === "Hidden",
+      stochCross: (() => {
+        const v = str(rec.technical?.stochDetail?.cross);
+        return v && v !== "N/A" && v !== "-" ? v : null;
+      })(),
     };
   });
   return buildUniverse(scr, setupsDoc, ibMap);

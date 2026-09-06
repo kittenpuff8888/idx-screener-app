@@ -456,6 +456,11 @@ def normalized_stocks(
                     "histogram": first_value(row, ["Histogram (EMA3)"]),
                     "cross": first_value(row, ["MACD Cross"]),
                 },
+                "stochDetail": {
+                    "k": first_value(row, ["Stochastic %K"]),
+                    "d": first_value(row, ["Stochastic %D"]),
+                    "cross": first_value(row, ["Stochastic Cross"]),
+                },
                 "vwapPosition": next(
                     (
                         value

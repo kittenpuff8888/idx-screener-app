@@ -2999,6 +2999,11 @@ DETAIL_SCHEMA = [
         ("macd_cross",       "MACD Cross",      16, None,     "center"),
     ]),
 
+    ("Stochastic", FILL_GROUP_MACD_MOM, [
+        ("stoch_k",     "Stochastic %K",     14, "0.00", "center"),
+        ("stoch_d",     "Stochastic %D",     14, "0.00", "center"),
+        ("stoch_cross", "Stochastic Cross",  16, None,   "center"),
+    ]),
 
 ]
 
@@ -3182,6 +3187,64 @@ def compute_macd_momentum(hist: pd.DataFrame) -> dict:
 
     # ── Backward-compat alias ────────────────────────────────────────────────
     out["macd_cross_status"] = out.get("macd_cross", "N/A")
+    return out
+
+def compute_stochastic(hist: pd.DataFrame, k_period: int = 14, k_smooth: int = 3, d_period: int = 3) -> dict:
+    """
+    Standard Stochastic Oscillator (14, 3, 3) -- same parameters as
+    TradingView's built-in "Stochastic@tv-basicstudies" study, so this
+    matches what the embedded chart itself would show.
+
+    %K raw   = 100 * (Close - Lowest Low(k_period)) / (Highest High(k_period) - Lowest Low(k_period))
+    %K (slow)= SMA(%K raw, k_smooth)
+    %D       = SMA(%K slow, d_period)
+    Golden Cross = %K crosses above %D; Dead Cross = %K crosses below %D.
+    """
+    out = {
+        "stoch_k": np.nan,
+        "stoch_d": np.nan,
+        "stoch_cross": "",
+    }
+
+    min_bars = k_period + k_smooth + d_period
+    if hist is None or hist.empty or len(hist) < min_bars:
+        return out
+
+    try:
+        high = hist["High"].astype(float)
+        low = hist["Low"].astype(float)
+        close = hist["Close"].astype(float)
+
+        lowest_low = low.rolling(window=k_period).min()
+        highest_high = high.rolling(window=k_period).max()
+        rng = highest_high - lowest_low
+        k_raw = np.where(rng > 0, 100 * (close - lowest_low) / rng, np.nan)
+        k_raw = pd.Series(k_raw, index=hist.index)
+
+        k_slow = k_raw.rolling(window=k_smooth).mean()
+        d_line = k_slow.rolling(window=d_period).mean()
+
+        if len(k_slow.dropna()) < 2 or len(d_line.dropna()) < 2:
+            return out
+
+        cur_k, prev_k = safe_num(k_slow.iloc[-1]), safe_num(k_slow.iloc[-2])
+        cur_d, prev_d = safe_num(d_line.iloc[-1]), safe_num(d_line.iloc[-2])
+
+        out["stoch_k"] = cur_k
+        out["stoch_d"] = cur_d
+
+        if all(pd.notna(x) for x in [prev_k, prev_d, cur_k, cur_d]):
+            if prev_k <= prev_d and cur_k > cur_d:
+                out["stoch_cross"] = "Golden Cross"
+            elif prev_k >= prev_d and cur_k < cur_d:
+                out["stoch_cross"] = "Dead Cross"
+            else:
+                out["stoch_cross"] = "-"
+        else:
+            out["stoch_cross"] = "N/A"
+    except Exception:
+        pass
+
     return out
 
 def find_pivots_low(series: pd.Series, window=2):
@@ -4247,6 +4310,7 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
 
         # MACD Momentum (Boring Jacx setup)
         row.update(compute_macd_momentum(hist))
+        row.update(compute_stochastic(hist))
 
         prev_close = hist["Close"].shift(1)
         tr = pd.concat([hist["High"] - hist["Low"], (hist["High"] - prev_close).abs(), (hist["Low"] - prev_close).abs()], axis=1).max(axis=1)
@@ -4489,6 +4553,9 @@ def build_row(ksei_row: pd.Series, hist: pd.DataFrame, shares_fallback: float):
         # MACD Momentum (Boring Jacx setup) — runs if enough bars
         if len(hist) >= 35:
             row.update(compute_macd_momentum(hist))
+
+        if len(hist) >= 20:
+            row.update(compute_stochastic(hist))
 
         if len(hist) >= 14:
             prev_close = hist["Close"].shift(1)
