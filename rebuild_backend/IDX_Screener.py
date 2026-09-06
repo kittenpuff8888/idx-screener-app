@@ -8821,7 +8821,11 @@ def _fetch_fundamental_data(ticker: str) -> dict:
             "free_cf":             _g("freeCashflow"),
             "capex":               _g("capitalExpenditures"),
             # Dividend
-            "dividend_yield":      _g("dividendYield"),
+            # yfinance changed dividendYield from a decimal fraction (0.0569) to
+            # a bare percentage number (5.69) -- normalize to a decimal here so
+            # every consumer of this field gets the same unit consistently
+            # (the Investing.com fallback path already does this same >1.5 check).
+            "dividend_yield":      (lambda v: v / 100 if isinstance(v, (int, float)) and abs(v) > 1.5 else v)(_g("dividendYield")),
             "payout_ratio":        _g("payoutRatio"),
             "dividend_rate":       _g("dividendRate"),
             "trailing_annual_div": _g("trailingAnnualDividendRate"),
@@ -10379,6 +10383,14 @@ FUNDAMENTAL_DETAIL_SCHEMA = [
         ("yf_market_cap_current",         "Market Cap",                    16, "compact","center"),
         ("yf_enterprise_value_current",   "Enterprise Value",              18, "compact","center"),
         ("yf_shares_outstanding_current", "Current Share Outstanding",     24, "compact","center"),
+        # These two only ever lived in the Upcoming/Latest Dividend sub-tables
+        # below -- the Fundamental sheet itself had no standalone dividend
+        # yield/payout column, so a lookup against this sheet (e.g. the
+        # website's summary card) always came back empty despite the
+        # underlying yfinance data (yf_dividend_yield/yf_payout_ratio) being
+        # fetched and available the whole time.
+        ("yf_dividend_yield",             "Dividend Yield (%)",            18, "0.00%",  "center"),
+        ("yf_payout_ratio",               "Payout Ratio (%)",              18, "0.00%",  "center"),
     ]),
     ("Profitability", FILL_GROUP_MOM, [
         ("yf_gross_margin_q",     "Gross Profit Margin (Quarter)",     26, "0.00%", "center"),
