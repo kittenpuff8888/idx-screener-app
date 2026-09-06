@@ -289,6 +289,16 @@ def build_stock(
     macd_value = last_valid(prepared["macd"], index)
     macd_signal = last_valid(prepared["macd_signal"], index)
     histogram = last_valid(prepared["macd_histogram"], index)
+    prev_macd_value = last_valid(prepared["macd"], index - 1) if index else None
+    prev_macd_signal = last_valid(prepared["macd_signal"], index - 1) if index else None
+    macd_cross = "N/A"
+    if None not in (macd_value, macd_signal, prev_macd_value, prev_macd_signal):
+        if prev_macd_value <= prev_macd_signal and macd_value > macd_signal:
+            macd_cross = "Golden Cross"
+        elif prev_macd_value >= prev_macd_signal and macd_value < macd_signal:
+            macd_cross = "Dead Cross"
+        else:
+            macd_cross = "-"
     vwap = last_valid(prepared["monthly_vwap"], index)
     lookback = rows[max(0, index - 20):index]
     prior_support = min((item["low"] for item in lookback if item["low"] is not None), default=row["low"])
@@ -357,6 +367,7 @@ def build_stock(
                 4,
             ),
             "priceLocation": f"{internal} trend, {vwap_position.lower()}",
+            "macdDetail": {"cross": macd_cross},
         },
         # Fundamentals/beta don't move meaningfully day-to-day (unlike price/
         # technicals, which this function recomputes fresh from OHLCV every
