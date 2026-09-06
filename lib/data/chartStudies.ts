@@ -8,7 +8,7 @@
 export type StudyDef = {
   id: string;
   label: string;
-  group: "overlay" | "oscillator" | "volume";
+  group: "overlay" | "oscillator" | "volume" | "technical-other";
   /** TradingView studies_overrides key for this study's length input (lowercase
       study name + ".length", per TV's convention) -- only set for studies where
       we expose a length control, since the override key is study-specific. */
@@ -37,7 +37,37 @@ export const STUDIES: StudyDef[] = [
   { id: "Volume@tv-basicstudies", label: "Volume", group: "volume" },
   { id: "CCI@tv-basicstudies", label: "CCI", group: "oscillator" },
   { id: "MF@tv-basicstudies", label: "Money Flow", group: "oscillator" },
+
+  // "Technical Others" -- each id below was individually verified against the
+  // live embed (isolated, one at a time -- a bad id breaks the whole chart,
+  // not just itself, so batch-guessing is unsafe). No "Fundamental Others"
+  // group exists: this embed's `studies` array only ever reaches technical
+  // studies -- TradingView's fundamentals overlays aren't addressable this
+  // way in the free widget, confirmed by testing, not assumed.
+  { id: "ROC@tv-basicstudies", label: "Rate of Change", group: "technical-other" },
+  { id: "StochasticRSI@tv-basicstudies", label: "Stochastic RSI", group: "technical-other" },
+  { id: "BalanceOfPower@tv-basicstudies", label: "Balance of Power", group: "technical-other" },
+  { id: "ChoppinessIndex@tv-basicstudies", label: "Choppiness Index", group: "technical-other" },
+  { id: "CMO@tv-basicstudies", label: "Chande Momentum Oscillator", group: "technical-other" },
+  { id: "DonchianChannels@tv-basicstudies", label: "Donchian Channels", group: "technical-other" },
+  { id: "DoubleEMA@tv-basicstudies", label: "Double EMA", group: "technical-other" },
+  { id: "TripleEMA@tv-basicstudies", label: "Triple EMA", group: "technical-other" },
+  { id: "EldersForceIndex@tv-basicstudies", label: "Elder's Force Index", group: "technical-other" },
+  { id: "Envelope@tv-basicstudies", label: "Envelopes", group: "technical-other" },
+  { id: "HullMA@tv-basicstudies", label: "Hull Moving Average", group: "technical-other" },
 ];
+
+// Ids individually tested against the live embed and confirmed INVALID --
+// each one, alone, broke the whole chart (all-zero OHLC). Kept here so a
+// future session doesn't re-waste time re-testing the same guesses:
+// AccumulationDistribution@tv-basicstudies, AwesomeOscillator@tv-basicstudies,
+// ChaikinMoneyFlow@tv-basicstudies, KeltnerChannels@tv-basicstudies.
+
+// Confirmed live against the embed: 6 simultaneous studies renders fine, 7
+// breaks the entire chart (all-zero OHLC, not just a dropped indicator).
+// TradingView doesn't document this cap for the free widget; found by
+// bisecting combined-study-count tests directly against production.
+export const MAX_STUDIES = 6;
 
 const KEY = "idxr:chart:studies";
 const EVENT = "idxr:studies-changed";
