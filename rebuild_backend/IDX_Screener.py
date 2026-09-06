@@ -2980,6 +2980,12 @@ DETAIL_SCHEMA = [
         ("rsi_pos", "RSI Pos", 10, None, "center"),
         ("cross_status", "RSI Cross", 16, None, "center"),
         ("div_signal", "Divergence Signal", 16, None, "center"),
+        # "Strong"/"Medium"/"Weak" = regular divergence confidence; "Hidden" =
+        # hidden divergence (continuation, not reversal) -- divergence_signals()
+        # already computes this distinction (see strength_rank), it just never
+        # had its own exported column before -- only ever appeared merged into
+        # the "divergence_summary" display string.
+        ("div_strength", "Divergence Strength", 16, None, "center"),
         ("div_ref1_date", "Divergence Start Date", 18, None, "center"),
         ("div_ref2_date", "Divergence Confirm Date", 18, None, "center"),
     ]),
