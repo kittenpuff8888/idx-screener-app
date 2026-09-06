@@ -68,6 +68,13 @@ export interface UniverseRow {
   // the month's first 2 sessions lock the band (IDX_Screener.py "ibh"/"ibl").
   ibh: number | null;
   ibl: number | null;
+  // technical.json macdDetail/rsiDetail join -- real backend-computed
+  // crossover/divergence fields, not re-derived from price here.
+  macdCross: string | null; // "Golden Cross" | "Dead Cross" | "N/A" | null
+  rsiDivergence: string | null; // "Bullish" | "Bearish" | null
+  // true when the backend classified the current divergence as "Hidden"
+  // (continuation pattern) rather than regular Strong/Medium/Weak (reversal).
+  rsiDivergenceHidden: boolean;
   // engine (setups.json) join:
   score: number | null;
   hasEngineSetup: boolean;
@@ -112,9 +119,22 @@ type EngineSetup = {
   kseiFootprint?: { available?: boolean; netDeltaPP?: number; accumulation?: boolean } | null;
 };
 type SetupsDoc = { setups?: EngineSetup[]; scanned?: number };
-type TechnicalRecord = { technical?: { marketProfile?: { ibh?: unknown; ibl?: unknown } } };
+type TechnicalRecord = {
+  technical?: {
+    marketProfile?: { ibh?: unknown; ibl?: unknown };
+    macdDetail?: { cross?: unknown };
+    rsiDetail?: { cross?: unknown; divergenceSignal?: unknown; divergenceStrength?: unknown };
+  };
+};
 type TechnicalDoc = { records?: Record<string, TechnicalRecord> };
-type IbMap = Record<string, { ibh: number | null; ibl: number | null }>;
+type TechExtra = {
+  ibh: number | null;
+  ibl: number | null;
+  macdCross: string | null;
+  rsiDivergence: string | null;
+  rsiDivergenceHidden: boolean;
+};
+type IbMap = Record<string, TechExtra>;
 
 function str(v: unknown): string {
   return v === null || v === undefined ? "" : String(v);
@@ -176,6 +196,32 @@ export const SETUPS: SetupDef[] = [
     req: "Close breaks above the monthly Initial Balance High (IBH) / below the Initial Balance Low (IBL) — no matches on the month's first 2 sessions, before the band locks",
     bull: (r) => r.price != null && r.ibh != null && r.price > r.ibh,
     bear: (r) => r.price != null && r.ibl != null && r.price < r.ibl,
+  },
+  {
+    key: "macd_golden_cross",
+    label: "MACD Golden Cross",
+    icon: "✦",
+    hasBear: true,
+    req: "MACD line crossed above (Golden) / below (Dead) its signal line",
+    bull: (r) => r.macdCross === "Golden Cross",
+    bear: (r) => r.macdCross === "Dead Cross",
+  },
+  {
+    key: "rsi_divergence",
+    label: "RSI Divergence",
+    icon: "⤢",
+    hasBear: true,
+    req: "Regular RSI divergence vs. price over the last ~75 sessions (lifecycle-cluster method) — bullish: price lower low, RSI higher low (reversal); bearish: price higher high, RSI lower high",
+    bull: (r) => r.rsiDivergence === "Bullish" && !r.rsiDivergenceHidden,
+    bear: (r) => r.rsiDivergence === "Bearish" && !r.rsiDivergenceHidden,
+  },
+  {
+    key: "rsi_hidden_divergence",
+    label: "RSI Hidden Bullish Divergence",
+    icon: "⤢",
+    hasBear: false,
+    req: "Hidden bullish RSI divergence — price higher low, RSI lower low (uptrend continuation, not a reversal signal)",
+    bull: (r) => r.rsiDivergence === "Bullish" && r.rsiDivergenceHidden,
   },
 ];
 
@@ -440,6 +486,9 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
       capTier: (price ?? 0) > 3000 ? "Large cap" : (price ?? 0) >= 200 ? "Mid cap" : "Small cap",
       ibh: ibMap[str(rec.Ticker).toUpperCase()]?.ibh ?? null,
       ibl: ibMap[str(rec.Ticker).toUpperCase()]?.ibl ?? null,
+      macdCross: ibMap[str(rec.Ticker).toUpperCase()]?.macdCross ?? null,
+      rsiDivergence: ibMap[str(rec.Ticker).toUpperCase()]?.rsiDivergence ?? null,
+      rsiDivergenceHidden: ibMap[str(rec.Ticker).toUpperCase()]?.rsiDivergenceHidden ?? false,
       smcZone: "",
       setupsMatched: [],
       setupsBear: [],
@@ -514,7 +563,15 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
   const ibMap: IbMap = {};
   Object.entries(technicalDoc.records || {}).forEach(([ticker, rec]) => {
     const mp = rec.technical?.marketProfile;
-    ibMap[ticker.toUpperCase()] = { ibh: num(mp?.ibh), ibl: num(mp?.ibl) };
+    const macdCrossRaw = str(rec.technical?.macdDetail?.cross);
+    const rsiDivRaw = str(rec.technical?.rsiDetail?.divergenceSignal);
+    ibMap[ticker.toUpperCase()] = {
+      ibh: num(mp?.ibh),
+      ibl: num(mp?.ibl),
+      macdCross: macdCrossRaw && macdCrossRaw !== "N/A" ? macdCrossRaw : null,
+      rsiDivergence: rsiDivRaw || null,
+      rsiDivergenceHidden: str(rec.technical?.rsiDetail?.divergenceStrength) === "Hidden",
+    };
   });
   return buildUniverse(scr, setupsDoc, ibMap);
 }

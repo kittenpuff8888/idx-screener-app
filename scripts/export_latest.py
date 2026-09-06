@@ -447,6 +447,7 @@ def normalized_stocks(
                     "position": first_value(row, ["RSI Pos"]),
                     "cross": first_value(row, ["RSI Cross"]),
                     "divergenceSignal": first_value(row, ["Divergence Signal"]),
+                    "divergenceStrength": first_value(row, ["Divergence Strength"]),
                     "divergenceStartDate": first_value(row, ["Divergence Start Date"]),
                     "divergenceConfirmDate": first_value(row, ["Divergence Confirm Date"]),
                 },
