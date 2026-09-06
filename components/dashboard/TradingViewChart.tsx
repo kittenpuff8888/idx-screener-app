@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  loadStudies, saveStudies, subscribeStudies, STUDIES,
+  loadStudies, saveStudies, subscribeStudies, STUDIES, MAX_STUDIES,
   loadStudyLengths, saveStudyLength, subscribeStudyLengths, buildStudyOverrides,
 } from "@/lib/data/chartStudies";
 import { loadOverlays, saveOverlays, subscribeOverlays, OVERLAYS } from "@/lib/data/chartOverlays";
@@ -37,7 +37,7 @@ function IndicatorPicker({ selected, onToggle, lengths, onLengthChange, overlayS
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
-  const groups = [["overlay", "Overlays"], ["oscillator", "Oscillators"], ["volume", "Volume"]] as const;
+  const groups = [["overlay", "Overlays"], ["oscillator", "Oscillators"], ["volume", "Volume"], ["technical-other", "Technical Others"]] as const;
   const custom = overlaySelected ?? [];
   const count = selected.length + custom.length;
   return (
@@ -53,11 +53,13 @@ function IndicatorPicker({ selected, onToggle, lengths, onLengthChange, overlayS
               <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", padding: "4px 8px 2px" }}>{label.toUpperCase()}</div>
               {STUDIES.filter((s) => s.group === g).map((s) => {
                 const on = selected.includes(s.id);
+                const atCap = !on && selected.length >= MAX_STUDIES;
                 const len = lengths?.[s.id] ?? s.defaultLength;
                 return (
                   <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <button type="button" onClick={() => onToggle(s.id)}
-                      style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, textAlign: "left", padding: "6px 8px", border: "none", background: on ? "var(--soft)" : "transparent", borderRadius: 7, cursor: "pointer", fontSize: 12, color: "var(--text)" }}>
+                    <button type="button" disabled={atCap} onClick={() => onToggle(s.id)}
+                      title={atCap ? `Max ${MAX_STUDIES} at once — this embed breaks entirely past that. Remove one first.` : undefined}
+                      style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, textAlign: "left", padding: "6px 8px", border: "none", background: on ? "var(--soft)" : "transparent", borderRadius: 7, cursor: atCap ? "not-allowed" : "pointer", opacity: atCap ? 0.45 : 1, fontSize: 12, color: "var(--text)" }}>
                       <span style={{ width: 13, height: 13, borderRadius: 4, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: "#fff", fontSize: 10, lineHeight: "11px", textAlign: "center", flexShrink: 0 }}>{on ? "✓" : ""}</span>
                       {s.label}
                     </button>
@@ -95,7 +97,7 @@ function IndicatorPicker({ selected, onToggle, lengths, onLengthChange, overlayS
               })}
             </div>
           ) : null}
-          <div style={{ fontSize: 8.5, color: "var(--faint)", padding: "4px 8px 2px", lineHeight: 1.4, borderTop: "1px solid var(--hair)", marginTop: 2 }}>Saved for every chart on the site. TradingView built-ins run in the embed; CUSTOM overlays draw on a companion chart below it (Pine can’t run in an embed).</div>
+          <div style={{ fontSize: 8.5, color: "var(--faint)", padding: "4px 8px 2px", lineHeight: 1.4, borderTop: "1px solid var(--hair)", marginTop: 2 }}>Saved for every chart on the site. TradingView built-ins run in the embed; CUSTOM overlays draw on a companion chart below it (Pine can’t run in an embed). Max {MAX_STUDIES} built-ins at once — this embed breaks entirely past that.</div>
         </div>
       ) : null}
     </div>
