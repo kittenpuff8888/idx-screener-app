@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { loadStudies, saveStudies, subscribeStudies, STUDIES } from "@/lib/data/chartStudies";
+import {
+  loadStudies, saveStudies, subscribeStudies, STUDIES,
+  loadStudyLengths, saveStudyLength, subscribeStudyLengths, buildStudyOverrides,
+} from "@/lib/data/chartStudies";
 import { loadOverlays, saveOverlays, subscribeOverlays, OVERLAYS } from "@/lib/data/chartOverlays";
 
 type Props = {
@@ -19,9 +22,11 @@ const CURRENT_THEME = (): "light" | "dark" =>
 /** ƒx indicator picker — edits the site-wide saved study set. When overlay props
     are supplied it also lists CUSTOM overlays (our re-implemented Pine studies),
     which render on a companion candle chart beneath the embed. */
-function IndicatorPicker({ selected, onToggle, overlaySelected, onOverlayToggle }: {
+function IndicatorPicker({ selected, onToggle, lengths, onLengthChange, overlaySelected, onOverlayToggle }: {
   selected: string[];
   onToggle: (id: string) => void;
+  lengths?: Record<string, number>;
+  onLengthChange?: (id: string, length: number) => void;
   overlaySelected?: string[];
   onOverlayToggle?: (id: string) => void;
 }) {
@@ -48,12 +53,29 @@ function IndicatorPicker({ selected, onToggle, overlaySelected, onOverlayToggle 
               <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", padding: "4px 8px 2px" }}>{label.toUpperCase()}</div>
               {STUDIES.filter((s) => s.group === g).map((s) => {
                 const on = selected.includes(s.id);
+                const len = lengths?.[s.id] ?? s.defaultLength;
                 return (
-                  <button key={s.id} type="button" onClick={() => onToggle(s.id)}
-                    style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "6px 8px", border: "none", background: on ? "var(--soft)" : "transparent", borderRadius: 7, cursor: "pointer", fontSize: 12, color: "var(--text)" }}>
-                    <span style={{ width: 13, height: 13, borderRadius: 4, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: "#fff", fontSize: 10, lineHeight: "11px", textAlign: "center", flexShrink: 0 }}>{on ? "✓" : ""}</span>
-                    {s.label}
-                  </button>
+                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <button type="button" onClick={() => onToggle(s.id)}
+                      style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0, textAlign: "left", padding: "6px 8px", border: "none", background: on ? "var(--soft)" : "transparent", borderRadius: 7, cursor: "pointer", fontSize: 12, color: "var(--text)" }}>
+                      <span style={{ width: 13, height: 13, borderRadius: 4, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", color: "#fff", fontSize: 10, lineHeight: "11px", textAlign: "center", flexShrink: 0 }}>{on ? "✓" : ""}</span>
+                      {s.label}
+                    </button>
+                    {s.lengthOverrideKey && on && onLengthChange ? (
+                      <input
+                        type="number"
+                        min={1}
+                        value={len ?? ""}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const n = parseInt(e.target.value, 10);
+                          if (Number.isFinite(n) && n > 0) onLengthChange(s.id, n);
+                        }}
+                        title={`${s.label} length — saved for every chart`}
+                        style={{ width: 40, fontSize: 11, padding: "3px 4px", borderRadius: 5, border: "1px solid var(--border)", background: "var(--panel)", color: "var(--text)", flexShrink: 0 }}
+                      />
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
@@ -85,10 +107,15 @@ function IndicatorPicker({ selected, onToggle, overlaySelected, onOverlayToggle 
     instead of above the chart. Stays in sync with every chart via chartStudies. */
 export function ChartIndicatorPicker() {
   const [studies, setStudies] = useState<string[]>([]);
+  const [lengths, setLengths] = useState<Record<string, number>>({});
   const [overlays, setOverlays] = useState<string[]>([]);
   useEffect(() => {
     setStudies(loadStudies());
     return subscribeStudies(setStudies);
+  }, []);
+  useEffect(() => {
+    setLengths(loadStudyLengths());
+    return subscribeStudyLengths(setLengths);
   }, []);
   useEffect(() => {
     setOverlays(loadOverlays());
@@ -99,12 +126,16 @@ export function ChartIndicatorPicker() {
     setStudies(next);
     saveStudies(next);
   }
+  function changeLength(id: string, length: number) {
+    setLengths((prev) => ({ ...prev, [id]: length }));
+    saveStudyLength(id, length);
+  }
   function toggleOverlay(id: string) {
     const next = overlays.includes(id) ? overlays.filter((x) => x !== id) : [...overlays, id];
     setOverlays(next);
     saveOverlays(next);
   }
-  return <IndicatorPicker selected={studies} onToggle={toggle} overlaySelected={overlays} onOverlayToggle={toggleOverlay} />;
+  return <IndicatorPicker selected={studies} onToggle={toggle} lengths={lengths} onLengthChange={changeLength} overlaySelected={overlays} onOverlayToggle={toggleOverlay} />;
 }
 
 /** TradingView advanced-chart embed. Interval is forced to 1D (like the IHSG
@@ -115,17 +146,26 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [unavailable, setUnavailable] = useState(false);
   const [studies, setStudies] = useState<string[]>([]);
+  const [lengths, setLengths] = useState<Record<string, number>>({});
 
   // Hydrate + subscribe to site-wide study changes.
   useEffect(() => {
     setStudies(loadStudies());
     return subscribeStudies(setStudies);
   }, []);
+  useEffect(() => {
+    setLengths(loadStudyLengths());
+    return subscribeStudyLengths(setLengths);
+  }, []);
 
   function toggle(id: string) {
     const next = studies.includes(id) ? studies.filter((x) => x !== id) : [...studies, id];
     setStudies(next);
     saveStudies(next); // broadcasts to every chart
+  }
+  function changeLength(id: string, length: number) {
+    setLengths((prev) => ({ ...prev, [id]: length }));
+    saveStudyLength(id, length); // broadcasts to every chart
   }
 
   useEffect(() => {
@@ -172,7 +212,14 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
         hide_side_toolbar: false,
         hide_volume: true,
         details: false,
+        // NB: do NOT add `calendar: true`. TradingView documents it as an
+        // earnings/dividends/splits-marker toggle, but live-testing against
+        // this embed's IDX symbols breaks the whole chart (all-zero OHLC) --
+        // confirmed by isolating it from studies_overrides below, which is
+        // safe on its own. Documented behavior isn't always the real behavior
+        // for this symbol set; verify live before trusting the docs again.
         studies,
+        studies_overrides: buildStudyOverrides(lengths),
         backgroundColor: dark ? "#11151b" : "#ffffff",
         gridColor: dark ? "rgba(255,255,255,0.06)" : "rgba(11,14,20,0.06)",
         support_host: "https://www.tradingview.com",
@@ -193,13 +240,13 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key on contents, not identity
-  }, [symbol, interval, studies.join(",")]);
+  }, [symbol, interval, studies.join(","), JSON.stringify(lengths)]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight }}>
       {showIndicatorPicker ? (
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
-          <IndicatorPicker selected={studies} onToggle={toggle} />
+          <IndicatorPicker selected={studies} onToggle={toggle} lengths={lengths} onLengthChange={changeLength} />
         </div>
       ) : null}
       <div style={{ position: "relative", flex: "1 1 auto", minHeight: showIndicatorPicker ? minHeight - 34 : minHeight, borderRadius: 12, overflow: "hidden", background: "var(--panel)", border: "1px solid var(--border)" }}>
