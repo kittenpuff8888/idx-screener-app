@@ -1,21 +1,18 @@
 import type { JsonRecord, OhlcvRow } from "@/lib/domain/types";
 import { asNumber } from "@/lib/format/number";
 import { computeAnchoredVwap, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
-import type { VolumeProfileResult } from "@/lib/indicators/volumeProfile";
 
 // Extra reference levels for the ticker-page price ladder, grouped so they
 // can be toggled on/off. Every number here is either read directly from a
 // published field, or computed client-side from real OHLCV using the exact
 // same formulas already shipped elsewhere in this app (anchored VWAP + σ
-// bands from the chart overlay, the anchored Volume Profile from
-// lib/indicators/volumeProfile.ts). Nothing is invented — a group with no
+// bands from the chart overlay). Nothing is invented — a group with no
 // usable input simply contributes no levels.
 
-export type LevelGroup = "vp" | "ma" | "cqvwap" | "pqvwap" | "cyvwap" | "pyvwap" | "ib" | "pwmp" | "cwmp" | "w52" | "dcf";
+export type LevelGroup = "ma" | "cqvwap" | "pqvwap" | "cyvwap" | "pyvwap" | "ib" | "pwmp" | "cwmp" | "dcf";
 export type PriceLevel = { id: string; group: LevelGroup; label: string; price: number; tone: "up" | "down" | "flat"; explain: string };
 
 export const GROUP_META: Record<LevelGroup, { label: string; short: string }> = {
-  vp: { label: "Volume Profile", short: "VP" },
   ma: { label: "Moving Averages", short: "MA" },
   cqvwap: { label: "Current Quarter VWAP", short: "CQ" },
   pqvwap: { label: "Previous Quarter VWAP", short: "PQ" },
@@ -24,23 +21,8 @@ export const GROUP_META: Record<LevelGroup, { label: string; short: string }> = 
   ib: { label: "Initial Balance", short: "IB" },
   pwmp: { label: "Previous Week", short: "PW" },
   cwmp: { label: "Current Week", short: "CW" },
-  w52: { label: "52-Week Range", short: "52W" },
   dcf: { label: "DCF Fair Value", short: "DCF" },
 };
-
-/** VAH / POC / VAL from the anchored Volume Profile (real volume-at-price
-    histogram over the most recent qualifying consolidation — see
-    lib/indicators/volumeProfile.ts). Null input (no qualifying anchor found
-    in the lookback) contributes no levels rather than a guess. */
-export function buildVolumeProfileLevels(vp: VolumeProfileResult | null): PriceLevel[] {
-  if (!vp) return [];
-  const range = `${vp.anchor.startDate} → ${vp.anchor.endDate}`;
-  return [
-    { id: "vp-vah", group: "vp", label: "VAH", price: vp.vah, tone: "up", explain: `Value Area High — top of the zone holding 70% of volume, anchored to the last consolidation before the ${vp.anchor.direction === "up" ? "breakout up" : "breakdown"} (${range}).` },
-    { id: "vp-poc", group: "vp", label: "POC", price: vp.poc, tone: "flat", explain: `Point of Control — the single price with the most traded volume in that same anchored range (${range}).` },
-    { id: "vp-val", group: "vp", label: "VAL", price: vp.val, tone: "down", explain: `Value Area Low — bottom of the 70%-volume zone, same anchored range (${range}).` },
-  ];
-}
 
 export function buildMaLevels(ma: JsonRecord | undefined): PriceLevel[] {
   const out: PriceLevel[] = [];
@@ -115,16 +97,6 @@ export function buildCurrentWeekLevels(technical: JsonRecord | undefined): Price
   const mdh = asNumber(mp["mdh"]), mdl = asNumber(mp["mdl"]);
   if (mdh != null) out.push({ id: "cw-mdh", group: "cwmp", label: "MDH", price: mdh, tone: "up", explain: "The current week's first trading day (Monday) high — an early-week reference level." });
   if (mdl != null) out.push({ id: "cw-mdl", group: "cwmp", label: "MDL", price: mdl, tone: "down", explain: "The current week's first trading day (Monday) low — an early-week reference level." });
-  return out;
-}
-
-/** 52-week swing high/low — a published field, promoted from an always-on
-    core row to an opt-in group like every other level, so it can be toggled
-    off the same way. */
-export function buildFiftyTwoWeekLevels(hi52: number | null, lo52: number | null): PriceLevel[] {
-  const out: PriceLevel[] = [];
-  if (hi52 != null && isFinite(hi52)) out.push({ id: "w52-hi", group: "w52", label: "52w swing high", price: hi52, tone: "up", explain: "Highest close in the published 52-week window." });
-  if (lo52 != null && isFinite(lo52)) out.push({ id: "w52-lo", group: "w52", label: "52w swing low", price: lo52, tone: "down", explain: "Lowest close in the published 52-week window." });
   return out;
 }
 
