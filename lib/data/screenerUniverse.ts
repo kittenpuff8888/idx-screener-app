@@ -398,6 +398,17 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
     const cur = byTicker[t];
     if (!cur || (num(rec["R/R"]) ?? 0) > (num(cur["R/R"]) ?? 0)) byTicker[t] = rec;
   });
+  // screener.json's roster is a ~400-ticker subset (the legacy engine's own
+  // "scanned" set); screener_signals.json is computed for the FULL ~962-
+  // ticker universe. A ticker whose only distinction today is one of the 4
+  // new signals (e.g. a thinly-traded name outside the legacy roster) must
+  // still get a row here, or its real, computed signal can never surface in
+  // the table — stub in the bare minimum (every other field degrades to its
+  // existing "no data" / null handling).
+  Object.keys(signals).forEach((t) => {
+    const tu = t.toUpperCase();
+    if (!byTicker[tu]) byTicker[tu] = { Ticker: tu };
+  });
 
   const rows: UniverseRow[] = Object.values(byTicker).map((rec) => {
     const su = setupByTicker[str(rec.Ticker).toUpperCase()];
