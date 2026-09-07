@@ -155,15 +155,8 @@ export function TickerResearch() {
           <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 4 }}>Close · {marketDate} · <a href={`https://www.tradingview.com/chart/?symbol=IDX%3A${ticker}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>TradingView ↗</a></div>
         </div>
         <div>
-          <div style={{ ...KICKER, fontSize: 9 }}>52-WEEK RANGE</div>
-          {hi52 != null && lo52 != null ? (<>
-            <div style={{ position: "relative", height: 8, background: "var(--soft)", borderRadius: 5, marginTop: 12 }}>
-              <div style={{ position: "absolute", left: 0, right: 0, top: 3, height: 2, background: "linear-gradient(90deg,var(--down),var(--flat),var(--up))", opacity: .5 }} />
-              {rangePos != null ? <div style={{ position: "absolute", left: `${Math.max(0, Math.min(100, rangePos))}%`, top: -3, width: 14, height: 14, borderRadius: "50%", background: "var(--accent)", border: "2px solid var(--panel)", transform: "translateX(-50%)" }} /> : null}
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontFamily: MONO, fontSize: 10.5, color: "var(--muted)", marginTop: 6 }}><span>{formatPrice(lo52)} low</span><span>{formatPrice(hi52)} high</span></div>
-            <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 4 }}>{rangePos != null ? `${Math.round(rangePos)}% of range` : ""}{offLow != null ? ` · ${offLow.toFixed(0)}% off low` : ""}</div>
-          </>) : <div style={{ marginTop: 12, fontSize: 11.5, color: "var(--faint)" }}>52-week range not available for this ticker.</div>}
+          <div style={{ ...KICKER, fontSize: 9, marginBottom: 6 }}>COMPANY INFORMATION</div>
+          <CompanyInfo fund={fund} ownership={ownership} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
           {stats.map(([k, v]) => (
@@ -209,10 +202,9 @@ export function TickerResearch() {
       {/* ── DCF VALUATION ──────────────────────────────────────── */}
       <DcfPanel ticker={ticker} stock={stock} fund={fund} marketDate={marketDate} />
 
-      {/* ── KEY STATISTICS | COMPANY INFO ──────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
+      {/* ── KEY STATISTICS (Company Information moved into the header) ── */}
+      <div style={{ marginBottom: 14 }}>
         <Section title="KEY STATISTICS"><KeyStats fund={fund} marketDate={marketDate} /></Section>
-        <Section title="COMPANY INFORMATION"><CompanyInfo fund={fund} ownership={ownership} /></Section>
       </div>
 
       {/* ── TECHNICAL ──────────────────────────────────────────── */}
