@@ -6,9 +6,10 @@ import type { WatchlistRow, WatchlistState } from "@/lib/data/watchlistStore";
 // old signal-engine-sourced Past Setups (docs/data/setups-history.json,
 // removed) entirely, per the project owner's explicit "rebuild from zero"
 // direction. Every entry here traces back to a real watchlist add: the
-// entry/target/invalidation/R:R were locked in at add-time (see
-// WatchlistPage.tsx's attachRewardRisk), and the outcome is a real OHLCV bar
-// that touched one of those two levels — nothing modelled or backtested.
+// entry/target/invalidation/R:R are whatever the user set manually (see
+// lib/data/watchlistStore.ts's upsertWatchlistLevel), and the outcome is a
+// real OHLCV bar that touched one of those two levels — nothing modelled or
+// backtested.
 
 export const PAST_SETUPS_KEY = "idxr:past-setups";
 
@@ -21,7 +22,7 @@ export type PastSetupEntry = {
   target: number | null;
   invalidation: number | null;
   rr: number | null;
-  rrSource: "setup" | "volume-profile" | null;
+  rrSource: "manual" | "setup" | "volume-profile" | null;
   resolvedAt: string;   // date of the bar that hit the level
   resolvedPrice: number; // the target or invalidation price itself
   outcome: PastSetupOutcome;

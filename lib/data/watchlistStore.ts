@@ -1,4 +1,5 @@
 import type { OhlcvRow } from "@/lib/domain/types";
+import { computeRewardRisk } from "@/lib/valuation/rewardRisk";
 
 /** Watchlist groups + rows, persisted locally (DESIGN_SPEC §3.4, §5).
     Nothing is seeded — a fresh install has zero groups by design. */
@@ -12,17 +13,21 @@ export type WatchlistRow = {
       modelled one — without it there is nothing to measure against. */
   addedAt: string;
   addedClose: number | null;
-  /** Reward:Risk locked in at the moment this row was added — from the real
-      signal-engine setup if one was active for this ticker that day, else
-      from the ticker's own anchored Volume Profile ladder (entry=close,
-      target=VAH, invalidation=VAL). Optional: rows added before this field
-      existed simply have none, rather than needing a migration. Used by the
-      Past Setups tracker to detect when the row later hits target/stop. */
+  /** Reward:Risk is set manually now — entry defaults to the close at add
+      time, target/invalidation are whatever the user has set via the T/S
+      buttons on a ticker page's Trade Plan (or the mandatory Stop/Loss typed
+      into the Add dialog). Optional: rows added before this field existed
+      simply have none, rather than needing a migration. Used by the Past
+      Setups tracker to detect when the row later hits target/stop. */
   entry?: number | null;
   target?: number | null;
   invalidation?: number | null;
   rr?: number | null;
-  rrSource?: "setup" | "volume-profile" | null;
+  rrSource?: "manual" | "setup" | "volume-profile" | null;
+  /** Where this row was added from (e.g. "Ticker page", "Watchlist Add
+      dialog") — plain provenance, not the specific signal, so it's always
+      available even for a name with no active setup. */
+  source?: string | null;
 };
 
 export type WatchlistGroup = {
@@ -74,6 +79,78 @@ function isGroup(g: unknown): g is WatchlistGroup {
 
 export function newGroupId(): string {
   return `g${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/** Set/update a manual Stop-Loss or Target for a symbol, wherever it lives.
+    If the symbol is already in some group, its row is patched in place
+    (source is filled in only if the row didn't already have one). Otherwise
+    a new row is created in the active group, falling back to the first
+    group, falling back to a freshly-created default "Watchlist" group —
+    this is what makes setting a Stop on a ticker page double as "add to
+    watchlist" without the user needing the separate Add dialog first.
+    `stopLoss`/`target` of `undefined` leaves that field untouched; `null`
+    would clear it, but callers here only ever pass a real number. */
+export function upsertWatchlistLevel(params: {
+  symbol: string;
+  close: number | null;
+  marketDate: string | null;
+  source: string;
+  stopLoss?: number;
+  target?: number;
+  /** Explicit group for a brand-new row (e.g. the group the user picked in
+      the Add dialog). Ignored when the symbol is already tracked somewhere
+      — that existing row is patched in place, not moved. Falls back to the
+      active/first/newly-created group when omitted. */
+  groupId?: string;
+}): WatchlistState {
+  const { symbol, close, marketDate, source, stopLoss, target } = params;
+  const state = loadWatchlist();
+  const alreadyTracked = state.groups.some((g) => g.rows.some((r) => r.symbol === symbol));
+
+  function patch(row: WatchlistRow): WatchlistRow {
+    const nextInvalidation = stopLoss !== undefined ? stopLoss : (row.invalidation ?? null);
+    const nextTarget = target !== undefined ? target : (row.target ?? null);
+    const entry = row.entry ?? row.addedClose ?? close;
+    return {
+      ...row,
+      invalidation: nextInvalidation,
+      target: nextTarget,
+      entry,
+      rr: computeRewardRisk(entry, nextTarget, nextInvalidation),
+      rrSource: "manual",
+      source: row.source ?? source,
+    };
+  }
+
+  if (alreadyTracked) {
+    const groups = state.groups.map((g) => ({
+      ...g,
+      rows: g.rows.map((r) => (r.symbol === symbol ? patch(r) : r)),
+    }));
+    const next: WatchlistState = { ...state, groups };
+    saveWatchlist(next);
+    return next;
+  }
+
+  let groupId = params.groupId && state.groups.some((g) => g.id === params.groupId)
+    ? params.groupId
+    : state.activeGroupId && state.groups.some((g) => g.id === state.activeGroupId)
+    ? state.activeGroupId
+    : state.groups[0]?.id ?? null;
+  let groups = state.groups;
+  if (!groupId) {
+    groupId = newGroupId();
+    groups = [...groups, { id: groupId, name: "Watchlist", rows: [] }];
+  }
+  const newRow = patch({
+    symbol,
+    addedAt: marketDate || new Date().toISOString().slice(0, 10),
+    addedClose: close,
+  });
+  groups = groups.map((g) => (g.id === groupId ? { ...g, rows: [...g.rows, newRow] } : g));
+  const next: WatchlistState = { ...state, groups, activeGroupId: groupId };
+  saveWatchlist(next);
+  return next;
 }
 
 /* ── Returns computed from real bars ─────────────────────────────────────────

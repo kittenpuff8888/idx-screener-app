@@ -1,37 +1,54 @@
-import type { JsonRecord, OhlcvRow } from "@/lib/domain/types";
-import { asNumber } from "@/lib/format/number";
+import type { OhlcvRow } from "@/lib/domain/types";
 import { computeAnchoredVwap, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
+import { computeInitialBalance } from "@/lib/indicators/initialBalance";
 
 // Extra reference levels for the ticker-page price ladder, grouped so they
-// can be toggled on/off. Every number here is either read directly from a
-// published field, or computed client-side from real OHLCV using the exact
-// same formulas already shipped elsewhere in this app (anchored VWAP + σ
-// bands from the chart overlay). Nothing is invented — a group with no
-// usable input simply contributes no levels.
+// can be toggled on/off. Every group here is computed client-side from the
+// ticker's own real published OHLCV -- not from precomputed backend fields
+// (fundamentals, technical.movingAverages, marketProfile), which have shown
+// real coverage gaps for some tickers. Deriving from OHLCV directly means
+// any ticker with published bars gets a real value; a group only comes back
+// empty when there truly isn't enough history yet (e.g. SMA 200 needs 200
+// bars) -- an honest gap, never fabricated.
 
-export type LevelGroup = "ma" | "cqvwap" | "pqvwap" | "cyvwap" | "pyvwap" | "ib" | "pwmp" | "cwmp" | "dcf";
+export type LevelGroup = "ma" | "pqvwap" | "pyvwap" | "ibhl" | "mondayRange" | "w52";
 export type PriceLevel = { id: string; group: LevelGroup; label: string; price: number; tone: "up" | "down" | "flat"; explain: string };
 
 export const GROUP_META: Record<LevelGroup, { label: string; short: string }> = {
-  ma: { label: "Moving Averages", short: "MA" },
-  cqvwap: { label: "Current Quarter VWAP", short: "CQ" },
-  pqvwap: { label: "Previous Quarter VWAP", short: "PQ" },
-  cyvwap: { label: "Current Year VWAP", short: "CY" },
-  pyvwap: { label: "Previous Year VWAP", short: "PY" },
-  ib: { label: "Initial Balance", short: "IB" },
-  pwmp: { label: "Previous Week", short: "PW" },
-  cwmp: { label: "Current Week", short: "CW" },
-  dcf: { label: "DCF Fair Value", short: "DCF" },
+  ma: { label: "Moving Average", short: "Moving Average" },
+  pqvwap: { label: "PQ VWAP", short: "PQ VWAP" },
+  pyvwap: { label: "PY VWAP", short: "PY VWAP" },
+  ibhl: { label: "IBH/IBL", short: "IBH/IBL" },
+  mondayRange: { label: "Monday Range", short: "Monday Range" },
+  w52: { label: "52W Range", short: "52W Range" },
 };
 
-export function buildMaLevels(ma: JsonRecord | undefined): PriceLevel[] {
+function sma(closes: number[], period: number): number | null {
+  if (closes.length < period) return null;
+  const slice = closes.slice(closes.length - period);
+  return slice.reduce((a, b) => a + b, 0) / period;
+}
+
+function ema(closes: number[], period: number): number | null {
+  if (closes.length < period) return null;
+  const k = 2 / (period + 1);
+  let value = closes.slice(0, period).reduce((a, b) => a + b, 0) / period; // seed = SMA of the first `period` closes
+  for (let i = period; i < closes.length; i++) value = closes[i] * k + value * (1 - k);
+  return value;
+}
+
+/** EMA 25 / EMA 50 / SMA 200, computed directly from published daily closes
+    (not the backend's precomputed movingAverages field). */
+export function buildMaLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
+  if (!rows || !rows.length) return [];
+  const closes = rows.map((r) => r.close);
   const out: PriceLevel[] = [];
-  const ema25 = asNumber(ma?.["ema25"]);
-  const ema50 = asNumber(ma?.["ema50"]);
-  const sma200 = asNumber(ma?.["sma200"]);
-  if (ema25 != null) out.push({ id: "ma-ema25", group: "ma", label: "EMA 25", price: ema25, tone: "flat", explain: "25-session exponential moving average — a fast trend reference; a close crossing it often signals a short-term shift." });
-  if (ema50 != null) out.push({ id: "ma-ema50", group: "ma", label: "EMA 50", price: ema50, tone: "flat", explain: "50-session exponential moving average — the medium-term trend line most swing setups key off." });
-  if (sma200 != null) out.push({ id: "ma-sma200", group: "ma", label: "SMA 200", price: sma200, tone: "flat", explain: "200-session simple moving average — the standard long-term trend line and a widely-watched support/resistance level." });
+  const e25 = ema(closes, 25);
+  const e50 = ema(closes, 50);
+  const s200 = sma(closes, 200);
+  if (e25 != null) out.push({ id: "ma-ema25", group: "ma", label: "EMA 25", price: e25, tone: "flat", explain: "25-session exponential moving average, computed from published daily closes — a fast trend reference." });
+  if (e50 != null) out.push({ id: "ma-ema50", group: "ma", label: "EMA 50", price: e50, tone: "flat", explain: "50-session exponential moving average, computed from published daily closes — the medium-term trend line most swing setups key off." });
+  if (s200 != null) out.push({ id: "ma-sma200", group: "ma", label: "SMA 200", price: s200, tone: "flat", explain: "200-session simple moving average, computed from published daily closes — the standard long-term trend line and a widely-watched support/resistance level." });
   return out;
 }
 
@@ -46,64 +63,73 @@ function vwapProfileLevels(group: LevelGroup, label: string, period: string, pt:
   ];
 }
 
-/** Current + Previous Quarter/Year anchored-VWAP bands, computed client-side
-    from real OHLCV with the same engine behind the chart's AVWAP overlay.
-    "Current" is the live, still-accruing period; "Previous" is frozen at the
-    prior period's last bar. */
-export function buildQuarterVwapLevels(rows: OhlcvRow[] | undefined): { current: PriceLevel[]; previous: PriceLevel[] } {
-  if (!rows || rows.length < 5) return { current: [], previous: [] };
+/** Previous (completed) Quarter VWAP ±σ bands, computed client-side from
+    real OHLCV with the same engine behind the chart's AVWAP overlay. */
+export function buildPqVwapLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
+  if (!rows || rows.length < 5) return [];
   const q = computeAnchoredVwap(rows, "quarter");
-  const lastQ = [...q.points].reverse().find((p) => p);
-  return {
-    current: lastQ ? vwapProfileLevels("cqvwap", "CQVWAP", "the current quarter", lastQ) : [],
-    previous: q.prevFinalPoint ? vwapProfileLevels("pqvwap", "PQVWAP", "the previous (completed) quarter", q.prevFinalPoint) : [],
-  };
+  return q.prevFinalPoint ? vwapProfileLevels("pqvwap", "PQVWAP", "the previous (completed) quarter", q.prevFinalPoint) : [];
 }
 
-export function buildYearVwapLevels(rows: OhlcvRow[] | undefined): { current: PriceLevel[]; previous: PriceLevel[] } {
-  if (!rows || rows.length < 5) return { current: [], previous: [] };
+/** Previous (completed) Year VWAP ±σ bands. */
+export function buildPyVwapLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
+  if (!rows || rows.length < 5) return [];
   const y = computeAnchoredVwap(rows, "year");
-  const lastY = [...y.points].reverse().find((p) => p);
-  return {
-    current: lastY ? vwapProfileLevels("cyvwap", "CYVWAP", "the current year", lastY) : [],
-    previous: y.prevFinalPoint ? vwapProfileLevels("pyvwap", "PYVWAP", "the previous (completed) year", y.prevFinalPoint) : [],
-  };
+  return y.prevFinalPoint ? vwapProfileLevels("pyvwap", "PYVWAP", "the previous (completed) year", y.prevFinalPoint) : [];
 }
 
-/** Today's Initial Balance (opening-session range). */
-export function buildInitialBalanceLevels(technical: JsonRecord | undefined): PriceLevel[] {
-  const mp = (technical?.["marketProfile"] || {}) as JsonRecord;
-  const out: PriceLevel[] = [];
-  const ibh = asNumber(mp["ibh"]), ibl = asNumber(mp["ibl"]);
-  if (ibh != null) out.push({ id: "ib-ibh", group: "ib", label: "IBH", price: ibh, tone: "up", explain: "Today's Initial Balance high — the range set in the opening sessions; a breakout above often sets the day's directional bias." });
-  if (ibl != null) out.push({ id: "ib-ibl", group: "ib", label: "IBL", price: ibl, tone: "down", explain: "Today's Initial Balance low — the range set in the opening sessions; a breakdown below often sets the day's directional bias." });
-  return out;
+/** Monthly Initial Balance (IBH/IBL) — high/low across the most recent
+    calendar month's first 2 trading sessions, locked for the rest of that
+    month. lib/indicators/initialBalance.ts is the single source of this
+    calculation (also used by the companion-chart overlay). */
+export function buildIbhIblLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
+  if (!rows || !rows.length) return [];
+  const bands = computeInitialBalance(rows);
+  const band = bands[bands.length - 1];
+  if (!band) return [];
+  return [
+    { id: "ibhl-high", group: "ibhl", label: "IBH", price: band.ibHigh, tone: "up", explain: `Monthly Initial Balance high — the high across ${band.monthKey}'s first 2 trading sessions, locked for the rest of the month.` },
+    { id: "ibhl-low", group: "ibhl", label: "IBL", price: band.ibLow, tone: "down", explain: `Monthly Initial Balance low — same window (${band.monthKey}), locked for the rest of the month.` },
+  ];
 }
 
-/** Previous week's high/low. */
-export function buildPreviousWeekLevels(technical: JsonRecord | undefined): PriceLevel[] {
-  const mp = (technical?.["marketProfile"] || {}) as JsonRecord;
-  const out: PriceLevel[] = [];
-  const pwh = asNumber(mp["pwh"]), pwl = asNumber(mp["pwl"]);
-  if (pwh != null) out.push({ id: "pw-pwh", group: "pwmp", label: "PWH", price: pwh, tone: "up", explain: "Previous week's high — a widely-watched short-term reference level." });
-  if (pwl != null) out.push({ id: "pw-pwl", group: "pwmp", label: "PWL", price: pwl, tone: "down", explain: "Previous week's low — a widely-watched short-term reference level." });
-  return out;
+/** Index of the current (most recent) week's first trading day — the week
+    "resets" whenever a bar's weekday doesn't come after the previous bar's
+    (a Monday after a Friday, or a Tuesday after a Monday holiday-shifted
+    week, etc.), so this also covers weeks where Monday itself was a holiday. */
+function lastWeekStartIndex(rows: OhlcvRow[]): number {
+  let start = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const dow = new Date(`${rows[i].date}T00:00:00Z`).getUTCDay();
+    const prevDow = new Date(`${rows[i - 1].date}T00:00:00Z`).getUTCDay();
+    if (dow <= prevDow) start = i;
+  }
+  return start;
 }
 
-/** Current week's first trading day (Monday) high/low. */
-export function buildCurrentWeekLevels(technical: JsonRecord | undefined): PriceLevel[] {
-  const mp = (technical?.["marketProfile"] || {}) as JsonRecord;
-  const out: PriceLevel[] = [];
-  const mdh = asNumber(mp["mdh"]), mdl = asNumber(mp["mdl"]);
-  if (mdh != null) out.push({ id: "cw-mdh", group: "cwmp", label: "MDH", price: mdh, tone: "up", explain: "The current week's first trading day (Monday) high — an early-week reference level." });
-  if (mdl != null) out.push({ id: "cw-mdl", group: "cwmp", label: "MDL", price: mdl, tone: "down", explain: "The current week's first trading day (Monday) low — an early-week reference level." });
-  return out;
+/** High/low of the current week's first trading day (Monday, or the first
+    session of that week when Monday was a holiday). */
+export function buildMondayRangeLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
+  if (!rows || !rows.length) return [];
+  const row = rows[lastWeekStartIndex(rows)];
+  return [
+    { id: "monday-high", group: "mondayRange", label: "Monday High", price: row.high, tone: "up", explain: `High of the current week's first trading day (${row.date}).` },
+    { id: "monday-low", group: "mondayRange", label: "Monday Low", price: row.low, tone: "down", explain: `Low of the current week's first trading day (${row.date}).` },
+  ];
 }
 
-export function buildDcfLevels(fairValue: number | null, bear: number | null, bull: number | null): PriceLevel[] {
-  const out: PriceLevel[] = [];
-  if (fairValue != null && isFinite(fairValue)) out.push({ id: "dcf-fair", group: "dcf", label: "DCF Fair Value", price: fairValue, tone: "flat", explain: "Discounted-cash-flow fair value per share under current-close assumptions — see the DCF panel below for the full model and adjustable inputs." });
-  if (bear != null && isFinite(bear)) out.push({ id: "dcf-bear", group: "dcf", label: "DCF Bear Case", price: bear, tone: "down", explain: "DCF fair value with the discount rate shifted +1.5pp — the model's bear-case estimate." });
-  if (bull != null && isFinite(bull)) out.push({ id: "dcf-bull", group: "dcf", label: "DCF Bull Case", price: bull, tone: "up", explain: "DCF fair value with the discount rate shifted −1.5pp — the model's bull-case estimate." });
-  return out;
+/** 52-week high/low measured directly off the last ~252 published trading
+    days — not the (sometimes-missing) fundamentals field. Discloses the
+    real window when less than a full year is available, rather than
+    silently scoping down. */
+export function buildFiftyTwoWeekLevels(rows: OhlcvRow[] | undefined): PriceLevel[] {
+  if (!rows || !rows.length) return [];
+  const window = rows.slice(-252);
+  const hi = Math.max(...window.map((r) => r.high));
+  const lo = Math.min(...window.map((r) => r.low));
+  const partial = window.length < 252 ? ` (only ${window.length} trading days published)` : "";
+  return [
+    { id: "w52-hi", group: "w52", label: "52W High", price: hi, tone: "up", explain: `Highest high since ${window[0].date}${partial}.` },
+    { id: "w52-lo", group: "w52", label: "52W Low", price: lo, tone: "down", explain: `Lowest low since ${window[0].date}${partial}.` },
+  ];
 }
