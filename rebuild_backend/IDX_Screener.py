@@ -6877,8 +6877,18 @@ def main():
     build_detail_sheet(ws2, latest_market_day_global, results)
 
     # Sheet: IDX Fundamental Detail  (renamed + redesigned from Fundamental Key Stats)
+    # Pass every scanned ticker, not just summary_rows (OK-only) -- yfinance
+    # company fundamentals (market cap, sector, ROE, ...) come from .info(),
+    # which has nothing to do with OHLCV bar count, but a ticker with < 210
+    # bars (suspended/recently-relisted, e.g. WSKT, SRIL, ARMY after their
+    # PKPU/restructuring halts) got data_status "NO DATA"/"PARTIAL DATA" and
+    # was silently dropped from the Fundamental Detail sheet entirely --
+    # confirmed live: yfinance still returns full real fundamentals for these
+    # names. IDX Technical Detail already uses the unfiltered `results` for
+    # the same reason (build_fundamental_key_stats_sheet's own OK/PARTIAL/NO
+    # DATA gate below decides what actually gets a row).
     print("[INFO] Building IDX Fundamental Detail sheet ...")
-    build_fundamental_key_stats_sheet(wb, latest_market_day_global, summary_rows)
+    build_fundamental_key_stats_sheet(wb, latest_market_day_global, results)
 
     # Sheet: IDX Screener (filtered signal sheet)
     print("[INFO] Building IDX Screener sheet ...")
@@ -12030,7 +12040,11 @@ def build_fundamental_key_stats_sheet(wb, latest_market_day: str, rows: list):
         style_cell(c, fill=group_fill, font=FONT_SUBHEADER, align="center", wrap=True)
 
     # ── Data rows ─────────────────────────────────────────────────────────────
-    ok_rows   = [r for r in rows if r.get("data_status") in ("OK", "PARTIAL DATA")]
+    # "NO DATA" here means insufficient OHLCV bars for technical indicators
+    # (base_row_from_ksei), not "no company fundamentals" -- it still carries
+    # a real ticker, so it's still worth a yfinance fundamentals attempt below.
+    # Only genuinely tickerless/malformed rows are dropped.
+    ok_rows   = [r for r in rows if r.get("ticker") and r.get("data_status") in ("OK", "PARTIAL DATA", "NO DATA")]
     _COMPACT_KEYS = {
         "yf_shares_outstanding", "yf_float_shares", "yf_market_cap_current",
         "yf_enterprise_value_current", "yf_shares_outstanding_current",

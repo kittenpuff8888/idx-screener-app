@@ -14,7 +14,7 @@ import { DcfPanel } from "@/components/ticker/DcfPanel";
 import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
 import { computeSetupVerdict, type SetupVerdict } from "@/lib/valuation/setupVerdict";
 import { computeAnchoredVolumeProfile, type VolumeProfileResult } from "@/lib/indicators/volumeProfile";
-import { buildVolumeProfileLevels, buildMaLevels, buildQuarterVwapLevels, buildYearVwapLevels, buildInitialBalanceLevels, buildPreviousWeekLevels, buildCurrentWeekLevels, buildFiftyTwoWeekLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
+import { buildMaLevels, buildQuarterVwapLevels, buildYearVwapLevels, buildInitialBalanceLevels, buildPreviousWeekLevels, buildCurrentWeekLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
 import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
@@ -185,7 +185,7 @@ export function TickerResearch() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <span style={KICKER}>TRADE PLAN · PRICE LADDER</span>
           </div>
-          <TradePlan setup={setup} price={price} hi52={hi52} lo52={lo52} VAL={VAL} VAH={VAH} PoC={PoC} atr={n(t["atrPercent"])} ma={ma} technical={t} ohlcv={ohlcv} stock={stock} fund={fund} volumeProfile={volumeProfile} />
+          <TradePlan setup={setup} price={price} VAL={VAL} VAH={VAH} atr={n(t["atrPercent"])} ma={ma} technical={t} ohlcv={ohlcv} stock={stock} fund={fund} />
         </div>
       </div>
 
@@ -353,23 +353,22 @@ function SetupNone({ rangePos, offLow }: { rangePos: number | null; offLow: numb
 
 type LadderRow = { id: string; v: number; label: string; tone: "up" | "down" | "flat"; explain?: string };
 
-function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical, ohlcv, stock, fund, volumeProfile }: {
-  setup: Setup | null; price: number | null; hi52: number | null; lo52: number | null; VAL: number | null; VAH: number | null; PoC: number | null; atr: number | null;
-  ma?: JsonRecord; technical?: JsonRecord; ohlcv: OhlcvPayload | null; stock?: TechnicalRecord; fund?: JsonRecord; volumeProfile: VolumeProfileResult | null;
+function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, fund }: {
+  setup: Setup | null; price: number | null; VAL: number | null; VAH: number | null; atr: number | null;
+  ma?: JsonRecord; technical?: JsonRecord; ohlcv: OhlcvPayload | null; stock?: TechnicalRecord; fund?: JsonRecord;
 }) {
-  // Volume Profile is the default basis for the core Target/Invalidation
-  // rows (see VAL/VAH above) — pre-enabled here too so its own VAH/POC/VAL
-  // rows are visible by default, consistent with the other opt-in groups.
-  // 52-Week Range defaults on too since it used to be an always-on core row.
-  const [activeGroups, setActiveGroups] = useState<Set<LevelGroup>>(new Set<LevelGroup>(["vp", "w52"]));
+  // Moving Averages is the reliable default: Volume Profile (needs a
+  // qualifying consolidation anchor) and 52-Week Range (needs published
+  // fundamentals) were both frequently empty for lower-coverage tickers,
+  // leaving the ladder showing nothing but a bare CLOSE dot -- confusing
+  // enough to read as "broken" -- so both were dropped as toggle groups
+  // entirely rather than just deprioritized. MA is computed from technical
+  // data available for any actively-traded ticker.
+  const [activeGroups, setActiveGroups] = useState<Set<LevelGroup>>(new Set<LevelGroup>(["ma"]));
   const [targetSel, setTargetSel] = useState<string | null>(null);
   const [invalSel, setInvalSel] = useState<string | null>(null);
   const toggleGroup = (g: LevelGroup) => setActiveGroups((s) => { const n = new Set(s); n.has(g) ? n.delete(g) : n.add(g); return n; });
 
-  // VAH/POC/VAL and 52w swing high/low are no longer pushed into core
-  // directly — they're now the "vp" and "w52" toggle groups below, both
-  // defaulted on, so they still show by default without duplicating the
-  // same price rows under two labels.
   const core: LadderRow[] = [];
   const push = (id: string, v: number | null, label: string, tone: "up" | "down" | "flat") => { if (v != null && isFinite(v)) core.push({ id, v, label, tone }); };
   if (setup) {
@@ -396,7 +395,6 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
     const q = buildQuarterVwapLevels(ohlcv?.rows);
     const y = buildYearVwapLevels(ohlcv?.rows);
     return {
-      vp: buildVolumeProfileLevels(volumeProfile),
       ma: buildMaLevels(ma),
       cqvwap: q.current,
       pqvwap: q.previous,
@@ -405,10 +403,9 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
       ib: buildInitialBalanceLevels(technical),
       pwmp: buildPreviousWeekLevels(technical),
       cwmp: buildCurrentWeekLevels(technical),
-      w52: buildFiftyTwoWeekLevels(hi52, lo52),
       dcf: dcfLevel,
     };
-  }, [volumeProfile, ma, ohlcv, technical, dcfLevel, hi52, lo52]);
+  }, [ma, ohlcv, technical, dcfLevel]);
 
   const extraRows: LadderRow[] = useMemo(
     () => (Object.keys(extraByGroup) as LevelGroup[]).filter((g) => activeGroups.has(g)).flatMap((g) => extraByGroup[g].map((l) => ({ id: l.id, v: l.price, label: l.label, tone: l.tone, explain: l.explain }))),
@@ -432,14 +429,18 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
   }
 
   // Selected (or default) target/invalidation — click any non-CLOSE row's T/S
-  // button to override; R:R and the reward/risk readout recompute live.
-  const defaultTargetId = setup ? "core-target" : "vp-vah";
-  const defaultInvalId = setup ? "core-stop" : "vp-val";
+  // button to override; R:R and the reward/risk readout recompute live. With
+  // no active setup there's no ladder row to default to anymore (Volume
+  // Profile was dropped as a toggle group -- see activeGroups above), so
+  // target/invalidation start unselected and only the reward/risk readout
+  // still falls back to the raw VAH/VAL props below.
+  const defaultTargetId = setup ? "core-target" : null;
+  const defaultInvalId = setup ? "core-stop" : null;
   const targetRow = uniq.find((r) => r.id === (targetSel ?? defaultTargetId)) ?? uniq.find((r) => r.id === defaultTargetId);
   const invalRow = uniq.find((r) => r.id === (invalSel ?? defaultInvalId)) ?? uniq.find((r) => r.id === defaultInvalId);
-  // Fall back to the raw VAH/VAL props (not just the "vp" row list) so the
-  // Reward:Risk readout still works even if the user toggles the Volume
-  // Profile chip off — it stays the real default basis, just optionally hidden.
+  // Fall back to the raw VAH/VAL props (real, always-computed anchored
+  // Volume-Profile values shown as badges above the ladder) so the
+  // Reward:Risk readout still has a real basis even without a matching row.
   const rewardTo = targetRow?.v ?? (!setup ? VAH : null);
   const riskTo = invalRow?.v ?? (!setup ? VAL : null);
   const reward = rewardTo != null && price != null ? rewardTo - price : null;
@@ -499,11 +500,6 @@ function TradePlan({ setup, price, hi52, lo52, VAL, VAH, PoC, atr, ma, technical
           );
         })}
       </div>
-      {activeGroups.has("vp") && volumeProfile ? (
-        <div style={{ fontSize: 10, color: "var(--faint)", marginTop: -6, marginBottom: 12 }}>
-          VP anchored {volumeProfile.anchor.startDate} → {volumeProfile.anchor.endDate} · consolidation before the {volumeProfile.anchor.direction === "up" ? "breakout up" : "breakdown"}
-        </div>
-      ) : null}
       <div style={{ display: "flex", gap: 16, flex: "1 1 auto" }}>
         {/* Left: true-price spine (reward/risk zones + dots) + evenly-spaced leader rows */}
         <div style={{ position: "relative", flex: "1 1 auto", minWidth: 0, height: H }}>

@@ -147,18 +147,27 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
   const mountRef = useRef<HTMLDivElement | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [unavailable, setUnavailable] = useState(false);
-  const [studies, setStudies] = useState<string[]>([]);
-  const [lengths, setLengths] = useState<Record<string, number>>({});
+  // Lazy-initialized (not hydrated in a post-mount effect): on a heavier page
+  // (many sections, many async data fetches racing at mount) an effect-driven
+  // "start empty, then setState to the real saved selection" transition can
+  // take longer than this component's build debounce to settle, so the chart
+  // effect below fires its FIRST build with an empty studies/lengths config,
+  // then almost immediately tears that iframe down and requests a second one
+  // for the same symbol once the real selection lands. TradingView's embed
+  // has been observed to leave the second, visible iframe permanently stuck
+  // at zeroed OHLC after a rapid double-request like that (confirmed live:
+  // toolbar/chrome render fine since those don't need the data feed, but no
+  // candle data ever arrives) -- reproducible specifically on data-heavy
+  // pages, not the lighter dashboard. Reading localStorage synchronously
+  // during the first render removes the empty transient state entirely, so
+  // there's only ever one build (plus a real theme flip, which the debounce
+  // below still exists to collapse).
+  const [studies, setStudies] = useState<string[]>(() => loadStudies());
+  const [lengths, setLengths] = useState<Record<string, number>>(() => loadStudyLengths());
 
-  // Hydrate + subscribe to site-wide study changes.
-  useEffect(() => {
-    setStudies(loadStudies());
-    return subscribeStudies(setStudies);
-  }, []);
-  useEffect(() => {
-    setLengths(loadStudyLengths());
-    return subscribeStudyLengths(setLengths);
-  }, []);
+  // Still subscribe for live updates from the indicator picker / other tabs.
+  useEffect(() => subscribeStudies(setStudies), []);
+  useEffect(() => subscribeStudyLengths(setLengths), []);
 
   function toggle(id: string) {
     const next = studies.includes(id) ? studies.filter((x) => x !== id) : [...studies, id];
@@ -192,17 +201,6 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
       setUnavailable(false);
       el.innerHTML = "";
       const dark = CURRENT_THEME() === "dark";
-      const container = document.createElement("div");
-      container.className = "tradingview-widget-container";
-      container.style.cssText = "height:100%;width:100%;";
-      const widget = document.createElement("div");
-      widget.className = "tradingview-widget-container__widget";
-      widget.style.cssText = "height:100%;width:100%;";
-      container.appendChild(widget);
-      const s = document.createElement("script");
-      s.type = "text/javascript";
-      s.async = true;
-      s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
       // TradingView's daily code is "D" — "1D" is NOT valid and makes the widget
       // fall back to the session's intraday interval (e.g. 1h), which IDX
       // small-caps don't offer ("Only D, W, M intervals are available"). Normalise.
@@ -213,7 +211,7 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
       // `interval`, tripping "Only D, W, M intervals are available". Verified in
       // the live embed: interval "D" with no range renders daily correctly.
       const overrides = buildStudyOverrides(lengths);
-      s.innerHTML = JSON.stringify({
+      const config = {
         autosize: true,
         symbol,
         interval: tvInterval,
@@ -241,9 +239,33 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
         backgroundColor: dark ? "#11151b" : "#ffffff",
         gridColor: dark ? "rgba(255,255,255,0.06)" : "rgba(11,14,20,0.06)",
         support_host: "https://www.tradingview.com",
-      });
-      container.appendChild(s);
-      el.appendChild(container);
+        width: "100%",
+        height: "100%",
+        utm_source: typeof location !== "undefined" ? location.hostname : "",
+        utm_medium: "widget",
+        utm_campaign: "advanced-chart",
+      };
+      // Build the iframe directly instead of injecting TradingView's
+      // embed-widget-advanced-chart.js loader script. The loader creates this
+      // EXACT same iframe (confirmed by inspecting its output live), then
+      // separately tries to attach a postMessage listener to it for parent-side
+      // auto-resize -- a handshake that reproducibly fails to complete on some
+      // fraction of loads ("Cannot listen to the event from the provided
+      // iframe, contentWindow is not available"), leaving the chart's own
+      // chrome (toolbar, axes) rendered but its data feed never subscribed
+      // (frozen at all-zero OHLC). We don't need that handshake: `autosize`
+      // makes the widget fill its OWN iframe, and the iframe itself already
+      // fills our fixed-size container via CSS -- nothing needs to report a
+      // size back up to us. A direct iframe to the same URL the loader script
+      // ultimately builds sidesteps the flaky handshake entirely; verified
+      // live to load real data reliably where the loader script did not.
+      const iframe = document.createElement("iframe");
+      iframe.src = `https://www.tradingview-widget.com/embed-widget/advanced-chart/?locale=en#${encodeURIComponent(JSON.stringify(config))}`;
+      iframe.style.cssText = "width:100%;height:100%;border:0;";
+      iframe.setAttribute("scrolling", "no");
+      iframe.setAttribute("allowtransparency", "true");
+      iframe.title = `TradingView chart for ${symbol}`;
+      el.appendChild(iframe);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         if (!disposed && el && !el.querySelector("iframe")) setUnavailable(true);
