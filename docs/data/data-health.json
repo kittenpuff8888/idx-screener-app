@@ -1,9 +1,9 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-09-05T01:02:25.050118+07:00",
- "marketDate": "2026-09-04",
+ "generatedAt": "2026-09-07T20:19:20.321549+07:00",
+ "marketDate": "2026-09-07",
  "universe": {
-  "size": 963,
+  "size": 962,
   "source": "KSEI workbook roster",
   "liveIdxRosterDiff": {
    "rosterSource": "data_sources/idx-listed.json (IDX Daftar Saham (data_sources/ksei-data-source.xlsx, TICKER LIST))",
@@ -11,27 +11,13 @@
    "liveCount": 962,
    "missingFromUniverse": [],
    "missingCount": 0,
-   "inUniverseNotListed": [
-    "CNTX"
-   ],
-   "delistedCount": 1
+   "inUniverseNotListed": [],
+   "delistedCount": 0
   },
-  "liveIdxRosterDiffReason": null,
-  "auditedAt": "2026-09-06T22:46:50.493316+07:00"
+  "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
+  "auditedAt": "2026-09-07T20:19:05.678912+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-09-01T23:38:45.835226+07:00",
-   "marketDate": "2026-09-01",
-   "status": "SUCCESS",
-   "message": "Created and validated a new dated snapshot."
-  },
-  {
-   "timestamp": "2026-09-01T23:41:46.386513+07:00",
-   "marketDate": "2026-09-01",
-   "status": "NO_CHANGE",
-   "message": "Dataset already published; last successful snapshot preserved."
-  },
   {
    "timestamp": "2026-09-02T21:55:21.638585+07:00",
    "marketDate": "2026-09-02",
@@ -67,34 +53,47 @@
    "marketDate": "2026-09-04",
    "status": "NO_CHANGE",
    "message": "Dataset already published; last successful snapshot preserved."
+  },
+  {
+   "timestamp": "2026-09-07T18:53:52.390271+07:00",
+   "marketDate": "2026-09-07",
+   "status": "STARTED",
+   "message": "Daily update pipeline started."
+  },
+  {
+   "timestamp": "2026-09-07T20:17:43.092547+07:00",
+   "marketDate": "2026-09-07",
+   "status": "SUCCESS",
+   "message": "Created and validated a new dated snapshot."
   }
  ],
  "qaSummary": {
-  "checks": 2890,
-  "pass": 2890,
+  "checks": 2887,
+  "pass": 2887,
   "warn": 0,
   "fail": 0
  },
  "processingSummary": {
-  "totalScanned": 963,
+  "totalScanned": 962,
   "ok": 911,
   "partial": 10,
-  "noData": 42
+  "noData": 41
  },
  "ksei": {
   "snapshots": [
    "2026-05-14",
    "2026-06-06",
    "2026-06-14",
-   "2026-07-20"
+   "2026-07-20",
+   "2026-08-31"
   ],
-  "latest": "2026-07-20",
+  "latest": "2026-08-31",
   "lagNote": "KSEI is monthly; ownership signals are context, never timing triggers."
  },
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-09-05T01:02:17.260988+07:00",
+  "lastChecked": "2026-09-07T20:19:08.788852+07:00",
   "checked": 11,
   "failures": [],
   "results": [
@@ -115,19 +114,15 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "BBTN",
+    "ticker": "ESSA",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "BLES",
+    "ticker": "ETWA",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "MBTO",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "MMIX",
+    "ticker": "HATM",
     "status": "ERROR: TypeError"
    },
    {
@@ -135,69 +130,66 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "TLKM",
+    "ticker": "RICY",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "TRUK",
+    "ticker": "SAME",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "TLKM",
     "status": "ERROR: TypeError"
    }
   ],
   "note": "Price exact-match required (discrete IDX ticks); volume tolerance 0.5%. PARITY_FAIL tickers are excluded from swing setups this run."
  },
  "setups": {
-  "count": 1,
+  "count": 0,
   "scanned": 962,
   "quarantined": 5,
   "spotCheckSample": [
    {
     "ticker": "ANTM",
-    "date": "2026-09-04",
-    "close": 3120.0,
-    "volume": 83943400.0,
+    "date": "2026-09-07",
+    "close": 3080.0,
+    "volume": 72342200.0,
     "source": "yfinance"
    },
    {
     "ticker": "ASII",
-    "date": "2026-09-04",
-    "close": 4900.0,
-    "volume": 50573000.0,
+    "date": "2026-09-07",
+    "close": 4910.0,
+    "volume": 41646800.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBCA",
-    "date": "2026-09-04",
-    "close": 6700.0,
-    "volume": 93923500.0,
+    "date": "2026-09-07",
+    "close": 6625.0,
+    "volume": 65118000.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBRI",
-    "date": "2026-09-04",
-    "close": 3390.0,
-    "volume": 152173900.0,
+    "date": "2026-09-07",
+    "close": 3370.0,
+    "volume": 140651200.0,
     "source": "yfinance"
    },
    {
     "ticker": "TLKM",
-    "date": "2026-09-04",
+    "date": "2026-09-07",
     "close": 2610.0,
-    "volume": 84953700.0,
-    "source": "yfinance"
-   },
-   {
-    "ticker": "RGAS",
-    "date": "2026-09-04",
-    "close": 120.0,
-    "volume": null,
+    "volume": 42030200.0,
     "source": "yfinance"
    }
   ],
   "forwardOutcomes": {
-   "total": 65,
-   "decided": 48,
-   "targetFirst": 19,
-   "hitRate": 0.396
+   "total": 66,
+   "decided": 49,
+   "targetFirst": 20,
+   "hitRate": 0.408
   }
  },
  "manualSpotCheck": {
@@ -205,44 +197,37 @@
   "tickers": [
    {
     "ticker": "ANTM",
-    "date": "2026-09-04",
-    "close": 3120.0,
-    "volume": 83943400.0,
+    "date": "2026-09-07",
+    "close": 3080.0,
+    "volume": 72342200.0,
     "source": "yfinance"
    },
    {
     "ticker": "ASII",
-    "date": "2026-09-04",
-    "close": 4900.0,
-    "volume": 50573000.0,
+    "date": "2026-09-07",
+    "close": 4910.0,
+    "volume": 41646800.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBCA",
-    "date": "2026-09-04",
-    "close": 6700.0,
-    "volume": 93923500.0,
+    "date": "2026-09-07",
+    "close": 6625.0,
+    "volume": 65118000.0,
     "source": "yfinance"
    },
    {
     "ticker": "BBRI",
-    "date": "2026-09-04",
-    "close": 3390.0,
-    "volume": 152173900.0,
+    "date": "2026-09-07",
+    "close": 3370.0,
+    "volume": 140651200.0,
     "source": "yfinance"
    },
    {
     "ticker": "TLKM",
-    "date": "2026-09-04",
+    "date": "2026-09-07",
     "close": 2610.0,
-    "volume": 84953700.0,
-    "source": "yfinance"
-   },
-   {
-    "ticker": "RGAS",
-    "date": "2026-09-04",
-    "close": 120.0,
-    "volume": null,
+    "volume": 42030200.0,
     "source": "yfinance"
    }
   ]
