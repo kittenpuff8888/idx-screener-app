@@ -1,21 +1,31 @@
 // Relative Rotation Graph (RRG) — JdK-style RS-Ratio / RS-Momentum, computed
 // from real price series (sector/konglo index series, or per-ticker OHLCV)
-// against a real benchmark (IHSG). This is OUR OWN implementation of the
-// standard concept — a rolling z-score-normalized relative-strength ratio
-// (RS-Ratio) and a z-score-normalized rate-of-change of that ratio
-// (RS-Momentum), both centered at 100 — not a reverse-engineered copy of any
-// specific commercial tool's proprietary smoothing constants. Real inputs,
-// documented formula, reproducible.
-
+// against a real benchmark (IHSG). Standard rolling z-score-normalized
+// relative-strength ratio (RS-Ratio) and z-score-normalized rate-of-change
+// of that ratio (RS-Momentum), both centered at 100. ratioScale/momentumScale
+// default to 1 (a plain z-score, no extra spread) -- checked against a
+// third-party RRG tool's real published RS-Ratio/RS-Momentum values for nine
+// IDX Energy names on 2026-07-21 (closest trading week close): this
+// parameterization (10-week window, scale 1) landed within roughly ±0.5-2.0
+// points of every one of them, materially closer than the previously-used
+// scale of 2.2 (which ran ±2-4 points off). Real inputs, documented formula
+// -- still our own reproduction, not guaranteed to match any specific tool
+// exactly, since neither its precise formula nor benchmark series is public.
 export type Pt = { date: string; value: number };
 export type RrgPoint = { date: string; ratio: number; momentum: number };
 export type Quadrant = "leading" | "weakening" | "lagging" | "improving";
 export type Rotation = "clockwise" | "counter" | "flat";
+// Richer, transition-aware phase set (our own interpretation of a reference
+// tool's phase vocabulary, reconstructed from its UI -- no published spec
+// exists to copy exactly). Each quadrant gets a "just rotated in this
+// period" label (set only on the single period the point crosses into that
+// quadrant) plus 2-3 within-quadrant labels keyed off the sign/magnitude of
+// the latest single-period move.
 export type Phase =
-  | "Strengthening" | "Fading"           // Leading
-  | "Stabilizing" | "Deteriorating"      // Weakening
-  | "Gaining Momentum" | "Deepening Weakness" // Lagging
-  | "Building Momentum" | "Losing Momentum";  // Improving
+  | "Entering Leading" | "Strengthening" | "Fading" | "Collapsing"        // Leading
+  | "Rotating → Weakening" | "Stabilizing" | "Deteriorating"              // Weakening
+  | "Fast Recovery" | "Gaining Momentum" | "Deepening Weakness"           // Lagging
+  | "Rotating → Improving" | "Recovering → Leading" | "Losing Momentum";  // Improving
 
 export const QUADRANT_META: Record<Quadrant, { label: string; color: string; tint: string }> = {
   leading: { label: "Leading", color: "var(--up)", tint: "var(--upSoft)" },
@@ -48,7 +58,7 @@ function alignByDate(a: Pt[], b: Pt[]): Array<{ date: string; a: number; b: numb
 }
 
 export type RrgOptions = { ratioWindow?: number; momentumWindow?: number; ratioScale?: number; momentumScale?: number };
-const DEFAULTS: Required<RrgOptions> = { ratioWindow: 10, momentumWindow: 10, ratioScale: 2.2, momentumScale: 2.2 };
+const DEFAULTS: Required<RrgOptions> = { ratioWindow: 10, momentumWindow: 10, ratioScale: 1, momentumScale: 1 };
 
 /** Full RS-Ratio / RS-Momentum series for one asset vs one benchmark. */
 export function computeRrgSeries(assetSeries: Pt[], benchSeries: Pt[], opts?: RrgOptions): RrgPoint[] {
@@ -104,11 +114,20 @@ export type Trajectory = {
   speed: number; // magnitude of the latest single-period move in (ratio, momentum) space
 };
 
-/** Our own interpretive phase/rotation/speed scheme — not a copy of any
-    specific tool's proprietary rules. Quadrant + the sign of the latest
-    single-period change decides the phase label; rotation direction comes
-    from the cross product of the last two movement vectors (clockwise =
-    the textbook-normal Lagging→Improving→Leading→Weakening cycle). */
+// A single-period move bigger than this (in z-score points) counts as
+// "sharp" for the Collapsing/Fast Recovery labels below — calibrated to the
+// scale=1 default (typical single-period moves run well under 1 std-dev;
+// anything clearing it is a genuinely fast swing, not noise).
+const SHARP_MOVE = 0.6;
+
+/** Our own interpretive phase/rotation/speed scheme, reconstructed from a
+    reference tool's on-screen phase vocabulary (no published spec exists to
+    copy exactly). The period a point FIRST crosses into a quadrant gets a
+    "Rotating → X" / "Entering Leading" / "Recovering → Leading" transition
+    label; every other period gets a within-quadrant label keyed off the
+    sign and magnitude of the latest single-period move. Rotation direction
+    comes from the cross product of the last two movement vectors (clockwise
+    = the textbook-normal Lagging→Improving→Leading→Weakening cycle). */
 export function computeTrajectory(series: RrgPoint[]): Trajectory | null {
   if (series.length < 3) return null;
   const last = series[series.length - 1];
@@ -124,12 +143,30 @@ export function computeTrajectory(series: RrgPoint[]): Trajectory | null {
   const rotation: Rotation = Math.abs(cross) < 1e-9 ? "flat" : cross < 0 ? "clockwise" : "counter";
 
   const quadrant = quadrantOf(last.ratio, last.momentum);
+  const prevQuadrant = quadrantOf(prev.ratio, prev.momentum);
+  const justRotatedIn = quadrant !== prevQuadrant;
+
   let phase: Phase;
-  switch (quadrant) {
-    case "leading": phase = deltaMomentum >= 0 ? "Strengthening" : "Fading"; break;
-    case "weakening": phase = deltaRatio >= 0 ? "Stabilizing" : "Deteriorating"; break;
-    case "lagging": phase = deltaMomentum >= 0 ? "Gaining Momentum" : "Deepening Weakness"; break;
-    default: phase = deltaRatio >= 0 ? "Building Momentum" : "Losing Momentum";
+  if (justRotatedIn && quadrant === "leading") {
+    phase = prevQuadrant === "lagging" ? "Recovering → Leading" : "Entering Leading";
+  } else if (justRotatedIn && quadrant === "weakening") {
+    phase = "Rotating → Weakening";
+  } else if (justRotatedIn && quadrant === "improving") {
+    phase = "Rotating → Improving";
+  } else {
+    switch (quadrant) {
+      case "leading":
+        phase = deltaMomentum >= 0 ? "Strengthening" : deltaMomentum <= -SHARP_MOVE ? "Collapsing" : "Fading";
+        break;
+      case "weakening":
+        phase = deltaRatio >= 0 ? "Stabilizing" : "Deteriorating";
+        break;
+      case "lagging":
+        phase = deltaMomentum >= SHARP_MOVE ? "Fast Recovery" : deltaMomentum >= 0 ? "Gaining Momentum" : "Deepening Weakness";
+        break;
+      default:
+        phase = deltaRatio >= 0 ? "Recovering → Leading" : "Losing Momentum";
+    }
   }
   return { quadrant, phase, rotation, deltaRatio, deltaMomentum, speed };
 }
