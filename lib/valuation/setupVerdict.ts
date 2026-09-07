@@ -32,58 +32,79 @@ export type SetupVerdict = {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-function technicalFactors(stock: TechnicalRecord): VerdictFactor[] {
+// Every factor below is ALWAYS pushed, in the same fixed order, even when
+// its underlying field is missing (detail reads "no data", points 0) or its
+// reading is neutral (points legitimately 0) -- so the card is the same
+// fixed height on every ticker page, never a variable-length list a reader
+// has to scroll to finish. A row that's genuinely inapplicable is still
+// disclosed as such rather than silently omitted.
+function technicalFactors(stock: TechnicalRecord): { factors: VerdictFactor[]; hasData: boolean } {
   const t = (stock.technical || {}) as JsonRecord;
   const trend = (stock.trend || {}) as JsonRecord;
   const structure = (stock.structure || {}) as JsonRecord;
   const out: VerdictFactor[] = [];
+  let hasData = false;
 
   const internalTrend = String(trend.internal || "");
-  if (internalTrend) out.push({ label: "Internal trend", detail: internalTrend, points: internalTrend.includes("Bullish") ? 15 : internalTrend.includes("Bearish") ? -15 : 0 });
+  if (internalTrend) hasData = true;
+  out.push({ label: "Internal trend", detail: internalTrend || "no data", points: internalTrend.includes("Bullish") ? 15 : internalTrend.includes("Bearish") ? -15 : 0 });
   const swingTrend = String(trend.swing || "");
-  if (swingTrend) out.push({ label: "Swing trend", detail: swingTrend, points: swingTrend.includes("Bullish") ? 15 : swingTrend.includes("Bearish") ? -15 : 0 });
+  if (swingTrend) hasData = true;
+  out.push({ label: "Swing trend", detail: swingTrend || "no data", points: swingTrend.includes("Bullish") ? 15 : swingTrend.includes("Bearish") ? -15 : 0 });
 
   const internalStruct = String(structure.internal || "");
-  if (internalStruct) out.push({ label: "Internal structure", detail: internalStruct, points: internalStruct.includes("Bullish") ? 10 : internalStruct.includes("Bearish") ? -10 : 0 });
+  if (internalStruct) hasData = true;
+  out.push({ label: "Internal structure", detail: internalStruct || "no data", points: internalStruct.includes("Bullish") ? 10 : internalStruct.includes("Bearish") ? -10 : 0 });
   const swingStruct = String(structure.swing || "");
-  if (swingStruct) out.push({ label: "Swing structure", detail: swingStruct, points: swingStruct.includes("Bullish") ? 10 : swingStruct.includes("Bearish") ? -10 : 0 });
+  if (swingStruct) hasData = true;
+  out.push({ label: "Swing structure", detail: swingStruct || "no data", points: swingStruct.includes("Bullish") ? 10 : swingStruct.includes("Bearish") ? -10 : 0 });
 
   const maZone = String(t.maZone || "");
-  if (maZone) out.push({ label: "Moving-average zone", detail: maZone, points: maZone === "Above All MA" ? 15 : maZone === "Below All MA" ? -15 : maZone.includes("Above") ? 7 : maZone.includes("Below") ? -7 : 0 });
+  if (maZone) hasData = true;
+  out.push({ label: "Moving-average zone", detail: maZone || "no data", points: maZone === "Above All MA" ? 15 : maZone === "Below All MA" ? -15 : maZone.includes("Above") ? 7 : maZone.includes("Below") ? -7 : 0 });
 
   const macdPos = String(t.macdPosition || "");
-  if (macdPos) out.push({ label: "MACD lines", detail: macdPos, points: macdPos === "Bullish" ? 10 : macdPos === "Bearish" ? -10 : 0 });
+  if (macdPos) hasData = true;
+  out.push({ label: "MACD lines", detail: macdPos || "no data", points: macdPos === "Bullish" ? 10 : macdPos === "Bearish" ? -10 : 0 });
 
   const rsiStatus = String(t.rsiStatus || "");
-  if (rsiStatus) out.push({ label: "RSI status", detail: rsiStatus, points: rsiStatus === "Oversold" ? 10 : rsiStatus === "Overbought" ? -10 : 0 });
+  if (rsiStatus) hasData = true;
+  out.push({ label: "RSI status", detail: rsiStatus || "no data", points: rsiStatus === "Oversold" ? 10 : rsiStatus === "Overbought" ? -10 : 0 });
 
   const rsRating = asNumber(stock.rsRating);
-  if (rsRating != null) out.push({ label: "RS Rating vs IHSG", detail: `${rsRating}/99`, points: rsRating >= 80 ? 10 : rsRating <= 30 ? -10 : 0 });
+  if (rsRating != null) hasData = true;
+  out.push({ label: "RS Rating vs IHSG", detail: rsRating != null ? `${rsRating}/99` : "no data", points: rsRating == null ? 0 : rsRating >= 80 ? 10 : rsRating <= 30 ? -10 : 0 });
 
-  return out;
+  return { factors: out, hasData };
 }
 
-function fundamentalFactors(fund: JsonRecord | undefined, dcfInputs: DcfInputs): { factors: VerdictFactor[]; ineligibleReason: string | null } {
+function fundamentalFactors(fund: JsonRecord | undefined, dcfInputs: DcfInputs): { factors: VerdictFactor[]; ineligibleReason: string | null; hasData: boolean } {
   const factors: VerdictFactor[] = [];
+  let hasData = false;
   const dcf = computeDcf(dcfInputs, { ...DEFAULT_ASSUMPTIONS, fcfGrowthRate: clamp(dcfInputs.revenueGrowth ?? 0.05, -0.3, 0.4) });
   let ineligibleReason: string | null = null;
   if (dcf.eligible) {
+    hasData = true;
     const dcfPoints = clamp(dcf.upsidePct * 150, -50, 50);
     factors.push({ label: "DCF fair value", detail: `${dcf.recommendation} · ${dcf.upsidePct >= 0 ? "+" : ""}${(dcf.upsidePct * 100).toFixed(1)}% upside`, points: dcfPoints });
   } else {
     ineligibleReason = dcf.gates.find((g) => !g.pass)?.label || "DCF inputs incomplete";
+    factors.push({ label: "DCF fair value", detail: "not eligible", points: 0 });
   }
 
   const roe = asNumber(fund?.["Return on Equity (TTM)"]);
-  if (roe != null) factors.push({ label: "Return on Equity (TTM)", detail: `${(roe * 100).toFixed(1)}%`, points: roe >= 0.15 ? 10 : roe < 0 ? -15 : 0 });
+  if (roe != null) hasData = true;
+  factors.push({ label: "Return on Equity (TTM)", detail: roe != null ? `${(roe * 100).toFixed(1)}%` : "no data", points: roe == null ? 0 : roe >= 0.15 ? 10 : roe < 0 ? -15 : 0 });
 
   const altman = asNumber(fund?.["Altman Z-Score (Modified)"]);
-  if (altman != null) factors.push({ label: "Altman Z-Score", detail: altman.toFixed(2), points: altman < 1.8 ? -15 : altman > 3 ? 5 : 0 });
+  if (altman != null) hasData = true;
+  factors.push({ label: "Altman Z-Score", detail: altman != null ? altman.toFixed(2) : "no data", points: altman == null ? 0 : altman < 1.8 ? -15 : altman > 3 ? 5 : 0 });
 
   const pbvZ = asNumber(fund?.["PBV Z-Score"]);
-  if (pbvZ != null) factors.push({ label: "PBV vs 3-year mean", detail: `${pbvZ >= 0 ? "+" : ""}${pbvZ.toFixed(2)}σ`, points: pbvZ <= -1 ? 15 : pbvZ >= 1 ? -15 : 0 });
+  if (pbvZ != null) hasData = true;
+  factors.push({ label: "PBV vs 3-year mean", detail: pbvZ != null ? `${pbvZ >= 0 ? "+" : ""}${pbvZ.toFixed(2)}σ` : "no data", points: pbvZ == null ? 0 : pbvZ <= -1 ? 15 : pbvZ >= 1 ? -15 : 0 });
 
-  return { factors, ineligibleReason };
+  return { factors, ineligibleReason, hasData };
 }
 
 /** technical/fundamental weight split by the workbook's own weighting-profile
@@ -116,12 +137,12 @@ export function computeSetupVerdict(stock: TechnicalRecord | undefined, fund: Js
     week52High: asNumber(fund?.["52 Week High"]), week52Low: asNumber(fund?.["52 Week Low"]), currency: "IDR",
   };
 
-  const techFactors = technicalFactors(stock);
-  const { factors: fundFactorsList, ineligibleReason } = fundamentalFactors(fund, dcfInputs);
-  if (!techFactors.length && !fundFactorsList.length) return null; // genuinely no usable input at all
+  const { factors: techFactors, hasData: techHasData } = technicalFactors(stock);
+  const { factors: fundFactorsList, ineligibleReason, hasData: fundHasData } = fundamentalFactors(fund, dcfInputs);
+  if (!techHasData && !fundHasData) return null; // genuinely no usable input at all
 
   const technicalScore = clamp(techFactors.reduce((s, f) => s + f.points, 0), -100, 100);
-  const fundamentalScore = fundFactorsList.length ? clamp(fundFactorsList.reduce((s, f) => s + f.points, 0), -100, 100) : null;
+  const fundamentalScore = fundHasData ? clamp(fundFactorsList.reduce((s, f) => s + f.points, 0), -100, 100) : null;
 
   const profile = String((stock.technical?.regime as JsonRecord | undefined)?.verdictProfile || "");
   const { technicalWeight: tw0, fundamentalWeight: fw0 } = weightsFor(profile);
@@ -135,7 +156,7 @@ export function computeSetupVerdict(stock: TechnicalRecord | undefined, fund: Js
     tilt: tiltOf(score), score,
     weightProfile: profile || "Balanced (no profile published)",
     technicalScore, fundamentalScore, technicalWeight, fundamentalWeight,
-    factors: [...techFactors, ...fundFactorsList].filter((f) => Math.round(f.points) !== 0),
+    factors: [...techFactors, ...fundFactorsList],
     dcfIneligibleReason: ineligibleReason,
   };
 }
