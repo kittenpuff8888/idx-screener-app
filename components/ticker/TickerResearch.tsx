@@ -126,45 +126,118 @@ export function TickerResearch() {
   const VAH = volumeProfile?.vah ?? (price != null ? Math.min(...resist.filter((r) => r > price), hi52 ?? Infinity) : null);
   const PoC = volumeProfile?.poc ?? vwap ?? (VAL != null && VAH != null ? (VAL + VAH) / 2 : null);
 
-  const stats: Array<[string, string, boolean?]> = [
-    ["MKT CAP", fmtT(n(fund?.["Market Cap"]))],
-    ["PE (TTM)", n(fund?.["Current PE Ratio (TTM)"]) == null ? "—" : `${n(fund?.["Current PE Ratio (TTM)"])!.toFixed(1)}×`],
-    ["ROE", n(fund?.["Return on Equity (TTM)"]) == null ? "—" : `${(n(fund?.["Return on Equity (TTM)"])! * 100).toFixed(2)}%`],
-    ["DIV YIELD", n(fund?.["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]) == null ? "—" : `${(n(fund?.["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"])! * 100).toFixed(2)}%`],
-    ["FREE FLOAT", n(fund?.["Free Float (%)"]) == null ? "—" : `${(n(fund?.["Free Float (%)"])! * 100).toFixed(2)}%`],
-    ["RVOL", n(stock?.["rvol"]) == null ? "—" : `${n(stock?.["rvol"])!.toFixed(2)}×`],
-    ["BETA vs IHSG", n(stock?.["beta"]) == null ? "—" : n(stock?.["beta"])!.toFixed(2)],
+  // Unified KEY STATISTICS tile set — folds the old separate "quick stats"
+  // strip (MKT CAP..BETA) and the old lower KEY STATISTICS card (Net Margin,
+  // Revenue YoY, Altman Z) into one deduplicated grid inside the header, so
+  // PE/ROE/Free Float aren't shown twice in two different cards on the page.
+  const roe = n(fund?.["Return on Equity (TTM)"]);
+  const pe = n(fund?.["Current PE Ratio (TTM)"]);
+  const divYield = n(fund?.["Latest Dividend · Historical latest · yfinance · Dividend Yield (%)"]);
+  const freeFloat = n(fund?.["Free Float (%)"]);
+  const rvol = n(stock?.["rvol"]);
+  const beta = n(stock?.["beta"]);
+  const netMargin = n(fund?.["Net Profit Margin (Quarter)"]);
+  const revYoy = n(fund?.["Revenue (Quarter YoY Growth)"]);
+  const altmanZ = n(fund?.["Altman Z-Score (Modified)"]);
+  const mktCap = n(fund?.["Market Cap"]);
+  type Tile = { k: string; v: string | null; good: boolean | null };
+  const tiles: Tile[] = [
+    { k: "MKT CAP", v: mktCap == null ? null : fmtT(mktCap), good: null },
+    { k: "PE (TTM)", v: pe == null ? null : `${pe.toFixed(1)}×`, good: pe == null ? null : pe > 0 && pe < 20 },
+    { k: "ROE (TTM)", v: roe == null ? null : `${(roe * 100).toFixed(1)}%`, good: roe == null ? null : roe >= 0.12 },
+    { k: "DIV YIELD", v: divYield == null ? null : `${(divYield * 100).toFixed(2)}%`, good: null },
+    { k: "FREE FLOAT", v: freeFloat == null ? null : `${(freeFloat * 100).toFixed(1)}%`, good: freeFloat == null ? null : freeFloat >= 0.2 },
+    { k: "RVOL", v: rvol == null ? null : `${rvol.toFixed(2)}×`, good: null },
+    { k: "BETA vs IHSG", v: beta == null ? null : beta.toFixed(2), good: null },
+    { k: "NET MARGIN (Q)", v: netMargin == null ? null : `${(netMargin * 100).toFixed(1)}%`, good: netMargin == null ? null : netMargin >= 0.1 },
+    { k: "REVENUE YOY (Q)", v: revYoy == null ? null : sPct(revYoy, 1), good: revYoy == null ? null : revYoy >= 0 },
+    { k: "ALTMAN Z (MOD.)", v: altmanZ == null ? null : altmanZ.toFixed(2), good: altmanZ == null ? null : altmanZ >= 2.6 },
   ];
+  const peLo = 9, peHi = 25, pePos = pe == null ? null : Math.max(0, Math.min(100, ((pe - peLo) / (peHi - peLo)) * 100));
+
+  // KEY TECHNICAL — same fields Setup Verdict's factor list reads (lib/
+  // valuation/setupVerdict.ts), so the header and the card below never show
+  // two different readings of the same indicator. "good" tone follows the
+  // same bullish/bearish keyword the verdict scoring itself keys off.
+  const trendObj = (stock?.["trend"] || {}) as JsonRecord;
+  const structObj = (stock?.["structure"] || {}) as JsonRecord;
+  const internalTrend = String(trendObj["internal"] || "");
+  const swingTrend = String(trendObj["swing"] || "");
+  const internalStruct = String(structObj["internal"] || "");
+  const maZone = String(t["maZone"] || "");
+  const macdPos = String(t["macdPosition"] || "");
+  const rsiStatus = String(t["rsiStatus"] || "");
+  const rsRating = n(stock?.["rsRating"]);
+  const dirTone = (s: string): boolean | null => s ? (s.includes("Bullish") ? true : s.includes("Bearish") ? false : null) : null;
+  const techTiles: Tile[] = [
+    { k: "INTERNAL TREND", v: internalTrend || null, good: dirTone(internalTrend) },
+    { k: "SWING TREND", v: swingTrend || null, good: dirTone(swingTrend) },
+    { k: "INTERNAL STRUCTURE", v: internalStruct || null, good: dirTone(internalStruct) },
+    { k: "MA ZONE", v: maZone || null, good: maZone.includes("Above") ? true : maZone.includes("Below") ? false : null },
+    { k: "MACD", v: macdPos || null, good: macdPos === "Bullish" ? true : macdPos === "Bearish" ? false : null },
+    { k: "RSI STATUS", v: rsiStatus || null, good: rsiStatus === "Oversold" ? true : rsiStatus === "Overbought" ? false : null },
+    { k: "RS RATING vs IHSG", v: rsRating == null ? null : `${rsRating}/99`, good: rsRating == null ? null : rsRating >= 80 ? true : rsRating <= 30 ? false : null },
+  ];
+  const fundAsOf = fund?.["Fundamentals As Of"] as string | undefined;
+  const fundStale = !!fundAsOf && fundAsOf !== marketDate;
 
   return (
     <section>
       <Back router={router} label={`${ticker} research`} switcher={{ current: ticker, live: firstLive, onOpen: openTicker }} />
 
       {/* ── HEADER ─────────────────────────────────────────────── */}
-      <div style={{ ...CARD, marginBottom: 14, display: "grid", gridTemplateColumns: "minmax(220px,1.1fr) minmax(200px,1fr) minmax(220px,1fr)", gap: 18, alignItems: "start" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <span style={{ fontFamily: MONO, fontSize: 26, fontWeight: 800, letterSpacing: "-.02em" }}>{ticker}</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 6, padding: "2px 8px" }}>{sector}</span>
-          </div>
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3, maxWidth: 300 }}>{name}</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 8 }}>
-            <span style={{ fontFamily: MONO, fontSize: 30, fontWeight: 800 }}>{price == null ? "—" : formatPrice(price)}</span>
-            <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 700, color: pol(chg) }}>{chg == null ? "" : `${chg >= 0 ? "▲" : "▼"} ${sPct(chg, 2)}`}</span>
-          </div>
-          <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 4 }}>Close · {marketDate} · <a href={`https://www.tradingview.com/chart/?symbol=IDX%3A${ticker}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>TradingView ↗</a></div>
-        </div>
-        <div>
-          <div style={{ ...KICKER, fontSize: 9, marginBottom: 6 }}>COMPANY INFORMATION</div>
-          <CompanyInfo fund={fund} ownership={ownership} />
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 14px" }}>
-          {stats.map(([k, v]) => (
-            <div key={k}>
-              <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".07em", color: "var(--faint)" }}>{k}</div>
-              <div style={{ fontFamily: MONO, fontSize: 14, fontWeight: 700, marginTop: 1 }}>{v}</div>
+      <div style={{ ...CARD, marginBottom: 14, padding: "20px 22px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(220px,1.1fr) minmax(220px,1fr)", gap: 24, alignItems: "start" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+              <span style={{ fontFamily: MONO, fontSize: 28, fontWeight: 800, letterSpacing: "-.02em" }}>{ticker}</span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 6, padding: "2px 8px" }}>{sector}</span>
             </div>
-          ))}
+            <div style={{ fontSize: 12.5, color: "var(--muted)", marginTop: 3, maxWidth: 320 }}>{name}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 10 }}>
+              <span style={{ fontFamily: MONO, fontSize: 32, fontWeight: 800 }}>{price == null ? "—" : formatPrice(price)}</span>
+              <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 700, color: pol(chg) }}>{chg == null ? "" : `${chg >= 0 ? "▲" : "▼"} ${sPct(chg, 2)}`}</span>
+            </div>
+            <div style={{ fontSize: 10.5, color: "var(--faint)", marginTop: 5 }}>Close · {marketDate} · <a href={`https://www.tradingview.com/chart/?symbol=IDX%3A${ticker}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>TradingView ↗</a></div>
+          </div>
+          <div>
+            <div style={{ ...KICKER, fontSize: 9, marginBottom: 6 }}>COMPANY INFORMATION</div>
+            <CompanyInfo fund={fund} ownership={ownership} />
+          </div>
+        </div>
+
+        <div style={{ borderTop: "1px solid var(--hair)", marginTop: 18, paddingTop: 16 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 11 }}>
+            <span style={KICKER}>KEY STATISTICS</span>
+            {fundStale ? <span title={`Fundamentals as of ${fundAsOf} — the live fetch had no data for this ticker on ${marketDate} (yfinance was unavailable), so the most recent real values are shown instead of blanking to "—".`} style={{ fontSize: 9, fontWeight: 700, color: "var(--warning)", background: "var(--warnSoft)", borderRadius: 5, padding: "1px 6px" }}>⚠ as of {fundAsOf}</span> : null}
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(112px,1fr))", gap: 8 }}>
+            {tiles.map((tl) => (
+              <div key={tl.k} style={{ background: tl.good == null ? "var(--soft)" : tl.good ? "var(--upSoft)" : "var(--warnSoft)", borderRadius: 10, padding: "9px 11px" }}>
+                <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".05em", color: "var(--muted)" }}>{tl.good == null ? "" : tl.good ? "✓ " : "⚠ "}{tl.k}</div>
+                <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, marginTop: 3 }}>{tl.v ?? <NoData />}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ ...KICKER, marginTop: 16, marginBottom: 11 }}>KEY TECHNICAL</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(112px,1fr))", gap: 8 }}>
+            {techTiles.map((tl) => (
+              <div key={tl.k} style={{ background: tl.good == null ? "var(--soft)" : tl.good ? "var(--upSoft)" : "var(--warnSoft)", borderRadius: 10, padding: "9px 11px" }}>
+                <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".05em", color: "var(--muted)" }}>{tl.good == null ? "" : tl.good ? "✓ " : "⚠ "}{tl.k}</div>
+                <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 800, marginTop: 3, lineHeight: 1.2 }}>{tl.v ?? <NoData />}</div>
+              </div>
+            ))}
+          </div>
+          {pe != null ? (
+            <div style={{ marginTop: 16, maxWidth: 420 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5 }}><span style={KICKER}>VALUATION · PE (TTM)</span><span style={{ fontFamily: MONO, fontWeight: 800 }}>{pe.toFixed(1)}×</span></div>
+              <div style={{ position: "relative", height: 6, background: "linear-gradient(90deg,var(--up),var(--soft),var(--down))", borderRadius: 4, marginTop: 8 }}>
+                <div style={{ position: "absolute", left: `${pePos}%`, top: -3, width: 12, height: 12, borderRadius: "50%", background: "var(--accent)", border: "2px solid var(--panel)", transform: "translateX(-50%)" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--faint)", marginTop: 3 }}><span>9× cheap</span><span>market ~15×</span><span>25× dear</span></div>
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -185,8 +258,7 @@ export function TickerResearch() {
       {/* ── PRICE CHART (full width, design/00) ─────────────────── */}
       <div style={{ ...CARD, marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={KICKER}>PRICE · {ticker} · VWAP + MA</span>
-          {[["VAL", VAL], ["PoC", PoC], ["VAH", VAH]].map(([l, v]) => v != null ? <span key={l as string} style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, color: "var(--muted)", background: "var(--soft)", borderRadius: 5, padding: "2px 7px" }}>{l} {formatPrice(v as number)}</span> : null)}
+          <span style={KICKER}>CHART</span>
           <div style={{ flex: 1 }} />
           <ChartIndicatorPicker />
           <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
@@ -201,11 +273,6 @@ export function TickerResearch() {
 
       {/* ── DCF VALUATION ──────────────────────────────────────── */}
       <DcfPanel ticker={ticker} stock={stock} fund={fund} marketDate={marketDate} />
-
-      {/* ── KEY STATISTICS (Company Information moved into the header) ── */}
-      <div style={{ marginBottom: 14 }}>
-        <Section title="KEY STATISTICS"><KeyStats fund={fund} marketDate={marketDate} /></Section>
-      </div>
 
       {/* ── TECHNICAL ──────────────────────────────────────────── */}
       <div style={{ marginBottom: 14 }}><TechnicalCard stock={stock as JsonRecord | undefined} t={t} ma={ma} price={price} VAL={VAL} VAH={VAH} PoC={PoC} /></div>
@@ -317,7 +384,7 @@ function SetupVerdictCard({ verdict, rangePos, offLow }: { verdict: SetupVerdict
           const pts = Math.round(f.points);
           return (
             <div key={f.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
-              <span style={{ fontFamily: MONO, fontWeight: 700, width: 34, textAlign: "right", color: pts > 0 ? "var(--up)" : "var(--down)" }}>{pts > 0 ? "+" : ""}{pts}</span>
+              <span style={{ fontFamily: MONO, fontWeight: 700, width: 34, textAlign: "right", color: pts > 0 ? "var(--up)" : pts < 0 ? "var(--down)" : "var(--faint)" }}>{pts > 0 ? "+" : ""}{pts}</span>
               <span style={{ color: "var(--muted)", flex: 1 }}>{f.label}</span>
               <span style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)" }}>{f.detail}</span>
             </div>
@@ -522,63 +589,6 @@ function TradePlan({ setup, ticker, price, atr, ohlcv, marketDate }: {
       <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--hair)", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.45 }}>
         R:R is manual — levels nearest the close are most prominent. Hover any level for what it means; use T/S to make it the target/Stop-Loss. Setting a Stop adds this ticker to your watchlist (or updates it there). Toggled groups are real computed levels — nothing fabricated.
       </div>
-    </div>
-  );
-}
-
-function KeyStats({ fund, marketDate }: { fund?: JsonRecord; marketDate?: string | null }) {
-  if (!fund) return <div style={{ fontSize: 12, color: "var(--muted)" }}>Fundamental statistics not available for this ticker.</div>;
-  const asOf = fund["Fundamentals As Of"] as string | undefined;
-  const isStale = !!asOf && asOf !== marketDate;
-  const roe = n(fund["Return on Equity (TTM)"]), nm = n(fund["Net Profit Margin (Quarter)"]), rev = n(fund["Revenue (Quarter YoY Growth)"]), pe = n(fund["Current PE Ratio (TTM)"]), az = n(fund["Altman Z-Score (Modified)"]), ff = n(fund["Free Float (%)"]);
-  const tiles: Array<{ k: string; v: string | null; good: boolean | null }> = [
-    { k: "ROE (TTM)", v: roe == null ? null : `${(roe * 100).toFixed(1)}%`, good: roe == null ? null : roe >= 0.12 },
-    { k: "Net margin (Q)", v: nm == null ? null : `${(nm * 100).toFixed(1)}%`, good: nm == null ? null : nm >= 0.1 },
-    { k: "Revenue YoY (Q)", v: rev == null ? null : sPct(rev, 1), good: rev == null ? null : rev >= 0 },
-    { k: "PE (TTM)", v: pe == null ? null : `${pe.toFixed(1)}×`, good: pe == null ? null : pe > 0 && pe < 20 },
-    { k: "Altman Z (mod.)", v: az == null ? null : az.toFixed(2), good: az == null ? null : az >= 2.6 },
-    { k: "Free float", v: ff == null ? null : `${(ff * 100).toFixed(1)}%`, good: ff == null ? null : ff >= 0.2 },
-  ];
-  const peLo = 9, peHi = 25, pePos = pe == null ? null : Math.max(0, Math.min(100, ((pe - peLo) / (peHi - peLo)) * 100));
-  const rows: Array<[string, number | null, string, boolean?]> = [
-    ["Return on Equity (TTM)", roe, "pct"], ["Return on Assets (TTM)", n(fund["Return on Assets (TTM)"]), "pct"],
-    ["Net Profit Margin (Q)", nm, "pct"], ["Revenue YoY (Q)", rev, "spct"],
-    ["PE Ratio (TTM)", pe, "x"], ["Altman Z-Score (mod.)", az, "num"],
-    ["Free Float", ff, "pct"], ["Market Cap", n(fund["Market Cap"]), "cap"],
-  ];
-  const fmt = (v: number | null, kind: string) => v == null ? "—" : kind === "pct" ? `${(v * 100).toFixed(2)}%` : kind === "spct" ? sPct(v, 2) : kind === "x" ? `${v.toFixed(2)}×` : kind === "cap" ? fmtT(v) : v.toFixed(3);
-  return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-        {tiles.map((t) => (
-          <div key={t.k} style={{ background: t.good == null ? "var(--soft)" : t.good ? "var(--upSoft)" : "var(--warnSoft)", borderRadius: 9, padding: "9px 10px" }}>
-            <div style={{ fontSize: 9, color: "var(--muted)" }}>{t.good == null ? "•" : t.good ? "✓" : "⚠"} {t.k}</div>
-            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, marginTop: 2 }}>{t.v ?? <NoData />}</div>
-          </div>
-        ))}
-      </div>
-      {pe != null ? (
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5 }}><span style={KICKER}>VALUATION · PE (TTM)</span><span style={{ fontFamily: MONO, fontWeight: 800 }}>{pe.toFixed(1)}×</span></div>
-          <div style={{ position: "relative", height: 6, background: "linear-gradient(90deg,var(--up),var(--soft),var(--down))", borderRadius: 4, marginTop: 8 }}>
-            <div style={{ position: "absolute", left: `${pePos}%`, top: -3, width: 12, height: 12, borderRadius: "50%", background: "var(--accent)", border: "2px solid var(--panel)", transform: "translateX(-50%)" }} />
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--faint)", marginTop: 3 }}><span>9× cheap</span><span>market ~15×</span><span>25× dear</span></div>
-        </div>
-      ) : null}
-      <div style={{ marginTop: 14 }}>
-        {rows.map(([label, v, kind], i) => i % 2 === 0 ? (
-          <div key={label} style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr auto", gap: 8, padding: "5px 0", borderTop: i ? HAIR : "none", fontSize: 11.5 }}>
-            <span style={{ color: "var(--muted)" }}>{label}</span><span style={{ fontFamily: MONO, fontWeight: 700 }}>{fmt(v, kind)}</span>
-            <span style={{ color: "var(--muted)", textAlign: "right" }}>{rows[i + 1]?.[0]}</span><span style={{ fontFamily: MONO, fontWeight: 700, textAlign: "right" }}>{rows[i + 1] ? fmt(rows[i + 1][1], rows[i + 1][2]) : ""}</span>
-          </div>
-        ) : null)}
-      </div>
-      {isStale ? (
-        <div style={{ marginTop: 12, fontSize: 10, color: "var(--warning)", background: "var(--warnSoft)", borderRadius: 8, padding: "6px 9px", lineHeight: 1.4 }}>
-          ⚠ Fundamentals as of {asOf} — the live fetch had no data for {marketDate ? `this ticker on ${marketDate}` : "this ticker today"} (yfinance was unavailable), so the most recent real values are shown instead of blanking to &ldquo;—&rdquo;.
-        </div>
-      ) : null}
     </div>
   );
 }
