@@ -148,19 +148,26 @@ def ib_break(hist: pd.DataFrame, ibh: float | None, ibl: float | None) -> bool:
 
 def rsi_divergence_today(hist: pd.DataFrame) -> tuple[bool, bool]:
     """(bullish_confirmed_today, hidden_bullish_confirmed_today), from
-    RSI(10, EMA) via the shared lifecycle-cluster detector."""
+    RSI(10, EMA) via the shared lifecycle-cluster detector.
+
+    divergence_signals()'s own swing-pivot scan (`range(w, len(vals) - w)`)
+    never lets the last `swing_window` bars become a pivot, so a cluster's
+    representative date can never equal today's bar -- comparing
+    div_ref2_date to today's own date (the original approach here) was
+    therefore always false. "Confirmed today" instead means: the signal
+    reads Bullish on today's full history but did not read that way (or
+    pointed at a different cluster) on yesterday's -- i.e. it just became
+    visible with today's bar providing the confirming swing point."""
     r = rsi_ema(hist["Close"], 10)
-    res = divergence_signals(hist, r)
-    if res.get("div_signal") != "Bullish":
+    res_today = divergence_signals(hist, r)
+    if res_today.get("div_signal") != "Bullish":
         return False, False
-    # div_ref2_date is formatted "%d %b '%y" for the LAST bar in `hist` when
-    # the most recent cluster's representative bar is today -- compare
-    # against today's own bar formatted the same way rather than re-deriving
-    # cluster ages here.
-    today_label = hist.index[-1].strftime("%d %b '%y")
-    if res.get("div_ref2_date") != today_label:
+    prior = hist.iloc[:-1]
+    res_yday = divergence_signals(prior, rsi_ema(prior["Close"], 10))
+    newly_confirmed = res_yday.get("div_signal") != "Bullish" or res_yday.get("div_ref2_date") != res_today.get("div_ref2_date")
+    if not newly_confirmed:
         return False, False
-    hidden = res.get("div_strength") == "Hidden"
+    hidden = res_today.get("div_strength") == "Hidden"
     return (not hidden), hidden
 
 
