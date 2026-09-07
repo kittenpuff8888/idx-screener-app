@@ -13,10 +13,9 @@ import {
   loadWatchlist,
   newGroupId,
   saveWatchlist,
+  upsertWatchlistLevel,
   type WatchlistState,
 } from "@/lib/data/watchlistStore";
-import { computeAnchoredVolumeProfile } from "@/lib/indicators/volumeProfile";
-import { computeRewardRisk } from "@/lib/valuation/rewardRisk";
 import { loadPastSetups, savePastSetups, resolveWatchlistOutcomes, type PastSetupEntry } from "@/lib/data/pastSetupsStore";
 import { WatchlistPastSetups } from "@/components/watchlist/WatchlistPastSetups";
 
@@ -133,55 +132,24 @@ export function WatchlistPage() {
     return id;
   }
 
-  // Patches entry/target/invalidation/rr onto an already-inserted row, once
-  // computed — done as a follow-up so adding a ticker stays instant (no
-  // perceptible delay waiting on an OHLCV fetch before the row appears).
-  // Functional setState so a slow fetch can't clobber other edits made in
-  // the meantime (stale-closure safe).
-  const attachRewardRisk = useCallback((symbol: string, groupId: string) => {
-    const uni = uniMap.get(symbol);
-    const patchRow = (r: { entry: number | null; target: number | null; invalidation: number | null; rr: number | null; rrSource: "setup" | "volume-profile" | null }) => {
-      setState((prev) => {
-        const next: WatchlistState = {
-          ...prev,
-          groups: prev.groups.map((g) => g.id !== groupId ? g : {
-            ...g,
-            rows: g.rows.map((row) => row.symbol !== symbol ? row : { ...row, ...r }),
-          }),
-        };
-        saveWatchlist(next);
-        return next;
-      });
-    };
-    // A real signal-engine setup for this ticker today is richer/preferred;
-    // fall back to the ticker's own anchored Volume Profile (entry=close,
-    // target=VAH, invalidation=VAL — same basis as the ticker page's default
-    // ladder) when there's no active setup.
-    if (uni?.entry != null && uni?.target != null && uni?.invalidation != null) {
-      patchRow({ entry: uni.entry, target: uni.target, invalidation: uni.invalidation, rr: uni.rr ?? computeRewardRisk(uni.entry, uni.target, uni.invalidation), rrSource: "setup" });
-      return;
-    }
-    if (!marketDate) return;
-    loadOhlcv(marketDate, symbol).then((payload) => {
-      const rows = payload?.rows || [];
-      const vp = computeAnchoredVolumeProfile(rows);
-      if (!vp) return;
-      const entry = rows.length ? rows[rows.length - 1].close : null;
-      patchRow({ entry, target: vp.vah, invalidation: vp.val, rr: computeRewardRisk(entry, vp.vah, vp.val), rrSource: "volume-profile" });
-    }).catch(() => {});
-  }, [uniMap, marketDate]);
-
-  function addTicker(symbolRaw: string, groupId: string) {
+  // R:R is manual now (no auto-attach from the setup engine or Volume
+  // Profile) — a Stop/Loss is mandatory at add time (see AddDialog), and the
+  // Target/Stop can be refined later from a ticker page's Trade Plan, which
+  // calls upsertWatchlistLevel directly (this page just re-reads on focus/
+  // storage events like any other localStorage-backed page).
+  function addTicker(symbolRaw: string, groupId: string, stopLoss: number) {
     const symbol = symbolRaw.trim().toUpperCase();
-    if (!symbol) return;
+    if (!symbol || !Number.isFinite(stopLoss) || stopLoss <= 0) return;
     const close = bundle?.technical.get(symbol)?.lastPrice ?? null;
-    const groups = state.groups.map((g) =>
-      g.id !== groupId || g.rows.some((r) => r.symbol === symbol)
-        ? g
-        : { ...g, rows: [...g.rows, { symbol, addedAt: marketDate || new Date().toISOString().slice(0, 10), addedClose: typeof close === "number" ? close : null }] },
-    );
-    persist({ ...state, groups, activeGroupId: groupId, selectedSymbol: symbol });
-    attachRewardRisk(symbol, groupId);
+    const next = upsertWatchlistLevel({
+      symbol,
+      close: typeof close === "number" ? close : null,
+      marketDate,
+      source: "Watchlist Add dialog",
+      stopLoss,
+      groupId,
+    });
+    setState({ ...next, activeGroupId: groupId, selectedSymbol: symbol });
   }
 
   function removeRow(symbol: string) {
@@ -236,7 +204,7 @@ export function WatchlistPage() {
             if (payload.kind === "group") createGroup(payload.groupName);
             else {
               const gid = payload.groupId || createGroup(payload.groupName || "My watchlist");
-              addTicker(payload.symbol, gid);
+              addTicker(payload.symbol, gid, payload.stopLoss);
             }
             setDialog(null);
           }}
@@ -350,7 +318,7 @@ export function WatchlistPage() {
 
 type DialogPayload =
   | { kind: "group"; groupName: string }
-  | { kind: "ticker"; symbol: string; groupId: string | null; groupName?: string };
+  | { kind: "ticker"; symbol: string; groupId: string | null; groupName?: string; stopLoss: number };
 
 function AddDialog({
   mode,
@@ -368,7 +336,10 @@ function AddDialog({
   const [symbol, setSymbol] = useState("");
   const [groupId, setGroupId] = useState(activeGroupId || groups[0]?.id || "");
   const [groupName, setGroupName] = useState("");
+  const [stopLoss, setStopLoss] = useState("");
   const noGroups = groups.length === 0;
+  const stopLossValue = Number(stopLoss);
+  const stopLossValid = stopLoss.trim() !== "" && Number.isFinite(stopLossValue) && stopLossValue > 0;
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -376,8 +347,8 @@ function AddDialog({
       if (groupName.trim()) onSubmit({ kind: "group", groupName: groupName.trim() });
       return;
     }
-    if (!symbol.trim()) return;
-    onSubmit({ kind: "ticker", symbol, groupId: noGroups ? null : groupId, groupName: groupName.trim() || undefined });
+    if (!symbol.trim() || !stopLossValid) return;
+    onSubmit({ kind: "ticker", symbol, groupId: noGroups ? null : groupId, groupName: groupName.trim() || undefined, stopLoss: stopLossValue });
   }
 
   return (
@@ -391,6 +362,22 @@ function AddDialog({
             onChange={(e) => setSymbol(e.target.value)}
             placeholder="e.g. BBRI"
             style={{ fontFamily: MONO, fontSize: 13, color: "var(--text)", background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 9, padding: "8px 11px", outline: "none", width: 150 }}
+          />
+        </label>
+      ) : null}
+
+      {mode === "ticker" ? (
+        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".1em", color: "var(--faint)" }}>STOP / LOSS *</span>
+          <input
+            type="number"
+            min={0}
+            step="any"
+            value={stopLoss}
+            onChange={(e) => setStopLoss(e.target.value)}
+            placeholder="required"
+            title="Mandatory — every watchlist row needs a Stop/Loss to compute Reward:Risk against."
+            style={{ fontFamily: MONO, fontSize: 13, color: "var(--text)", background: "var(--soft)", border: `1px solid ${stopLoss && !stopLossValid ? "var(--down)" : "var(--border)"}`, borderRadius: 9, padding: "8px 11px", outline: "none", width: 110 }}
           />
         </label>
       ) : null}
@@ -423,7 +410,8 @@ function AddDialog({
         </label>
       ) : null}
 
-      <button type="submit" style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--accent)", border: "1px solid var(--accent)", borderRadius: 9, padding: "8px 15px", cursor: "pointer" }}>
+      <button type="submit" disabled={mode === "ticker" && (!symbol.trim() || !stopLossValid)}
+        style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "var(--accent)", border: "1px solid var(--accent)", borderRadius: 9, padding: "8px 15px", cursor: mode === "ticker" && (!symbol.trim() || !stopLossValid) ? "not-allowed" : "pointer", opacity: mode === "ticker" && (!symbol.trim() || !stopLossValid) ? 0.5 : 1 }}>
         {mode === "group" ? "Create group" : "Add"}
       </button>
       <button type="button" onClick={onCancel} style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", background: "transparent", border: "1px solid var(--border)", borderRadius: 9, padding: "8px 13px", cursor: "pointer" }}>

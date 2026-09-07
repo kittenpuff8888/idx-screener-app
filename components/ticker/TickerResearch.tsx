@@ -11,10 +11,10 @@ import type { JsonRecord, OhlcvPayload, TechnicalRecord } from "@/lib/domain/typ
 import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
 import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
 import { DcfPanel } from "@/components/ticker/DcfPanel";
-import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
 import { computeSetupVerdict, type SetupVerdict } from "@/lib/valuation/setupVerdict";
-import { computeAnchoredVolumeProfile, type VolumeProfileResult } from "@/lib/indicators/volumeProfile";
-import { buildMaLevels, buildQuarterVwapLevels, buildYearVwapLevels, buildInitialBalanceLevels, buildPreviousWeekLevels, buildCurrentWeekLevels, buildDcfLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
+import { computeAnchoredVolumeProfile } from "@/lib/indicators/volumeProfile";
+import { buildMaLevels, buildPqVwapLevels, buildPyVwapLevels, buildIbhIblLevels, buildMondayRangeLevels, buildFiftyTwoWeekLevels, GROUP_META, type LevelGroup, type PriceLevel } from "@/lib/valuation/priceLevels";
+import { upsertWatchlistLevel } from "@/lib/data/watchlistStore";
 import { newsStories, type NewsStory } from "@/lib/data/news";
 import { asNumber, formatNumber, formatPrice } from "@/lib/format/number";
 
@@ -185,7 +185,7 @@ export function TickerResearch() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <span style={KICKER}>TRADE PLAN · PRICE LADDER</span>
           </div>
-          <TradePlan setup={setup} price={price} VAL={VAL} VAH={VAH} atr={n(t["atrPercent"])} ma={ma} technical={t} ohlcv={ohlcv} stock={stock} fund={fund} />
+          <TradePlan setup={setup} ticker={ticker} price={price} atr={n(t["atrPercent"])} ohlcv={ohlcv} marketDate={marketDate} />
         </div>
       </div>
 
@@ -353,18 +353,18 @@ function SetupNone({ rangePos, offLow }: { rangePos: number | null; offLow: numb
 
 type LadderRow = { id: string; v: number; label: string; tone: "up" | "down" | "flat"; explain?: string };
 
-function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, fund }: {
-  setup: Setup | null; price: number | null; VAL: number | null; VAH: number | null; atr: number | null;
-  ma?: JsonRecord; technical?: JsonRecord; ohlcv: OhlcvPayload | null; stock?: TechnicalRecord; fund?: JsonRecord;
+function TradePlan({ setup, ticker, price, atr, ohlcv, marketDate }: {
+  setup: Setup | null; ticker: string; price: number | null; atr: number | null;
+  ohlcv: OhlcvPayload | null; marketDate: string | null;
 }) {
-  // Moving Averages is the reliable default: Volume Profile (needs a
-  // qualifying consolidation anchor) and 52-Week Range (needs published
-  // fundamentals) were both frequently empty for lower-coverage tickers,
-  // leaving the ladder showing nothing but a bare CLOSE dot -- confusing
-  // enough to read as "broken" -- so both were dropped as toggle groups
-  // entirely rather than just deprioritized. MA is computed from technical
-  // data available for any actively-traded ticker.
+  // Moving Average is the default group — every other group here is also
+  // computed straight from published OHLCV (see lib/valuation/priceLevels.ts)
+  // so any ticker with real trading history has something to show, but MA
+  // needs the fewest bars (EMA 25) to produce a first value.
   const [activeGroups, setActiveGroups] = useState<Set<LevelGroup>>(new Set<LevelGroup>(["ma"]));
+  // R:R is manual: no default target/invalidation, even with an active
+  // setup — the user picks both explicitly via T/S on any row below.
+  // Setting a Stop (S) also adds/updates this ticker in the watchlist.
   const [targetSel, setTargetSel] = useState<string | null>(null);
   const [invalSel, setInvalSel] = useState<string | null>(null);
   const toggleGroup = (g: LevelGroup) => setActiveGroups((s) => { const n = new Set(s); n.has(g) ? n.delete(g) : n.add(g); return n; });
@@ -378,34 +378,17 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
     push("core-close", price, "CLOSE", "flat");
   }
 
-  // Optional groups — real published/computed levels, opt-in via the chips below.
-  const dcfLevel = useMemo(() => {
-    const beta = n(stock?.beta);
-    const fcfTtmBn = n(fund?.["Free cash flow (TTM)"]);
-    const revenueGrowth = n(fund?.["Revenue (Quarter YoY Growth)"]);
-    const marketCapAbs = n((stock?.fundamentals as JsonRecord | undefined)?.["marketCap"]);
-    const sharesOutstanding = marketCapAbs != null && price != null && price > 0 ? marketCapAbs / price : null;
-    const inputs: DcfInputs = { ticker: "", price, beta, fcfTtmBn, revenueGrowth, sharesOutstanding, week52High: null, week52Low: null, currency: "IDR" };
-    const fcfGrowthRate = revenueGrowth == null || !isFinite(revenueGrowth) ? 0.05 : Math.max(-0.3, Math.min(0.4, revenueGrowth));
-    const result = computeDcf(inputs, { ...DEFAULT_ASSUMPTIONS, fcfGrowthRate });
-    return result.eligible ? buildDcfLevels(result.fairValuePerShare, result.bearFairValue, result.bullFairValue) : [];
-  }, [stock, fund, price]);
-
   const extraByGroup: Record<LevelGroup, PriceLevel[]> = useMemo(() => {
-    const q = buildQuarterVwapLevels(ohlcv?.rows);
-    const y = buildYearVwapLevels(ohlcv?.rows);
+    const rows = ohlcv?.rows;
     return {
-      ma: buildMaLevels(ma),
-      cqvwap: q.current,
-      pqvwap: q.previous,
-      cyvwap: y.current,
-      pyvwap: y.previous,
-      ib: buildInitialBalanceLevels(technical),
-      pwmp: buildPreviousWeekLevels(technical),
-      cwmp: buildCurrentWeekLevels(technical),
-      dcf: dcfLevel,
+      ma: buildMaLevels(rows),
+      pqvwap: buildPqVwapLevels(rows),
+      pyvwap: buildPyVwapLevels(rows),
+      ibhl: buildIbhIblLevels(rows),
+      mondayRange: buildMondayRangeLevels(rows),
+      w52: buildFiftyTwoWeekLevels(rows),
     };
-  }, [ma, ohlcv, technical, dcfLevel]);
+  }, [ohlcv]);
 
   const extraRows: LadderRow[] = useMemo(
     () => (Object.keys(extraByGroup) as LevelGroup[]).filter((g) => activeGroups.has(g)).flatMap((g) => extraByGroup[g].map((l) => ({ id: l.id, v: l.price, label: l.label, tone: l.tone, explain: l.explain }))),
@@ -428,26 +411,27 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
     uniq.push({ ...r });
   }
 
-  // Selected (or default) target/invalidation — click any non-CLOSE row's T/S
-  // button to override; R:R and the reward/risk readout recompute live. With
-  // no active setup there's no ladder row to default to anymore (Volume
-  // Profile was dropped as a toggle group -- see activeGroups above), so
-  // target/invalidation start unselected and only the reward/risk readout
-  // still falls back to the raw VAH/VAL props below.
-  const defaultTargetId = setup ? "core-target" : null;
-  const defaultInvalId = setup ? "core-stop" : null;
-  const targetRow = uniq.find((r) => r.id === (targetSel ?? defaultTargetId)) ?? uniq.find((r) => r.id === defaultTargetId);
-  const invalRow = uniq.find((r) => r.id === (invalSel ?? defaultInvalId)) ?? uniq.find((r) => r.id === defaultInvalId);
-  // Fall back to the raw VAH/VAL props (real, always-computed anchored
-  // Volume-Profile values shown as badges above the ladder) so the
-  // Reward:Risk readout still has a real basis even without a matching row.
-  const rewardTo = targetRow?.v ?? (!setup ? VAH : null);
-  const riskTo = invalRow?.v ?? (!setup ? VAL : null);
-  const reward = rewardTo != null && price != null ? rewardTo - price : null;
-  const risk = riskTo != null && price != null ? riskTo - price : null;
-  const targetRole = targetRow?.label ?? (setup ? "target" : "VAH"); const invalRole = invalRow?.label ?? (setup ? "stop" : "VAL");
+  const targetRow = uniq.find((r) => r.id === targetSel) ?? null;
+  const invalRow = uniq.find((r) => r.id === invalSel) ?? null;
+  const reward = targetRow != null && price != null ? targetRow.v - price : null;
+  const risk = invalRow != null && price != null ? invalRow.v - price : null;
+  const targetRole = targetRow?.label ?? "target"; const invalRole = invalRow?.label ?? "stop";
   const rrRatio = reward != null && risk != null && risk !== 0 ? Math.abs(reward / risk) : null;
   const isCustomSelection = targetSel != null || invalSel != null;
+
+  function selectTarget(rowId: string, rowPrice: number) {
+    const next = rowId === targetSel ? null : rowId;
+    setTargetSel(next);
+    if (next != null) upsertWatchlistLevel({ symbol: ticker, close: price, marketDate, source: "Ticker page", target: rowPrice });
+  }
+  function selectInvalidation(rowId: string, rowPrice: number) {
+    const next = rowId === invalSel ? null : rowId;
+    setInvalSel(next);
+    // Setting a Stop/Loss is what adds this ticker to the watchlist (or
+    // updates it there if it's already tracked) — mandatory S/L, same as
+    // the Watchlist page's own Add dialog.
+    if (next != null) upsertWatchlistLevel({ symbol: ticker, close: price, marketDate, source: "Ticker page", stopLoss: rowPrice });
+  }
 
   // ── Ladder geometry (design/00): dots sit at TRUE price on the spine, label
   //    rows are spaced evenly (MG + i·step → never overlap), connected by elbow
@@ -468,26 +452,21 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
     const next = uniq[i + 1];
     const gap = next ? r.v / next.v - 1 : null;
     const dc = isClose ? "var(--text)" : r.tone === "up" ? "var(--up)" : r.tone === "down" ? "var(--down)" : "var(--flat)";
-    const isTarget = r.id === (targetRow?.id); const isInval = r.id === (invalRow?.id);
-    return { id: r.id, label: r.label, explain: r.explain, isClose, isTarget, isInval, dotY: trueY(r.v), rowTop: MG + i * step, dotR: isClose ? 4 : 3, dotColor: dc,
+    const isTarget = r.id === targetSel; const isInval = r.id === invalSel;
+    return { id: r.id, v: r.v, label: r.label, explain: r.explain, isClose, isTarget, isInval, dotY: trueY(r.v), rowTop: MG + i * step, dotR: isClose ? 4 : 3, dotColor: dc,
       priceStr: formatPrice(r.v), priceColor: isClose ? "var(--text)" : "var(--muted)",
       rel: isClose ? "" : sPct(rel, 1), relColor: isClose ? "var(--faint)" : rel > 0 ? "var(--up)" : rel < 0 ? "var(--down)" : "var(--flat)",
       roleColor: isClose ? "var(--text)" : "var(--muted)",
       fs: isClose ? 13 : 12 - 2 * rank, roleFs: isClose ? 11 : 10.5 - 1.5 * rank, opacity: isClose ? 1 : 1 - 0.4 * rank,
       gapShow: gap != null && Math.abs(gap) > 0.001, gapText: gap != null ? `${(Math.abs(gap) * 100).toFixed(1)}% ↓` : "" };
   });
-  const closeY = price != null ? trueY(price) : H / 2;
-  const targetY = rewardTo != null ? trueY(rewardTo) : closeY;
-  const invalY = riskTo != null ? trueY(riskTo) : closeY;
-  const rewardY = Math.min(closeY, targetY), rewardH = Math.abs(closeY - targetY);
-  const riskY = Math.min(closeY, invalY), riskH = Math.abs(closeY - invalY);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", flex: "1 1 auto" }}>
       {/* mode row */}
       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
         <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", background: "var(--soft)", borderRadius: 6, padding: "2px 8px" }}>{setup ? "Active setup" : "Structural · no active setup"}</span>
-        <span style={{ fontSize: 10.5, color: "var(--faint)" }}>R:R {rrRatio != null ? `${rrRatio.toFixed(1)}:1` : "—"} {isCustomSelection ? "· custom levels" : `· ${setup ? "from entry" : "from close"}`}</span>
+        <span style={{ fontSize: 10.5, color: "var(--faint)" }}>R:R {rrRatio != null ? `${rrRatio.toFixed(1)}:1` : "— (set T/S below)"}</span>
         {isCustomSelection ? <button type="button" onClick={() => { setTargetSel(null); setInvalSel(null); }} style={{ fontSize: 9.5, fontWeight: 700, color: "var(--accent)", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}>reset</button> : null}
       </div>
       {/* level-group toggles */}
@@ -504,8 +483,6 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
         {/* Left: true-price spine (reward/risk zones + dots) + evenly-spaced leader rows */}
         <div style={{ position: "relative", flex: "1 1 auto", minWidth: 0, height: H }}>
           <svg viewBox={`0 0 44 ${H}`} preserveAspectRatio="none" style={{ position: "absolute", left: 0, top: 0, width: 44, height: H, overflow: "visible" }}>
-            {rewardH > 0.5 ? <rect x={4} y={rewardY} width={16} height={rewardH} rx={3} fill="var(--upSoft)" /> : null}
-            {riskH > 0.5 ? <rect x={4} y={riskY} width={16} height={riskH} rx={3} fill="var(--downSoft)" /> : null}
             <line x1={spineX} y1={MG} x2={spineX} y2={H - MG} stroke="var(--hair)" strokeWidth={2} />
             {rungs.map((r) => (
               <g key={r.id}>
@@ -515,7 +492,7 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
             ))}
           </svg>
           {rungs.map((r) => (
-            <div key={r.id} title={r.explain} style={{ position: "absolute", left: 46, right: 0, top: r.rowTop, transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 5, opacity: r.opacity, background: r.isTarget ? "var(--upSoft)" : r.isInval ? "var(--downSoft)" : "transparent", borderRadius: 6 }}>
+            <div key={r.id} title={r.explain} style={{ position: "absolute", left: 46, right: 0, top: r.rowTop, transform: "translateY(-50%)", display: "flex", alignItems: "center", gap: 5, opacity: r.opacity, background: r.isTarget || r.isInval ? "var(--soft)" : "transparent", borderRadius: 6 }}>
               <span style={{ fontFamily: MONO, fontSize: r.fs, fontWeight: 800, width: 44, textAlign: "right", color: r.priceColor }}>{r.priceStr}</span>
               <span style={{ fontFamily: MONO, fontSize: 9, fontWeight: 700, width: 38, textAlign: "right", color: r.relColor }}>{r.rel}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -524,8 +501,8 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
               </span>
               {!r.isClose ? (
                 <span style={{ display: "flex", gap: 2, flex: "none" }}>
-                  <button type="button" onClick={() => setTargetSel(r.id === defaultTargetId ? null : r.id)} title="Set as Target" style={{ width: 15, height: 15, fontSize: 8.5, fontWeight: 800, lineHeight: "13px", borderRadius: 4, border: `1px solid ${r.isTarget ? "var(--up)" : "var(--border)"}`, background: r.isTarget ? "var(--up)" : "transparent", color: r.isTarget ? "#fff" : "var(--faint)", cursor: "pointer", padding: 0 }}>T</button>
-                  <button type="button" onClick={() => setInvalSel(r.id === defaultInvalId ? null : r.id)} title="Set as Invalidation" style={{ width: 15, height: 15, fontSize: 8.5, fontWeight: 800, lineHeight: "13px", borderRadius: 4, border: `1px solid ${r.isInval ? "var(--down)" : "var(--border)"}`, background: r.isInval ? "var(--down)" : "transparent", color: r.isInval ? "#fff" : "var(--faint)", cursor: "pointer", padding: 0 }}>S</button>
+                  <button type="button" onClick={() => selectTarget(r.id, r.v)} title="Set as Target" style={{ width: 15, height: 15, fontSize: 8.5, fontWeight: 800, lineHeight: "13px", borderRadius: 4, border: `1px solid ${r.isTarget ? "var(--accent)" : "var(--border)"}`, background: r.isTarget ? "var(--accent)" : "transparent", color: r.isTarget ? "#fff" : "var(--faint)", cursor: "pointer", padding: 0 }}>T</button>
+                  <button type="button" onClick={() => selectInvalidation(r.id, r.v)} title="Set as Stop/Loss — also adds this ticker to your watchlist" style={{ width: 15, height: 15, fontSize: 8.5, fontWeight: 800, lineHeight: "13px", borderRadius: 4, border: `1px solid ${r.isInval ? "var(--accent)" : "var(--border)"}`, background: r.isInval ? "var(--accent)" : "transparent", color: r.isInval ? "#fff" : "var(--faint)", cursor: "pointer", padding: 0 }}>S</button>
                 </span>
               ) : null}
             </div>
@@ -534,15 +511,15 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
         {/* Right: reward / risk readout — fixed width so the ladder gets the room, but wide
             enough (and wrapping, not truncating) for longer role labels like "PQVWAP +1σ" */}
         <div style={{ width: 168, flex: "none", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7, minWidth: 0 }}>
-          <div style={{ background: "var(--upSoft)", borderRadius: 9, padding: "8px 10px" }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--up)", lineHeight: 1.35 }}>REWARD · to {targetRole}</div>
-            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--up)" }}>{reward == null ? "—" : `+${formatNumber(Math.abs(reward), 0)}`}</div>
-            {reward != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--up)" }}>({sPct(Math.abs(reward) / price, 1)})</div> : null}
+          <div style={{ background: "var(--soft)", borderRadius: 9, padding: "8px 10px" }}>
+            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", lineHeight: 1.35 }}>REWARD · to {targetRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800 }}>{reward == null ? "—" : `+${formatNumber(Math.abs(reward), 0)}`}</div>
+            {reward != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)" }}>({sPct(Math.abs(reward) / price, 1)})</div> : null}
           </div>
-          <div style={{ background: "var(--downSoft)", borderRadius: 9, padding: "8px 10px" }}>
-            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--down)", lineHeight: 1.35 }}>RISK · to {invalRole}</div>
-            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800, color: "var(--down)" }}>{risk == null ? "—" : `−${formatNumber(Math.abs(risk), 0)}`}</div>
-            {risk != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--down)" }}>({sPct(-Math.abs(risk) / price, 1)})</div> : null}
+          <div style={{ background: "var(--soft)", borderRadius: 9, padding: "8px 10px" }}>
+            <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".04em", color: "var(--muted)", lineHeight: 1.35 }}>RISK · to {invalRole}</div>
+            <div style={{ fontFamily: MONO, fontSize: 15, fontWeight: 800 }}>{risk == null ? "—" : `−${formatNumber(Math.abs(risk), 0)}`}</div>
+            {risk != null && price ? <div style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)" }}>({sPct(-Math.abs(risk) / price, 1)})</div> : null}
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ background: "var(--soft)", borderRadius: 8, padding: "6px 9px" }}><div style={{ fontSize: 8, color: "var(--faint)" }}>ATR (14)</div><div style={{ fontFamily: MONO, fontSize: 12, fontWeight: 700 }}>{atr == null ? "—" : `${atr.toFixed(1)}%`}</div></div>
@@ -551,7 +528,7 @@ function TradePlan({ setup, price, VAL, VAH, atr, ma, technical, ohlcv, stock, f
         </div>
       </div>
       <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--hair)", fontSize: 10.5, color: "var(--faint)", lineHeight: 1.45 }}>
-        {setup ? "Entry · stop · target" : "Value-area frame · VAH target / VAL invalidation"} · levels nearest the close are most prominent. Hover any level for what it means; use T/S to make it the target/invalidation. Toggled groups are real published or computed levels — nothing fabricated.
+        R:R is manual — levels nearest the close are most prominent. Hover any level for what it means; use T/S to make it the target/Stop-Loss. Setting a Stop adds this ticker to your watchlist (or updates it there). Toggled groups are real computed levels — nothing fabricated.
       </div>
     </div>
   );
