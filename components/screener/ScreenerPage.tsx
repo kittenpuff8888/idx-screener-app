@@ -8,8 +8,6 @@ import { asNumber, formatPercent, formatPrice } from "@/lib/format/number";
 import { computeDcf, DEFAULT_ASSUMPTIONS, type DcfInputs } from "@/lib/valuation/dcf";
 import type { JsonRecord } from "@/lib/domain/types";
 import {
-  CONTEXT_BY_KEY,
-  CONTEXT_GROUPS,
   KONGLO_OPTIONS,
   LIQUIDITY_OPTIONS,
   SECTOR_OPTIONS,
@@ -28,20 +26,16 @@ const MONO = "var(--mono, var(--font-mono))";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r)", boxShadow: "var(--sh, var(--shadow))" };
 
 const PRESETS_KEY = "idxr:screenerPresets";
-const GRID = "132px 156px 1fr 1fr 1fr 1fr 78px 78px 78px 58px 62px 84px";
+const GRID = "132px 260px 1fr 1fr 1fr 1fr 78px 78px 78px 58px 62px 84px";
 
-type Mode = "preset" | "custom";
 type Conf = "AND" | "OR";
 type Dir = "bull" | "bear";
 type SavedPreset = {
   id: string;
   name: string;
-  mode: Mode;
   selectedSetups: string[];
   setupDir: Record<string, Dir>;
   conf: Conf;
-  contextConds: string[];
-  contextJoin: Conf;
 };
 
 function toneColor(t: Tone): string {
@@ -95,12 +89,9 @@ export function ScreenerPage() {
     return m;
   }, [bundle]);
 
-  const [mode, setMode] = useState<Mode>("preset");
   const [selectedSetups, setSelectedSetups] = useState<string[]>([]);
   const [setupDir, setSetupDir] = useState<Record<string, Dir>>({});
   const [conf, setConf] = useState<Conf>("AND");
-  const [contextConds, setContextConds] = useState<string[]>([]);
-  const [contextJoin, setContextJoin] = useState<Conf>("AND");
   const [fTicker, setFTicker] = useState("");
   const [fSector, setFSector] = useState("");
   const [fLiq, setFLiq] = useState("");
@@ -149,35 +140,19 @@ export function ScreenerPage() {
 
   const filtered = useMemo(() => {
     let out = rows.filter(passGeneral);
-    if (mode === "preset") {
-      if (selectedSetups.length) {
-        out = out.filter((r) => {
-          const tests = selectedSetups.map((k) => {
-            const dir = setupDir[k] || "bull";
-            const s = setupByKey(k);
-            if (!s) return false;
-            return dir === "bear" && s.hasBear ? r.setupsBear.includes(k) : r.setupsMatched.includes(k);
-          });
-          return conf === "AND" ? tests.every(Boolean) : tests.some(Boolean);
+    if (selectedSetups.length) {
+      out = out.filter((r) => {
+        const tests = selectedSetups.map((k) => {
+          const dir = setupDir[k] || "bull";
+          const s = setupByKey(k);
+          if (!s) return false;
+          return dir === "bear" && s.hasBear ? r.setupsBear.includes(k) : r.setupsMatched.includes(k);
         });
-      }
-    } else {
-      const conds = contextConds.map((k) => CONTEXT_BY_KEY[k]).filter(Boolean);
-      if (conds.length) {
-        out = out.filter((r) => {
-          const tests = conds.map((c) => {
-            try {
-              return c.test(r);
-            } catch {
-              return false;
-            }
-          });
-          return contextJoin === "AND" ? tests.every(Boolean) : tests.some(Boolean);
-        });
-      }
+        return conf === "AND" ? tests.every(Boolean) : tests.some(Boolean);
+      });
     }
     return out;
-  }, [rows, passGeneral, mode, selectedSetups, setupDir, conf, contextConds, contextJoin]);
+  }, [rows, passGeneral, selectedSetups, setupDir, conf]);
 
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
@@ -215,7 +190,7 @@ export function ScreenerPage() {
   // reset to first page when the result set changes size out from under us
   useEffect(() => {
     setPage(0);
-  }, [mode, selectedSetups, setupDir, conf, contextConds, contextJoin, fTicker, fSector, fLiq, showN]);
+  }, [selectedSetups, setupDir, conf, fTicker, fSector, fLiq, showN]);
 
   // ── handlers ──
   const toggleSetup = (k: string) =>
@@ -231,13 +206,10 @@ export function ScreenerPage() {
       setSortDir("desc");
     }
   };
-  const addContext = (key: string) => key && setContextConds((c) => (c.includes(key) ? c : [...c, key]));
-  const removeContext = (key: string) => setContextConds((c) => c.filter((x) => x !== key));
-
   const savePreset = () => {
-    const name = typeof window !== "undefined" ? window.prompt("Preset name:", mode === "preset" ? "My confluence" : "My custom setup") : null;
+    const name = typeof window !== "undefined" ? window.prompt("Preset name:", "My confluence") : null;
     if (!name) return;
-    const p: SavedPreset = { id: `p${Date.now()}`, name, mode, selectedSetups, setupDir, conf, contextConds, contextJoin };
+    const p: SavedPreset = { id: `p${Date.now()}`, name, selectedSetups, setupDir, conf };
     const next = [...savedPresets.filter((x) => x.name !== name), p];
     try {
       window.localStorage.setItem(PRESETS_KEY, JSON.stringify(next));
@@ -249,12 +221,9 @@ export function ScreenerPage() {
   const loadPreset = (id: string) => {
     const p = savedPresets.find((x) => x.id === id);
     if (!p) return;
-    setMode(p.mode);
     setSelectedSetups(p.selectedSetups || []);
     setSetupDir(p.setupDir || {});
     setConf(p.conf || "AND");
-    setContextConds(p.contextConds || []);
-    setContextJoin(p.contextJoin || "AND");
   };
 
   const csv = () => {
@@ -278,19 +247,12 @@ export function ScreenerPage() {
   };
 
   const pills: Array<{ label: string; color: string; bg: string; border: string; onRemove: () => void }> = [];
-  if (mode === "preset") {
-    selectedSetups.forEach((k) => {
-      const s = setupByKey(k);
-      if (!s) return;
-      const bear = s.hasBear && (setupDir[k] || "bull") === "bear";
-      pills.push({ label: s.label + (s.hasBear ? ` · ${bear ? "bear" : "bull"}` : ""), color: bear ? "var(--down)" : "var(--up)", bg: bear ? "var(--downSoft)" : "var(--upSoft)", border: "transparent", onRemove: () => toggleSetup(k) });
-    });
-  } else {
-    contextConds.forEach((k) => {
-      const c = CONTEXT_BY_KEY[k];
-      if (c) pills.push({ label: c.label, color: "var(--accent)", bg: "var(--accentSoft)", border: "var(--accent-border)", onRemove: () => removeContext(k) });
-    });
-  }
+  selectedSetups.forEach((k) => {
+    const s = setupByKey(k);
+    if (!s) return;
+    const bear = s.hasBear && (setupDir[k] || "bull") === "bear";
+    pills.push({ label: s.label + (s.hasBear ? ` · ${bear ? "bear" : "bull"}` : ""), color: bear ? "var(--down)" : "var(--up)", bg: bear ? "var(--downSoft)" : "var(--upSoft)", border: "transparent", onRemove: () => toggleSetup(k) });
+  });
   if (fSector) {
     const so = SECTOR_OPTIONS.find((x) => x.v === fSector);
     pills.push({ label: `Sector: ${so ? so.label : fSector}`, color: "var(--muted)", bg: "var(--soft)", border: "var(--border)", onRemove: () => setFSector("") });
@@ -317,11 +279,6 @@ export function ScreenerPage() {
     ["dcfUpside", "DCF UPSIDE", "flex-end", false],
   ];
 
-  const addOptions = CONTEXT_GROUPS.map((g) => ({
-    family: g.family,
-    opts: g.conds.filter((c) => !contextConds.includes(c.key)).map((c) => ({ key: c.key, label: c.label + (c.real === false ? " · no data" : c.real === "sparse" ? " · engine only" : "") })),
-  })).filter((g) => g.opts.length);
-
   const total = universe?.totalUniverse ?? 0;
 
   return (
@@ -343,18 +300,8 @@ export function ScreenerPage() {
 
       {error ? <div style={{ ...CARD, padding: "16px 18px", color: "var(--muted)", fontSize: 13 }}>{error}</div> : null}
 
-      {/* mode tabs + presets */}
+      {/* presets */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: 4, ...CARD, borderRadius: 11, padding: 4 }}>
-          {([["preset", "Preset Setups", "◰"], ["custom", "Custom Builder", "⚙"]] as const).map(([k, label, icon]) => {
-            const on = mode === k;
-            return (
-              <button key={k} type="button" onClick={() => setMode(k)} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 700, padding: "7px 15px", borderRadius: 8, border: "none", cursor: "pointer", background: on ? "var(--accent)" : "transparent", color: on ? "#fff" : "var(--muted)" }}>
-                {icon} {label}
-              </button>
-            );
-          })}
-        </div>
         <div style={{ flex: 1 }} />
         {savedPresets.length ? (
           <select onChange={(e) => e.target.value && loadPreset(e.target.value)} defaultValue="" style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 9, padding: "7px 10px", cursor: "pointer" }}>
@@ -391,9 +338,8 @@ export function ScreenerPage() {
         <span style={{ fontSize: 10, color: "var(--faint)" }}>Sector &amp; liquidity are real; konglo groups are not in the data. DCF uses fixed default assumptions here — open a ticker for adjustable sliders.</span>
       </div>
 
-      {/* (A) preset library */}
-      {mode === "preset" ? (
-        <>
+      {/* setup library */}
+      <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 11, flexWrap: "wrap" }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>ENTRY SETUPS · MULTI-SELECT</span>
             <span style={{ fontSize: 11, color: "var(--muted)" }}>pick the setups you trade — they combine into a confluence screen</span>
@@ -446,55 +392,7 @@ export function ScreenerPage() {
               );
             })}
           </div>
-        </>
-      ) : null}
-
-      {/* (B) custom builder */}
-      {mode === "custom" ? (
-        <div style={{ ...CARD, padding: "16px 18px", marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 13, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>CUSTOM SETUP · PICK CONTEXT STATES</span>
-            <span style={{ fontSize: 10.5, color: "var(--muted)" }}>choose plain-language conditions — they combine into your screen</span>
-            <div style={{ flex: 1 }} />
-            <span style={{ fontSize: 10.5, fontWeight: 600, color: "var(--faint)" }}>Join</span>
-            <div style={{ display: "flex", gap: 3, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 8, padding: 3 }}>
-              {(["AND", "OR"] as const).map((c) => (
-                <button key={c} type="button" onClick={() => setContextJoin(c)} style={{ fontFamily: MONO, fontSize: 10.5, fontWeight: 700, padding: "4px 11px", borderRadius: 6, border: "none", cursor: "pointer", background: contextJoin === c ? "var(--accent)" : "transparent", color: contextJoin === c ? "#fff" : "var(--muted)" }}>{c}</button>
-              ))}
-            </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <select value="" onChange={(e) => addContext(e.target.value)} aria-label="Add a condition" style={{ fontSize: 12, fontWeight: 600, background: "var(--panel)", border: "1px solid var(--accent-border)", borderRadius: 9, padding: "8px 11px", minWidth: 250, color: "var(--accent)", cursor: "pointer" }}>
-              <option value="">＋ Add a condition…</option>
-              {addOptions.map((g) => (
-                <optgroup key={g.family} label={g.family}>
-                  {g.opts.map((o) => (<option key={o.key} value={o.key}>{o.label}</option>))}
-                </optgroup>
-              ))}
-            </select>
-            {contextConds.length ? (
-              <span style={{ fontSize: 11, color: "var(--muted)" }}>matches <strong style={{ fontFamily: MONO, color: "var(--text)" }}>{matchCount}</strong> tickers</span>
-            ) : (
-              <span style={{ fontSize: 11, color: "var(--faint)" }}>No conditions yet — showing the full scanned universe.</span>
-            )}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 12 }}>
-            {contextConds.map((k) => {
-              const c = CONTEXT_BY_KEY[k];
-              if (!c) return null;
-              const nd = c.real === false;
-              return (
-                <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 11.5, fontWeight: 700, color: nd ? "var(--flat)" : "var(--accent)", background: nd ? "var(--flatSoft, var(--soft))" : "var(--accentSoft)", border: `1px solid ${nd ? "var(--border)" : "var(--accent-border)"}`, borderRadius: 999, padding: "5px 7px 5px 12px" }}>
-                  {c.family} · {c.label}
-                  {nd ? <span style={{ fontSize: 9, fontWeight: 700, color: "var(--flat)" }}>no data</span> : null}
-                  <button type="button" onClick={() => removeContext(k)} aria-label={`Remove ${c.label}`} style={{ width: 17, height: 17, borderRadius: "50%", border: "none", background: "transparent", color: "inherit", cursor: "pointer", fontSize: 12, lineHeight: 1 }}>×</button>
-                </span>
-              );
-            })}
-          </div>
-          <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 11 }}>Fundamental states are detail-page only → tagged &ldquo;no data&rdquo; and never match at screen scope. Ownership is a labelled KSEI proxy.</div>
-        </div>
-      ) : null}
+      </div>
 
       {/* pills + toolbar */}
       <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 12 }}>
@@ -519,7 +417,7 @@ export function ScreenerPage() {
       {/* results table */}
       <div style={{ ...CARD, overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1324 }}>
+          <div style={{ minWidth: 1428 }}>
             <div style={{ position: "sticky", top: 0, zIndex: 20, display: "grid", gridTemplateColumns: GRID, background: "var(--soft)", borderBottom: "1px solid var(--border)" }}>
               {headers.map(([col, label, justify, sticky]) => (
                 <button key={col} type="button" onClick={() => setSort(col)} style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: justify, padding: "10px 12px", border: "none", background: sticky ? "var(--soft)" : "transparent", cursor: "pointer", fontSize: 9, fontWeight: 700, letterSpacing: ".06em", color: sortCol === col ? "var(--text)" : "var(--faint)", textAlign: "left", ...(sticky ? { position: "sticky", left: 0, zIndex: 6 } : {}) }}>
@@ -543,9 +441,9 @@ export function ScreenerPage() {
                     <div style={{ fontSize: 9, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{secLabel(r.ticker, r.sectorLabel)}</div>
                   </div>
                   <div style={{ padding: "9px 12px", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-                    {r.setupsMatched.slice(0, 3).map((k) => {
+                    {r.setupsMatched.map((k) => {
                       const s = setupByKey(k);
-                      return <span key={k} title={s?.label} style={{ fontSize: 9, fontWeight: 700, color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 6px", whiteSpace: "nowrap" }}>{s ? s.label.split(" ")[0] : k}</span>;
+                      return <span key={k} title={s?.label} style={{ fontSize: 9, fontWeight: 700, color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 6px", whiteSpace: "nowrap" }}>{s ? s.label : k}</span>;
                     })}
                     {!r.setupsMatched.length ? <span style={{ fontSize: 9.5, color: "var(--faint)" }}>—</span> : null}
                   </div>

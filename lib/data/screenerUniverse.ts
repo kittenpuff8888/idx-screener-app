@@ -76,6 +76,18 @@ export interface UniverseRow {
   // (continuation pattern) rather than regular Strong/Medium/Weak (reversal).
   rsiDivergenceHidden: boolean;
   stochCross: string | null; // "Golden Cross" | "Dead Cross" | null
+  // scripts/compute_screener_signals.py join -- the four screener filters
+  // below, computed fresh from the published OHLCV archive (see that
+  // script's docstring for exact parameters). Absent for a ticker with too
+  // little history for a given signal, never guessed.
+  breakIbhIbl: boolean;
+  rsiDivBullish: boolean;
+  rsiDivHiddenBullish: boolean;
+  stochRsiGoldenCross: boolean;
+  nearPqM1: boolean;
+  nearPqM2: boolean;
+  nearPyM1: boolean;
+  nearPyM2: boolean;
   // engine (setups.json) join:
   score: number | null;
   hasEngineSetup: boolean;
@@ -187,58 +199,76 @@ export interface SetupDef {
   bear?: (r: UniverseRow) => boolean;
 }
 
+// Exactly the eight screener filters requested — nothing else. Each reads a
+// field scripts/compute_screener_signals.py computed fresh from the
+// published OHLCV archive that day (see that script's docstring for exact
+// parameters/formulas); "today" fields (breakIbhIbl, the two RSI divergence
+// variants, stochRsiGoldenCross) are true only on the session the event
+// itself occurred, not "still in that state from days ago".
 export const SETUPS: SetupDef[] = [
   {
-    key: "swing",
-    label: "Swing Setup",
-    icon: "◆",
-    hasBear: false,
-    req: "Flagged by the swing engine with a published score & trade plan",
-    bull: (r) => r.hasEngineSetup,
-  },
-  {
-    key: "ib_break",
-    label: "Break Monthly IBH/IBL",
+    key: "break_ibh_ibl",
+    label: "Break IBH/IBL",
     icon: "⇕",
-    hasBear: true,
-    req: "Close breaks above the monthly Initial Balance High (IBH) / below the Initial Balance Low (IBL) — no matches on the month's first 2 sessions, before the band locks",
-    bull: (r) => r.price != null && r.ibh != null && r.price > r.ibh,
-    bear: (r) => r.price != null && r.ibl != null && r.price < r.ibl,
+    hasBear: false,
+    req: "Yesterday's close sat mid-band inside the monthly Initial Balance (first 2 sessions of the month), and today's close breaks above the IBH",
+    bull: (r) => r.breakIbhIbl,
   },
   {
-    key: "macd_golden_cross",
-    label: "MACD Golden Cross",
-    icon: "✦",
-    hasBear: true,
-    req: "MACD line crossed above (Golden) / below (Dead) its signal line",
-    bull: (r) => r.macdCross === "Golden Cross",
-    bear: (r) => r.macdCross === "Dead Cross",
-  },
-  {
-    key: "rsi_divergence",
-    label: "RSI Divergence",
-    icon: "⤢",
-    hasBear: true,
-    req: "Regular RSI divergence vs. price over the last ~75 sessions (lifecycle-cluster method) — bullish: price lower low, RSI higher low (reversal); bearish: price higher high, RSI lower high",
-    bull: (r) => r.rsiDivergence === "Bullish" && !r.rsiDivergenceHidden,
-    bear: (r) => r.rsiDivergence === "Bearish" && !r.rsiDivergenceHidden,
-  },
-  {
-    key: "stoch_golden_cross",
-    label: "Stochastic Golden Cross",
-    icon: "✦",
-    hasBear: true,
-    req: "Stochastic %K crossed above (Golden) / below (Dead) %D (14, 3, 3 — same as the chart's built-in Stochastic study)",
-    bull: (r) => r.stochCross === "Golden Cross",
-    bear: (r) => r.stochCross === "Dead Cross",
-  },
-  {
-    key: "rsi_hidden_divergence",
-    label: "RSI Hidden Bullish Divergence",
+    key: "rsi10_div_bullish",
+    label: "RSI 10 Divergence — Bullish",
     icon: "⤢",
     hasBear: false,
-    req: "Hidden bullish RSI divergence — price higher low, RSI lower low (uptrend continuation, not a reversal signal)",
-    bull: (r) => r.rsiDivergence === "Bullish" && r.rsiDivergenceHidden,
+    req: "Regular bullish RSI(10, EMA-smoothed) divergence confirmed today — price lower low, RSI higher low (lifecycle-cluster method)",
+    bull: (r) => r.rsiDivBullish,
+  },
+  {
+    key: "rsi10_div_hidden_bullish",
+    label: "RSI 10 Divergence — Hidden Bullish",
+    icon: "⤢",
+    hasBear: false,
+    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low (uptrend continuation)",
+    bull: (r) => r.rsiDivHiddenBullish,
+  },
+  {
+    key: "stoch_rsi_golden_cross",
+    label: "Stoch RSI Golden Cross",
+    icon: "✦",
+    hasBear: false,
+    req: "Stochastic RSI %K crosses above %D today (RSI length 10, Stochastic length 10, K 3, D 3, source Close) while RSI(10) is oversold (< 30)",
+    bull: (r) => r.stochRsiGoldenCross,
+  },
+  {
+    key: "near_vwap_pq_m1",
+    label: "Near VWAP — PQ −1σ",
+    icon: "≈",
+    hasBear: false,
+    req: "Close within 1% of the Previous Quarter anchored-VWAP −1σ band",
+    bull: (r) => r.nearPqM1,
+  },
+  {
+    key: "near_vwap_pq_m2",
+    label: "Near VWAP — PQ −2σ",
+    icon: "≈",
+    hasBear: false,
+    req: "Close within 1% of the Previous Quarter anchored-VWAP −2σ band",
+    bull: (r) => r.nearPqM2,
+  },
+  {
+    key: "near_vwap_py_m1",
+    label: "Near VWAP — PY −1σ",
+    icon: "≈",
+    hasBear: false,
+    req: "Close within 1% of the Previous Year anchored-VWAP −1σ band",
+    bull: (r) => r.nearPyM1,
+  },
+  {
+    key: "near_vwap_py_m2",
+    label: "Near VWAP — PY −2σ",
+    icon: "≈",
+    hasBear: false,
+    req: "Close within 1% of the Previous Year anchored-VWAP −2σ band",
+    bull: (r) => r.nearPyM2,
   },
 ];
 
@@ -272,100 +302,6 @@ export function passLiquidity(r: UniverseRow, key: string): boolean {
   if (key === "quiet") return r.rvol < 0.5;
   return true;
 }
-
-// ── CONTEXT conditions for the custom builder: pick a plain-language STATE.
-//    Each is a real predicate; fundamental states are real:false → "no data
-//    at screen scope" (detail-page fields, absent from the screener universe). ──
-export interface ContextCond {
-  key: string;
-  label: string;
-  real: Backing;
-  test: (r: UniverseRow) => boolean;
-}
-export interface ContextGroup {
-  family: string;
-  conds: ContextCond[];
-}
-
-export const CONTEXT_GROUPS: ContextGroup[] = [
-  {
-    family: "Momentum",
-    conds: [
-      { key: "rsi_bull", label: "RSI bullish (> 50)", real: true, test: (r) => (r.rsi ?? -1) > 50 },
-      { key: "rsi_strong", label: "RSI strong (> 60)", real: true, test: (r) => (r.rsi ?? -1) > 60 },
-      { key: "rsi_oversold", label: "RSI oversold (< 30)", real: true, test: (r) => (r.rsi ?? 999) < 30 },
-      { key: "rsi_overbought", label: "RSI overbought (> 70)", real: true, test: (r) => (r.rsi ?? -1) > 70 },
-      { key: "rs_leader", label: "RS Rating leader (≥ 80)", real: true, test: (r) => (r.rsRating ?? 0) >= 80 },
-      { key: "up_today", label: "Up on the day", real: true, test: (r) => r.chg > 0 },
-      { key: "down_today", label: "Down on the day", real: true, test: (r) => r.chg < 0 },
-    ],
-  },
-  {
-    family: "Trend",
-    conds: [
-      { key: "ema_above", label: "Above EMA25 & EMA50", real: true, test: (r) => r.emaAboveKey },
-      { key: "ema_below", label: "Below key EMAs", real: true, test: (r) => r.emaBelowKey },
-      { key: "sig_ema", label: "Engine: EMA Trend up", real: true, test: (r) => r.signalType === "EMA Trend" },
-      {
-        key: "sig_golden",
-        label: "Engine: Golden Cross",
-        real: true,
-        test: (r) => r.signalType === "Golden Cross" || /golden cross|macd line crossed above/i.test(r.summary),
-      },
-    ],
-  },
-  {
-    family: "Structure & VWAP",
-    conds: [
-      { key: "vwap_discount", label: "Discount to VWAP", real: true, test: (r) => (r.vwapSigma ?? 9) <= -0.6 },
-      { key: "vwap_near", label: "Near VWAP", real: true, test: (r) => Math.abs(r.vwapSigma ?? 9) < 0.6 },
-      { key: "vwap_premium", label: "Premium to VWAP", real: true, test: (r) => (r.vwapSigma ?? -9) >= 0.6 },
-      { key: "smc_ob", label: "In bullish order block", real: true, test: (r) => /OB Bull/i.test(r.entryPOI) },
-      { key: "smc_eq", label: "At equilibrium (EQ)", real: true, test: (r) => /^EQ/.test(r.entryPOI) },
-      { key: "smc_disc", label: "SMC discount zone", real: true, test: (r) => (r.vwapSigma ?? 9) < -0.75 },
-      { key: "reclaim", label: "Reclaimed a level", real: true, test: (r) => r.reclaim },
-    ],
-  },
-  {
-    family: "Trade plan",
-    conds: [
-      { key: "rr2", label: "Reward:Risk ≥ 2×", real: true, test: (r) => (r.rr ?? 0) >= 2 },
-      { key: "rr3", label: "Reward:Risk ≥ 3×", real: true, test: (r) => (r.rr ?? 0) >= 3 },
-      { key: "has_setup", label: "Has an engine setup", real: true, test: (r) => r.hasEngineSetup },
-      { key: "score70", label: "Swing score ≥ 70", real: "sparse", test: (r) => (r.score ?? -1) >= 70 },
-    ],
-  },
-  {
-    family: "Liquidity",
-    conds: [
-      { key: "busy", label: "Busy (RVOL ≥ 1.5×)", real: true, test: (r) => (r.rvol ?? 0) >= 1.5 },
-      { key: "surging", label: "Surging (RVOL ≥ 3×)", real: true, test: (r) => (r.rvol ?? 0) >= 3 },
-      { key: "quiet", label: "Quiet (RVOL < 0.5×)", real: true, test: (r) => (r.rvol ?? 9) < 0.5 },
-      { key: "large", label: "Large-cap tier", real: true, test: (r) => r.capTier === "Large cap" },
-      { key: "mid", label: "Mid-cap tier", real: true, test: (r) => r.capTier === "Mid cap" },
-      { key: "small", label: "Small-cap tier", real: true, test: (r) => r.capTier === "Small cap" },
-    ],
-  },
-  {
-    family: "Ownership (KSEI proxy)",
-    conds: [
-      { key: "ksei_accum", label: "KSEI accumulating", real: "sparse", test: (r) => r.kseiAccum === true },
-      { key: "foreign_buy", label: "Foreign buying (proxy)", real: "sparse", test: (r) => (r.kseiDelta ?? 0) > 0 },
-      { key: "foreign_sell", label: "Foreign selling (proxy)", real: "sparse", test: (r) => (r.kseiDelta ?? 0) < 0 },
-    ],
-  },
-  {
-    family: "Fundamental",
-    conds: [
-      { key: "pe_cheap", label: "PE cheap (detail-only)", real: false, test: () => false },
-      { key: "pbv_cheap", label: "PBV cheap (detail-only)", real: false, test: () => false },
-      { key: "roe_high", label: "ROE high (detail-only)", real: false, test: () => false },
-    ],
-  },
-];
-
-export const CONTEXT_BY_KEY: Record<string, ContextCond & { family: string }> = {};
-CONTEXT_GROUPS.forEach((g) => g.conds.forEach((c) => (CONTEXT_BY_KEY[c.key] = { ...c, family: g.family })));
 
 // ── interpreted cells ──
 function trendCell(r: UniverseRow): Cell {
@@ -443,8 +379,14 @@ function flowCell(r: UniverseRow): Cell {
   };
 }
 
+export type ScreenerSignal = {
+  breakIbhIbl?: boolean; rsiDivBullish?: boolean; rsiDivHiddenBullish?: boolean; stochRsiGoldenCross?: boolean;
+  nearPqM1?: boolean; nearPqM2?: boolean; nearPyM1?: boolean; nearPyM2?: boolean;
+};
+export type ScreenerSignalsDoc = { records?: Record<string, ScreenerSignal> };
+
 // ── build the typed universe from the raw workbook + engine docs ──
-export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbMap = {}): Universe {
+export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbMap = {}, signals: Record<string, ScreenerSignal> = {}): Universe {
   const setupByTicker: Record<string, EngineSetup> = {};
   (setupsDoc.setups || []).forEach((s) => (setupByTicker[s.ticker] = s));
 
@@ -468,6 +410,7 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
     const emaBelowKey = /Below[^|]*EMA50/.test(maRaw) && !emaAboveKey;
     const sectorCode = str(rec.Sector) || "Others";
     const price = num(rec.Price);
+    const sig = signals[str(rec.Ticker).toUpperCase()] || {};
 
     const r: UniverseRow = {
       ticker: str(rec.Ticker).toUpperCase(),
@@ -494,6 +437,14 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
       emaAboveKey,
       emaBelowKey,
       reclaim: /reclaim/i.test(summary),
+      breakIbhIbl: !!sig.breakIbhIbl,
+      rsiDivBullish: !!sig.rsiDivBullish,
+      rsiDivHiddenBullish: !!sig.rsiDivHiddenBullish,
+      stochRsiGoldenCross: !!sig.stochRsiGoldenCross,
+      nearPqM1: !!sig.nearPqM1,
+      nearPqM2: !!sig.nearPqM2,
+      nearPyM1: !!sig.nearPyM1,
+      nearPyM2: !!sig.nearPyM2,
       score: su && typeof su.score === "number" ? su.score : null,
       hasEngineSetup: !!su,
       isRecentIpo: su ? !!su.isRecentIpo : null,
@@ -573,10 +524,11 @@ export function soloCounts(rows: UniverseRow[]): Record<string, { bull: number; 
 // ── loader: fetch the workbook + engine docs for a market date ──
 export async function loadUniverse(marketDate: string): Promise<Universe> {
   const base = `/data/dates/${marketDate}`;
-  const [scr, setupsDoc, technicalDoc] = await Promise.all([
+  const [scr, setupsDoc, technicalDoc, signalsDoc] = await Promise.all([
     fetchJson<ScreenerDoc>(`${base}/screener.json`),
     fetchJson<SetupsDoc>(`${base}/setups.json`).catch(() => ({ setups: [] }) as SetupsDoc),
     fetchJson<TechnicalDoc>(`${base}/technical.json`).catch(() => ({ records: {} }) as TechnicalDoc),
+    fetchJson<ScreenerSignalsDoc>(`${base}/screener_signals.json`).catch(() => ({ records: {} }) as ScreenerSignalsDoc),
   ]);
   const ibMap: IbMap = {};
   Object.entries(technicalDoc.records || {}).forEach(([ticker, rec]) => {
@@ -595,5 +547,5 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
       })(),
     };
   });
-  return buildUniverse(scr, setupsDoc, ibMap);
+  return buildUniverse(scr, setupsDoc, ibMap, signalsDoc.records || {});
 }
