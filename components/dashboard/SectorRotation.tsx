@@ -29,13 +29,13 @@ type PlotItem = { id: string; label: string; sublabel?: string; series: RrgPoint
 
 const CAT = ["#2962FF", "#F23645", "#16A34A", "#D97706", "#9333EA", "#0891B2", "#DB2777", "#65A30D", "#7C3AED", "#EA580C"];
 
-// Slow/Moderate/Fast buckets for the single-period trajectory speed, calibrated
-// to real tercile boundaries of weekly-resampled RRG output across all
-// sector/konglo groups (n=56, p33≈1.4, p67≈2.2, median 1.66, max 6.47) — not
-// the design prototype's mock-data thresholds, which were tuned to a
-// synthetic random-walk generator and would bucket nearly everything "Fast".
-const SPEED_SLOW_MAX = 1.4;
-const SPEED_MODERATE_MAX = 2.2;
+// Slow/Moderate/Fast buckets for the single-period trajectory speed.
+// Originally calibrated to real tercile boundaries of weekly-resampled RRG
+// output at ratioScale/momentumScale=2.2 (n=56, p33≈1.4, p67≈2.2); rescaled
+// by /2.2 for the current scale=1 default (see lib/indicators/rrg.ts) since
+// z-score scale directly scales the typical single-period move magnitude.
+const SPEED_SLOW_MAX = 0.64;
+const SPEED_MODERATE_MAX = 1.0;
 
 function resampleWeekly(series: Pt[]): Pt[] {
   const byWeek = new Map<string, Pt>();
@@ -69,7 +69,12 @@ function smoothPath(pts: Array<[number, number]>): string {
   return d;
 }
 
-const PHASE_ORDER: Phase[] = ["Strengthening", "Fading", "Stabilizing", "Deteriorating", "Gaining Momentum", "Deepening Weakness", "Building Momentum", "Losing Momentum"];
+const PHASE_ORDER: Phase[] = [
+  "Entering Leading", "Strengthening", "Fading", "Collapsing",
+  "Rotating → Weakening", "Stabilizing", "Deteriorating",
+  "Fast Recovery", "Gaining Momentum", "Deepening Weakness",
+  "Rotating → Improving", "Recovering → Leading", "Losing Momentum",
+];
 const DIST_ORDER: Quadrant[] = ["leading", "improving", "weakening", "lagging"];
 
 export function SectorRotationSection({ ihsg, sectoralGroups, kongloGroups, marketDate, latestMarketDate, openTicker, technicalByTicker }: {
