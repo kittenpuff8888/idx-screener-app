@@ -111,9 +111,10 @@ class V11FinalGateTests(unittest.TestCase):
 
     def test_daily_workflow_keeps_required_check_and_post_ready_retries(self):
         for cron in (
-            '"30 9 * * 1-5"',
-            '"30 10 * * 1-5"',
-            '"30 11 * * 1-5"',
+            '"37 9 * * 1-5"',
+            '"11 11 * * 1-5"',
+            '"53 12 * * 1-5"',
+            '"29 14 * * 1-5"',
         ):
             self.assertIn(cron, self.workflow)
         self.assertIn("--session-ready-time 17:00", self.workflow)

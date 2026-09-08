@@ -12,11 +12,19 @@ on:
         required: false
         default: false
         type: boolean
+  # Off-the-hour minutes (:07/:41/etc, not :00/:30) deliberately -- GitHub
+  # Actions cron runs on round minutes queue behind every other repo's cron
+  # that also fired then, and that congestion measurably delays a run's
+  # actual start (observed: several hours some days). Triggers are also
+  # spaced ~1.5h+ apart, not 30-60min, because a single pipeline run takes
+  # 70-180 min and concurrency.group below only lets one run at a time --
+  # tightly-packed retries mostly just queue uselessly behind the first
+  # instead of getting their own timely attempt.
   schedule:
-    - cron: "30 9 * * 1-5"   # 16:30 WIB - just after market close
-    - cron: "0 10 * * 1-5"   # 17:00 WIB - 5 PM daily refresh
-    - cron: "30 10 * * 1-5"  # 17:30 WIB - post-close retry
-    - cron: "30 11 * * 1-5"  # 18:30 WIB - post-close retry
+    - cron: "37 9 * * 1-5"   # ~16:37 WIB - just after market close
+    - cron: "11 11 * * 1-5"  # ~18:11 WIB - primary retry, still inside the 6pm target
+    - cron: "53 12 * * 1-5"  # ~19:53 WIB - post-close retry
+    - cron: "29 14 * * 1-5"  # ~21:29 WIB - final-safety-net retry
 
 permissions:
   contents: write
