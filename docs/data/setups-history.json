@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-09-07",
+ "asOf": "2026-09-08",
  "entries": [
   {
    "date": "2026-07-10",
@@ -530,7 +530,7 @@
    "target": 1445,
    "invalidation": 1382,
    "outcome": "target",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-01",
@@ -539,8 +539,8 @@
    "close": 695.0,
    "target": 735,
    "invalidation": 671,
-   "outcome": "open",
-   "barsObserved": 4
+   "outcome": "undecided",
+   "barsObserved": 5
   },
   {
    "date": "2026-09-01",
@@ -550,7 +550,7 @@
    "target": 97,
    "invalidation": 92,
    "outcome": "invalidated",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-01",
@@ -560,7 +560,7 @@
    "target": 790,
    "invalidation": 764.4,
    "outcome": "target",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-01",
@@ -569,8 +569,8 @@
    "close": 228.0,
    "target": 233,
    "invalidation": 217.56,
-   "outcome": "open",
-   "barsObserved": 4
+   "outcome": "undecided",
+   "barsObserved": 5
   },
   {
    "date": "2026-09-01",
@@ -580,7 +580,7 @@
    "target": 2775,
    "invalidation": 2626.4,
    "outcome": "target",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-01",
@@ -590,7 +590,7 @@
    "target": 4400,
    "invalidation": 4237.2,
    "outcome": "target",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-01",
@@ -600,7 +600,7 @@
    "target": 2825,
    "invalidation": 2724.4,
    "outcome": "target",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-02",
@@ -610,7 +610,7 @@
    "target": 760,
    "invalidation": 685,
    "outcome": "invalidated",
-   "barsObserved": 3
+   "barsObserved": 4
   },
   {
    "date": "2026-09-02",
@@ -620,7 +620,7 @@
    "target": 200,
    "invalidation": 119.78999999999999,
    "outcome": "invalidated",
-   "barsObserved": 3
+   "barsObserved": 4
   },
   {
    "date": "2026-09-02",
@@ -630,7 +630,7 @@
    "target": 216,
    "invalidation": 181.17,
    "outcome": "open",
-   "barsObserved": 3
+   "barsObserved": 4
   },
   {
    "date": "2026-09-02",
@@ -640,7 +640,7 @@
    "target": 97,
    "invalidation": 89.17999999999999,
    "outcome": "open",
-   "barsObserved": 3
+   "barsObserved": 4
   },
   {
    "date": "2026-09-02",
@@ -650,7 +650,7 @@
    "target": 4400,
    "invalidation": 4237.2,
    "outcome": "target",
-   "barsObserved": 3
+   "barsObserved": 4
   },
   {
    "date": "2026-09-04",
@@ -660,7 +660,7 @@
    "target": 196,
    "invalidation": 111.87,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   }
  ],
  "summary": {

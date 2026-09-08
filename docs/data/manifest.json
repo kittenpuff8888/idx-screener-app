@@ -1,9 +1,9 @@
 {
   "schemaVersion": 5,
-  "latestMarketDate": "2026-09-07",
-  "latest": "2026-09-07",
-  "generatedAt": "2026-09-07T16:30:00+07:00",
-  "lastSuccessfulDatasetLoad": "2026-09-07T16:30:00+07:00",
+  "latestMarketDate": "2026-09-08",
+  "latest": "2026-09-08",
+  "generatedAt": "2026-09-08T16:30:00+07:00",
+  "lastSuccessfulDatasetLoad": "2026-09-08T16:30:00+07:00",
   "updateSchedule": {
     "timezone": "Asia/Jakarta",
     "localTime": "16:30",
@@ -11,7 +11,7 @@
   },
   "historyRange": {
     "start": "2025-01-01",
-    "end": "2026-09-07"
+    "end": "2026-09-08"
   },
   "availableMarketDates": [
     "2025-01-02",
@@ -412,7 +412,8 @@
     "2026-09-02",
     "2026-09-03",
     "2026-09-04",
-    "2026-09-07"
+    "2026-09-07",
+    "2026-09-08"
   ],
   "sourceVersions": {
     "archive": "schema-v5",
@@ -6056,6 +6057,20 @@
       "snapshotMode": "full_workbook",
       "workbook": "downloads/2026-09-07.xlsx",
       "ohlcv": "data/ohlcv/2026-09-07"
+    },
+    {
+      "marketDate": "2026-09-08",
+      "path": "data/dates/2026-09-08/",
+      "totalScanned": 962,
+      "okTickers": 911,
+      "partialTickers": 10,
+      "noDataTickers": 41,
+      "signalRows": 493,
+      "uniqueSignalTickers": 307,
+      "status": "ok",
+      "snapshotMode": "full_workbook",
+      "workbook": "downloads/2026-09-08.xlsx",
+      "ohlcv": "data/ohlcv/2026-09-08"
     }
   ]
 }
