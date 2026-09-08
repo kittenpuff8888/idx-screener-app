@@ -12,6 +12,7 @@
 
 import { fetchJson } from "./client";
 import { IDX_SECTOR_MAP } from "@/lib/domain/sectors";
+import type { IndexPayload } from "@/lib/domain/types";
 
 export type Tone = "up" | "down" | "flat";
 
@@ -76,6 +77,18 @@ export interface UniverseRow {
   // (continuation pattern) rather than regular Strong/Medium/Weak (reversal).
   rsiDivergenceHidden: boolean;
   stochCross: string | null; // "Golden Cross" | "Dead Cross" | null
+  // real technical.json fields for the redesigned results table (2026-09
+  // column set) -- straight joins, nothing derived/guessed.
+  beta: number | null;
+  avgVolume20: string | null; // pre-formatted, e.g. "100.66 M"
+  structureInternal: string | null;
+  structureSwing: string | null;
+  rsi14: number | null;
+  rsiMa14: number | null; // RSI-based MA (technical.rsiDetail.average14)
+  maZoneReal: string | null; // technical.maZone -- MA-only, no RSI mixed in
+  vwapPq: VwapReading | null;
+  vwapPy: VwapReading | null;
+  mondayRange: MondayRange | null;
   // scripts/compute_screener_signals.py join -- the four screener filters
   // below, computed fresh from the published OHLCV archive (see that
   // script's docstring for exact parameters). Absent for a ticker with too
@@ -133,12 +146,21 @@ type EngineSetup = {
 };
 type SetupsDoc = { setups?: EngineSetup[]; scanned?: number };
 type TechnicalRecord = {
+  beta?: unknown;
   technical?: {
     marketProfile?: { ibh?: unknown; ibl?: unknown };
     macdDetail?: { cross?: unknown };
-    rsiDetail?: { cross?: unknown; divergenceSignal?: unknown; divergenceStrength?: unknown };
+    rsiDetail?: { cross?: unknown; divergenceSignal?: unknown; divergenceStrength?: unknown; average14?: unknown };
     stochDetail?: { cross?: unknown };
+    rsi14?: unknown;
+    maZone?: unknown;
+    liquidity?: { averageVolume20?: unknown };
+    vwapProfiles?: {
+      previousQuarter?: { vwap?: unknown; zone?: unknown; priceSigma?: unknown };
+      previousYear?: { vwap?: unknown; zone?: unknown; priceSigma?: unknown };
+    };
   };
+  structure?: { internal?: unknown; swing?: unknown };
   // On incremental-day snapshots (build_historical_snapshots.py's lighter
   // path, roughly half of all archived dates), ibh/ibl live here instead of
   // technical.marketProfile -- that nested object doesn't exist at all on
@@ -146,6 +168,7 @@ type TechnicalRecord = {
   levels?: { ibh?: unknown; ibl?: unknown };
 };
 type TechnicalDoc = { records?: Record<string, TechnicalRecord> };
+type VwapReading = { vwap: number; sigma: number | null; zone: string };
 type TechExtra = {
   ibh: number | null;
   ibl: number | null;
@@ -153,8 +176,18 @@ type TechExtra = {
   rsiDivergence: string | null;
   rsiDivergenceHidden: boolean;
   stochCross: string | null;
+  beta: number | null;
+  avgVolume20: string | null;
+  structureInternal: string | null;
+  structureSwing: string | null;
+  rsi14: number | null;
+  rsiMa14: number | null;
+  maZoneReal: string | null;
+  vwapPq: VwapReading | null;
+  vwapPy: VwapReading | null;
 };
 type IbMap = Record<string, TechExtra>;
+export type MondayRange = { high: number; low: number; date: string; status: "Above" | "Within" | "Below" };
 
 function str(v: unknown): string {
   return v === null || v === undefined ? "" : String(v);
@@ -216,18 +249,18 @@ export const SETUPS: SetupDef[] = [
   },
   {
     key: "rsi10_div_bullish",
-    label: "RSI 10 Divergence — Bullish",
+    label: "RSI Bullish Divergence",
     icon: "⤢",
     hasBear: false,
-    req: "Regular bullish RSI(10, EMA-smoothed) divergence confirmed today — price lower low, RSI higher low (lifecycle-cluster method)",
+    req: "Regular bullish RSI(10, EMA-smoothed) divergence confirmed today — price lower low, RSI higher low, at a genuine RSI<30 oversold extreme (lifecycle-cluster method)",
     bull: (r) => r.rsiDivBullish,
   },
   {
     key: "rsi10_div_hidden_bullish",
-    label: "RSI 10 Divergence — Hidden Bullish",
+    label: "RSI Hidden Bullish Divergence",
     icon: "⤢",
     hasBear: false,
-    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low (uptrend continuation)",
+    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low, on a shallow pullback within an uptrend (no oversold requirement)",
     bull: (r) => r.rsiDivHiddenBullish,
   },
   {
@@ -272,13 +305,62 @@ export const SETUPS: SetupDef[] = [
   },
 ];
 
+// UI-only grouping: the 4 Near-VWAP setups above are still 4 independent,
+// separately-matched signals (setupsMatched/CSV/solo counts are unaffected)
+// — this just tells the picker grid to render the ±1σ/±2σ pair for each
+// period as ONE box with an in-box σ toggle, instead of 4 separate tiles.
+export type VwapGroupVariant = { sigmaLabel: string; setupKey: string };
+export type VwapGroup = { boxId: string; label: string; icon: string; req: string; variants: VwapGroupVariant[] };
+export const VWAP_GROUPS: VwapGroup[] = [
+  {
+    boxId: "near_vwap_pq",
+    label: "Holding Previous QVWAP",
+    icon: "≈",
+    req: "Close within the picked σ band of the Previous Quarter anchored-VWAP",
+    variants: [
+      { sigmaLabel: "−1σ", setupKey: "near_vwap_pq_m1" },
+      { sigmaLabel: "−2σ", setupKey: "near_vwap_pq_m2" },
+    ],
+  },
+  {
+    boxId: "near_vwap_py",
+    label: "Holding Previous YVWAP",
+    icon: "≈",
+    req: "Close within the picked σ band of the Previous Year anchored-VWAP",
+    variants: [
+      { sigmaLabel: "−1σ", setupKey: "near_vwap_py_m1" },
+      { sigmaLabel: "−2σ", setupKey: "near_vwap_py_m2" },
+    ],
+  },
+];
+const VWAP_GROUP_KEYS = new Set(VWAP_GROUPS.flatMap((g) => g.variants.map((v) => v.setupKey)));
+/** SETUPS entries that render as their own tile (i.e. not one of the 4
+    Near-VWAP setups folded into VWAP_GROUPS above). */
+export function ungroupedSetups(): SetupDef[] {
+  return SETUPS.filter((s) => !VWAP_GROUP_KEYS.has(s.key));
+}
+
+const VWAP_VARIANT_DISPLAY: Record<string, string> = Object.fromEntries(
+  VWAP_GROUPS.flatMap((g) => g.variants.map((v) => [v.setupKey, `${g.label} · ${v.sigmaLabel}`])),
+);
+/** The label a setup key should actually render as — the merged box name
+    (e.g. "Holding Previous QVWAP · −1σ") for a Near-VWAP variant, or the
+    plain SetupDef label for everything else. Used by the Setup-column
+    bubbles and the filter pills so they match what the picker grid shows,
+    not the pre-merge per-σ tile name. */
+export function setupDisplayLabel(key: string): string {
+  return VWAP_VARIANT_DISPLAY[key] || SETUP_BY_KEY[key]?.label || key;
+}
+
 const SETUP_BY_KEY: Record<string, SetupDef> = Object.fromEntries(SETUPS.map((s) => [s.key, s]));
 export function setupByKey(key: string): SetupDef | undefined {
   return SETUP_BY_KEY[key];
 }
 
 // ── general top filters. Sector is REAL; Liquidity is a labelled RVOL/cap
-//    proxy; Konglo has NO real column → its control renders "no data". ──
+//    proxy; Konglo groups are REAL (docs/data/indexes.json's "KONGLO INDEX"
+//    section, one group per Indonesian conglomerate with real constituent
+//    tickers) — join it by ticker rather than re-fetching per-date. ──
 export const SECTOR_OPTIONS: Array<{ v: string; label: string }> = [
   { v: "", label: "All sectors" },
   ...Object.entries(SECTOR_LABEL).map(([v, label]) => ({ v, label })),
@@ -290,9 +372,51 @@ export const LIQUIDITY_OPTIONS: Array<{ v: string; label: string }> = [
   { v: "avg", label: "Average" },
   { v: "quiet", label: "Quiet (RVOL < 0.5×)" },
 ];
-export const KONGLO_OPTIONS: Array<{ v: string; label: string }> = [
-  { v: "", label: "All konglo groups — no data" },
+export const PRICE_OPTIONS: Array<{ v: string; label: string }> = [
+  { v: "", label: "Price: any" },
+  { v: "under50", label: "Price < 50" },
+  { v: "over50", label: "Price ≥ 50" },
 ];
+
+const KONGLO_SECTION = "KONGLO INDEX";
+
+/** ticker → the real konglomerate-group labels it belongs to (a ticker can
+    sit in more than one group), built from indexes.json's own groups —
+    nothing invented, absent from the map = genuinely not in any group. */
+export function kongloGroupsByTicker(indexes: IndexPayload | null): Record<string, string[]> {
+  const map: Record<string, string[]> = {};
+  (indexes?.groups || []).forEach((g) => {
+    if (g.section !== KONGLO_SECTION) return;
+    (g.constituents || []).forEach((c) => {
+      const t = String(c.ticker || "").toUpperCase();
+      if (!t) return;
+      (map[t] ||= []).push(g.label);
+    });
+  });
+  return map;
+}
+
+/** v = the group's own label (also the key kongloGroupsByTicker's values
+    use), so passKonglo needs no separate id→label lookup. */
+export function kongloOptionsFromIndexes(indexes: IndexPayload | null): Array<{ v: string; label: string }> {
+  const groups = (indexes?.groups || []).filter((g) => g.section === KONGLO_SECTION);
+  const opts = groups
+    .map((g) => ({ v: g.label, label: `${g.label} (${(g.constituents || []).length})` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  return [{ v: "", label: opts.length ? "All konglo groups" : "All konglo groups — no data" }, ...opts];
+}
+
+export function passKonglo(kongloMap: Record<string, string[]>, ticker: string, key: string): boolean {
+  if (!key) return true;
+  return (kongloMap[ticker] || []).includes(key);
+}
+
+export function passPrice(r: UniverseRow, key: string): boolean {
+  if (!key || r.price == null) return !key;
+  if (key === "under50") return r.price < 50;
+  if (key === "over50") return r.price >= 50;
+  return true;
+}
 
 export function passLiquidity(r: UniverseRow, key: string): boolean {
   if (!key || r.rvol == null) return !key;
@@ -383,29 +507,37 @@ export type ScreenerSignal = {
   breakIbhIbl?: boolean; rsiDivBullish?: boolean; rsiDivHiddenBullish?: boolean; stochRsiGoldenCross?: boolean;
   nearPqM1?: boolean; nearPqM2?: boolean; nearPyM1?: boolean; nearPyM2?: boolean;
 };
-export type ScreenerSignalsDoc = { records?: Record<string, ScreenerSignal> };
+export type ScreenerSignalsDoc = { records?: Record<string, ScreenerSignal>; mondayRange?: Record<string, MondayRange> };
 
 // ── build the typed universe from the raw workbook + engine docs ──
-export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbMap = {}, signals: Record<string, ScreenerSignal> = {}): Universe {
+export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbMap = {}, signals: Record<string, ScreenerSignal> = {}, mondayRangeMap: Record<string, MondayRange> = {}): Universe {
   const setupByTicker: Record<string, EngineSetup> = {};
   (setupsDoc.setups || []).forEach((s) => (setupByTicker[s.ticker] = s));
 
-  // one record per ticker — keep the best-R/R signal row
+  // one record per ticker — keep the best-R/R signal row. Every real IDX
+  // ticker is exactly 4 letters/digits (verified against idx-listed.json,
+  // 962/962); screener.json's own Excel-parsing pipeline occasionally spills
+  // a neighbouring cell's text into the Ticker column (observed live:
+  // "ISTRUCTURE BREAK", a fragment of a Structure-column sentence) --
+  // reject anything that isn't a real ticker shape rather than let a
+  // corrupted phantom row into the table.
+  const TICKER_RE = /^[A-Z0-9]{4}$/;
   const byTicker: Record<string, ScreenerRecord> = {};
   (scr.records || []).forEach((rec) => {
     const t = str(rec.Ticker).toUpperCase();
-    if (!t) return;
+    if (!TICKER_RE.test(t)) return;
     const cur = byTicker[t];
     if (!cur || (num(rec["R/R"]) ?? 0) > (num(cur["R/R"]) ?? 0)) byTicker[t] = rec;
   });
   // screener.json's roster is a ~400-ticker subset (the legacy engine's own
-  // "scanned" set); screener_signals.json is computed for the FULL ~962-
-  // ticker universe. A ticker whose only distinction today is one of the 4
-  // new signals (e.g. a thinly-traded name outside the legacy roster) must
-  // still get a row here, or its real, computed signal can never surface in
+  // "scanned" set); technical.json and screener_signals.json are both
+  // computed for the FULL ~962-ticker universe. Any ticker with real data
+  // in either of those but no roster row (most often a thinly-traded name
+  // outside the legacy engine's scan) must still get a row here, or its
+  // real fields (and any of the 8 signals it triggers) can never surface in
   // the table — stub in the bare minimum (every other field degrades to its
-  // existing "no data" / null handling).
-  Object.keys(signals).forEach((t) => {
+  // existing "no data" / null handling; nothing is guessed).
+  new Set([...Object.keys(signals), ...Object.keys(ibMap)]).forEach((t) => {
     const tu = t.toUpperCase();
     if (!byTicker[tu]) byTicker[tu] = { Ticker: tu };
   });
@@ -421,7 +553,9 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
     const emaBelowKey = /Below[^|]*EMA50/.test(maRaw) && !emaAboveKey;
     const sectorCode = str(rec.Sector) || "Others";
     const price = num(rec.Price);
-    const sig = signals[str(rec.Ticker).toUpperCase()] || {};
+    const tickerU = str(rec.Ticker).toUpperCase();
+    const sig = signals[tickerU] || {};
+    const te = ibMap[tickerU];
 
     const r: UniverseRow = {
       ticker: str(rec.Ticker).toUpperCase(),
@@ -448,6 +582,16 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
       emaAboveKey,
       emaBelowKey,
       reclaim: /reclaim/i.test(summary),
+      beta: te?.beta ?? null,
+      avgVolume20: te?.avgVolume20 ?? null,
+      structureInternal: te?.structureInternal ?? null,
+      structureSwing: te?.structureSwing ?? null,
+      rsi14: te?.rsi14 ?? null,
+      rsiMa14: te?.rsiMa14 ?? null,
+      maZoneReal: te?.maZoneReal ?? null,
+      vwapPq: te?.vwapPq ?? null,
+      vwapPy: te?.vwapPy ?? null,
+      mondayRange: mondayRangeMap[tickerU] ?? null,
       breakIbhIbl: !!sig.breakIbhIbl,
       rsiDivBullish: !!sig.rsiDivBullish,
       rsiDivHiddenBullish: !!sig.rsiDivHiddenBullish,
@@ -542,6 +686,11 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
     fetchJson<ScreenerSignalsDoc>(`${base}/screener_signals.json`).catch(() => ({ records: {} }) as ScreenerSignalsDoc),
   ]);
   const ibMap: IbMap = {};
+  const vwapReading = (p?: { vwap?: unknown; zone?: unknown; priceSigma?: unknown }): VwapReading | null => {
+    const vwap = num(p?.vwap);
+    if (vwap == null) return null;
+    return { vwap, sigma: num(p?.priceSigma), zone: str(p?.zone) };
+  };
   Object.entries(technicalDoc.records || {}).forEach(([ticker, rec]) => {
     const mp = rec.technical?.marketProfile;
     const macdCrossRaw = str(rec.technical?.macdDetail?.cross);
@@ -556,7 +705,17 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
         const v = str(rec.technical?.stochDetail?.cross);
         return v && v !== "N/A" && v !== "-" ? v : null;
       })(),
+      beta: num(rec.beta),
+      avgVolume20: str(rec.technical?.liquidity?.averageVolume20) || null,
+      structureInternal: str(rec.structure?.internal) || null,
+      structureSwing: str(rec.structure?.swing) || null,
+      rsi14: num(rec.technical?.rsi14),
+      rsiMa14: num(rec.technical?.rsiDetail?.average14),
+      maZoneReal: str(rec.technical?.maZone) || null,
+      vwapPq: vwapReading(rec.technical?.vwapProfiles?.previousQuarter),
+      vwapPy: vwapReading(rec.technical?.vwapProfiles?.previousYear),
     };
   });
-  return buildUniverse(scr, setupsDoc, ibMap, signalsDoc.records || {});
+  const mondayRangeMap = (signalsDoc.mondayRange || {}) as Record<string, MondayRange>;
+  return buildUniverse(scr, setupsDoc, ibMap, signalsDoc.records || {}, mondayRangeMap);
 }

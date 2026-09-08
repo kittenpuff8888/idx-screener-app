@@ -257,7 +257,7 @@ class ArchiveAndScheduleTests(unittest.TestCase):
         workflow = (
             ROOT / ".github" / "workflows" / "daily-idx-data-update.yml"
         ).read_text(encoding="utf-8")
-        self.assertIn('cron: "30 9 * * 1-5"', workflow)
+        self.assertIn('cron: "37 9 * * 1-5"', workflow)
         self.assertIn("workflow_dispatch:", workflow)
         self.assertIn("contents: write", workflow)
 

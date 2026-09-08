@@ -146,39 +146,154 @@ def ib_break(hist: pd.DataFrame, ibh: float | None, ibl: float | None) -> bool:
     return bool(was_middling and breaks_today)
 
 
-def rsi_divergence_today(hist: pd.DataFrame) -> tuple[bool, bool]:
-    """(bullish_confirmed_today, hidden_bullish_confirmed_today), from
-    RSI(10, EMA) via the shared lifecycle-cluster detector.
+def rsi_divergence_today(hist: pd.DataFrame) -> bool:
+    """Regular Bullish RSI(10, EMA) divergence confirmed today, from the
+    shared lifecycle-cluster detector -- price Lower Low + RSI Higher Low,
+    at a genuine oversold extreme (the detector requires the RSI cluster to
+    dip below 30). This is the classic reversal-style divergence; see
+    hidden_bullish_divergence_today() below for the shallow-pullback variant.
 
     divergence_signals()'s own swing-pivot scan (`range(w, len(vals) - w)`)
     never lets the last `swing_window` bars become a pivot, so a cluster's
     representative date can never equal today's bar -- comparing
-    div_ref2_date to today's own date (the original approach here) was
+    div_ref2_date to today's own date (an earlier approach here) was
     therefore always false. "Confirmed today" instead means: the signal
     reads Bullish on today's full history but did not read that way (or
     pointed at a different cluster) on yesterday's -- i.e. it just became
     visible with today's bar providing the confirming swing point."""
     r = rsi_ema(hist["Close"], 10)
     res_today = divergence_signals(hist, r)
-    if res_today.get("div_signal") != "Bullish":
-        return False, False
+    if res_today.get("div_signal") != "Bullish" or res_today.get("div_strength") == "Hidden":
+        return False
     prior = hist.iloc[:-1]
     res_yday = divergence_signals(prior, rsi_ema(prior["Close"], 10))
     newly_confirmed = res_yday.get("div_signal") != "Bullish" or res_yday.get("div_ref2_date") != res_today.get("div_ref2_date")
-    if not newly_confirmed:
-        return False, False
-    hidden = res_today.get("div_strength") == "Hidden"
-    return (not hidden), hidden
+    return bool(newly_confirmed)
+
+
+def _swing_low_positions(vals: np.ndarray, w: int) -> list[int]:
+    pos = []
+    for i in range(w, len(vals) - w):
+        c = vals[i]
+        if np.isnan(c):
+            continue
+        left, right = vals[i - w:i], vals[i + 1:i + w + 1]
+        if np.all(np.isnan(left)) or np.all(np.isnan(right)):
+            continue
+        if c <= np.nanmin(left) and c <= np.nanmin(right):
+            pos.append(i)
+    return pos
+
+
+def _cluster_positions(positions: list[int], max_gap: int) -> list[list[int]]:
+    if not positions:
+        return []
+    clusters = [[positions[0]]]
+    for p in positions[1:]:
+        if p - clusters[-1][-1] <= max_gap:
+            clusters[-1].append(p)
+        else:
+            clusters.append([p])
+    return clusters
+
+
+def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, cluster_gap=6, min_separation=4, price_tol=0.0075, rsi_tol=2.0, max_last_swing_age=20) -> dict | None:
+    """Hidden bullish RSI(10, EMA) divergence: price makes a HIGHER low
+    while RSI makes a LOWER low -- an uptrend-continuation pattern that, by
+    definition, happens on a shallow pullback, not at a deep oversold
+    extreme. divergence_signals()'s shared detector requires its low-RSI
+    cluster to dip below 30 before a cluster is even eligible, which is
+    right for a reversal-style regular Bullish divergence but wrong here --
+    it misses real hidden-bullish cases with RSI sitting in the 40s-50s.
+    Deliberately no RSI<30 gate. Validated against a real example: BEST
+    2026-08-13 (RSI 51.8, low 109) -> 2026-08-26 (RSI 47.5, low 117) --
+    price Higher Low + RSI Lower Low, confirmed 2026-08-28 once the pivot
+    had its 2 confirming bars.
+
+    Returns the chosen pivot pair's dict (with `i2`, the confirming bar's
+    position) when found, else None -- mirrors divergence_signals()'s
+    lifecycle-cluster/pairing logic exactly, just without the oversold gate."""
+    if hist is None or hist.empty or len(hist) < 25:
+        return None
+    df = hist.tail(lookback)
+    close = df["Close"].astype(float)
+    low = df["Low"].astype(float)
+    r = rsi_ema(close, 10).values
+
+    # Deliberately NOT clustered (unlike divergence_signals()'s regular-
+    # bullish path): clustering chains together every pivot within
+    # cluster_gap bars of the previous one, which over a multi-week uptrend
+    # can chain-link pivots spanning 5+ weeks into one group and collapse
+    # it down to its single deepest-RSI point -- silently discarding the
+    # actual most recent, shallower pivot a hidden-bullish pattern needs.
+    # Validated against BEST: clustering picked 2026-07-29 (RSI 30.0, the
+    # cluster's oversold extreme) instead of the real pivot at 2026-08-13
+    # (RSI 51.8). Comparing the last two INDIVIDUAL swing lows directly
+    # avoids that and matches the real example exactly.
+    pos = _swing_low_positions(r, swing_window)
+    if len(pos) < 2:
+        return None
+    i1, i2 = pos[-2], pos[-1]
+    if (i2 - i1) < min_separation or (len(df) - 1 - i2) > max_last_swing_age:
+        return None
+    p1, p2 = float(low.iloc[i1]), float(low.iloc[i2])
+    r1, r2 = float(r[i1]), float(r[i2])
+    if any(np.isnan(x) for x in (p1, p2, r1, r2)):
+        return None
+    price_higher_low = p2 > p1 + abs(p1) * price_tol
+    rsi_lower_low = r2 < r1 - rsi_tol
+    if not (price_higher_low and rsi_lower_low):
+        return None
+    return {"i2": i2, "ref2_date": df.index[i2].strftime("%d %b '%y"), "p1": p1, "p2": p2, "r1": r1, "r2": r2}
+
+
+def hidden_bullish_divergence_today(hist: pd.DataFrame) -> bool:
+    """Hidden bullish divergence newly confirmed today -- same "confirmed
+    today" diff-vs-yesterday approach as rsi_divergence_today(), since the
+    swing-pivot scan can never mark today's own bar as a pivot either."""
+    today = hidden_bullish_divergence(hist)
+    if today is None:
+        return False
+    yday = hidden_bullish_divergence(hist.iloc[:-1])
+    newly_confirmed = yday is None or yday["ref2_date"] != today["ref2_date"]
+    return bool(newly_confirmed)
 
 
 def stoch_rsi_golden_cross_today(hist: pd.DataFrame) -> bool:
+    """K crosses above D today while the cross originates from the Stoch
+    RSI's own oversold band (K and D both below 20 just before crossing) --
+    "oversold" here means the STOCHASTIC-OF-RSI reading itself, the same
+    dashed 20/80 bands a Stoch RSI chart draws, not the underlying RSI(10)
+    value. Verified against BEST 2026-07-30: RSI(10) was 48.9 (not <30) but
+    K/D were 8.1/16.6 just before crossing to 19.3/13.3 -- a real golden
+    cross a raw-RSI<30 gate would have missed."""
     r = rsi_wilder(hist["Close"], 10)
     k, d = stoch_of(r, length=10, k_smooth=3, d_smooth=3)
     if len(k) < 2 or pd.isna(k.iloc[-1]) or pd.isna(d.iloc[-1]) or pd.isna(k.iloc[-2]) or pd.isna(d.iloc[-2]):
         return False
     crossed = k.iloc[-2] <= d.iloc[-2] and k.iloc[-1] > d.iloc[-1]
-    oversold = pd.notna(r.iloc[-1]) and r.iloc[-1] < 30
+    oversold = k.iloc[-2] < 20 and d.iloc[-2] < 20
     return bool(crossed and oversold)
+
+
+def monday_range(hist: pd.DataFrame) -> dict | None:
+    """High/low of the current week's first published trading session
+    (Monday, or the first session of the week when Monday itself was a
+    holiday) plus where today's close sits vs that range -- same
+    week-start rule as lib/valuation/priceLevels.ts's buildMondayRangeLevels
+    (a day-of-week reset: this bar's weekday <= the previous bar's)."""
+    if hist is None or len(hist) < 2:
+        return None
+    dows = hist.index.dayofweek.to_numpy()
+    start = 0
+    for i in range(1, len(dows)):
+        if dows[i] <= dows[i - 1]:
+            start = i
+    row = hist.iloc[start]
+    close = float(hist["Close"].iloc[-1])
+    hi, lo = float(row["High"]), float(row["Low"])
+    status = "Above" if close > hi else "Below" if close < lo else "Within"
+    return {"high": hi, "low": lo, "date": hist.index[start].strftime("%Y-%m-%d"), "status": status}
 
 
 def near_vwap_flags(hist: pd.DataFrame, close: float) -> dict:
@@ -203,6 +318,7 @@ def main(market_date: str) -> None:
     tickers = sorted({r["ticker"] for r in listed["records"]})
 
     out: dict[str, dict] = {}
+    monday: dict[str, dict] = {}
     for i, ticker in enumerate(tickers, 1):
         hist = load_hist(ticker, market_date)
         if hist is None:
@@ -210,34 +326,41 @@ def main(market_date: str) -> None:
         mp = ((tech_records.get(ticker) or {}).get("technical") or {}).get("marketProfile") or {}
         ibh, ibl = mp.get("ibh"), mp.get("ibl")
         close = float(hist["Close"].iloc[-1])
-        bullish, hidden = rsi_divergence_today(hist)
         record = {
             "breakIbhIbl": ib_break(hist, ibh, ibl),
-            "rsiDivBullish": bullish,
-            "rsiDivHiddenBullish": hidden,
+            "rsiDivBullish": rsi_divergence_today(hist),
+            "rsiDivHiddenBullish": hidden_bullish_divergence_today(hist),
             "stochRsiGoldenCross": stoch_rsi_golden_cross_today(hist),
             **near_vwap_flags(hist, close),
         }
         if any(record.values()):
             out[ticker] = record
+        mr = monday_range(hist)
+        if mr is not None:
+            monday[ticker] = mr
         if i % 200 == 0:
             print(f"[{i}/{len(tickers)}] ...")
 
     payload = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "marketDate": market_date,
         "note": (
             "Screener filter signals computed from the published OHLCV archive. "
             "breakIbhIbl/rsiDiv*/stochRsiGoldenCross are 'today' events; "
             "nearPq*/nearPy* are current-state proximity flags. "
             f"'Near' = within {NEAR_PCT * 100:.0f}% of the level. Only tickers "
-            "with at least one true flag are listed -- absence means all false."
+            "with at least one true flag are listed in `records` -- absence "
+            "means all false. `mondayRange` is populated for every ticker "
+            "with enough history (current week's first session's high/low, "
+            "plus where today's close sits vs it) -- a display field, not a "
+            "sparse signal list."
         ),
         "records": out,
+        "mondayRange": monday,
     }
     out_path = DATES_DIR / market_date / "screener_signals.json"
     out_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
-    print(f"Wrote {len(out)} tickers with at least one signal -> {out_path}")
+    print(f"Wrote {len(out)} tickers with at least one signal, {len(monday)} with mondayRange -> {out_path}")
 
 
 if __name__ == "__main__":
