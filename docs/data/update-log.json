@@ -1,12 +1,6 @@
 {
   "entries": [
     {
-      "timestamp": "2026-07-30T20:02:47.460978+07:00",
-      "marketDate": "2026-07-30",
-      "status": "FAILED",
-      "message": "CalledProcessError: Command '['/opt/hostedtoolcache/Python/3.11.15/x64/bin/python', '/home/runner/work/IDXScreener/IDXScreener/scripts/run_backfill.py', '--date', '2026-07-30']' returned non-zero exit status 1."
-    },
-    {
       "timestamp": "2026-07-31T18:38:32.198423+07:00",
       "marketDate": "2026-07-31",
       "status": "STARTED",
@@ -596,6 +590,12 @@
     },
     {
       "timestamp": "2026-09-09T23:56:28.523878+07:00",
+      "marketDate": "2026-09-09",
+      "status": "NO_CHANGE",
+      "message": "Dataset already published; last successful snapshot preserved."
+    },
+    {
+      "timestamp": "2026-09-10T00:55:18.156530+07:00",
       "marketDate": "2026-09-09",
       "status": "NO_CHANGE",
       "message": "Dataset already published; last successful snapshot preserved."
