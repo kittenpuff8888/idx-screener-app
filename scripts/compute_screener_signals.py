@@ -116,8 +116,25 @@ def near(price: float | None, level: float | None) -> bool:
     return abs(price - level) / level <= NEAR_PCT
 
 
-def load_hist(ticker: str, market_date: str) -> pd.DataFrame | None:
-    path = OHLCV_DIR / market_date / f"{ticker}.json"
+def available_ohlcv_snapshots() -> list[str]:
+    """Every date with its own full OHLCV archive, sorted ascending. Most
+    of docs/data/dates/<date>/ are lighter snapshots (no docs/data/ohlcv/
+    <date>/ folder at all) -- see load_hist()'s snapshot-selection docstring."""
+    return sorted(p.name for p in OHLCV_DIR.iterdir() if p.is_dir())
+
+
+def load_hist(ticker: str, snapshot_date: str, as_of_date: str | None = None) -> pd.DataFrame | None:
+    """Load `ticker`'s OHLCV from the `snapshot_date` archive, trimmed to
+    bars on or before `as_of_date` (defaults to `snapshot_date` itself).
+
+    A full OHLCV snapshot's `rows` already holds a ticker's entire trailing
+    history up to that snapshot's date, not just that one day -- so a date
+    with no dedicated snapshot of its own (most of docs/data/dates/, ~90%
+    of the archive) can still get a real, correctly-timed signal by reading
+    the nearest LATER snapshot and trimming it back down to the actual
+    target date, rather than being skipped for lack of a same-named
+    archive folder."""
+    path = OHLCV_DIR / snapshot_date / f"{ticker}.json"
     if not path.exists():
         return None
     try:
@@ -131,7 +148,12 @@ def load_hist(ticker: str, market_date: str) -> pd.DataFrame | None:
     df["Date"] = pd.to_datetime(df["date"])
     df = df.set_index("Date").sort_index()
     df = df.rename(columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"})
-    return df[["Open", "High", "Low", "Close", "Volume"]].astype(float)
+    df = df[["Open", "High", "Low", "Close", "Volume"]].astype(float)
+    if as_of_date is not None and as_of_date != snapshot_date:
+        df = df.loc[df.index <= pd.Timestamp(as_of_date)]
+    if len(df) < 30:
+        return None
+    return df
 
 
 def ib_break(hist: pd.DataFrame, ibh: float | None, ibl: float | None) -> bool:
@@ -310,6 +332,19 @@ def near_vwap_flags(hist: pd.DataFrame, close: float) -> dict:
     }
 
 
+def pick_snapshot(market_date: str, snapshots: list[str]) -> str | None:
+    """Nearest OHLCV snapshot on or after `market_date` -- its `rows` cover
+    every earlier trading day too, so it can stand in for a date that has
+    no dedicated archive of its own. None if `market_date` is newer than
+    every snapshot taken so far (nothing to trim down from yet)."""
+    if market_date in snapshots:
+        return market_date
+    for s in snapshots:
+        if s >= market_date:
+            return s
+    return None
+
+
 def main(market_date: str) -> None:
     tech_path = DATES_DIR / market_date / "technical.json"
     tech = json.loads(tech_path.read_text(encoding="utf-8"))
@@ -317,10 +352,17 @@ def main(market_date: str) -> None:
     listed = json.loads(LISTED_PATH.read_text(encoding="utf-8"))
     tickers = sorted({r["ticker"] for r in listed["records"]})
 
+    snapshot_date = pick_snapshot(market_date, available_ohlcv_snapshots())
+    if snapshot_date is None:
+        print(f"No OHLCV snapshot on or after {market_date} yet -- nothing to compute from.")
+        return
+    if snapshot_date != market_date:
+        print(f"{market_date} has no dedicated OHLCV archive -- reconstructing from the {snapshot_date} snapshot, trimmed back.")
+
     out: dict[str, dict] = {}
     monday: dict[str, dict] = {}
     for i, ticker in enumerate(tickers, 1):
-        hist = load_hist(ticker, market_date)
+        hist = load_hist(ticker, snapshot_date, market_date)
         if hist is None:
             continue
         mp = ((tech_records.get(ticker) or {}).get("technical") or {}).get("marketProfile") or {}
