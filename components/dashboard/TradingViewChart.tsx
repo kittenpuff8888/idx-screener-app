@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { loadStudies, saveStudies, subscribeStudies, STUDIES, MAX_STUDIES } from "@/lib/data/chartStudies";
+import { loadStudies, saveStudies, subscribeStudies, resolveStudy, STUDIES, MAX_STUDIES } from "@/lib/data/chartStudies";
 
 type Props = {
   symbol?: string;
@@ -137,7 +137,7 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
         // this embed's IDX symbols breaks the whole chart (all-zero OHLC).
         // Documented behavior isn't always the real behavior for this symbol
         // set; verify live before trusting the docs again.
-        studies,
+        studies: studies.map(resolveStudy),
         backgroundColor: dark ? "#11151b" : "#ffffff",
         gridColor: dark ? "rgba(255,255,255,0.06)" : "rgba(11,14,20,0.06)",
         support_host: "https://www.tradingview.com",

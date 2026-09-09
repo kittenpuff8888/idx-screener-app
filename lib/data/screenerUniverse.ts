@@ -95,8 +95,11 @@ export interface UniverseRow {
   // little history for a given signal, never guessed.
   breakIbhIbl: boolean;
   rsiDivBullish: boolean;
+  rsiDivBullishPivotDate: string | null; // pivot bar's own date -- NOT the confirmation date; see compute_screener_signals.py
   rsiDivHiddenBullish: boolean;
+  rsiDivHiddenBullishPivotDate: string | null;
   stochRsiGoldenCross: boolean;
+  stochRsiOversold: boolean; // earlier, lower-precision companion: K<20, not yet crossed above D
   nearPqM1: boolean;
   nearPqM2: boolean;
   nearPyM1: boolean;
@@ -147,6 +150,10 @@ type EngineSetup = {
 type SetupsDoc = { setups?: EngineSetup[]; scanned?: number };
 type TechnicalRecord = {
   beta?: unknown;
+  sector?: unknown;
+  lastPrice?: unknown;
+  changePercent?: unknown;
+  rvol?: unknown;
   technical?: {
     marketProfile?: { ibh?: unknown; ibl?: unknown };
     macdDetail?: { cross?: unknown };
@@ -185,6 +192,14 @@ type TechExtra = {
   maZoneReal: string | null;
   vwapPq: VwapReading | null;
   vwapPy: VwapReading | null;
+  // Real fallback fields for tickers stubbed in (present in technical.json /
+  // screener_signals.json but not screener.json's own ~278-ticker legacy
+  // roster) -- without these a stub row's Price/Chg%/RVOL/Sector rendered
+  // as an incorrect "no data" dash even though real values existed.
+  lastPrice: number | null;
+  changePercent: number | null;
+  rvolReal: number | null;
+  sectorReal: string | null;
 };
 type IbMap = Record<string, TechExtra>;
 export type MondayRange = { high: number; low: number; date: string; status: "Above" | "Within" | "Below" };
@@ -268,8 +283,16 @@ export const SETUPS: SetupDef[] = [
     label: "Stoch RSI Golden Cross",
     icon: "✦",
     hasBear: false,
-    req: "Stochastic RSI %K crosses above %D today (RSI length 10, Stochastic length 10, K 3, D 3, source Close) while RSI(10) is oversold (< 30)",
+    req: "Stochastic RSI %K crosses above %D today (RSI length 10, Stochastic length 10, K 3, D 3, source Close), the cross originating from Stoch RSI's own oversold band (K and D both < 20 the day before)",
     bull: (r) => r.stochRsiGoldenCross,
+  },
+  {
+    key: "stoch_rsi_oversold",
+    label: "Stoch RSI Oversold",
+    icon: "◐",
+    hasBear: false,
+    req: "Stochastic RSI %K is under 20 today but hasn't crossed above %D yet — an earlier, lower-precision companion to Golden Cross: a genuine reversal confirmation can only appear after the bounce that produces it, so this flags the watch-for-a-turn state instead, at the cost of far more (and less reliable) matches",
+    bull: (r) => r.stochRsiOversold,
   },
   {
     key: "near_vwap_pq_m1",
@@ -504,7 +527,10 @@ function flowCell(r: UniverseRow): Cell {
 }
 
 export type ScreenerSignal = {
-  breakIbhIbl?: boolean; rsiDivBullish?: boolean; rsiDivHiddenBullish?: boolean; stochRsiGoldenCross?: boolean;
+  breakIbhIbl?: boolean;
+  rsiDivBullish?: boolean; rsiDivBullishPivotDate?: string | null;
+  rsiDivHiddenBullish?: boolean; rsiDivHiddenBullishPivotDate?: string | null;
+  stochRsiGoldenCross?: boolean; stochRsiOversold?: boolean;
   nearPqM1?: boolean; nearPqM2?: boolean; nearPyM1?: boolean; nearPyM2?: boolean;
 };
 export type ScreenerSignalsDoc = { records?: Record<string, ScreenerSignal>; mondayRange?: Record<string, MondayRange> };
@@ -539,7 +565,19 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
   // existing "no data" / null handling; nothing is guessed).
   new Set([...Object.keys(signals), ...Object.keys(ibMap)]).forEach((t) => {
     const tu = t.toUpperCase();
-    if (!byTicker[tu]) byTicker[tu] = { Ticker: tu };
+    if (byTicker[tu]) return;
+    // Real fallback data (technical.json covers the full universe, unlike
+    // screener.json's own ~278-ticker legacy roster) -- without this a
+    // stub row's Price/Chg%/RVOL/Sector rendered as an incorrect "no data"
+    // dash even when technical.json had the real values right there.
+    const te = ibMap[tu];
+    byTicker[tu] = {
+      Ticker: tu,
+      Price: te?.lastPrice ?? undefined,
+      "Chg %": te?.changePercent ?? undefined,
+      RVOL: te?.rvolReal ?? undefined,
+      Sector: te?.sectorReal ?? undefined,
+    };
   });
 
   const rows: UniverseRow[] = Object.values(byTicker).map((rec) => {
@@ -594,8 +632,11 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
       mondayRange: mondayRangeMap[tickerU] ?? null,
       breakIbhIbl: !!sig.breakIbhIbl,
       rsiDivBullish: !!sig.rsiDivBullish,
+      rsiDivBullishPivotDate: sig.rsiDivBullishPivotDate ?? null,
       rsiDivHiddenBullish: !!sig.rsiDivHiddenBullish,
+      rsiDivHiddenBullishPivotDate: sig.rsiDivHiddenBullishPivotDate ?? null,
       stochRsiGoldenCross: !!sig.stochRsiGoldenCross,
+      stochRsiOversold: !!sig.stochRsiOversold,
       nearPqM1: !!sig.nearPqM1,
       nearPqM2: !!sig.nearPqM2,
       nearPyM1: !!sig.nearPyM1,
@@ -722,6 +763,10 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
       maZoneReal: str(rec.technical?.maZone) || null,
       vwapPq: vwapReading(rec.technical?.vwapProfiles?.previousQuarter),
       vwapPy: vwapReading(rec.technical?.vwapProfiles?.previousYear),
+      lastPrice: num(rec.lastPrice),
+      changePercent: num(rec.changePercent),
+      rvolReal: num(rec.rvol),
+      sectorReal: str(rec.sector) || null,
     };
   });
   const mondayRangeMap = (signalsDoc.mondayRange || {}) as Record<string, MondayRange>;

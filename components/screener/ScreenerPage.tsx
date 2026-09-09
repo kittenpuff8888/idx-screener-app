@@ -559,7 +559,13 @@ export function ScreenerPage() {
                   <div style={{ padding: "9px 12px", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                     {r.setupsMatched.map((k) => {
                       const label = setupDisplayLabel(k);
-                      return <span key={k} title={label} style={{ fontSize: 9, fontWeight: 700, color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 6px", whiteSpace: "nowrap" }}>{label}</span>;
+                      // Pivot date != confirmation date by design (the pivot
+                      // needs 2 confirming bars after it) -- surfaced here so
+                      // "why didn't this show on the pivot's own day" has an
+                      // answer right on the badge instead of needing to ask.
+                      const pivot = k === "rsi10_div_bullish" ? r.rsiDivBullishPivotDate : k === "rsi10_div_hidden_bullish" ? r.rsiDivHiddenBullishPivotDate : null;
+                      const tip = pivot ? `${label} · pivot ${pivot} · confirmed today` : label;
+                      return <span key={k} title={tip} style={{ fontSize: 9, fontWeight: 700, color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 6px", whiteSpace: "nowrap" }}>{label}{pivot ? <span style={{ opacity: 0.7, fontWeight: 600 }}> · piv {pivot}</span> : null}</span>;
                     })}
                     {!r.setupsMatched.length ? <span style={{ fontSize: 9.5, color: "var(--faint)" }}>—</span> : null}
                   </div>
