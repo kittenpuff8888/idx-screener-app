@@ -656,9 +656,17 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
     return r;
   });
 
+  // setupsDoc.scanned / scr.uniqueTickerCount are legacy engine fields with
+  // their own, DIFFERENT meaning ("tickers that matched the engine's own
+  // screening criteria that day", not "size of the universe") -- on lighter
+  // historical snapshots that can be far smaller than rows.length (real
+  // case hit live: uniqueTickerCount 96 on a day rows.length was 923,
+  // rendering the nonsensical "Matching 923 of 96"). The real universe size
+  // is never smaller than the rows we actually have data for.
+  const totalUniverse = Math.max(rows.length, setupsDoc.scanned || 0, scr.uniqueTickerCount || 0);
   return {
     marketDate: str(scr.marketDate),
-    totalUniverse: setupsDoc.scanned || scr.uniqueTickerCount || rows.length,
+    totalUniverse,
     scanned: rows.length,
     rows,
   };
