@@ -1,0 +1,197 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-09-09",
+ "generatedAt": "2026-09-09T22:20:19.663907+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 2,
+ "setups": [
+  {
+   "ticker": "DWGL",
+   "name": "Dwi Guna Laksana Tbk.",
+   "sector": "Others",
+   "close": 236.0,
+   "score": 55,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 10,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 232,
+   "invalidation": 225.4,
+   "target": 336,
+   "medianValueTraded20": 2528881600,
+   "rvol": 0.746070391992277,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -96924559,
+    -24555859,
+    -3594963,
+    -5210876,
+    -7982099,
+    -7384891,
+    -6648191,
+    -9895773,
+    -12448653,
+    -13613613,
+    -7531574,
+    -14201226,
+    -21304826,
+    -22146193,
+    -23215913,
+    -31813413,
+    -35010680,
+    -39471260,
+    -24046160,
+    -28592576,
+    -27822395,
+    -27822395,
+    -91284595,
+    -86950915,
+    -86950915,
+    -85856955,
+    -105246788,
+    -104376731,
+    -108823881,
+    -108823881
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Internal Bullish CHoCH); absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 7,
+    "hitRate": 0.71,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ADWGL"
+  },
+  {
+   "ticker": "ICBP",
+   "name": "Indofood CBP Sukses Makmur Tbk",
+   "sector": "Others",
+   "close": 7200.0,
+   "score": 55,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 10,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 7196,
+   "invalidation": 7053.75,
+   "target": 7562,
+   "medianValueTraded20": 38574937500,
+   "rvol": 1.278467590948061,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -162704796,
+    -162704796,
+    -162212836,
+    -163335536,
+    -156993036,
+    -158802286,
+    -159526801,
+    -157309401,
+    -147127701,
+    -150223474,
+    -149634174,
+    -148193074,
+    -148193074,
+    -149453774,
+    -149453774,
+    -149885794,
+    -148124244,
+    -149364444,
+    -145802044,
+    -141566844,
+    -137380677,
+    -136147144,
+    -137016251,
+    -145809151,
+    -144072676,
+    -140585676,
+    -144643343,
+    -151625743,
+    -158352010,
+    -156915970
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 10,
+    "hitRate": 0.3,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AICBP"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 962
+}
