@@ -19,13 +19,28 @@
 // change did what). What worked: the exact UI label text as it appears in
 // that study's own Settings dialog ("length" lowercase for the two Moving
 // Average studies; "K"/"D"/"RSI Length"/"Stochastic Length" for Stochastic
-// RSI). Confirmed NOT overridable through this surface at all: plain RSI's
-// own length (tried "RSI Length", "Length", "length", and positional
-// "in_0" -- none apply, it stays fixed at 14 every time) -- so RSI(10) as
-// its own chart indicator isn't achievable here; the Screener's RSI
-// Divergence buttons compute RSI(10, EMA) correctly server-side regardless,
-// this limitation is purely cosmetic (what number this one indicator shows
-// on this one chart).
+// RSI). Confirmed NOT overridable through this surface at all:
+//   - Plain RSI's own length (tried "RSI Length", "Length", "length",
+//     positional "in_0") and its built-in MA-smoothing sub-inputs (tried
+//     "Type"/"MA Type" + "Length"/"MA Length") -- neither applies, RSI
+//     stays fixed at length 14 with no smoothing line every time. RSI(10)
+//     (EMA- or any-smoothed) isn't achievable as its own chart indicator
+//     here; the Screener's RSI Divergence buttons compute RSI(10, EMA)
+//     correctly server-side regardless, this limitation is purely cosmetic
+//     (what number this one indicator shows on this one chart).
+//   - Per-study line/plot COLOR. Six different mechanisms were tried
+//     against the live embed and every one either did nothing (chart
+//     rendered, color stayed the study's built-in default) or broke the
+//     study/chart entirely: per-study `styles: {plot_0: {...}}`, `styles`
+//     keyed by lowercase/capitalized plot name ("plot"/"Plot"/"sma"),
+//     Stoch RSI's own line names ("%K"/"%D"/"k"/"d"), a per-study
+//     `overrides: {"Plot.color": ...}` key, and both a top-level
+//     `overrides` and a top-level `studies_overrides` config field (the
+//     latter two threw "[object Object] is not valid JSON" and suppressed
+//     the indicator's legend/line entirely, not just the color). This
+//     lightweight public embed appears to expose only `id` + `inputs` per
+//     study, nothing for per-line visual styling -- a chart's colors are
+//     whatever that study's own built-in default palette is.
 export type StudyDef = {
   id: string;
   /** Underlying TradingView study id sent in the `studies` array. Defaults
@@ -41,52 +56,24 @@ export type StudyDef = {
   group: "overlay" | "oscillator" | "volume" | "technical-other";
 };
 
-// Built-in study ids that work in the advanced-chart embed. Only ids already
-// confirmed live in production are listed -- TradingView does not publish an
+// Deliberately pared down to exactly these 6 -- MAX_STUDIES below is also 6,
+// so the picker never has anything left to add beyond this set anyway. Ids
+// already confirmed live in production; TradingView does not publish an
 // authoritative id reference for this embed, and an invalid id in `studies`
 // breaks the ENTIRE chart (not just that one indicator, confirmed by testing
-// several plausible-looking ids against the live embed), so this list is kept
-// conservative rather than guessed-and-hoped.
+// several plausible-looking ids against the live embed), so any future
+// addition here should be tested in isolation first, same as these were.
 export const STUDIES: StudyDef[] = [
   { id: "ema25", tvId: "MAExp@tv-basicstudies", inputs: { length: 25 }, label: "EMA 25", group: "overlay" },
   { id: "ema50", tvId: "MAExp@tv-basicstudies", inputs: { length: 50 }, label: "EMA 50", group: "overlay" },
   { id: "sma200", tvId: "MASimple@tv-basicstudies", inputs: { length: 200 }, label: "SMA 200", group: "overlay" },
-  { id: "VWAP@tv-basicstudies", label: "VWAP", group: "overlay" },
-  { id: "BB@tv-basicstudies", label: "Bollinger Bands", group: "overlay" },
-  { id: "IchimokuCloud@tv-basicstudies", label: "Ichimoku Cloud", group: "overlay" },
-  { id: "PivotPointsStandard@tv-basicstudies", label: "Pivot Points", group: "overlay" },
-  { id: "RSI@tv-basicstudies", label: "RSI (14 -- length fixed, see note above)", group: "oscillator" },
-  { id: "MACD@tv-basicstudies", label: "MACD", group: "oscillator" },
-  { id: "Stochastic@tv-basicstudies", label: "Stochastic", group: "oscillator" },
-  { id: "ADX@tv-basicstudies", label: "ADX / DMI", group: "oscillator" },
-  { id: "ATR@tv-basicstudies", label: "ATR", group: "oscillator" },
   { id: "Volume@tv-basicstudies", label: "Volume", group: "volume" },
-  { id: "CCI@tv-basicstudies", label: "CCI", group: "oscillator" },
-  { id: "MF@tv-basicstudies", label: "Money Flow", group: "oscillator" },
-
-  // "Technical Others" -- each id below was individually verified against the
-  // live embed (isolated, one at a time -- a bad id breaks the whole chart,
-  // not just itself, so batch-guessing is unsafe). No "Fundamental Others"
-  // group exists: this embed's `studies` array only ever reaches technical
-  // studies -- TradingView's fundamentals overlays aren't addressable this
-  // way in the free widget, confirmed by testing, not assumed. Real
-  // fundamentals (Market Cap, ROE, PE, ...) live on the ticker page's own
-  // Key Statistics / DCF sections instead, sourced from our own pipeline.
-  { id: "ROC@tv-basicstudies", label: "Rate of Change", group: "technical-other" },
+  { id: "RSI@tv-basicstudies", label: "RSI (14 -- length fixed, see note above)", group: "oscillator" },
   {
     id: "stochRsi10_3_3", tvId: "StochasticRSI@tv-basicstudies",
     inputs: { K: 3, D: 3, "RSI Length": 10, "Stochastic Length": 10 },
     label: "Stoch RSI (10, 10, 3, 3)", group: "technical-other",
   },
-  { id: "BalanceOfPower@tv-basicstudies", label: "Balance of Power", group: "technical-other" },
-  { id: "ChoppinessIndex@tv-basicstudies", label: "Choppiness Index", group: "technical-other" },
-  { id: "CMO@tv-basicstudies", label: "Chande Momentum Oscillator", group: "technical-other" },
-  { id: "DonchianChannels@tv-basicstudies", label: "Donchian Channels", group: "technical-other" },
-  { id: "DoubleEMA@tv-basicstudies", label: "Double EMA", group: "technical-other" },
-  { id: "TripleEMA@tv-basicstudies", label: "Triple EMA", group: "technical-other" },
-  { id: "EldersForceIndex@tv-basicstudies", label: "Elder's Force Index", group: "technical-other" },
-  { id: "Envelope@tv-basicstudies", label: "Envelopes", group: "technical-other" },
-  { id: "HullMA@tv-basicstudies", label: "Hull Moving Average", group: "technical-other" },
 ];
 
 // Ids individually tested against the live embed and confirmed INVALID --
@@ -94,6 +81,19 @@ export const STUDIES: StudyDef[] = [
 // future session doesn't re-waste time re-testing the same guesses:
 // AccumulationDistribution@tv-basicstudies, AwesomeOscillator@tv-basicstudies,
 // ChaikinMoneyFlow@tv-basicstudies, KeltnerChannels@tv-basicstudies.
+//
+// Other ids confirmed VALID and working (rendered correctly, just dropped
+// from the picker above to keep it to the requested 6): VWAP@tv-basicstudies,
+// BB@tv-basicstudies, IchimokuCloud@tv-basicstudies,
+// PivotPointsStandard@tv-basicstudies, MACD@tv-basicstudies,
+// Stochastic@tv-basicstudies, ADX@tv-basicstudies, ATR@tv-basicstudies,
+// CCI@tv-basicstudies, MF@tv-basicstudies, ROC@tv-basicstudies,
+// BalanceOfPower@tv-basicstudies, ChoppinessIndex@tv-basicstudies,
+// CMO@tv-basicstudies, DonchianChannels@tv-basicstudies,
+// DoubleEMA@tv-basicstudies, TripleEMA@tv-basicstudies,
+// EldersForceIndex@tv-basicstudies, Envelope@tv-basicstudies,
+// HullMA@tv-basicstudies -- add any of these back to STUDIES above (and
+// swap one out, or raise MAX_STUDIES with care) rather than re-testing.
 
 // Confirmed live against the embed: 6 simultaneous studies renders fine, 7
 // breaks the entire chart (all-zero OHLC, not just a dropped indicator).
@@ -103,7 +103,10 @@ export const MAX_STUDIES = 6;
 
 const KEY = "idxr:chart:studies";
 const EVENT = "idxr:studies-changed";
-const DEFAULT = ["ema25", "ema50", "sma200", "stochRsi10_3_3"];
+// All 6 available studies, active by default -- MAX_STUDIES caps the picker
+// at exactly this many anyway, so "the full set" and "the default set" are
+// the same thing here.
+const DEFAULT = STUDIES.map((s) => s.id);
 
 const STUDY_BY_ID: Record<string, StudyDef> = Object.fromEntries(STUDIES.map((s) => [s.id, s]));
 
