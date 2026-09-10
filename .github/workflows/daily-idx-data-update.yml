@@ -106,6 +106,22 @@ jobs:
           echo "Daily update failed. See the update log and the failed stage above."
           exit 1
 
+      # update_daily.py builds the OHLCV/technical/fundamentals archive but
+      # never computes the Screener page's own setup-match signals -- without
+      # this, every freshly-published date shows zero setup matches until
+      # someone runs compute_screener_signals.py by hand.
+      - name: Compute screener setup signals for the published date
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.run_backfill) }}
+        shell: bash
+        run: |
+          status=$(python -c "import json; e=json.load(open('docs/data/update-log.json'))['entries']; print(e[-1]['status'])")
+          market_date=$(python -c "import json; e=json.load(open('docs/data/update-log.json'))['entries']; print(e[-1]['marketDate'])")
+          if [ "$status" = "SUCCESS" ]; then
+            python scripts/compute_screener_signals.py "$market_date"
+          else
+            echo "Skipping screener signals compute (last status: $status)"
+          fi
+
       - name: Validate generated archive
         run: |
           python scripts/export_ksei_ownership.py

@@ -16,6 +16,17 @@ import type { IndexPayload } from "@/lib/domain/types";
 
 export type Tone = "up" | "down" | "flat";
 
+/** "71.57 M" / "199.75 K" style, matching the pre-formatted string the
+    current pipeline writes to technical.liquidity.averageVolume20 -- used
+    only as a fallback for older archives that carry the raw number at
+    technical.averageVolume20 but not that pre-formatted nested field. */
+function formatVolumeCompact(n: number): string {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)} B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)} M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(2)} K`;
+  return n.toFixed(0);
+}
+
 /** Reality of a predicate/field against the workbook. */
 export type Backing = true | false | "sparse";
 
@@ -154,12 +165,20 @@ type TechnicalRecord = {
   lastPrice?: unknown;
   changePercent?: unknown;
   rvol?: unknown;
+  // Present on every archived date (old and new schema alike) -- unlike the
+  // richer technical.* fields below, which only exist on dates generated
+  // after the technical-schema upgrade. Used as fallbacks for those.
+  averageVolume20?: unknown;
+  movingAverages?: { zone?: unknown };
   technical?: {
     marketProfile?: { ibh?: unknown; ibl?: unknown };
     macdDetail?: { cross?: unknown };
     rsiDetail?: { cross?: unknown; divergenceSignal?: unknown; divergenceStrength?: unknown; average14?: unknown };
     stochDetail?: { cross?: unknown };
     rsi14?: unknown;
+    // Old-schema archives carry RSI's own MA directly under technical
+    // (no rsiDetail wrapper existed yet); new ones nest it in rsiDetail.
+    rsiMa14?: unknown;
     maZone?: unknown;
     liquidity?: { averageVolume20?: unknown };
     vwapProfiles?: {
@@ -533,7 +552,14 @@ export type ScreenerSignal = {
   stochRsiGoldenCross?: boolean; stochRsiOversold?: boolean;
   nearPqM1?: boolean; nearPqM2?: boolean; nearPyM1?: boolean; nearPyM2?: boolean;
 };
-export type ScreenerSignalsDoc = { records?: Record<string, ScreenerSignal>; mondayRange?: Record<string, MondayRange> };
+type RawVwapReading = { vwap: number; sigma: number | null };
+export type ScreenerSignalsDoc = {
+  records?: Record<string, ScreenerSignal>;
+  mondayRange?: Record<string, MondayRange>;
+  // Fallback source for vwapPq/vwapPy on archives whose technical.json
+  // predates the vwapProfiles field -- see loadUniverse()'s ibMap join.
+  vwap?: Record<string, { pq?: RawVwapReading | null; py?: RawVwapReading | null }>;
+};
 
 // ── build the typed universe from the raw workbook + engine docs ──
 export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbMap = {}, signals: Record<string, ScreenerSignal> = {}, mondayRangeMap: Record<string, MondayRange> = {}): Universe {
@@ -740,6 +766,14 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
     if (vwap == null) return null;
     return { vwap, sigma: num(p?.priceSigma), zone: str(p?.zone) };
   };
+  // Fallback for archives whose technical.json predates the vwapProfiles
+  // field: screener_signals.json's own `vwap` block computes the same
+  // anchored-VWAP reading straight from OHLCV (see compute_screener_signals.py),
+  // with no zone label (the table never renders it, see vwapCellText()).
+  const fallbackVwapReading = (p?: { vwap?: number; sigma?: number | null } | null): VwapReading | null => {
+    if (!p || p.vwap == null) return null;
+    return { vwap: p.vwap, sigma: p.sigma ?? null, zone: "" };
+  };
   Object.entries(technicalDoc.records || {}).forEach(([ticker, rec]) => {
     const mp = rec.technical?.marketProfile;
     const macdCrossRaw = str(rec.technical?.macdDetail?.cross);
@@ -755,14 +789,34 @@ export async function loadUniverse(marketDate: string): Promise<Universe> {
         return v && v !== "N/A" && v !== "-" ? v : null;
       })(),
       beta: num(rec.beta),
-      avgVolume20: str(rec.technical?.liquidity?.averageVolume20) || null,
+      // technical.liquidity.averageVolume20 is a pre-formatted string that
+      // only exists on dates generated after the technical-schema upgrade;
+      // older archives still carry the raw 20-day average as a plain number
+      // at the record's top level -- format that instead of showing "no
+      // data" for a real, already-computed figure.
+      avgVolume20:
+        str(rec.technical?.liquidity?.averageVolume20) ||
+        (() => {
+          const n = num(rec.averageVolume20);
+          return n != null ? formatVolumeCompact(n) : null;
+        })(),
       structureInternal: str(rec.structure?.internal) || null,
       structureSwing: str(rec.structure?.swing) || null,
       rsi14: num(rec.technical?.rsi14),
-      rsiMa14: num(rec.technical?.rsiDetail?.average14),
-      maZoneReal: str(rec.technical?.maZone) || null,
-      vwapPq: vwapReading(rec.technical?.vwapProfiles?.previousQuarter),
-      vwapPy: vwapReading(rec.technical?.vwapProfiles?.previousYear),
+      // Old-schema archives had RSI's own MA directly under technical, not
+      // nested in rsiDetail yet -- same real figure, different path.
+      rsiMa14: num(rec.technical?.rsiDetail?.average14) ?? num(rec.technical?.rsiMa14),
+      // Old-schema archives compute the MA-zone label from only 3 MAs
+      // (movingAverages.zone, via EMA25/EMA50/SMA200) instead of the current
+      // 5-MA technical.maZone -- same kind of real, already-computed
+      // classification; better to show it than "no data".
+      maZoneReal: str(rec.technical?.maZone) || str(rec.movingAverages?.zone) || null,
+      vwapPq:
+        vwapReading(rec.technical?.vwapProfiles?.previousQuarter) ??
+        fallbackVwapReading(signalsDoc.vwap?.[ticker.toUpperCase()]?.pq),
+      vwapPy:
+        vwapReading(rec.technical?.vwapProfiles?.previousYear) ??
+        fallbackVwapReading(signalsDoc.vwap?.[ticker.toUpperCase()]?.py),
       lastPrice: num(rec.lastPrice),
       changePercent: num(rec.changePercent),
       rvolReal: num(rec.rvol),

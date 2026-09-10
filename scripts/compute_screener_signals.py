@@ -366,6 +366,33 @@ def near_vwap_flags(hist: pd.DataFrame, close: float) -> dict:
     }
 
 
+def vwap_reading(band: dict | None, close: float) -> dict | None:
+    """{vwap, sigma} for the Screener table's Previous QVWAP/YVWAP columns --
+    sigma is how many standard deviations `close` sits from the anchored
+    VWAP (band["l1"] is -1sigma, so vwap-l1 is one sigma). None when the
+    anchor window has no data (band is None) or was degenerate (sd is 0,
+    e.g. a single print with itself as both high and low)."""
+    if band is None:
+        return None
+    sd = band["vwap"] - band["l1"]
+    return {"vwap": band["vwap"], "sigma": (close - band["vwap"]) / sd if sd > 0 else None}
+
+
+def pq_py_vwap_readings(hist: pd.DataFrame, close: float) -> dict:
+    """Raw Previous-Quarter/Previous-Year anchored-VWAP readings, for
+    archives whose technical.json predates the vwapProfiles field (see
+    lib/data/screenerUniverse.ts's fallback for why this is needed at all --
+    it reads this only when technical.json itself doesn't have the real
+    reading)."""
+    last_date = hist.index[-1]
+    pq_start, pq_end = prev_quarter_bounds(last_date)
+    py_start, py_end = prev_year_bounds(last_date)
+    return {
+        "pq": vwap_reading(anchored_vwap_band(hist, pq_start, pq_end), close),
+        "py": vwap_reading(anchored_vwap_band(hist, py_start, py_end), close),
+    }
+
+
 def pick_snapshot(market_date: str, snapshots: list[str]) -> str | None:
     """Nearest OHLCV snapshot on or after `market_date` -- its `rows` cover
     every earlier trading day too, so it can stand in for a date that has
@@ -395,6 +422,7 @@ def main(market_date: str) -> None:
 
     out: dict[str, dict] = {}
     monday: dict[str, dict] = {}
+    vwap_out: dict[str, dict] = {}
     for i, ticker in enumerate(tickers, 1):
         hist = load_hist(ticker, snapshot_date, market_date)
         if hist is None:
@@ -419,6 +447,9 @@ def main(market_date: str) -> None:
         mr = monday_range(hist)
         if mr is not None:
             monday[ticker] = mr
+        vwap = pq_py_vwap_readings(hist, close)
+        if vwap["pq"] is not None or vwap["py"] is not None:
+            vwap_out[ticker] = vwap
         if i % 200 == 0:
             print(f"[{i}/{len(tickers)}] ...")
 
@@ -431,13 +462,14 @@ def main(market_date: str) -> None:
             "nearPq*/nearPy* are current-state proximity flags. "
             f"'Near' = within {NEAR_PCT * 100:.0f}% of the level. Only tickers "
             "with at least one true flag are listed in `records` -- absence "
-            "means all false. `mondayRange` is populated for every ticker "
-            "with enough history (current week's first session's high/low, "
-            "plus where today's close sits vs it) -- a display field, not a "
-            "sparse signal list."
+            "means all false. `mondayRange` and `vwap` are populated for every "
+            "ticker with enough history (display fields, not sparse signal "
+            "lists) -- `vwap` is a fallback source for archives whose "
+            "technical.json predates the vwapProfiles field."
         ),
         "records": out,
         "mondayRange": monday,
+        "vwap": vwap_out,
     }
     out_path = DATES_DIR / market_date / "screener_signals.json"
     out_path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")

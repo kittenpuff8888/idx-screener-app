@@ -109,11 +109,7 @@ const STUDY_BY_ID: Record<string, StudyDef> = Object.fromEntries(STUDIES.map((s)
 
 /** Resolve a picker id (localStorage value, e.g. "ema25") to what
     TradingView's `studies` array actually needs -- a bare id string, or an
-    `{id, inputs}` object for an entry carrying a static override. Unknown
-    ids (a stale localStorage value from a picker entry that no longer
-    exists) pass through as bare strings rather than being dropped, since an
-    unrecognized-but-harmless string is safer than silently changing what
-    the user had selected. */
+    `{id, inputs}` object for an entry carrying a static override. */
 export function resolveStudy(pickerId: string): string | { id: string; inputs: Record<string, number | string> } {
   const def = STUDY_BY_ID[pickerId];
   if (!def) return pickerId;
@@ -121,13 +117,28 @@ export function resolveStudy(pickerId: string): string | { id: string; inputs: R
   return { id: def.tvId ?? def.id, inputs: def.inputs };
 }
 
+/** Ids from before the `ema25`/`ema50`/`sma200`/`stochRsi10_3_3` rename
+    (raw TradingView ids like "MAExp@tv-basicstudies", saved by anyone who
+    used the picker before that change). Dropped on load below rather than
+    passed through: a passthrough id resolves fine on the chart, but the
+    picker has no entry to show it checked against, so it sits as an
+    invisible slot -- still counted against MAX_STUDIES, but with no
+    checkbox a user can see or toggle off. That's strictly worse than
+    losing the stale selection, so load-time cleanup wins here. */
 export function loadStudies(): string[] {
   if (typeof window === "undefined") return DEFAULT;
   try {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return DEFAULT;
     const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string") : DEFAULT;
+    if (!Array.isArray(arr)) return DEFAULT;
+    const known = arr.filter((x): x is string => typeof x === "string" && x in STUDY_BY_ID);
+    // A non-empty saved array that resolved to nothing real (e.g. entirely
+    // pre-rename raw ids) is stale data, not a deliberate "show zero
+    // indicators" choice -- fall back rather than render that. An array
+    // that was already empty IS a deliberate choice; leave it alone.
+    if (arr.length > 0 && known.length === 0) return DEFAULT;
+    return known;
   } catch {
     return DEFAULT;
   }
