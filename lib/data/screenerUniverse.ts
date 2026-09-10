@@ -110,7 +110,9 @@ export interface UniverseRow {
   rsiDivHiddenBullish: boolean;
   rsiDivHiddenBullishPivotDate: string | null;
   stochRsiGoldenCross: boolean;
-  stochRsiOversold: boolean; // earlier, lower-precision companion: K<20, not yet crossed above D
+  stochRsiOversold: boolean; // earlier, lower-precision companion: K and D both <20, K converging on D but not yet crossed
+  breakSma200: boolean;
+  emaGoldenCross: boolean;
   nearPqM1: boolean;
   nearPqM2: boolean;
   nearPyM1: boolean;
@@ -286,7 +288,7 @@ export const SETUPS: SetupDef[] = [
     label: "RSI Bullish Divergence",
     icon: "⤢",
     hasBear: false,
-    req: "Regular bullish RSI(10, EMA-smoothed) divergence confirmed today — price lower low, RSI higher low, at a genuine RSI<30 oversold extreme (lifecycle-cluster method)",
+    req: "Regular bullish RSI(10, EMA-smoothed) divergence confirmed today — price lower low, RSI higher low, both pivots at a genuine RSI<30 oversold extreme, no more than ~60 bars apart",
     bull: (r) => r.rsiDivBullish,
   },
   {
@@ -294,7 +296,7 @@ export const SETUPS: SetupDef[] = [
     label: "RSI Hidden Bullish Divergence",
     icon: "⤢",
     hasBear: false,
-    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low, on a shallow pullback within an uptrend (no oversold requirement)",
+    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low, starting from a healthy 50–70 RSI band (a genuinely shallow pullback within an established uptrend, not an already-weak one)",
     bull: (r) => r.rsiDivHiddenBullish,
   },
   {
@@ -310,8 +312,24 @@ export const SETUPS: SetupDef[] = [
     label: "Stoch RSI Oversold",
     icon: "◐",
     hasBear: false,
-    req: "Stochastic RSI %K is under 20 today but hasn't crossed above %D yet — an earlier, lower-precision companion to Golden Cross: a genuine reversal confirmation can only appear after the bounce that produces it, so this flags the watch-for-a-turn state instead, at the cost of far more (and less reliable) matches",
+    req: "Stochastic RSI %K and %D are both under 20 today, K converging on D but hasn't crossed above it yet — an earlier, lower-precision companion to Golden Cross: a genuine reversal confirmation can only appear after the bounce that produces it, so this flags the watch-for-a-turn state instead, at the cost of far more (and less reliable) matches",
     bull: (r) => r.stochRsiOversold,
+  },
+  {
+    key: "break_sma200",
+    label: "Break MA 200",
+    icon: "▲",
+    hasBear: false,
+    req: "Today's close crosses above SMA200 — yesterday's close was at or below it",
+    bull: (r) => r.breakSma200,
+  },
+  {
+    key: "ema_golden_cross",
+    label: "EMA 25/50 Golden Cross",
+    icon: "✦",
+    hasBear: false,
+    req: "EMA25 crosses above EMA50 today — yesterday EMA25 was at or below EMA50",
+    bull: (r) => r.emaGoldenCross,
   },
   {
     key: "near_vwap_pq_m1",
@@ -550,6 +568,7 @@ export type ScreenerSignal = {
   rsiDivBullish?: boolean; rsiDivBullishPivotDate?: string | null;
   rsiDivHiddenBullish?: boolean; rsiDivHiddenBullishPivotDate?: string | null;
   stochRsiGoldenCross?: boolean; stochRsiOversold?: boolean;
+  breakSma200?: boolean; emaGoldenCross?: boolean;
   nearPqM1?: boolean; nearPqM2?: boolean; nearPyM1?: boolean; nearPyM2?: boolean;
 };
 type RawVwapReading = { vwap: number; sigma: number | null };
@@ -663,6 +682,8 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
       rsiDivHiddenBullishPivotDate: sig.rsiDivHiddenBullishPivotDate ?? null,
       stochRsiGoldenCross: !!sig.stochRsiGoldenCross,
       stochRsiOversold: !!sig.stochRsiOversold,
+      breakSma200: !!sig.breakSma200,
+      emaGoldenCross: !!sig.emaGoldenCross,
       nearPqM1: !!sig.nearPqM1,
       nearPqM2: !!sig.nearPqM2,
       nearPyM1: !!sig.nearPyM1,

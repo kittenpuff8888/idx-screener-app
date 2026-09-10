@@ -10,12 +10,18 @@ ticker:
                          mid-band (real published field, technical.json's
                          marketProfile.ibh/ibl -- IDX_Screener.py's existing
                          monthly-IB computation, not re-derived here).
-  rsiDivBullish       -- RSI(10, EMA-smoothed) regular bullish divergence,
-                         reusing IDX_Screener.py's own divergence_signals()
-                         lifecycle-cluster detector (already used for the
-                         standard RSI(14) divergence field), confirmed on
+  rsiDivBullish       -- RSI(10, EMA-smoothed) regular bullish divergence:
+                         price Lower Low + RSI Higher Low, both pivots at a
+                         genuine oversold extreme (RSI<30), confirmed on
                          today's bar specifically.
-  rsiDivHiddenBullish -- same detector, hidden-bullish (continuation) case.
+  rsiDivHiddenBullish -- same RSI, hidden-bullish (continuation) case:
+                         price Higher Low + RSI Lower Low, with the earlier
+                         pivot's RSI required to start from a healthy
+                         50-70 band (not itself weak/oversold).
+  breakSma200         -- today's close crosses above SMA200 (yesterday's
+                         close was at or below it).
+  emaGoldenCross      -- EMA25 crosses above EMA50 today (yesterday EMA25
+                         was at or below EMA50).
   stochRsiGoldenCross -- Stochastic RSI (RSI length 10, Stochastic length
                          10, K 3, D 3) %K crosses above %D today while
                          RSI(10) < 30 (oversold).
@@ -40,8 +46,6 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-
-from rebuild_backend.IDX_Screener import divergence_signals  # noqa: E402
 
 OHLCV_DIR = ROOT / "docs" / "data" / "ohlcv"
 DATES_DIR = ROOT / "docs" / "data" / "dates"
@@ -168,39 +172,72 @@ def ib_break(hist: pd.DataFrame, ibh: float | None, ibl: float | None) -> bool:
     return bool(was_middling and breaks_today)
 
 
-def rsi_divergence_today(hist: pd.DataFrame) -> tuple[bool, str | None]:
-    """Regular Bullish RSI(10, EMA) divergence confirmed today, from the
-    shared lifecycle-cluster detector -- price Lower Low + RSI Higher Low,
-    at a genuine oversold extreme (the detector requires the RSI cluster to
-    dip below 30). This is the classic reversal-style divergence; see
-    hidden_bullish_divergence_today() below for the shallow-pullback variant.
+def regular_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, min_separation=4, max_pivot_gap=60, price_tol=0.0075, rsi_tol=2.0, max_last_swing_age=20, oversold=30.0) -> dict | None:
+    """Regular Bullish RSI(10, EMA) divergence: price makes a LOWER low
+    while RSI makes a HIGHER low, both pivots at a genuine oversold extreme
+    (RSI < oversold) -- the classic reversal-style pattern (see
+    hidden_bullish_divergence() below for the shallow-pullback variant,
+    which has no oversold requirement).
 
-    Returns (confirmed_today, pivot_date) -- pivot_date is the more recent
-    of the two pivot bars the divergence is anchored on (div_ref2_date,
-    "%d %b '%y"), which is NOT the same as "today": see the note below on
-    why confirmation always lags the pivot by >= swing_window bars. Exposed
-    so the UI can show both dates rather than just the confirmation date,
-    after repeated real-example confusion over "why didn't it show on the
-    pivot's own day".
+    Deliberately unclustered, same reasoning and same bug class this fixes
+    as hidden_bullish_divergence(): the shared lifecycle-cluster detector
+    (divergence_signals() in rebuild_backend/IDX_Screener.py) chains
+    together any swing lows within cluster_gap bars of each other into one
+    group and collapses it to its single deepest-RSI point, discarding any
+    shallower pivot in between -- and separately, when the two most recent
+    ELIGIBLE (RSI<30) clusters happen to be months apart with nothing
+    qualifying in between, it will compare them anyway with no upper bound
+    on how far apart they are.
 
-    divergence_signals()'s own swing-pivot scan (`range(w, len(vals) - w)`)
-    never lets the last `swing_window` bars become a pivot, so a cluster's
-    representative date can never equal today's bar -- comparing
-    div_ref2_date to today's own date (an earlier approach here) was
-    therefore always false. "Confirmed today" instead means: the signal
-    reads Bullish on today's full history but did not read that way (or
-    pointed at a different cluster) on yesterday's -- i.e. it just became
-    visible with today's bar providing the confirming swing point."""
-    r = rsi_ema(hist["Close"], 10)
-    res_today = divergence_signals(hist, r)
-    if res_today.get("div_signal") != "Bullish" or res_today.get("div_strength") == "Hidden":
+    Real example this fixes: TRON's RSI(10,EMA) dipped to ~2 on 2026-05-25
+    and again to ~10 on 2026-06-08 (both <30, only ~6 bars apart) -- the
+    shared clustered detector chained the two into one May/June group,
+    discarding June's own reading, and had no other RSI<30 cluster to
+    compare against until 2026-08-26, three months later -- a comparison
+    across two unrelated market regimes (TRON bottomed in June and had
+    already recovered by August) rather than a coherent swing structure.
+    max_pivot_gap (matching the ~60-bar range a standard RSI-divergence
+    indicator's built-in lookback typically uses) caps how far apart the
+    two compared pivots may be, so a comparison like that is excluded
+    outright rather than accepted just because nothing else qualified in
+    between. Filtering candidate pivots to oversold-only (RSI<30) before
+    picking the last two achieves the "genuine oversold extreme"
+    requirement without a clustering step that can swallow a pivot."""
+    if hist is None or hist.empty or len(hist) < 25:
+        return None
+    df = hist.tail(lookback)
+    low = df["Low"].astype(float)
+    r = rsi_ema(df["Close"].astype(float), 10).values
+
+    pos = [i for i in _swing_low_positions(r, swing_window) if not np.isnan(r[i]) and r[i] < oversold]
+    if len(pos) < 2:
+        return None
+    i1, i2 = pos[-2], pos[-1]
+    if (i2 - i1) < min_separation or (i2 - i1) > max_pivot_gap or (len(df) - 1 - i2) > max_last_swing_age:
+        return None
+    p1, p2 = float(low.iloc[i1]), float(low.iloc[i2])
+    r1, r2 = float(r[i1]), float(r[i2])
+    if any(np.isnan(x) for x in (p1, p2, r1, r2)):
+        return None
+    price_lower_low = p2 < p1 - abs(p1) * price_tol
+    rsi_higher_low = r2 > r1 + rsi_tol
+    if not (price_lower_low and rsi_higher_low):
+        return None
+    return {"i2": i2, "ref2_date": df.index[i2].strftime("%d %b '%y"), "p1": p1, "p2": p2, "r1": r1, "r2": r2}
+
+
+def regular_bullish_divergence_today(hist: pd.DataFrame) -> tuple[bool, str | None]:
+    """Regular Bullish divergence newly confirmed today -- same "confirmed
+    today" diff-vs-yesterday approach as hidden_bullish_divergence_today();
+    see its docstring for why pivot_date is never "today"."""
+    today = regular_bullish_divergence(hist)
+    if today is None:
         return False, None
-    prior = hist.iloc[:-1]
-    res_yday = divergence_signals(prior, rsi_ema(prior["Close"], 10))
-    newly_confirmed = res_yday.get("div_signal") != "Bullish" or res_yday.get("div_ref2_date") != res_today.get("div_ref2_date")
+    yday = regular_bullish_divergence(hist.iloc[:-1])
+    newly_confirmed = yday is None or yday["ref2_date"] != today["ref2_date"]
     if not newly_confirmed:
         return False, None
-    return True, res_today.get("div_ref2_date")
+    return True, today["ref2_date"]
 
 
 def _swing_low_positions(vals: np.ndarray, w: int) -> list[int]:
@@ -229,7 +266,7 @@ def _cluster_positions(positions: list[int], max_gap: int) -> list[list[int]]:
     return clusters
 
 
-def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, cluster_gap=6, min_separation=4, price_tol=0.0075, rsi_tol=2.0, max_last_swing_age=20) -> dict | None:
+def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, cluster_gap=6, min_separation=4, price_tol=0.0075, rsi_tol=2.0, max_last_swing_age=20, rsi_band_lo=50.0, rsi_band_hi=70.0) -> dict | None:
     """Hidden bullish RSI(10, EMA) divergence: price makes a HIGHER low
     while RSI makes a LOWER low -- an uptrend-continuation pattern that, by
     definition, happens on a shallow pullback, not at a deep oversold
@@ -241,6 +278,16 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, c
     2026-08-13 (RSI 51.8, low 109) -> 2026-08-26 (RSI 47.5, low 117) --
     price Higher Low + RSI Lower Low, confirmed 2026-08-28 once the pivot
     had its 2 confirming bars.
+
+    The earlier pivot (r1) must sit in (rsi_band_lo, rsi_band_hi) -- the
+    trend has to already be healthy (not itself weak or oversold) before a
+    pullback can be "shallow" relative to it. Gate is on r1 only, not r2:
+    the whole point of the pattern is r2 dips BELOW r1, so r1's 50-70 floor
+    doesn't force r2 there too (BEST's real r2 above is 47.5, just under
+    50 -- still a valid shallow pullback since r1=51.8 was in-band). Without
+    this gate a case like PYFA's 2026-08-13/26 pair (r1=42.4, r2=40.2 -- an
+    already-weak trend, not a healthy one taking a shallow dip) would
+    incorrectly pass just because r2 < r1.
 
     Returns the chosen pivot pair's dict (with `i2`, the confirming bar's
     position) when found, else None -- mirrors divergence_signals()'s
@@ -274,17 +321,19 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, c
         return None
     price_higher_low = p2 > p1 + abs(p1) * price_tol
     rsi_lower_low = r2 < r1 - rsi_tol
-    if not (price_higher_low and rsi_lower_low):
+    rsi_healthy_start = rsi_band_lo < r1 < rsi_band_hi
+    if not (price_higher_low and rsi_lower_low and rsi_healthy_start):
         return None
     return {"i2": i2, "ref2_date": df.index[i2].strftime("%d %b '%y"), "p1": p1, "p2": p2, "r1": r1, "r2": r2}
 
 
 def hidden_bullish_divergence_today(hist: pd.DataFrame) -> tuple[bool, str | None]:
     """Hidden bullish divergence newly confirmed today -- same "confirmed
-    today" diff-vs-yesterday approach as rsi_divergence_today(), since the
-    swing-pivot scan can never mark today's own bar as a pivot either.
-    Returns (confirmed_today, pivot_date) -- see rsi_divergence_today()'s
-    docstring for why pivot_date is not "today"."""
+    today" diff-vs-yesterday approach as regular_bullish_divergence_today(),
+    since the swing-pivot scan can never mark today's own bar as a pivot
+    either. Returns (confirmed_today, pivot_date) -- pivot_date is never
+    "today" itself, since a swing low needs swing_window confirming bars
+    after it before the scan can even recognize it as a pivot."""
     today = hidden_bullish_divergence(hist)
     if today is None:
         return False, None
@@ -313,12 +362,23 @@ def stoch_rsi_golden_cross_today(hist: pd.DataFrame) -> bool:
 
 
 def stoch_rsi_oversold_today(hist: pd.DataFrame) -> bool:
-    """Stoch RSI sitting in its own oversold band (K < 20) today but not yet
-    crossed above D -- an earlier, higher-lead-time companion to
+    """Stoch RSI sitting in its own oversold band -- K AND D both under 20
+    today, K still at or below D (hasn't crossed yet) but converging on it
+    (today's K-D gap narrower than yesterday's, i.e. K visibly closing in on
+    a cross) -- an earlier, higher-lead-time companion to
     stoch_rsi_golden_cross_today(). By construction a confirmed golden
     cross can only be seen after the bounce that produces it has already
     moved price (there is no way to see tomorrow's cross today), so this
     flags the watch-for-a-turn state instead of the confirmed turn itself.
+
+    D<20 is required, not just K<20: K alone dipping under 20 for a bar or
+    two while D is still elevated (e.g. K=15, D=45) is a fast wiggle inside
+    an otherwise-elevated Stoch RSI, not a genuine oversold reading -- both
+    lines need to be down in the band together. Real counterexample this
+    fixes: a ticker whose K/D actually read ~57/~70 (nowhere near oversold)
+    was passing the old K-only check on an earlier bar where K alone had
+    briefly dipped under 20.
+
     Unlike the golden-cross signal, this is a CURRENT-STATE flag (true on
     every day the condition holds, like nearPq*/nearPy*), not a one-day
     'today' event -- a ticker can sit oversold for many sessions before
@@ -327,9 +387,36 @@ def stoch_rsi_oversold_today(hist: pd.DataFrame) -> bool:
     entry trigger."""
     r = rsi_wilder(hist["Close"], 10)
     k, d = stoch_of(r, length=10, k_smooth=3, d_smooth=3)
-    if len(k) < 1 or pd.isna(k.iloc[-1]) or pd.isna(d.iloc[-1]):
+    if len(k) < 2 or pd.isna(k.iloc[-1]) or pd.isna(d.iloc[-1]) or pd.isna(k.iloc[-2]) or pd.isna(d.iloc[-2]):
         return False
-    return bool(k.iloc[-1] < 20 and k.iloc[-1] <= d.iloc[-1])
+    both_oversold = k.iloc[-1] < 20 and d.iloc[-1] < 20
+    not_yet_crossed = k.iloc[-1] <= d.iloc[-1]
+    converging = (d.iloc[-1] - k.iloc[-1]) < (d.iloc[-2] - k.iloc[-2])
+    return bool(both_oversold and not_yet_crossed and converging)
+
+
+def break_sma200_today(hist: pd.DataFrame) -> bool:
+    """Today's close crosses above SMA200 -- yesterday's close was at or
+    below it, today's is above. A standard long-term trend-change signal.
+    False (not a guess) for a ticker with under 200 bars of history, same
+    as every other signal here."""
+    close = hist["Close"]
+    s200 = close.rolling(200).mean()
+    if len(s200) < 2 or pd.isna(s200.iloc[-1]) or pd.isna(s200.iloc[-2]):
+        return False
+    return bool(close.iloc[-2] <= s200.iloc[-2] and close.iloc[-1] > s200.iloc[-1])
+
+
+def ema_golden_cross_today(hist: pd.DataFrame) -> bool:
+    """EMA25 crosses above EMA50 today -- yesterday EMA25 was at or below
+    EMA50, today it's above. Matches the site's own chart default overlay
+    (EMA 25 / EMA 50, see lib/data/chartStudies.ts)."""
+    close = hist["Close"]
+    e25 = close.ewm(span=25, adjust=False).mean()
+    e50 = close.ewm(span=50, adjust=False).mean()
+    if len(e25) < 2 or pd.isna(e25.iloc[-1]) or pd.isna(e50.iloc[-1]) or pd.isna(e25.iloc[-2]) or pd.isna(e50.iloc[-2]):
+        return False
+    return bool(e25.iloc[-2] <= e50.iloc[-2] and e25.iloc[-1] > e50.iloc[-1])
 
 
 def monday_range(hist: pd.DataFrame) -> dict | None:
@@ -430,7 +517,7 @@ def main(market_date: str) -> None:
         mp = ((tech_records.get(ticker) or {}).get("technical") or {}).get("marketProfile") or {}
         ibh, ibl = mp.get("ibh"), mp.get("ibl")
         close = float(hist["Close"].iloc[-1])
-        rsi_div_bullish, rsi_div_bullish_pivot = rsi_divergence_today(hist)
+        rsi_div_bullish, rsi_div_bullish_pivot = regular_bullish_divergence_today(hist)
         rsi_div_hidden, rsi_div_hidden_pivot = hidden_bullish_divergence_today(hist)
         record = {
             "breakIbhIbl": ib_break(hist, ibh, ibl),
@@ -440,6 +527,8 @@ def main(market_date: str) -> None:
             "rsiDivHiddenBullishPivotDate": rsi_div_hidden_pivot,
             "stochRsiGoldenCross": stoch_rsi_golden_cross_today(hist),
             "stochRsiOversold": stoch_rsi_oversold_today(hist),
+            "breakSma200": break_sma200_today(hist),
+            "emaGoldenCross": ema_golden_cross_today(hist),
             **near_vwap_flags(hist, close),
         }
         if any(v for k, v in record.items() if not k.endswith("PivotDate")):
