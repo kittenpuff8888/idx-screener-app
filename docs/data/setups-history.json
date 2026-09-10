@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-09-09",
+ "asOf": "2026-09-10",
  "entries": [
   {
    "date": "2026-07-10",
@@ -659,8 +659,8 @@
    "close": 120.0,
    "target": 196,
    "invalidation": 111.87,
-   "outcome": "open",
-   "barsObserved": 3
+   "outcome": "invalidated",
+   "barsObserved": 4
   },
   {
    "date": "2026-09-08",
@@ -670,14 +670,34 @@
    "target": 1625,
    "invalidation": 1504.8,
    "outcome": "open",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-09-09",
+   "ticker": "DWGL",
+   "score": 55,
+   "close": 236.0,
+   "target": 336,
+   "invalidation": 225.4,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-09",
+   "ticker": "ICBP",
+   "score": 55,
+   "close": 7200.0,
+   "target": 7562,
+   "invalidation": 7053.75,
+   "outcome": "open",
    "barsObserved": 1
   }
  ],
  "summary": {
-  "total": 67,
-  "decided": 49,
+  "total": 69,
+  "decided": 50,
   "targetFirst": 20,
-  "hitRate": 0.408
+  "hitRate": 0.4
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
