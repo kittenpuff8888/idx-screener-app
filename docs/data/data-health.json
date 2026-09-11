@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-09-11T21:50:51.584413+07:00",
+ "generatedAt": "2026-09-11T22:02:38.865347+07:00",
  "marketDate": "2026-09-11",
  "universe": {
   "size": 962,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-09-11T21:50:36.839289+07:00"
+  "auditedAt": "2026-09-11T22:02:23.003189+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-09-09T22:23:25.405592+07:00",
-   "marketDate": "2026-09-09",
-   "status": "STARTED",
-   "message": "Daily update pipeline started."
-  },
   {
    "timestamp": "2026-09-09T23:48:32.118406+07:00",
    "marketDate": "2026-09-09",
@@ -65,6 +59,12 @@
    "marketDate": "2026-09-11",
    "status": "SUCCESS",
    "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-09-11T21:59:59.954934+07:00",
+   "marketDate": "2026-09-11",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
   }
  ],
  "qaSummary": {
@@ -93,8 +93,8 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-09-11T21:50:38.247835+07:00",
-  "checked": 10,
+  "lastChecked": "2026-09-11T22:02:26.175755+07:00",
+  "checked": 15,
   "failures": [],
   "results": [
    {
@@ -106,11 +106,23 @@
     "status": "ERROR: TypeError"
    },
    {
+    "ticker": "ASSA",
+    "status": "ERROR: TypeError"
+   },
+   {
     "ticker": "BBCA",
     "status": "ERROR: TypeError"
    },
    {
     "ticker": "BBRI",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "BSML",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "CYBR",
     "status": "ERROR: TypeError"
    },
    {
@@ -122,7 +134,15 @@
     "status": "ERROR: TypeError"
    },
    {
+    "ticker": "GPRA",
+    "status": "ERROR: TypeError"
+   },
+   {
     "ticker": "IMAS",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "INCO",
     "status": "ERROR: TypeError"
    },
    {
