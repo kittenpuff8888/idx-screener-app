@@ -1,0 +1,398 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-09-11",
+ "generatedAt": "2026-09-11T21:50:51.487970+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 5,
+ "setups": [
+  {
+   "ticker": "BSML",
+   "name": "Bintang Samudera Mandiri Lines",
+   "sector": "Others",
+   "close": 535.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 520,
+   "invalidation": 507,
+   "target": 575,
+   "medianValueTraded20": 6352944000,
+   "rvol": 1.641918340341067,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    2028851939,
+    2041484489,
+    2046853089,
+    2042391722,
+    2048134022,
+    2040465322,
+    2046683822,
+    2043379994,
+    2034389794,
+    2047909394,
+    2047909394,
+    2028714294,
+    2043903394,
+    2043903394,
+    2041591894,
+    2053809094,
+    2051661894,
+    2054963627,
+    2054963627,
+    2048351227,
+    2048351227,
+    2033717927,
+    2027918527,
+    2024772760,
+    2031007160,
+    2027659040,
+    2027659040,
+    2034957090,
+    2028499890,
+    2047732090
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI EMA25; bullish CHoCH (Internal Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 8,
+    "hitRate": 0.88,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ABSML"
+  },
+  {
+   "ticker": "INCO",
+   "name": "Vale Indonesia Tbk.",
+   "sector": "Others",
+   "close": 4830.0,
+   "score": 75,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 25,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 4737,
+   "invalidation": 4643.1,
+   "target": 5020,
+   "medianValueTraded20": 67263858000,
+   "rvol": 1.637123732798496,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -1109604211,
+    -1116546344,
+    -1103774035,
+    -1111988835,
+    -1114965360,
+    -1116080338,
+    -1119642710,
+    -1123701876,
+    -1120612926,
+    -1131614326,
+    -1127741241,
+    -1129351541,
+    -1137127091,
+    -1137127091,
+    -1141361848,
+    -1134855581,
+    -1134855581,
+    -1142618581,
+    -1138489681,
+    -1139716081,
+    -1134723681,
+    -1149918781,
+    -1178812807,
+    -1165131307,
+    -1170313387,
+    -1180199316,
+    -1171570776,
+    -1173033176,
+    -1190649264,
+    -1170675364
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows; absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 4,
+    "hitRate": 0.5,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AINCO"
+  },
+  {
+   "ticker": "ASSA",
+   "name": "Adi Sarana Armada Tbk.",
+   "sector": "Others",
+   "close": 610.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 25,
+    "orderflow": 10,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 606,
+   "invalidation": 594.0,
+   "target": 642,
+   "medianValueTraded20": 9000680500,
+   "rvol": 1.158169317211954,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -96753203,
+    -97908043,
+    -100437343,
+    -98929110,
+    -96179750,
+    -103610900,
+    -104708967,
+    -108311267,
+    -109141347,
+    -109982113,
+    -112217663,
+    -110365313,
+    -112469971,
+    -115177871,
+    -117813971,
+    -134201011,
+    -136542711,
+    -150484111,
+    -148150111,
+    -151163351,
+    -154416351,
+    -149576001,
+    -152410861,
+    -145127627,
+    -168259527,
+    -164596747,
+    -175823747,
+    -186867467,
+    -207382007,
+    -202322674
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; bullish CHoCH (Swing Bullish CHoCH); absorption bar (high volume, small range at low)",
+   "history": {
+    "signals": 13,
+    "hitRate": 0.62,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AASSA"
+  },
+  {
+   "ticker": "CYBR",
+   "name": "ITSEC Asia Tbk.",
+   "sector": "Others",
+   "close": 530.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 515,
+   "invalidation": 504.9,
+   "target": 550,
+   "medianValueTraded20": 15257605000,
+   "rvol": 1.203686811564537,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    464628558,
+    448820658,
+    439881925,
+    433963785,
+    439162245,
+    447665211,
+    463336971,
+    463336971,
+    443239071,
+    445851485,
+    445851485,
+    433291485,
+    451310145,
+    451310145,
+    461421545,
+    444776885,
+    440979245,
+    428067645,
+    428067645,
+    406941745,
+    406941745,
+    437055345,
+    409700145,
+    418869279,
+    410012679,
+    399542559,
+    415975009,
+    389723909,
+    398332409,
+    417472889
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 11,
+    "hitRate": 0.55,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ACYBR"
+  },
+  {
+   "ticker": "GPRA",
+   "name": "Perdana Gapuraprima Tbk.",
+   "sector": "Others",
+   "close": 105.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 102,
+   "invalidation": 99.99,
+   "target": 108,
+   "medianValueTraded20": 15312617600,
+   "rvol": 0.9201259726982506,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    1726810010,
+    1645292390,
+    1596364490,
+    1710203757,
+    1755088090,
+    1681666690,
+    1773233823,
+    1773233823,
+    1815327590,
+    1815327590,
+    1965640590,
+    2013378857,
+    2101441857,
+    1981208157,
+    2008552117,
+    1896817817,
+    1951187267,
+    1902424367,
+    1944754933,
+    1944754933,
+    2013309633,
+    1932496233,
+    1932496233,
+    1834931793,
+    1730041593,
+    1755669793,
+    1787917465,
+    1743751931,
+    1693110731,
+    1769940371
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 15,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AGPRA"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 962
+}

@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-09-10",
+ "asOf": "2026-09-11",
  "entries": [
   {
    "date": "2026-07-10",
@@ -660,7 +660,7 @@
    "target": 196,
    "invalidation": 111.87,
    "outcome": "invalidated",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-08",
@@ -669,8 +669,8 @@
    "close": 1540.0,
    "target": 1625,
    "invalidation": 1504.8,
-   "outcome": "open",
-   "barsObserved": 2
+   "outcome": "invalidated",
+   "barsObserved": 3
   },
   {
    "date": "2026-09-09",
@@ -680,7 +680,7 @@
    "target": 336,
    "invalidation": 225.4,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-09-09",
@@ -690,14 +690,14 @@
    "target": 7562,
    "invalidation": 7053.75,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   }
  ],
  "summary": {
   "total": 69,
-  "decided": 50,
+  "decided": 51,
   "targetFirst": 20,
-  "hitRate": 0.4
+  "hitRate": 0.392
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
