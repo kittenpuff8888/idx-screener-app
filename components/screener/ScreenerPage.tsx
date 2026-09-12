@@ -417,33 +417,32 @@ export function ScreenerPage() {
               ) : null}
             </div>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(232px,1fr))", gap: 11, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(210px,1fr))", gap: 8, marginBottom: 16 }}>
             {ungroupedSetups().map((s) => {
               const on = selectedSetups.includes(s.key);
               const dir = setupDir[s.key] || "bull";
               const cnt = solo[s.key] ? (dir === "bear" ? solo[s.key].bear : solo[s.key].bull) : 0;
               return (
-                <div key={s.key} role="button" tabIndex={0} aria-pressed={on} onClick={() => toggleSetup(s.key)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSetup(s.key); } }} style={{ border: `1.5px solid ${on ? "var(--accent-border)" : "var(--border)"}`, background: on ? "var(--accentSoft)" : "var(--panel)", borderRadius: 13, padding: "13px 14px", boxShadow: "var(--sh, var(--shadow))", cursor: "pointer" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}>
-                    <span style={{ width: 30, height: 30, flex: "none", borderRadius: 9, background: on ? "var(--accent)" : "var(--soft)", color: on ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }} aria-hidden>{s.icon}</span>
+                <div key={s.key} role="button" tabIndex={0} aria-pressed={on} title={s.req} onClick={() => toggleSetup(s.key)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSetup(s.key); } }} style={{ border: `1.5px solid ${on ? "var(--accent-border)" : "var(--border)"}`, background: on ? "var(--accentSoft)" : "var(--panel)", borderRadius: 11, padding: "9px 11px", boxShadow: "var(--sh, var(--shadow))", cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 24, height: 24, flex: "none", borderRadius: 7, background: on ? "var(--accent)" : "var(--soft)", color: on ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5 }} aria-hidden>{s.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-.01em" }}>{s.label}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "-.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.label}</span>
                         {/* DESIGN_SPEC §3.3: evidence strength is explicit, not a glyph. */}
                         <span
                           title={s.inferred ? "INFERRED — reconstructed from other fields, no dedicated column" : "EXACT — reads a real column directly"}
-                          style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".06em", padding: "1px 6px", borderRadius: 5, background: s.inferred ? "var(--warnSoft)" : "var(--upSoft)", color: s.inferred ? "var(--warning)" : "var(--up)" }}
+                          style={{ flex: "none", fontSize: 8, fontWeight: 700, letterSpacing: ".06em", padding: "1px 5px", borderRadius: 5, background: s.inferred ? "var(--warnSoft)" : "var(--upSoft)", color: s.inferred ? "var(--warning)" : "var(--up)" }}
                         >
                           {s.inferred ? "INFERRED" : "EXACT"}
                         </span>
                       </div>
-                      <div style={{ fontFamily: MONO, fontSize: 10, color: cnt ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>{cnt} {cnt === 1 ? "ticker" : "tickers"} today</div>
+                      <div style={{ fontFamily: MONO, fontSize: 9.5, color: cnt ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>{cnt} {cnt === 1 ? "ticker" : "tickers"} today</div>
                     </div>
-                    <span style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }} aria-hidden>{on ? "✓" : ""}</span>
+                    <span style={{ width: 18, height: 18, flex: "none", borderRadius: 6, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11 }} aria-hidden>{on ? "✓" : ""}</span>
                   </div>
-                  <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.4, minHeight: 29 }}>{s.req}</div>
                   {s.hasBear ? (
-                    <div style={{ display: "flex", gap: 3, marginTop: 9 }} onClick={(e) => e.stopPropagation()}>
+                    <div style={{ display: "flex", gap: 3, marginTop: 7 }} onClick={(e) => e.stopPropagation()}>
                       {(["bull", "bear"] as const).map((d) => (
                         <button key={d} type="button" onClick={() => setDir(s.key, d)} style={{ flex: 1, fontSize: 9.5, fontWeight: 700, padding: "4px 6px", borderRadius: 6, border: `1px solid ${dir === d ? "transparent" : "var(--border)"}`, background: dir === d ? (d === "bull" ? "var(--upSoft)" : "var(--downSoft)") : "transparent", color: dir === d ? (d === "bull" ? "var(--up)" : "var(--down)") : "var(--muted)", cursor: "pointer" }}>{d === "bull" ? "Bullish" : "Bearish"}</button>
                       ))}
@@ -458,20 +457,19 @@ export function ScreenerPage() {
               const on = selectedSetups.includes(variant.setupKey);
               const cnt = solo[variant.setupKey]?.bull ?? 0;
               return (
-                <div key={g.boxId} role="button" tabIndex={0} aria-pressed={on} onClick={() => toggleSetup(variant.setupKey)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSetup(variant.setupKey); } }} style={{ border: `1.5px solid ${on ? "var(--accent-border)" : "var(--border)"}`, background: on ? "var(--accentSoft)" : "var(--panel)", borderRadius: 13, padding: "13px 14px", boxShadow: "var(--sh, var(--shadow))", cursor: "pointer" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7 }}>
-                    <span style={{ width: 30, height: 30, flex: "none", borderRadius: 9, background: on ? "var(--accent)" : "var(--soft)", color: on ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }} aria-hidden>{g.icon}</span>
+                <div key={g.boxId} role="button" tabIndex={0} aria-pressed={on} title={g.req} onClick={() => toggleSetup(variant.setupKey)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleSetup(variant.setupKey); } }} style={{ border: `1.5px solid ${on ? "var(--accent-border)" : "var(--border)"}`, background: on ? "var(--accentSoft)" : "var(--panel)", borderRadius: 11, padding: "9px 11px", boxShadow: "var(--sh, var(--shadow))", cursor: "pointer" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 24, height: 24, flex: "none", borderRadius: 7, background: on ? "var(--accent)" : "var(--soft)", color: on ? "#fff" : "var(--muted)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12.5 }} aria-hidden>{g.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: "-.01em" }}>{g.label}</span>
-                        <span title="EXACT — reads a real column directly" style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".06em", padding: "1px 6px", borderRadius: 5, background: "var(--upSoft)", color: "var(--up)" }}>EXACT</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: "-.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.label}</span>
+                        <span title="EXACT — reads a real column directly" style={{ flex: "none", fontSize: 8, fontWeight: 700, letterSpacing: ".06em", padding: "1px 5px", borderRadius: 5, background: "var(--upSoft)", color: "var(--up)" }}>EXACT</span>
                       </div>
-                      <div style={{ fontFamily: MONO, fontSize: 10, color: cnt ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>{cnt} {cnt === 1 ? "ticker" : "tickers"} today · {variant.sigmaLabel}</div>
+                      <div style={{ fontFamily: MONO, fontSize: 9.5, color: cnt ? "var(--accent)" : "var(--faint)", fontWeight: 700 }}>{cnt} {cnt === 1 ? "ticker" : "tickers"} today · {variant.sigmaLabel}</div>
                     </div>
-                    <span style={{ width: 20, height: 20, flex: "none", borderRadius: 6, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }} aria-hidden>{on ? "✓" : ""}</span>
+                    <span style={{ width: 18, height: 18, flex: "none", borderRadius: 6, border: `1.5px solid ${on ? "var(--accent)" : "var(--border)"}`, background: on ? "var(--accent)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11 }} aria-hidden>{on ? "✓" : ""}</span>
                   </div>
-                  <div style={{ fontSize: 10.5, color: "var(--muted)", lineHeight: 1.4, minHeight: 29 }}>{g.req}</div>
-                  <div style={{ display: "flex", gap: 3, marginTop: 9 }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: "flex", gap: 3, marginTop: 7 }} onClick={(e) => e.stopPropagation()}>
                     {g.variants.map((v, vi) => {
                       const vSigma = vi === 0 ? "1" : "2";
                       const vOn = sigma === vSigma;
