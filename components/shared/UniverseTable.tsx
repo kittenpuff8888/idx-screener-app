@@ -88,7 +88,7 @@ export function UniverseTable({ rows, onOpenTicker, emptyLabel = "No tickers.", 
               const chgColor = chg == null ? "var(--faint)" : chg > 0 ? "var(--up)" : chg < 0 ? "var(--down)" : "var(--flat)";
               return (
                 <div key={row.ticker} role="button" tabIndex={0} onClick={() => onOpenTicker(row.ticker)} onKeyDown={(e) => { if (e.key === "Enter") onOpenTicker(row.ticker); }}
-                  style={{ display: "grid", gridTemplateColumns: grid, borderBottom: "1px solid var(--hair)", background: ur?.hasEngineSetup ? "var(--accentSoft)" : "var(--panel)", cursor: "pointer" }}>
+                  style={{ display: "grid", gridTemplateColumns: grid, borderBottom: "1px solid var(--hair)", background: "var(--panel)", cursor: "pointer" }}>
                   <div style={{ padding: "9px 11px", borderRight: "1px solid var(--hair)" }}>
                     <div style={{ fontFamily: MONO, fontSize: 13, fontWeight: 800 }}>{row.ticker}</div>
                     <div style={{ fontSize: 9, color: "var(--faint)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sector}</div>

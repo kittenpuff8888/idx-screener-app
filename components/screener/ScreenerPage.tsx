@@ -522,9 +522,13 @@ export function ScreenerPage() {
         <button type="button" onClick={csv} style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>⭳ CSV</button>
       </div>
 
-      {/* results table */}
+      {/* results table -- fixed-height viewport (~10 rows) with its own
+          vertical scrollbar, so a large match count doesn't stretch the
+          whole page; horizontal scroll stays separate (18 columns is too
+          much to compress into one screen width without hurting
+          readability, and per-column widths already vary by content). */}
       <div style={{ ...CARD, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 560 }}>
           <div style={{ minWidth: 1428 }}>
             <div style={{ position: "sticky", top: 0, zIndex: 20, display: "grid", gridTemplateColumns: GRID, background: "var(--soft)", borderBottom: "1px solid var(--border)" }}>
               {headers.map(([col, label, justify, sticky]) => (
@@ -540,7 +544,7 @@ export function ScreenerPage() {
               <div style={{ padding: 44, textAlign: "center", color: "var(--faint)", fontSize: 13 }}>Loading the workbook universe…</div>
             ) : null}
             {pageRows.map((r) => {
-              const rowBg = r.hasEngineSetup ? "var(--accentSoft)" : "var(--panel)";
+              const rowBg = "var(--panel)";
               const konglo = kongloMap[r.ticker] || [];
               const zone = ibZone(r.price, r.ibh, r.ibl);
               const news = newsByTicker.get(r.ticker);
@@ -559,10 +563,14 @@ export function ScreenerPage() {
                   <div style={{ padding: "9px 12px", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                     {r.setupsMatched.map((k) => {
                       const label = setupDisplayLabel(k);
-                      // Pivot date != confirmation date by design (the pivot
-                      // needs 2 confirming bars after it) -- surfaced here so
-                      // "why didn't this show on the pivot's own day" has an
-                      // answer right on the badge instead of needing to ask.
+                      // Pivot date shown != "today" for both setups, but for
+                      // different reasons: Regular Bullish's pivot still needs
+                      // swing_window confirming bars after it (a reversal
+                      // pivot, so confirmation genuinely lags by that many
+                      // sessions), while Hidden Bullish's pivot is the EARLIER
+                      // reference point the pullback is measured against --
+                      // that one confirms same-day, the pivot date is just the
+                      // other end of the comparison, not a lag.
                       const pivot = k === "rsi10_div_bullish" ? r.rsiDivBullishPivotDate : k === "rsi10_div_hidden_bullish" ? r.rsiDivHiddenBullishPivotDate : null;
                       const tip = pivot ? `${label} · pivot ${pivot} · confirmed today` : label;
                       return <span key={k} title={tip} style={{ fontSize: 9, fontWeight: 700, color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 6px", whiteSpace: "nowrap" }}>{label}{pivot ? <span style={{ opacity: 0.7, fontWeight: 600 }}> · piv {pivot}</span> : null}</span>;

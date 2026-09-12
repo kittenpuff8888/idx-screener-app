@@ -119,7 +119,6 @@ export interface UniverseRow {
   nearPyM2: boolean;
   // engine (setups.json) join:
   score: number | null;
-  hasEngineSetup: boolean;
   isRecentIpo: boolean | null;
   medianValueTraded: number | null;
   kseiDelta: number | null; // percentage points, labelled proxy
@@ -296,7 +295,7 @@ export const SETUPS: SetupDef[] = [
     label: "RSI Hidden Bullish Divergence",
     icon: "⤢",
     hasBear: false,
-    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low, starting from a healthy 50–70 RSI band (a genuinely shallow pullback within an established uptrend, not an already-weak one)",
+    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low, starting from a healthy 50–70 RSI band no more than ~4 weeks back (a genuinely shallow pullback within an established uptrend, not an already-weak or long-since-past one)",
     bull: (r) => r.rsiDivHiddenBullish,
   },
   {
@@ -689,7 +688,6 @@ export function buildUniverse(scr: ScreenerDoc, setupsDoc: SetupsDoc, ibMap: IbM
       nearPyM1: !!sig.nearPyM1,
       nearPyM2: !!sig.nearPyM2,
       score: su && typeof su.score === "number" ? su.score : null,
-      hasEngineSetup: !!su,
       isRecentIpo: su ? !!su.isRecentIpo : null,
       medianValueTraded: su && typeof su.medianValueTraded20 === "number" ? su.medianValueTraded20 : null,
       kseiDelta: su && su.kseiFootprint && su.kseiFootprint.available ? su.kseiFootprint.netDeltaPP ?? null : null,

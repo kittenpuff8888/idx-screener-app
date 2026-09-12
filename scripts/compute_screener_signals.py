@@ -12,12 +12,19 @@ ticker:
                          monthly-IB computation, not re-derived here).
   rsiDivBullish       -- RSI(10, EMA-smoothed) regular bullish divergence:
                          price Lower Low + RSI Higher Low, both pivots at a
-                         genuine oversold extreme (RSI<30), confirmed on
-                         today's bar specifically.
+                         genuine oversold extreme (RSI<30). Reversal-style:
+                         both pivots must be confirmed swing lows, so
+                         confirmation lags the more recent pivot by
+                         swing_window bars (pivot date shown is that more
+                         recent pivot, not today).
   rsiDivHiddenBullish -- same RSI, hidden-bullish (continuation) case:
                          price Higher Low + RSI Lower Low, with the earlier
                          pivot's RSI required to start from a healthy
-                         50-70 band (not itself weak/oversold).
+                         50-70 band (not itself weak/oversold), pivot no
+                         more than ~4 weeks back. Continuation-style: only
+                         the earlier pivot needs confirming; today's own
+                         bar is compared directly, so this confirms same-day
+                         (pivot date shown is the earlier reference point).
   breakSma200         -- today's close crosses above SMA200 (yesterday's
                          close was at or below it).
   emaGoldenCross      -- EMA25 crosses above EMA50 today (yesterday EMA25
@@ -177,32 +184,34 @@ def regular_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, 
     while RSI makes a HIGHER low, both pivots at a genuine oversold extreme
     (RSI < oversold) -- the classic reversal-style pattern (see
     hidden_bullish_divergence() below for the shallow-pullback variant,
-    which has no oversold requirement).
+    which uses a different, same-day-confirming approach).
 
-    Deliberately unclustered, same reasoning and same bug class this fixes
-    as hidden_bullish_divergence(): the shared lifecycle-cluster detector
-    (divergence_signals() in rebuild_backend/IDX_Screener.py) chains
-    together any swing lows within cluster_gap bars of each other into one
-    group and collapses it to its single deepest-RSI point, discarding any
-    shallower pivot in between -- and separately, when the two most recent
-    ELIGIBLE (RSI<30) clusters happen to be months apart with nothing
-    qualifying in between, it will compare them anyway with no upper bound
-    on how far apart they are.
+    Unlike hidden_bullish_divergence(), i2 here is NOT forced to be today:
+    it's the most recent CONFIRMED oversold swing low (needing
+    swing_window bars after it, same as i1), matching how a reversal
+    pivot is classically read -- and how the reference Pine script the
+    2026-09 divergence discussion was checked against also works
+    (lookbackRight bars required before a pivot counts). Tried forcing
+    i2=today here too and it broke on real cases: BUKK's close sat flat for
+    3 sessions (2026-09-09 to 09-11), so "today" and the most recent
+    confirmed low were numerically identical -- comparing a confirmed
+    pivot against itself can never show a higher low. A reversal pattern
+    needs two SEPARATE, both-confirmed turning points; forcing the second
+    one to be "today" (which is often still mid-move, not yet a turn)
+    doesn't fit that shape the way it does for hidden-bullish's
+    continuation pattern.
 
-    Real example this fixes: TRON's RSI(10,EMA) dipped to ~2 on 2026-05-25
-    and again to ~10 on 2026-06-08 (both <30, only ~6 bars apart) -- the
-    shared clustered detector chained the two into one May/June group,
-    discarding June's own reading, and had no other RSI<30 cluster to
-    compare against until 2026-08-26, three months later -- a comparison
-    across two unrelated market regimes (TRON bottomed in June and had
-    already recovered by August) rather than a coherent swing structure.
+    Deliberately unclustered (see hidden_bullish_divergence() for why
+    clustering is the wrong tool here too): filtering candidate pivots to
+    oversold-only (RSI<oversold) before picking the last two achieves the
+    "genuine oversold extreme" requirement without a clustering step that
+    can chain unrelated dips together and swallow the more recent one.
     max_pivot_gap (matching the ~60-bar range a standard RSI-divergence
     indicator's built-in lookback typically uses) caps how far apart the
-    two compared pivots may be, so a comparison like that is excluded
-    outright rather than accepted just because nothing else qualified in
-    between. Filtering candidate pivots to oversold-only (RSI<30) before
-    picking the last two achieves the "genuine oversold extreme"
-    requirement without a clustering step that can swallow a pivot."""
+    two compared pivots may be, so a comparison spanning unrelated market
+    regimes months apart (real example: TRON's 2026-05-25 extreme vs
+    2026-08-26, three months later, the only two RSI<30 points with
+    nothing qualifying between them) is excluded outright."""
     if hist is None or hist.empty or len(hist) < 25:
         return None
     df = hist.tail(lookback)
@@ -227,9 +236,14 @@ def regular_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, 
 
 
 def regular_bullish_divergence_today(hist: pd.DataFrame) -> tuple[bool, str | None]:
-    """Regular Bullish divergence newly confirmed today -- same "confirmed
-    today" diff-vs-yesterday approach as hidden_bullish_divergence_today();
-    see its docstring for why pivot_date is never "today"."""
+    """Regular Bullish divergence newly confirmed today -- "confirmed
+    today" means the signal reads Bullish on today's full history but
+    didn't (or pointed at a different pivot pair) on yesterday's, i.e. it
+    just became visible with today's bar providing the confirming swing
+    point for i2. Returns (confirmed_today, pivot_date) -- pivot_date is
+    i2, the more recent of the two pivots (which is NOT today itself: see
+    the module docstring on why confirmation lags the pivot by
+    swing_window bars for this reversal-style detector)."""
     today = regular_bullish_divergence(hist)
     if today is None:
         return False, None
@@ -254,30 +268,22 @@ def _swing_low_positions(vals: np.ndarray, w: int) -> list[int]:
     return pos
 
 
-def _cluster_positions(positions: list[int], max_gap: int) -> list[list[int]]:
-    if not positions:
-        return []
-    clusters = [[positions[0]]]
-    for p in positions[1:]:
-        if p - clusters[-1][-1] <= max_gap:
-            clusters[-1].append(p)
-        else:
-            clusters.append([p])
-    return clusters
-
-
-def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, cluster_gap=6, min_separation=4, price_tol=0.0075, rsi_tol=2.0, max_last_swing_age=20, rsi_band_lo=50.0, rsi_band_hi=70.0) -> dict | None:
+def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, max_pivot_gap=20, price_tol=0.0075, rsi_tol=2.0, rsi_band_lo=50.0, rsi_band_hi=70.0) -> dict | None:
     """Hidden bullish RSI(10, EMA) divergence: price makes a HIGHER low
     while RSI makes a LOWER low -- an uptrend-continuation pattern that, by
     definition, happens on a shallow pullback, not at a deep oversold
-    extreme. divergence_signals()'s shared detector requires its low-RSI
-    cluster to dip below 30 before a cluster is even eligible, which is
-    right for a reversal-style regular Bullish divergence but wrong here --
-    it misses real hidden-bullish cases with RSI sitting in the 40s-50s.
-    Deliberately no RSI<30 gate. Validated against a real example: BEST
-    2026-08-13 (RSI 51.8, low 109) -> 2026-08-26 (RSI 47.5, low 117) --
-    price Higher Low + RSI Lower Low, confirmed 2026-08-28 once the pivot
-    had its 2 confirming bars.
+    extreme. Deliberately no RSI<30 gate -- real hidden-bullish cases sit
+    with RSI in the 40s-50s. Validated against a real example: BEST
+    2026-08-13 (RSI 51.8, low 109) -> 2026-08-26 (RSI 47.5, low 117), 7
+    bars apart -- price Higher Low + RSI Lower Low.
+
+    i2 is always the LAST bar (today) directly, same reasoning as
+    regular_bullish_divergence(): comparing today's own RSI/price against
+    the most recent already-confirmed pivot (i1) means the pivot pair's
+    later date and the date the screener shows it are the same day, rather
+    than lagging by swing_window bars the way a centered pivot scan on
+    today's own bar would. BEST's pair above now confirms directly on
+    2026-08-26, not 2026-08-28.
 
     The earlier pivot (r1) must sit in (rsi_band_lo, rsi_band_hi) -- the
     trend has to already be healthy (not itself weak or oversold) before a
@@ -289,31 +295,27 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, c
     already-weak trend, not a healthy one taking a shallow dip) would
     incorrectly pass just because r2 < r1.
 
-    Returns the chosen pivot pair's dict (with `i2`, the confirming bar's
-    position) when found, else None -- mirrors divergence_signals()'s
-    lifecycle-cluster/pairing logic exactly, just without the oversold gate."""
+    max_pivot_gap is much tighter than regular_bullish_divergence()'s (20
+    bars, ~4 weeks, vs 60): once 13 Aug is excluded as PYFA's anchor by the
+    band gate above, the candidate search falls back to the next-eligible
+    swing low, which for PYFA is 2026-07-20 -- 25 bars back, a 5-week
+    reach that isn't a "shallow" pullback by any reasonable reading of the
+    term. Capping the gap at 20 bars excludes that fallback while still
+    comfortably covering BEST's real 7-bar case."""
     if hist is None or hist.empty or len(hist) < 25:
         return None
     df = hist.tail(lookback)
-    close = df["Close"].astype(float)
     low = df["Low"].astype(float)
-    r = rsi_ema(close, 10).values
-
-    # Deliberately NOT clustered (unlike divergence_signals()'s regular-
-    # bullish path): clustering chains together every pivot within
-    # cluster_gap bars of the previous one, which over a multi-week uptrend
-    # can chain-link pivots spanning 5+ weeks into one group and collapse
-    # it down to its single deepest-RSI point -- silently discarding the
-    # actual most recent, shallower pivot a hidden-bullish pattern needs.
-    # Validated against BEST: clustering picked 2026-07-29 (RSI 30.0, the
-    # cluster's oversold extreme) instead of the real pivot at 2026-08-13
-    # (RSI 51.8). Comparing the last two INDIVIDUAL swing lows directly
-    # avoids that and matches the real example exactly.
-    pos = _swing_low_positions(r, swing_window)
-    if len(pos) < 2:
+    r = rsi_ema(df["Close"].astype(float), 10).values
+    i2 = len(df) - 1
+    if np.isnan(r[i2]):
         return None
-    i1, i2 = pos[-2], pos[-1]
-    if (i2 - i1) < min_separation or (len(df) - 1 - i2) > max_last_swing_age:
+
+    candidates = [i for i in _swing_low_positions(r, swing_window) if not np.isnan(r[i]) and rsi_band_lo < r[i] < rsi_band_hi]
+    if not candidates:
+        return None
+    i1 = candidates[-1]
+    if (i2 - i1) > max_pivot_gap:
         return None
     p1, p2 = float(low.iloc[i1]), float(low.iloc[i2])
     r1, r2 = float(r[i1]), float(r[i2])
@@ -321,27 +323,25 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, c
         return None
     price_higher_low = p2 > p1 + abs(p1) * price_tol
     rsi_lower_low = r2 < r1 - rsi_tol
-    rsi_healthy_start = rsi_band_lo < r1 < rsi_band_hi
-    if not (price_higher_low and rsi_lower_low and rsi_healthy_start):
+    if not (price_higher_low and rsi_lower_low):
         return None
-    return {"i2": i2, "ref2_date": df.index[i2].strftime("%d %b '%y"), "p1": p1, "p2": p2, "r1": r1, "r2": r2}
+    return {"i1": i1, "ref1_date": df.index[i1].strftime("%d %b '%y"), "p1": p1, "p2": p2, "r1": r1, "r2": r2}
 
 
 def hidden_bullish_divergence_today(hist: pd.DataFrame) -> tuple[bool, str | None]:
     """Hidden bullish divergence newly confirmed today -- same "confirmed
-    today" diff-vs-yesterday approach as regular_bullish_divergence_today(),
-    since the swing-pivot scan can never mark today's own bar as a pivot
-    either. Returns (confirmed_today, pivot_date) -- pivot_date is never
-    "today" itself, since a swing low needs swing_window confirming bars
-    after it before the scan can even recognize it as a pivot."""
+    today" diff-vs-yesterday / i1-changed approach as
+    regular_bullish_divergence_today(); see its docstring. Returns
+    (confirmed_today, pivot_date) -- pivot_date is i1, the earlier reference
+    low (not today, which is implied)."""
     today = hidden_bullish_divergence(hist)
     if today is None:
         return False, None
     yday = hidden_bullish_divergence(hist.iloc[:-1])
-    newly_confirmed = yday is None or yday["ref2_date"] != today["ref2_date"]
+    newly_confirmed = yday is None or yday["i1"] != today["i1"]
     if not newly_confirmed:
         return False, None
-    return True, today["ref2_date"]
+    return True, today["ref1_date"]
 
 
 def stoch_rsi_golden_cross_today(hist: pd.DataFrame) -> bool:
