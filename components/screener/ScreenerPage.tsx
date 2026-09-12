@@ -528,7 +528,7 @@ export function ScreenerPage() {
           much to compress into one screen width without hurting
           readability, and per-column widths already vary by content). */}
       <div style={{ ...CARD, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 560 }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: 645 }}>
           <div style={{ minWidth: 1428 }}>
             <div style={{ position: "sticky", top: 0, zIndex: 20, display: "grid", gridTemplateColumns: GRID, background: "var(--soft)", borderBottom: "1px solid var(--border)" }}>
               {headers.map(([col, label, justify, sticky]) => (
