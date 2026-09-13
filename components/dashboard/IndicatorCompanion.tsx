@@ -17,6 +17,7 @@ import { ema, sma, rsiWilder, stochOf } from "@/lib/indicators/oscillators";
 import { formatPrice, formatCompact, formatPercent } from "@/lib/format/number";
 import { DrawingTool } from "@/lib/charting/DrawingTool";
 import { BandFill } from "@/lib/charting/drawings/BandFill";
+import { RsiGradientFill } from "@/lib/charting/drawings/RsiGradientFill";
 import { ChartToolbar } from "@/components/dashboard/ChartToolbar";
 
 // The site's own chart -- built on TradingView's open-source lightweight-charts
@@ -56,7 +57,14 @@ const STOCH_BAND_COLOR = "#dbdbdb";
 // Fixed pixel height for each oscillator sub-pane (RSI, Stoch RSI) that's
 // currently active; the price pane above keeps `priceHeight` and the total
 // container height grows/shrinks with however many oscillator panes are on.
-const OSC_PANE_HEIGHT = 110;
+// Both sized up from an earlier, much shorter version per explicit feedback
+// that the chart needed real height -- TradingView's own chart gives the
+// price pane the majority of a full-height view, not a couple hundred
+// pixels. These are just the STARTING sizes: `layout.panes.enableResize`
+// (lightweight-charts' default) lets a viewer drag the divider between any
+// two panes to resize them, same as dragging a pane boundary on tradingview.com.
+const PRICE_HEIGHT_DEFAULT = 520;
+const OSC_PANE_HEIGHT = 140;
 
 // Caps series count for very long histories under a fine anchor (e.g. weekly
 // VWAP over years) — keeps the chart responsive without silently truncating
@@ -163,7 +171,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
   }, []);
 
   const rows = ohlcv?.rows;
-  const priceHeight = 340;
+  const priceHeight = PRICE_HEIGHT_DEFAULT;
 
   const active = useMemo(() => new Set(studies), [studies]);
   const showEma25 = active.has(ID_EMA25), showEma50 = active.has(ID_EMA50), showSma200 = active.has(ID_SMA200);
@@ -177,8 +185,14 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
   const rsiTop = priceHeight;
   const stochTop = priceHeight + (showRsi ? OSC_PANE_HEIGHT : 0);
 
-  const [activeRangeId, setActiveRangeId] = useState<string>(() =>
-    sessions <= 30 ? "1M" : sessions <= 80 ? "3M" : sessions <= 180 ? "6M" : "1Y");
+  // Always defaults to 3M regardless of the `sessions` prop or whatever
+  // range the TradingView embed above happens to be on -- explicit
+  // feedback that the chart looked inconsistent across screenshots taken
+  // on different days because it silently inherited whatever range state
+  // the page's shared range picker (which also drives the embed) was
+  // last left on. This chart picks its own default and stays on it until
+  // a viewer clicks a different range button here.
+  const [activeRangeId, setActiveRangeId] = useState<string>("3M");
 
   // Label-only metadata for the header badge — cheap to recompute separately
   // from the imperative chart build below, which needs the same call anyway.
@@ -334,25 +348,23 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
 
     // ── RSI(14) -- own pane below price/volume, same math as the TradingView
     //    chart's RSI study and the Screener's own RSI reads. Fixed 0-100
-    //    scale. Reference lines, band fill, and the line's own color (blue)
-    //    match TradingView's actual built-in RSI script line-for-line (hline
-    //    70/50/30 at these exact greys, fill() between 70-30 at this exact
-    //    navy tint) -- the one thing that script does that this doesn't is
-    //    the dynamic overbought/oversold gradient glow clipped to the
-    //    70-100/0-30 zones specifically (a fill between the RSI plot and the
-    //    50 baseline, clipped vertically) -- that needs a bespoke canvas
-    //    gradient primitive lightweight-charts has no built-in equivalent
-    //    for; skipped for now as a real scoping call, not an oversight. ──
+    //    scale. Reference lines, band fill, the line's own color (blue), AND
+    //    the dynamic overbought/oversold gradient glow (RsiGradientFill --
+    //    a per-bar vertical gradient between the RSI value and the 70/30
+    //    threshold, opacity increasing deeper into each zone) all match
+    //    TradingView's actual built-in RSI script line-for-line now. ──
     let nextPane = 1;
     if (showRsi) {
       const rsiPane = nextPane++;
       const rsiBand = new BandFill(70, 30, RSI_BAND_FILL);
+      const rsiGradient = new RsiGradientFill(rows.map((r) => r.date as Time), rsiArr);
       const rsiLine = chart.addSeries(LineSeries, {
         color: RSI_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI 14",
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, rsiPane);
       rsiLine.setData(lineData(rsiArr));
       rsiLine.attachPrimitive(rsiBand);
+      rsiLine.attachPrimitive(rsiGradient);
       rsiLine.createPriceLine({ price: 70, color: RSI_UPPER_LOWER_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "70" });
       rsiLine.createPriceLine({ price: 50, color: RSI_MID_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: false, title: "50" });
       rsiLine.createPriceLine({ price: 30, color: RSI_UPPER_LOWER_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "30" });
@@ -387,8 +399,13 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     panes[0]?.setStretchFactor(priceHeight);
     for (let i = 1; i < panes.length; i++) panes[i]?.setStretchFactor(OSC_PANE_HEIGHT);
 
-    // ── Initial view: last `sessions` bars, fully pannable/zoomable beyond it. ──
-    const fromIdx = Math.max(0, rows.length - sessions);
+    // ── Initial view: always the 3M range button's own window (66 bars),
+    //    ignoring the `sessions` prop -- see activeRangeId's own comment on
+    //    why this chart no longer inherits its initial zoom from whatever
+    //    range the page's shared picker (and the embed above) happen to be
+    //    on. Fully pannable/zoomable beyond it regardless. ──
+    const initialSessions = RANGE_BUTTONS.find((r) => r.id === "3M")?.n ?? sessions;
+    const fromIdx = Math.max(0, rows.length - initialSessions);
     const initialRange = { from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time };
     chart.timeScale().setVisibleRange(initialRange);
 

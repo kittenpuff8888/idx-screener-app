@@ -42,6 +42,17 @@ function IconFib() {
     <path d="M3 5h18M3 9.5h13M3 14h9M3 18.5h15" />
   </svg>;
 }
+function IconMeasure() {
+  return <svg viewBox="0 0 24 24" style={ICON} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="9" width="18" height="6" rx="1" transform="rotate(-30 12 12)" />
+    <path d="m9.5 9.8 1 1.7M12 8.6l1 1.7M14.5 7.4l1 1.7" transform="rotate(-30 12 12)" />
+  </svg>;
+}
+function IconText() {
+  return <svg viewBox="0 0 24 24" style={ICON} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 6h14M12 6v13" />
+  </svg>;
+}
 function IconErase() {
   return <svg viewBox="0 0 24 24" style={ICON} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 3 21 7 9 19H5v-4Z" />
@@ -60,6 +71,8 @@ const TOOLS: Array<{ id: ToolKind; icon: () => ReactNode; title: string }> = [
   { id: "hline", icon: IconHLine, title: "Horizontal Line -- click a price level" },
   { id: "rect", icon: IconRect, title: "Rectangle -- click one corner, then the opposite corner" },
   { id: "fib", icon: IconFib, title: "Fibonacci Retracement -- click a start point, then an end point" },
+  { id: "measure", icon: IconMeasure, title: "Measure -- click a start point, then an end point (price %, bar count)" },
+  { id: "text", icon: IconText, title: "Text -- click a point, then type the annotation" },
   { id: "erase", icon: IconErase, title: "Erase -- click a drawing to remove it" },
 ];
 

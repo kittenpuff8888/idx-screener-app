@@ -7,7 +7,9 @@ export type StoredDrawing =
   | { id: string; type: "trend"; a: StoredPoint; b: StoredPoint }
   | { id: string; type: "hline"; price: number }
   | { id: string; type: "fib"; a: StoredPoint; b: StoredPoint }
-  | { id: string; type: "rect"; a: StoredPoint; b: StoredPoint };
+  | { id: string; type: "rect"; a: StoredPoint; b: StoredPoint }
+  | { id: string; type: "measure"; a: StoredPoint; b: StoredPoint; barCount: number }
+  | { id: string; type: "text"; at: StoredPoint; text: string };
 
 const KEY_PREFIX = "idxr:drawings:";
 

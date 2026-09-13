@@ -19,15 +19,20 @@ import { TrendLine } from "./drawings/TrendLine";
 import { HorizontalLine } from "./drawings/HorizontalLine";
 import { FibRetracement } from "./drawings/FibRetracement";
 import { Rectangle } from "./drawings/Rectangle";
+import { Measure } from "./drawings/Measure";
+import { TextAnnotation } from "./drawings/TextAnnotation";
 import { loadDrawings, saveDrawings, type StoredDrawing } from "./drawingStore";
 
-export type ToolKind = "cursor" | "trend" | "hline" | "fib" | "rect" | "erase";
+export type ToolKind = "cursor" | "trend" | "hline" | "fib" | "rect" | "measure" | "text" | "erase";
 export const TOOL_COLOR = "#2962FF";
 
-type TwoPointPrimitive = TrendLine | FibRetracement | Rectangle;
-type Placed = { id: string; stored: StoredDrawing; primitive: TrendLine | HorizontalLine | FibRetracement | Rectangle };
+type TwoPointPrimitive = TrendLine | FibRetracement | Rectangle | Measure;
+type Placed = { id: string; stored: StoredDrawing; primitive: TrendLine | HorizontalLine | FibRetracement | Rectangle | Measure | TextAnnotation };
 type DrawPoint = { time: Time; price: number };
-/** Tool kinds that place via two clicks (start, then end) rather than one. */
+/** Tool kinds that place via two clicks (start, then end) rather than one;
+    "measure" is handled alongside these but separately, since it also
+    needs a live bar-count tracked from `param.logical`, not just the two
+    endpoints the others use. */
 type TwoPointType = "trend" | "fib" | "rect";
 const TWO_POINT: Partial<Record<ToolKind, TwoPointType>> = { trend: "trend", fib: "fib", rect: "rect" };
 
@@ -42,6 +47,7 @@ export class DrawingTool {
   private tool: ToolKind = "cursor";
   private placed: Placed[] = [];
   private pending: DrawPoint | null = null;
+  private pendingLogical: number | null = null;
   private preview: TwoPointPrimitive | null = null;
   private listeners = new Set<() => void>();
 
@@ -68,6 +74,7 @@ export class DrawingTool {
   setTool(kind: ToolKind) {
     this.tool = kind;
     this.pending = null;
+    this.pendingLogical = null;
     this.clearPreview();
     this.emit();
   }
@@ -92,6 +99,8 @@ export class DrawingTool {
     if (stored.type === "trend") primitive = new TrendLine({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
     else if (stored.type === "fib") primitive = new FibRetracement({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
     else if (stored.type === "rect") primitive = new Rectangle({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
+    else if (stored.type === "measure") primitive = new Measure({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, stored.barCount, TOOL_COLOR);
+    else if (stored.type === "text") primitive = new TextAnnotation({ time: stored.at.time as Time, price: stored.at.price }, stored.text, TOOL_COLOR);
     else primitive = new HorizontalLine(stored.price, TOOL_COLOR);
     this.series.attachPrimitive(primitive);
     this.placed.push({ id: stored.id, stored, primitive });
@@ -112,6 +121,34 @@ export class DrawingTool {
       this.place({ id, type: "hline", price });
       this.persist();
       this.setTool("cursor");
+      return;
+    }
+    if (this.tool === "text") {
+      const text = typeof window !== "undefined" ? window.prompt("Annotation text:") : null;
+      if (text && text.trim()) {
+        const id = `text-${Date.now()}`;
+        this.place({ id, type: "text", at: { time: String(point.time), price: point.price }, text: text.trim() });
+        this.persist();
+      }
+      this.setTool("cursor");
+      return;
+    }
+    if (this.tool === "measure") {
+      if (!this.pending) {
+        this.pending = point;
+        this.pendingLogical = param.logical ?? null;
+        this.preview = new Measure(point, point, 0, TOOL_COLOR);
+        this.series.attachPrimitive(this.preview);
+      } else {
+        const barCount = this.pendingLogical != null && param.logical != null ? Math.round(Math.abs(param.logical - this.pendingLogical)) : 0;
+        const id = `measure-${Date.now()}`;
+        this.place({ id, type: "measure", a: { time: String(this.pending.time), price: this.pending.price }, b: { time: String(point.time), price: point.price }, barCount });
+        this.persist();
+        this.pending = null;
+        this.pendingLogical = null;
+        this.clearPreview();
+        this.setTool("cursor");
+      }
       return;
     }
     const twoPointType = TWO_POINT[this.tool];
@@ -141,7 +178,12 @@ export class DrawingTool {
     if (!this.pending || !this.preview || !param.point || param.time == null) return;
     const price = this.series.coordinateToPrice(param.point.y);
     if (price == null) return;
-    this.preview.setEndPoint({ time: param.time, price });
+    if (this.preview instanceof Measure) {
+      const barCount = this.pendingLogical != null && param.logical != null ? Math.round(Math.abs(param.logical - this.pendingLogical)) : 0;
+      this.preview.setEnd({ time: param.time, price }, barCount);
+    } else {
+      this.preview.setEndPoint({ time: param.time, price });
+    }
   };
 
   private eraseNear(px: number, py: number) {
@@ -152,10 +194,14 @@ export class DrawingTool {
         const y = this.series.priceToCoordinate(stored.price);
         return y != null && Math.abs(py - y) <= TOL;
       }
+      if (stored.type === "text") {
+        const x = ts.timeToCoordinate(stored.at.time as Time), y = this.series.priceToCoordinate(stored.at.price);
+        return x != null && y != null && Math.abs(px - x) <= 40 && py <= y + TOL && py >= y - 20;
+      }
       const x1 = ts.timeToCoordinate(stored.a.time as Time), y1 = this.series.priceToCoordinate(stored.a.price);
       const x2 = ts.timeToCoordinate(stored.b.time as Time), y2 = this.series.priceToCoordinate(stored.b.price);
       if (x1 == null || y1 == null || x2 == null || y2 == null) return false;
-      if (stored.type === "trend") return distToSegment(px, py, x1, y1, x2, y2) <= TOL;
+      if (stored.type === "trend" || stored.type === "measure") return distToSegment(px, py, x1, y1, x2, y2) <= TOL;
       if (stored.type === "rect") {
         return px >= Math.min(x1, x2) - TOL && px <= Math.max(x1, x2) + TOL
           && py >= Math.min(y1, y2) - TOL && py <= Math.max(y1, y2) + TOL;
