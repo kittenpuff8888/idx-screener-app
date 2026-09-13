@@ -10,6 +10,7 @@ import {
 import type { OhlcvPayload } from "@/lib/domain/types";
 import { loadVwapAnchor, saveVwapAnchor, subscribeVwapAnchor } from "@/lib/data/chartOverlays";
 import { loadStudies, subscribeStudies } from "@/lib/data/chartStudies";
+import { loadStudySettings, saveStudySettings, subscribeStudySettings, type StudySettings } from "@/lib/data/chartStudySettings";
 import { ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
 import { computeInitialBalance, type IbBand } from "@/lib/indicators/initialBalance";
 import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
@@ -111,6 +112,55 @@ function chip(label: string, color: string): CSSProperties {
   return { fontSize: 8.5, fontWeight: 800, letterSpacing: ".06em", color, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" };
 }
 
+// A study's own "Settings" dialog, TradingView-style -- a gear next to the
+// study's label opens a small popover of its numeric inputs (length/
+// smoothing). Native <details>/<summary> rather than hand-rolled open state
+// + an outside-click listener: it's one dropdown per indicator (five of
+// them), all sharing `name="study-settings"` so opening one closes any
+// other already open (native browser behavior for same-named <details>),
+// with no extra JS to wire up or tear down. `pointer-events:auto` overrides
+// the CORNER_LABEL parent's own `none` (needed so the label text never
+// steals clicks meant for the chart) for just the gear + its popover.
+function StudyGear({ fields, values, onChange }: {
+  fields: Array<{ key: keyof StudySettings; label: string; min: number; max: number }>;
+  values: StudySettings;
+  onChange: (patch: Partial<StudySettings>) => void;
+}) {
+  return (
+    <details name="study-settings" style={{ position: "relative", pointerEvents: "auto", display: "inline-block" }}>
+      <summary
+        title="Settings"
+        style={{ listStyle: "none", cursor: "pointer", display: "inline-flex", width: 14, height: 14, verticalAlign: "-2px", color: "var(--faint)" }}
+      >
+        <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+        </svg>
+      </summary>
+      <div style={{
+        position: "absolute", top: 18, left: 0, zIndex: 20, minWidth: 148,
+        background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8,
+        boxShadow: "var(--sh, var(--shadow))", padding: 10, display: "flex", flexDirection: "column", gap: 6,
+      }}>
+        {fields.map((f) => (
+          <label key={String(f.key)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 10.5, color: "var(--muted)" }}>
+            <span>{f.label}</span>
+            <input
+              type="number" min={f.min} max={f.max} value={values[f.key]}
+              onChange={(e) => {
+                const n = Math.round(Number(e.target.value));
+                if (Number.isNaN(n)) return;
+                onChange({ [f.key]: Math.min(f.max, Math.max(f.min, n)) } as Partial<StudySettings>);
+              }}
+              style={{ width: 52, fontFamily: MONO, fontSize: 11, background: "var(--soft)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 5px" }}
+            />
+          </label>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 // Canvas rendering needs literal colors, not CSS var() references — resolve
 // the site's theme tokens once per (re)build so the chart matches light/dark.
 function themeColors() {
@@ -156,6 +206,7 @@ type Legend = {
 export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: OhlcvPayload | null; symbol?: string; sessions?: number }) {
   const [anchor, setAnchor] = useState<string>("quarter");
   const [studies, setStudies] = useState<string[]>(() => loadStudies());
+  const [settings, setSettings] = useState<StudySettings>(() => loadStudySettings());
   const [legend, setLegend] = useState<Legend | null>(null);
   const [themeTick, setThemeTick] = useState(0);
   const [drawingTool, setDrawingTool] = useState<DrawingTool | null>(null);
@@ -164,6 +215,14 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
 
   useEffect(() => { setAnchor(loadVwapAnchor()); return subscribeVwapAnchor(setAnchor); }, []);
   useEffect(() => subscribeStudies(setStudies), []);
+  useEffect(() => subscribeStudySettings(setSettings), []);
+  function updateSettings(patch: Partial<StudySettings>) {
+    setSettings((prev) => {
+      const next = { ...prev, ...patch };
+      saveStudySettings(next);
+      return next;
+    });
+  }
   useEffect(() => {
     const obs = new MutationObserver(() => setThemeTick((t) => t + 1));
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -246,12 +305,12 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     //    the TradingView chart above; `lineData` drops the NaN warm-up tail
     //    (e.g. SMA 200 needs 200 bars) rather than plotting a fabricated value. ──
     const closes = rows.map((r) => r.close);
-    const ema25Arr = ema(closes, 25);
-    const ema50Arr = ema(closes, 50);
-    const sma200Arr = sma(closes, 200);
-    const rsiArr = rsiWilder(closes, 14);
-    const stochRsiBase = rsiWilder(closes, 10);
-    const stoch = stochOf(stochRsiBase, 10, 3, 3);
+    const ema25Arr = ema(closes, settings.ema25Len);
+    const ema50Arr = ema(closes, settings.ema50Len);
+    const sma200Arr = sma(closes, settings.sma200Len);
+    const rsiArr = rsiWilder(closes, settings.rsiLen);
+    const stochRsiBase = rsiWilder(closes, settings.stochRsiLen);
+    const stoch = stochOf(stochRsiBase, settings.stochLen, settings.stochSmoothK, settings.stochSmoothD);
     const lineData = (vals: number[]) => rows.map((r, i) => ({ time: r.date as Time, value: vals[i] })).filter((p) => !Number.isNaN(p.value));
 
     if (showVolume) {
@@ -262,19 +321,19 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       volume.priceScale().applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
       volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? "rgba(180,184,193,.55)" : "rgba(120,124,134,.55)" })));
       const volMa = chart.addSeries(LineSeries, { color: VWAP_BLUE, lineWidth: 1, priceScaleId: "vol", crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "Volume MA" });
-      volMa.setData(lineData(sma(rows.map((r) => r.volume || 0), 20)));
+      volMa.setData(lineData(sma(rows.map((r) => r.volume || 0), settings.volMaLen)));
     }
 
     if (showEma25) {
-      const ema25Line = chart.addSeries(LineSeries, { color: EMA25_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: "EMA 25" });
+      const ema25Line = chart.addSeries(LineSeries, { color: EMA25_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${settings.ema25Len}` });
       ema25Line.setData(lineData(ema25Arr));
     }
     if (showEma50) {
-      const ema50Line = chart.addSeries(LineSeries, { color: EMA50_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: "EMA 50" });
+      const ema50Line = chart.addSeries(LineSeries, { color: EMA50_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${settings.ema50Len}` });
       ema50Line.setData(lineData(ema50Arr));
     }
     if (showSma200) {
-      const sma200Line = chart.addSeries(LineSeries, { color: SMA200_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: "SMA 200" });
+      const sma200Line = chart.addSeries(LineSeries, { color: SMA200_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `SMA ${settings.sma200Len}` });
       sma200Line.setData(lineData(sma200Arr));
     }
 
@@ -287,7 +346,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     //    the first bar of the next month, which is that same connector
     //    shape. Single yellow throughout (the Pine script uses one
     //    color.yellow for everything, no past/current distinction). ──
-    const bands: IbBand[] = computeInitialBalance(rows, 2);
+    const bands: IbBand[] = computeInitialBalance(rows, settings.ibDays);
     if (showIbhIbl) {
       const hiVals = new Array(rows.length), loVals = new Array(rows.length);
       let bi = 0;
@@ -359,7 +418,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       const rsiBand = new BandFill(70, 30, RSI_BAND_FILL);
       const rsiGradient = new RsiGradientFill(rows.map((r) => r.date as Time), rsiArr);
       const rsiLine = chart.addSeries(LineSeries, {
-        color: RSI_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI 14",
+        color: RSI_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `RSI ${settings.rsiLen}`,
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, rsiPane);
       rsiLine.setData(lineData(rsiArr));
@@ -377,10 +436,10 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     if (showStochRsi) {
       const stochPane = nextPane++;
       const stochBand = new BandFill(80, 20, STOCH_BAND_FILL);
-      const stochD = chart.addSeries(LineSeries, { color: STOCH_D_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI D" }, stochPane);
+      const stochD = chart.addSeries(LineSeries, { color: STOCH_D_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `Stoch RSI D${settings.stochSmoothD}` }, stochPane);
       stochD.setData(lineData(stoch.d));
       const stochK = chart.addSeries(LineSeries, {
-        color: STOCH_K_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI K",
+        color: STOCH_K_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `Stoch RSI K${settings.stochSmoothK}`,
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, stochPane);
       stochK.setData(lineData(stoch.k));
@@ -438,7 +497,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       chart.remove();
       chartRef.current = null;
     };
-  }, [anchor, rows, sessions, themeTick, showEma25, showEma50, showSma200, showVolume, showRsi, showStochRsi, showIbhIbl, showVwap, symbol]);
+  }, [anchor, rows, sessions, themeTick, showEma25, showEma50, showSma200, showVolume, showRsi, showStochRsi, showIbhIbl, showVwap, symbol, settings]);
 
   if (!rows || rows.length < 2) {
     return (
@@ -472,7 +531,13 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
         ) : null}
       </div>
       {legend && showVolume ? (
-        <div style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)", marginBottom: 8 }}>Volume {formatCompact(legend.vol)}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: MONO, fontSize: 10, color: "var(--faint)", marginBottom: 8 }}>
+          <span>Volume {formatCompact(legend.vol)} · MA {settings.volMaLen}</span>
+          <StudyGear
+            values={settings} onChange={updateSettings}
+            fields={[{ key: "volMaLen", label: "MA Length", min: 1, max: 200 }]}
+          />
+        </div>
       ) : <div style={{ marginBottom: 8 }} />}
 
       {/* No permanently-visible IBH/IBL or VWAP chips -- both are toggles in
@@ -507,7 +572,15 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
           TradingView's own chart labels each pane. */}
       {legend && (showIbhIbl || showVwap) ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 14px", fontFamily: MONO, fontSize: 11, marginBottom: 8, color: "var(--muted)" }}>
-          {showIbhIbl && legend.ib ? <span style={{ color: GOLD }}>IBH {formatPrice(legend.ib.ibHigh)} IBL {formatPrice(legend.ib.ibLow)}</span> : null}
+          {showIbhIbl && legend.ib ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: GOLD }}>IBH {formatPrice(legend.ib.ibHigh)} IBL {formatPrice(legend.ib.ibLow)}</span>
+              <StudyGear
+                values={settings} onChange={updateSettings}
+                fields={[{ key: "ibDays", label: "Initial Balance Days", min: 1, max: 10 }]}
+              />
+            </span>
+          ) : null}
           {showVwap && legend.vwap ? (
             <span>
               <span style={{ color: VWAP_BLUE }}>VWAP {formatPrice(legend.vwap.vwap)}</span>{" "}
@@ -527,29 +600,50 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
               crosshair; pointer-events:none so they never block chart interaction. */}
           {legend && (showEma25 || showEma50 || showSma200) ? (
             <div style={{ ...CORNER_LABEL, top: 6 }}>
-              {showEma25 && legend.ema25 != null ? <span>EMA 25 <b style={{ color: EMA25_COLOR }}>{formatPrice(legend.ema25)}</b></span> : null}
-              {showEma50 && legend.ema50 != null ? <span>EMA 50 <b style={{ color: EMA50_COLOR }}>{formatPrice(legend.ema50)}</b></span> : null}
-              {showSma200 && legend.sma200 != null ? <span>SMA 200 <b style={{ color: SMA200_COLOR }}>{formatPrice(legend.sma200)}</b></span> : null}
+              {showEma25 && legend.ema25 != null ? <span>EMA {settings.ema25Len} <b style={{ color: EMA25_COLOR }}>{formatPrice(legend.ema25)}</b></span> : null}
+              {showEma50 && legend.ema50 != null ? <span>EMA {settings.ema50Len} <b style={{ color: EMA50_COLOR }}>{formatPrice(legend.ema50)}</b></span> : null}
+              {showSma200 && legend.sma200 != null ? <span>SMA {settings.sma200Len} <b style={{ color: SMA200_COLOR }}>{formatPrice(legend.sma200)}</b></span> : null}
+              <StudyGear
+                values={settings} onChange={updateSettings}
+                fields={[
+                  ...(showEma25 ? [{ key: "ema25Len" as const, label: "EMA (blue) Length", min: 1, max: 500 }] : []),
+                  ...(showEma50 ? [{ key: "ema50Len" as const, label: "EMA (red) Length", min: 1, max: 500 }] : []),
+                  ...(showSma200 ? [{ key: "sma200Len" as const, label: "SMA (orange) Length", min: 1, max: 500 }] : []),
+                ]}
+              />
             </div>
           ) : null}
           {showRsi && legend?.rsi != null ? (
             <div style={{ ...CORNER_LABEL, top: rsiTop + 6 }}>
-              RSI 14 close <b style={{ color: RSI_COLOR }}>{fmtOsc(legend.rsi)}</b>
+              RSI {settings.rsiLen} close <b style={{ color: RSI_COLOR }}>{fmtOsc(legend.rsi)}</b>
+              <StudyGear
+                values={settings} onChange={updateSettings}
+                fields={[{ key: "rsiLen", label: "RSI Length", min: 2, max: 100 }]}
+              />
             </div>
           ) : null}
           {showStochRsi && (legend?.stochK != null || legend?.stochD != null) ? (
             <div style={{ ...CORNER_LABEL, top: stochTop + 6 }}>
-              Stoch RSI 3 3 10 10 close{" "}
+              Stoch RSI {settings.stochSmoothK} {settings.stochSmoothD} {settings.stochRsiLen} {settings.stochLen} close{" "}
               {legend?.stochK != null ? <b style={{ color: STOCH_K_COLOR }}>{fmtOsc(legend.stochK)}</b> : null}{" "}
               {legend?.stochD != null ? <b style={{ color: STOCH_D_COLOR }}>{fmtOsc(legend.stochD)}</b> : null}
+              <StudyGear
+                values={settings} onChange={updateSettings}
+                fields={[
+                  { key: "stochRsiLen", label: "RSI Length", min: 2, max: 100 },
+                  { key: "stochLen", label: "Stochastic Length", min: 2, max: 100 },
+                  { key: "stochSmoothK", label: "Smooth K", min: 1, max: 50 },
+                  { key: "stochSmoothD", label: "Smooth D", min: 1, max: 50 },
+                ]}
+              />
             </div>
           ) : null}
         </div>
       </div>
 
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
-        Every overlay/oscillator above — EMA/SMA/RSI/Stoch RSI/Volume, plus Monthly IBH~IBL and Anchored VWAP — comes from the ƒx Indicators picker (top right); the same picker and saved selection as the TradingView chart above, so a study switched off there stays off here too.
-        {showIbhIbl ? " Initial Balance = the high–low range of each month's first 2 trading sessions, held for the rest of the month, one continuous staircase across months (matches the “Monthly IBH ~ IBL” Pine script's box + connector lines)." : ""}
+        Every overlay/oscillator above — EMA/SMA/RSI/Stoch RSI/Volume, plus Monthly IBH~IBL and Anchored VWAP — comes from the ƒx Indicators picker (top right); the same picker and saved selection as the TradingView chart above, so a study switched off there stays off here too. Each active study's own gear icon opens its Settings (length/smoothing), same as TradingView's own per-study dialog.
+        {showIbhIbl ? ` Initial Balance = the high–low range of each month's first ${settings.ibDays} trading session${settings.ibDays === 1 ? "" : "s"}, held for the rest of the month, one continuous staircase across months (matches the “Monthly IBH ~ IBL” Pine script's box + connector lines).` : ""}
         {showVwap ? ` Anchored VWAP on hlc3·volume, reset each ${({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (each period is its own line, breaking cleanly at the reset), with ±1σ/±2σ bands for the current period and center/±1σ for the previous one — every label shows price and % from the latest close.` : ""}
         Left toolbar: Trend Line, Rectangle, and Fib Retracement take two clicks (start, then end), Horizontal Line takes one; Erase removes whatever drawing you click on next; CLR removes all of them. Drawings save per ticker in this browser only.
         Computed from our published daily EOD bars, {rows.length} sessions total — drag to pan, scroll/pinch to zoom, hover for the readout above.
