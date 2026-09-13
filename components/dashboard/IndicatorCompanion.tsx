@@ -11,16 +11,23 @@ import type { OhlcvPayload } from "@/lib/domain/types";
 import { loadVwapAnchor, saveVwapAnchor, subscribeVwapAnchor } from "@/lib/data/chartOverlays";
 import { computeInitialBalance, type IbBand } from "@/lib/indicators/initialBalance";
 import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
+import { ema, sma, rsiWilder, stochOf } from "@/lib/indicators/oscillators";
 import { formatPrice, formatCompact } from "@/lib/format/number";
 
-// Companion chart for the two custom overlays that can't run in the
-// TradingView embed (Pine only executes on tradingview.com): monthly
-// Initial Balance (IBH/IBL) and Anchored VWAP + σ bands. Always drawn, for
-// every ticker — no on/off toggle (the ƒx picker on the price chart above
-// controls TradingView's own built-in studies only). Built on TradingView's
-// own lightweight-charts engine — same panning, zoom, and hover-legend feel
-// as the embed. Honest about gaps: no bars ⇒ an explicit note, never a
-// fabricated series.
+// Companion chart for two things: (1) the custom overlays that can't run in
+// the TradingView embed at all (Pine only executes on tradingview.com) --
+// monthly Initial Balance (IBH/IBL) and Anchored VWAP + σ bands; and (2) the
+// same 6 built-in studies the TradingView embed shows (`lib/data/chartStudies.ts`
+// -- EMA 25, EMA 50, SMA 200, Volume, RSI, Stoch RSI 10/10/3/3), computed via
+// `lib/indicators/oscillators.ts`, which mirrors the Python backend's own
+// rsi_wilder/stoch_of exactly -- so this chart, the TradingView chart above,
+// and the Screener's own signals all read the same numbers for the same
+// ticker/day. Merged here (not a toggle) because the TV embed can't run
+// custom Pine at all and can't set per-study colors either; this chart can do
+// both, on TradingView's own open-source lightweight-charts engine -- same
+// panning/zoom/hover-legend feel as the embed. Always drawn, for every
+// ticker -- no on/off toggle. Honest about gaps: no bars ⇒ an explicit note,
+// never a fabricated series.
 
 const MONO = "var(--font-mono)";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r, 12px)", boxShadow: "var(--sh, var(--shadow))", padding: "14px 16px", marginBottom: 14 };
@@ -29,6 +36,20 @@ const GOLD = "#D6A100";
 const VWAP_BLUE = "#2962FF";
 const VWAP_GREEN = "#16A34A";
 const VWAP_CYAN = "#0891B2";
+// Same colors requested for the TradingView embed's EMA/SMA/Stoch RSI studies
+// (not achievable there -- per-study color is not overridable on that embed,
+// see the note in chartStudies.ts) applied here instead, where full control
+// is possible.
+const EMA25_COLOR = "#2962FF";
+const EMA50_COLOR = "#FF5050";
+const SMA200_COLOR = "#FF9800";
+const RSI_COLOR = "#7E57C2";
+const STOCH_K_COLOR = "#2962FF";
+const STOCH_D_COLOR = "#FF5050";
+const STOCH_BAND_COLOR = "#dbdbdb";
+// Fixed pixel height for each oscillator sub-pane (RSI, Stoch RSI); the price
+// pane above them keeps `priceHeight` and takes whatever's left of the total.
+const OSC_PANE_HEIGHT = 110;
 
 // Caps series count for very long histories under a fine anchor (e.g. weekly
 // VWAP over years, or IB bands over many years) — keeps the chart responsive
@@ -66,7 +87,20 @@ function lineTitle(label: string, price: number, close: number | null): string {
   return `${label} · ${formatPrice(price)} · ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
 }
 
-type Legend = { date: string; o: number; h: number; l: number; c: number; vol: number; ib: IbBand | null; vwap: AvwapPoint | null };
+// RSI/Stoch RSI are bounded [0,100] by definition; floating-point rounding in
+// the underlying series (e.g. price exactly at the trailing low) can land a
+// hair on the wrong side of 0 or 100 -- clamp for display only, the same
+// value either way.
+function fmtOsc(v: number): string {
+  return Math.min(100, Math.max(0, v)).toFixed(1);
+}
+
+type Legend = {
+  date: string; o: number; h: number; l: number; c: number; vol: number;
+  ib: IbBand | null; vwap: AvwapPoint | null;
+  ema25: number | null; ema50: number | null; sma200: number | null;
+  rsi: number | null; stochK: number | null; stochD: number | null;
+};
 
 export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: OhlcvPayload | null; symbol?: string; sessions?: number }) {
   const [anchor, setAnchor] = useState<string>("quarter");
@@ -84,6 +118,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
 
   const rows = ohlcv?.rows;
   const priceHeight = 340;
+  const totalHeight = priceHeight + OSC_PANE_HEIGHT * 2;
 
   // Label-only metadata for the header badge — cheap to recompute separately
   // from the imperative chart build below, which needs the same call anyway.
@@ -120,6 +155,25 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     const volume = chart.addSeries(HistogramSeries, { priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
     volume.priceScale().applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
     volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? "rgba(22,163,74,.35)" : "rgba(220,38,38,.35)" })));
+
+    // ── EMA 25 / EMA 50 / SMA 200 -- same 3 overlay studies (and math) as
+    //    the TradingView chart above; `lineData` drops the NaN warm-up tail
+    //    (e.g. SMA 200 needs 200 bars) rather than plotting a fabricated value. ──
+    const closes = rows.map((r) => r.close);
+    const ema25Arr = ema(closes, 25);
+    const ema50Arr = ema(closes, 50);
+    const sma200Arr = sma(closes, 200);
+    const rsiArr = rsiWilder(closes, 14);
+    const stochRsiBase = rsiWilder(closes, 10);
+    const stoch = stochOf(stochRsiBase, 10, 3, 3);
+    const lineData = (vals: number[]) => rows.map((r, i) => ({ time: r.date as Time, value: vals[i] })).filter((p) => !Number.isNaN(p.value));
+
+    const ema25Line = chart.addSeries(LineSeries, { color: EMA25_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "EMA 25" });
+    ema25Line.setData(lineData(ema25Arr));
+    const ema50Line = chart.addSeries(LineSeries, { color: EMA50_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "EMA 50" });
+    ema50Line.setData(lineData(ema50Arr));
+    const sma200Line = chart.addSeries(LineSeries, { color: SMA200_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "SMA 200" });
+    sma200Line.setData(lineData(sma200Arr));
 
     // ── Initial Balance bands — one short 2-point step line per month so
     //    each period's band draws independently (no cross-month connector). ──
@@ -178,6 +232,42 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       }
     });
 
+    // ── RSI(14) -- own pane below price/volume, same math as the TradingView
+    //    chart's RSI study and the Screener's own RSI reads. Fixed 0-100
+    //    scale, with 70/30 reference lines (TradingView's own RSI defaults). ──
+    const rsiLine = chart.addSeries(LineSeries, {
+      color: RSI_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI 14",
+      autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
+    }, 1);
+    rsiLine.setData(lineData(rsiArr));
+    rsiLine.createPriceLine({ price: 70, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "70" });
+    rsiLine.createPriceLine({ price: 30, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "30" });
+
+    // ── Stochastic RSI (10,10,3,3) -- own pane, same math as the TradingView
+    //    chart's Stoch RSI study: %K/%D over an RSI(10) base. Upper/Lower
+    //    Band mirror TradingView's own Stoch RSI style dialog (flat lines at
+    //    80/20). ──
+    const stochD = chart.addSeries(LineSeries, { color: STOCH_D_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI D" }, 2);
+    stochD.setData(lineData(stoch.d));
+    const stochK = chart.addSeries(LineSeries, {
+      color: STOCH_K_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI K",
+      autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
+    }, 2);
+    stochK.setData(lineData(stoch.k));
+    stochK.createPriceLine({ price: 80, color: STOCH_BAND_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "Upper Band" });
+    stochK.createPriceLine({ price: 20, color: STOCH_BAND_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "Lower Band" });
+
+    // Price pane keeps roughly `priceHeight`, each oscillator pane roughly
+    // `OSC_PANE_HEIGHT`, by weighting stretch factors with those same pixel
+    // numbers (relative, not absolute) -- `setHeight` looked equivalent but
+    // its fixed-pixel push gets silently overwritten by the chart's own
+    // initial layout pass right after pane creation; stretch factors are
+    // what that layout pass itself honors on every resize.
+    const panes = chart.panes();
+    panes[0]?.setStretchFactor(priceHeight);
+    panes[1]?.setStretchFactor(OSC_PANE_HEIGHT);
+    panes[2]?.setStretchFactor(OSC_PANE_HEIGHT);
+
     // ── Initial view: last `sessions` bars, fully pannable/zoomable beyond it. ──
     const fromIdx = Math.max(0, rows.length - sessions);
     const initialRange = { from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time };
@@ -185,10 +275,15 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
 
     // ── Live hover legend — TradingView-style readout that updates with the
     //    crosshair; defaults to the last bar when the pointer isn't over the chart. ──
+    const nz = (v: number | undefined) => (v == null || Number.isNaN(v) ? null : v);
     const legendAt = (idx: number): Legend => {
       const r = rows[idx];
       const ib = bands.find((b) => idx >= b.startIdx && idx <= Math.min(b.endIdx, rows.length - 1)) ?? null;
-      return { date: r.date, o: r.open, h: r.high, l: r.low, c: r.close, vol: r.volume, ib, vwap: vw.points[idx] ?? null };
+      return {
+        date: r.date, o: r.open, h: r.high, l: r.low, c: r.close, vol: r.volume, ib, vwap: vw.points[idx] ?? null,
+        ema25: nz(ema25Arr[idx]), ema50: nz(ema50Arr[idx]), sma200: nz(sma200Arr[idx]),
+        rsi: nz(rsiArr[idx]), stochK: nz(stoch.k[idx]), stochD: nz(stoch.d[idx]),
+      };
     };
     setLegend(legendAt(rows.length - 1));
     const onMove = (param: MouseEventParams) => {
@@ -227,6 +322,8 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
         <span style={KICKER}>CUSTOM OVERLAYS</span>
         <span style={chip("IBH / IBL", GOLD)}>IBH / IBL</span>
         <span style={chip("VWAP", VWAP_BLUE)}>A-VWAP{vwapKeyLabel ? ` · ${vwapKeyLabel}` : ""}</span>
+        <span style={chip("EMA/SMA", EMA25_COLOR)}>EMA 25 · EMA 50 · SMA 200</span>
+        <span style={chip("Oscillators", RSI_COLOR)}>RSI · Stoch RSI</span>
         <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
           {VWAP_ANCHORS.map((a) => (
             <button key={a.id} type="button" title={`Anchor VWAP ${a.label}`} onClick={() => { setAnchor(a.id); saveVwapAnchor(a.id); }}
@@ -254,13 +351,28 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
               <span style={{ color: VWAP_CYAN }}>±2σ {formatPrice(legend.vwap.l2)}–{formatPrice(legend.vwap.u2)}</span>
             </span>
           ) : null}
+          {legend.ema25 != null || legend.ema50 != null || legend.sma200 != null ? (
+            <span>
+              {legend.ema25 != null ? <span style={{ color: EMA25_COLOR }}>EMA25 {formatPrice(legend.ema25)} </span> : null}
+              {legend.ema50 != null ? <span style={{ color: EMA50_COLOR }}>EMA50 {formatPrice(legend.ema50)} </span> : null}
+              {legend.sma200 != null ? <span style={{ color: SMA200_COLOR }}>SMA200 {formatPrice(legend.sma200)}</span> : null}
+            </span>
+          ) : null}
+          {legend.rsi != null ? <span style={{ color: RSI_COLOR }}>RSI {fmtOsc(legend.rsi)}</span> : null}
+          {legend.stochK != null || legend.stochD != null ? (
+            <span>
+              {legend.stochK != null ? <span style={{ color: STOCH_K_COLOR }}>K {fmtOsc(legend.stochK)} </span> : null}
+              {legend.stochD != null ? <span style={{ color: STOCH_D_COLOR }}>D {fmtOsc(legend.stochD)}</span> : null}
+            </span>
+          ) : null}
         </div>
       ) : null}
 
-      <div ref={containerRef} style={{ width: "100%", height: priceHeight, borderRadius: 8, overflow: "hidden" }} />
+      <div ref={containerRef} style={{ width: "100%", height: totalHeight, borderRadius: 8, overflow: "hidden" }} />
 
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
         Initial Balance = the high–low range of each month&apos;s first 2 trading sessions, held for the rest of the month (bright gold = current month). Anchored VWAP on hlc3·volume, reset each {({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (each period is its own line, breaking cleanly at the reset), with ±1σ/±2σ bands for the current period and center/±1σ for the previous one — every label shows price and % from the latest close.
+        Below the price pane: RSI (14) and Stochastic RSI (10, 10, 3, 3) in their own panes, the same indicators and math as the TradingView chart above and the Screener&apos;s own signals.
         Computed from our published daily EOD bars, {rows.length} sessions total — drag to pan, scroll/pinch to zoom, hover for the readout above.
       </div>
     </div>
