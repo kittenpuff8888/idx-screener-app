@@ -15,6 +15,8 @@ import { computeInitialBalance, type IbBand } from "@/lib/indicators/initialBala
 import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
 import { ema, sma, rsiWilder, stochOf } from "@/lib/indicators/oscillators";
 import { formatPrice, formatCompact, formatPercent } from "@/lib/format/number";
+import { DrawingTool } from "@/lib/charting/DrawingTool";
+import { ChartToolbar } from "@/components/dashboard/ChartToolbar";
 
 // The site's own chart -- built on TradingView's open-source lightweight-charts
 // engine (not the restricted embed above it), so it's the one place both
@@ -135,6 +137,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
   const [studies, setStudies] = useState<string[]>(() => loadStudies());
   const [legend, setLegend] = useState<Legend | null>(null);
   const [themeTick, setThemeTick] = useState(0);
+  const [drawingTool, setDrawingTool] = useState<DrawingTool | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
@@ -203,6 +206,13 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       upColor: colors.up, downColor: colors.down, borderVisible: false, wickUpColor: colors.up, wickDownColor: colors.down,
     });
     candles.setData(rows.map((r) => ({ time: r.date as Time, open: r.open, high: r.high, low: r.low, close: r.close })));
+
+    // Drawings persist per ticker (localStorage) -- a fresh DrawingTool per
+    // chart build (this effect re-runs on theme/study/anchor changes, which
+    // tear down and recreate the whole chart+series) just reloads the same
+    // saved drawings onto the new series, indistinguishably to the user.
+    const drawing = new DrawingTool(chart, candles, symbol || "");
+    setDrawingTool(drawing);
 
     if (showVolume) {
       const volume = chart.addSeries(HistogramSeries, { priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
@@ -362,10 +372,12 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
 
     return () => {
       chart.unsubscribeCrosshairMove(onMove);
+      drawing.destroy();
+      setDrawingTool(null);
       chart.remove();
       chartRef.current = null;
     };
-  }, [anchor, rows, sessions, themeTick, showEma25, showEma50, showSma200, showVolume, showRsi, showStochRsi]);
+  }, [anchor, rows, sessions, themeTick, showEma25, showEma50, showSma200, showVolume, showRsi, showStochRsi, symbol]);
 
   if (!rows || rows.length < 2) {
     return (
@@ -437,35 +449,39 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
         </div>
       ) : null}
 
-      <div style={{ position: "relative" }}>
-        <div ref={containerRef} style={{ width: "100%", height: totalHeight, borderRadius: 8, overflow: "hidden" }} />
-        {/* Pane-corner overlays -- TradingView-style "{study} {source} {value}"
-            labels pinned to each pane's own top-left corner, updating with the
-            crosshair; pointer-events:none so they never block chart interaction. */}
-        {legend ? (
-          <div style={{ ...CORNER_LABEL, top: 6, lineHeight: 1.7 }}>
-            {showEma25 && legend.ema25 != null ? <div>EMA 25 close <b style={{ color: EMA25_COLOR }}>{formatPrice(legend.ema25)}</b></div> : null}
-            {showEma50 && legend.ema50 != null ? <div>EMA 50 close <b style={{ color: EMA50_COLOR }}>{formatPrice(legend.ema50)}</b></div> : null}
-            {showSma200 && legend.sma200 != null ? <div>SMA 200 close <b style={{ color: SMA200_COLOR }}>{formatPrice(legend.sma200)}</b></div> : null}
-          </div>
-        ) : null}
-        {showRsi && legend?.rsi != null ? (
-          <div style={{ ...CORNER_LABEL, top: rsiTop + 6 }}>
-            RSI 14 close <b style={{ color: RSI_COLOR }}>{fmtOsc(legend.rsi)}</b>
-          </div>
-        ) : null}
-        {showStochRsi && (legend?.stochK != null || legend?.stochD != null) ? (
-          <div style={{ ...CORNER_LABEL, top: stochTop + 6 }}>
-            Stoch RSI 3 3 10 10 close{" "}
-            {legend?.stochK != null ? <b style={{ color: STOCH_K_COLOR }}>{fmtOsc(legend.stochK)}</b> : null}{" "}
-            {legend?.stochD != null ? <b style={{ color: STOCH_D_COLOR }}>{fmtOsc(legend.stochD)}</b> : null}
-          </div>
-        ) : null}
+      <div style={{ display: "flex", alignItems: "stretch" }}>
+        <ChartToolbar tool={drawingTool} height={totalHeight} />
+        <div style={{ position: "relative", flex: "1 1 auto", minWidth: 0 }}>
+          <div ref={containerRef} style={{ width: "100%", height: totalHeight, borderRadius: 8, overflow: "hidden" }} />
+          {/* Pane-corner overlays -- TradingView-style "{study} {source} {value}"
+              labels pinned to each pane's own top-left corner, updating with the
+              crosshair; pointer-events:none so they never block chart interaction. */}
+          {legend ? (
+            <div style={{ ...CORNER_LABEL, top: 6, lineHeight: 1.7 }}>
+              {showEma25 && legend.ema25 != null ? <div>EMA 25 close <b style={{ color: EMA25_COLOR }}>{formatPrice(legend.ema25)}</b></div> : null}
+              {showEma50 && legend.ema50 != null ? <div>EMA 50 close <b style={{ color: EMA50_COLOR }}>{formatPrice(legend.ema50)}</b></div> : null}
+              {showSma200 && legend.sma200 != null ? <div>SMA 200 close <b style={{ color: SMA200_COLOR }}>{formatPrice(legend.sma200)}</b></div> : null}
+            </div>
+          ) : null}
+          {showRsi && legend?.rsi != null ? (
+            <div style={{ ...CORNER_LABEL, top: rsiTop + 6 }}>
+              RSI 14 close <b style={{ color: RSI_COLOR }}>{fmtOsc(legend.rsi)}</b>
+            </div>
+          ) : null}
+          {showStochRsi && (legend?.stochK != null || legend?.stochD != null) ? (
+            <div style={{ ...CORNER_LABEL, top: stochTop + 6 }}>
+              Stoch RSI 3 3 10 10 close{" "}
+              {legend?.stochK != null ? <b style={{ color: STOCH_K_COLOR }}>{fmtOsc(legend.stochK)}</b> : null}{" "}
+              {legend?.stochD != null ? <b style={{ color: STOCH_D_COLOR }}>{fmtOsc(legend.stochD)}</b> : null}
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
         Initial Balance = the high–low range of each month&apos;s first 2 trading sessions, held for the rest of the month (bright gold = current month). Anchored VWAP on hlc3·volume, reset each {({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (each period is its own line, breaking cleanly at the reset), with ±1σ/±2σ bands for the current period and center/±1σ for the previous one — every label shows price and % from the latest close.
         EMA/SMA/RSI/Stoch RSI above come from the ƒx Indicators picker (top right) — the same picker and saved selection as the TradingView chart above.
+        Left toolbar: Trend Line and Fib Retracement take two clicks (start, then end), Horizontal Line takes one; Erase removes whatever drawing you click on next; CLR removes all of them. Drawings save per ticker in this browser only.
         Computed from our published daily EOD bars, {rows.length} sessions total — drag to pan, scroll/pinch to zoom, hover for the readout above.
       </div>
     </div>
