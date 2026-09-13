@@ -11,20 +11,44 @@ ticker:
                          marketProfile.ibh/ibl -- IDX_Screener.py's existing
                          monthly-IB computation, not re-derived here).
   rsiDivBullish       -- RSI(10, EMA-smoothed) regular bullish divergence:
-                         price Lower Low + RSI Higher Low, both pivots at a
-                         genuine oversold extreme (RSI<30). Reversal-style:
-                         both pivots must be confirmed swing lows, so
-                         confirmation lags the more recent pivot by
+                         CLOSE makes a Lower Low while RSI makes a Higher
+                         Low, both pivots at a genuine oversold extreme
+                         (RSI<30). Candidate swing lows are grouped into
+                         lifecycle clusters first (nearby pivots within
+                         cluster_gap bars collapse to one event, its
+                         representative = the single lowest-RSI bar in the
+                         cluster) before picking the last two -- avoids
+                         treating several noisy wiggles inside one dip as
+                         separate pivots (ported from the clustering
+                         approach in IDX_Screener.py's divergence_signals(),
+                         adapted to gate on CLOSE instead of High/Low).
+                         Reversal-style: both pivots must be confirmed swing
+                         lows, so confirmation lags the more recent pivot by
                          swing_window bars (pivot date shown is that more
                          recent pivot, not today).
   rsiDivHiddenBullish -- same RSI, hidden-bullish (continuation) case:
-                         price Higher Low + RSI Lower Low, with the earlier
-                         pivot's RSI required to start from a healthy
-                         50-70 band (not itself weak/oversold), pivot no
-                         more than ~4 weeks back. Continuation-style: only
-                         the earlier pivot needs confirming; today's own
-                         bar is compared directly, so this confirms same-day
-                         (pivot date shown is the earlier reference point).
+                         CLOSE makes a Higher Low while RSI makes a Lower
+                         Low, with the earlier pivot's RSI required to start
+                         from a healthy 50-70 band (not itself weak or
+                         oversold), pivot no more than ~4 weeks back.
+                         Candidates are filtered to that band FIRST, then
+                         clustered (same lifecycle-cluster idea as above,
+                         representative = lowest RSI among the
+                         already-in-band bars) -- clustering AFTER the band
+                         filter, not before: clustering raw swing lows first
+                         and then band-testing only the cluster's single
+                         deepest point (IDX_Screener.py's own order, fine for
+                         its single-threshold <30/>70 gates) silently drops
+                         genuinely in-band bars whenever they're chained to a
+                         deeper, out-of-band dip elsewhere in the same
+                         cluster -- confirmed live: it made BEST's own
+                         13Aug->26Aug case (this feature's original reason
+                         for existing) disappear, chained into a 24-bar
+                         cluster dominated by a 29 Jul RSI-30 dip. Continuation-
+                         style: only the earlier pivot needs confirming;
+                         today's own bar is compared directly, so this
+                         confirms same-day (pivot date shown is the earlier
+                         reference point).
   breakSma200         -- today's close crosses above SMA200 (yesterday's
                          close was at or below it).
   emaGoldenCross      -- EMA25 crosses above EMA50 today (yesterday EMA25
@@ -179,8 +203,24 @@ def ib_break(hist: pd.DataFrame, ibh: float | None, ibl: float | None) -> bool:
     return bool(was_middling and breaks_today)
 
 
-def regular_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, min_separation=4, max_pivot_gap=60, price_tol=0.0075, rsi_tol=2.0, max_last_swing_age=20, oversold=30.0) -> dict | None:
-    """Regular Bullish RSI(10, EMA) divergence: price makes a LOWER low
+def _cluster_positions(positions: list[int], max_gap: int) -> list[list[int]]:
+    """Merge pivot positions that are within max_gap bars of the previous
+    one in the run into a single lifecycle cluster -- several small wiggles
+    inside one dip/rally count as one event, not several independent
+    pivots. Ported from IDX_Screener.py's divergence_signals()."""
+    if not positions:
+        return []
+    clusters = [[positions[0]]]
+    for p in positions[1:]:
+        if p - clusters[-1][-1] <= max_gap:
+            clusters[-1].append(p)
+        else:
+            clusters.append([p])
+    return clusters
+
+
+def regular_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, min_separation=4, max_pivot_gap=60, cluster_gap=3, price_tol=0.0075, rsi_tol=2.0, max_last_swing_age=20, oversold=30.0) -> dict | None:
+    """Regular Bullish RSI(10, EMA) divergence: CLOSE makes a LOWER low
     while RSI makes a HIGHER low, both pivots at a genuine oversold extreme
     (RSI < oversold) -- the classic reversal-style pattern (see
     hidden_bullish_divergence() below for the shallow-pullback variant,
@@ -201,11 +241,17 @@ def regular_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, 
     doesn't fit that shape the way it does for hidden-bullish's
     continuation pattern.
 
-    Deliberately unclustered (see hidden_bullish_divergence() for why
-    clustering is the wrong tool here too): filtering candidate pivots to
-    oversold-only (RSI<oversold) before picking the last two achieves the
-    "genuine oversold extreme" requirement without a clustering step that
-    can chain unrelated dips together and swallow the more recent one.
+    Candidate oversold swing lows are grouped into lifecycle clusters
+    (ported from IDX_Screener.py's divergence_signals()) before picking the
+    last two, representative = the single lowest-RSI bar per cluster --
+    avoids treating several noisy wiggles inside one dip as separate
+    pivots. cluster_gap is deliberately small (3, not the reference's 6):
+    tested live, gap=6 transitively chains unrelated dips together into one
+    giant cluster and swallows the more recent one -- confirmed on real
+    data, a 24-bar chain from 13 Jul to 13 Aug whose deepest point (29 Jul,
+    RSI 30) sits below the oversold gate wiped out an otherwise-valid
+    13 Aug cluster entirely. gap<=3 avoids that chaining on every case
+    checked so far while still merging genuinely-adjacent noise.
     max_pivot_gap (matching the ~60-bar range a standard RSI-divergence
     indicator's built-in lookback typically uses) caps how far apart the
     two compared pivots may be, so a comparison spanning unrelated market
@@ -215,16 +261,19 @@ def regular_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, 
     if hist is None or hist.empty or len(hist) < 25:
         return None
     df = hist.tail(lookback)
-    low = df["Low"].astype(float)
+    close = df["Close"].astype(float).values
     r = rsi_ema(df["Close"].astype(float), 10).values
 
-    pos = [i for i in _swing_low_positions(r, swing_window) if not np.isnan(r[i]) and r[i] < oversold]
-    if len(pos) < 2:
+    os_pos = [i for i in _swing_low_positions(r, swing_window) if not np.isnan(r[i]) and r[i] < oversold]
+    if len(os_pos) < 1:
         return None
-    i1, i2 = pos[-2], pos[-1]
+    reps = [min(cl, key=lambda i: r[i]) for cl in _cluster_positions(os_pos, cluster_gap)]
+    if len(reps) < 2:
+        return None
+    i1, i2 = reps[-2], reps[-1]
     if (i2 - i1) < min_separation or (i2 - i1) > max_pivot_gap or (len(df) - 1 - i2) > max_last_swing_age:
         return None
-    p1, p2 = float(low.iloc[i1]), float(low.iloc[i2])
+    p1, p2 = float(close[i1]), float(close[i2])
     r1, r2 = float(r[i1]), float(r[i2])
     if any(np.isnan(x) for x in (p1, p2, r1, r2)):
         return None
@@ -268,13 +317,13 @@ def _swing_low_positions(vals: np.ndarray, w: int) -> list[int]:
     return pos
 
 
-def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, max_pivot_gap=20, price_tol=0.0075, rsi_tol=2.0, rsi_band_lo=50.0, rsi_band_hi=70.0) -> dict | None:
-    """Hidden bullish RSI(10, EMA) divergence: price makes a HIGHER low
+def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, max_pivot_gap=20, cluster_gap=3, price_tol=0.0075, rsi_tol=2.0, rsi_band_lo=50.0, rsi_band_hi=70.0) -> dict | None:
+    """Hidden bullish RSI(10, EMA) divergence: CLOSE makes a HIGHER low
     while RSI makes a LOWER low -- an uptrend-continuation pattern that, by
     definition, happens on a shallow pullback, not at a deep oversold
     extreme. Deliberately no RSI<30 gate -- real hidden-bullish cases sit
     with RSI in the 40s-50s. Validated against a real example: BEST
-    2026-08-13 (RSI 51.8, low 109) -> 2026-08-26 (RSI 47.5, low 117), 7
+    2026-08-13 (RSI 51.8, close 109) -> 2026-08-26 (RSI 47.5, close 117), 7
     bars apart -- price Higher Low + RSI Lower Low.
 
     i2 is always the LAST bar (today) directly, same reasoning as
@@ -295,6 +344,21 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, m
     already-weak trend, not a healthy one taking a shallow dip) would
     incorrectly pass just because r2 < r1.
 
+    Candidates are filtered to the 50-70 band FIRST, then clustered
+    (representative = lowest RSI among the already-in-band bars in that
+    cluster) -- clustering before the band filter instead (cluster all raw
+    swing lows, then band-test only each cluster's single deepest point,
+    IDX_Screener.py's own order for its single-threshold <30/>70 gates)
+    silently drops genuinely in-band bars whenever a nearby deeper,
+    out-of-band dip chains onto the same cluster and becomes its
+    representative. Confirmed live: with band-filter-after-clustering and
+    the reference's own cluster_gap=6, BEST's 13 Aug bar (RSI 51.8, in-band)
+    chained into a 24-bar cluster (13 Jul-13 Aug) whose deepest point (29
+    Jul, RSI 30) is NOT in-band, so the whole cluster -- 13 Aug included --
+    got dropped and this signal's original validation case disappeared.
+    Filtering to the band before clustering can't lose an individually
+    valid bar that way.
+
     max_pivot_gap is much tighter than regular_bullish_divergence()'s (20
     bars, ~4 weeks, vs 60): once 13 Aug is excluded as PYFA's anchor by the
     band gate above, the candidate search falls back to the next-eligible
@@ -305,19 +369,20 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, m
     if hist is None or hist.empty or len(hist) < 25:
         return None
     df = hist.tail(lookback)
-    low = df["Low"].astype(float)
+    close = df["Close"].astype(float).values
     r = rsi_ema(df["Close"].astype(float), 10).values
     i2 = len(df) - 1
     if np.isnan(r[i2]):
         return None
 
-    candidates = [i for i in _swing_low_positions(r, swing_window) if not np.isnan(r[i]) and rsi_band_lo < r[i] < rsi_band_hi]
-    if not candidates:
+    band_pos = [i for i in _swing_low_positions(r, swing_window) if not np.isnan(r[i]) and rsi_band_lo < r[i] < rsi_band_hi]
+    if not band_pos:
         return None
-    i1 = candidates[-1]
+    last_cluster = _cluster_positions(band_pos, cluster_gap)[-1]
+    i1 = min(last_cluster, key=lambda i: r[i])
     if (i2 - i1) > max_pivot_gap:
         return None
-    p1, p2 = float(low.iloc[i1]), float(low.iloc[i2])
+    p1, p2 = float(close[i1]), float(close[i2])
     r1, r2 = float(r[i1]), float(r[i2])
     if any(np.isnan(x) for x in (p1, p2, r1, r2)):
         return None
