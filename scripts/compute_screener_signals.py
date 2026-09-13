@@ -32,29 +32,27 @@ ticker:
                          be confirmed swing lows, so confirmation lags the
                          more recent pivot by swing_window bars (pivot date
                          shown is that more recent pivot, not today).
-  rsiDivHiddenBullish -- same RSI (also switched to Wilder), hidden-bullish
-                         (continuation) case: CLOSE makes a Higher Low while
-                         RSI makes a Lower Low, with the earlier pivot's RSI
-                         required to start from a healthy 50-70 band (not
-                         itself weak or oversold), pivot no more than ~4
-                         weeks back. No official TradingView script covers
-                         this hidden/continuation variant (only regular
-                         bullish/bearish), so this half is still this
-                         project's own design -- validated against a real
-                         example (BEST 13 Aug -> 26 Aug) rather than a
-                         reference script. Candidates are filtered to the
-                         band FIRST, then clustered (representative = lowest
-                         RSI among the already-in-band bars) -- clustering
-                         after the band filter, not before: clustering raw
-                         swing lows first and band-testing only each
-                         cluster's single deepest point silently drops
-                         genuinely in-band bars whenever a deeper,
-                         out-of-band dip chains onto the same cluster; this
-                         order can't lose an individually valid bar that
-                         way. Continuation-style: only the earlier pivot
-                         needs confirming; today's own bar is compared
-                         directly, so this confirms same-day (pivot date
-                         shown is the earlier reference point).
+  rsiDivHiddenBullish -- same RSI, same pivot scan, same shared 5-60 bar
+                         gate as rsiDivBullish above (TradingView uses one
+                         shared pivot-range config for every divergence
+                         type) -- the exact mirror of it: CLOSE makes a
+                         Higher Low while RSI makes a Lower Low, comparing
+                         the same two most recent confirmed pivots, no
+                         RSI-value gate. An earlier version of this signal
+                         had never actually been ported to match
+                         rsiDivBullish's TradingView-parity fix -- it kept
+                         a different, invented shape (2-bar pivot window, a
+                         50-70 RSI band gate on the earlier pivot,
+                         clustering) left over from before that fix, caught
+                         via a direct report that "the pivoting is still
+                         not true" even after rsiDivBullish itself was
+                         fixed. Re-validated against the same real example
+                         used before (BEST 13 Aug -> 26 Aug) to confirm the
+                         rewrite doesn't regress it. Reversal-style like
+                         rsiDivBullish: both pivots must be confirmed swing
+                         lows, so confirmation lags the more recent pivot by
+                         swing_window bars (pivot date shown is that more
+                         recent pivot, not today).
   breakSma200         -- today's close crosses above SMA200 (yesterday's
                          close was at or below it).
   emaGoldenCross      -- EMA25 crosses above EMA50 today (yesterday EMA25
@@ -209,22 +207,6 @@ def ib_break(hist: pd.DataFrame, ibh: float | None, ibl: float | None) -> bool:
     return bool(was_middling and breaks_today)
 
 
-def _cluster_positions(positions: list[int], max_gap: int) -> list[list[int]]:
-    """Merge pivot positions that are within max_gap bars of the previous
-    one in the run into a single lifecycle cluster -- several small wiggles
-    inside one dip/rally count as one event, not several independent
-    pivots. Ported from IDX_Screener.py's divergence_signals()."""
-    if not positions:
-        return []
-    clusters = [[positions[0]]]
-    for p in positions[1:]:
-        if p - clusters[-1][-1] <= max_gap:
-            clusters[-1].append(p)
-        else:
-            clusters.append([p])
-    return clusters
-
-
 def regular_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5, min_separation=5, max_pivot_gap=60, max_last_swing_age=20) -> dict | None:
     """Regular Bullish RSI(10, Wilder) divergence -- a literal port of
     TradingView's own built-in "RSI" indicator's divergence logic
@@ -320,101 +302,88 @@ def _swing_low_positions(vals: np.ndarray, w: int) -> list[int]:
     return pos
 
 
-def hidden_bullish_divergence(hist: pd.DataFrame, lookback=75, swing_window=2, max_pivot_gap=20, cluster_gap=3, price_tol=0.0075, rsi_tol=2.0, rsi_band_lo=50.0, rsi_band_hi=70.0) -> dict | None:
-    """Hidden bullish RSI(10, EMA) divergence: CLOSE makes a HIGHER low
-    while RSI makes a LOWER low -- an uptrend-continuation pattern that, by
-    definition, happens on a shallow pullback, not at a deep oversold
-    extreme. Deliberately no RSI<30 gate -- real hidden-bullish cases sit
-    with RSI in the 40s-50s. Validated against a real example: BEST
-    2026-08-13 (RSI 51.8, close 109) -> 2026-08-26 (RSI 47.5, close 117), 7
-    bars apart -- price Higher Low + RSI Lower Low. RSI basis switched from
-    rsi_ema to rsi_wilder alongside regular_bullish_divergence()'s same fix
-    -- TradingView's own RSI (any length) is always Wilder/RMA-smoothed at
-    its base, confirmed live for this function too (BEST's pair above
-    still confirms, with r1/r2 shifting from 51.8/47.5 to 56.7/54.2 -- the
-    same two calendar pivots, just Wilder's own numbers for them).
+def hidden_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5, min_separation=5, max_pivot_gap=60, max_last_swing_age=20) -> dict | None:
+    """Hidden Bullish RSI(10, Wilder) divergence -- the exact mirror of
+    regular_bullish_divergence(): same `ta.pivotlow(rsi, 5, 5)` pivot scan,
+    same "compare the two most recent confirmed pivots" logic, same shared
+    pivot-range gate (5-60 bars apart, last pivot confirmed within the last
+    20 bars) -- TradingView's own script uses ONE shared pivot-range
+    configuration for every divergence type (regular/hidden bullish/
+    bearish), not a bespoke one per type. Only two things flip from
+    regular's: the price/RSI comparison direction (price makes a HIGHER
+    low while RSI makes a LOWER low -- an uptrend-continuation pattern,
+    the opposite of regular's reversal pattern), and the price basis
+    (CLOSE here, not LOW -- confirmed against the reference case below).
 
-    i2 is always the LAST bar (today) directly, same reasoning as
-    regular_bullish_divergence(): comparing today's own RSI/price against
-    the most recent already-confirmed pivot (i1) means the pivot pair's
-    later date and the date the screener shows it are the same day, rather
-    than lagging by swing_window bars the way a centered pivot scan on
-    today's own bar would. BEST's pair above now confirms directly on
-    2026-08-26, not 2026-08-28.
+    This replaces an earlier, structurally different version of this
+    function that never actually got the same TradingView-parity fix
+    regular_bullish_divergence() did: a 2-bar (not 5-bar) pivot window, an
+    invented 50-70 RSI band gate on the earlier pivot, and a clustering
+    step ported from IDX_Screener.py -- none of which exist in
+    TradingView's real algorithm. That version was caught still producing
+    non-TV-shaped results (a direct report: "the pivoting is still not
+    true") even after regular_bullish_divergence() was fixed, because it
+    had never been rewritten to match.
 
-    The earlier pivot (r1) must sit in (rsi_band_lo, rsi_band_hi) -- the
-    trend has to already be healthy (not itself weak or oversold) before a
-    pullback can be "shallow" relative to it. Gate is on r1 only, not r2:
-    the whole point of the pattern is r2 dips BELOW r1, so r1's 50-70 floor
-    doesn't force r2 there too (BEST's real r2 above is 47.5, just under
-    50 -- still a valid shallow pullback since r1=51.8 was in-band). Without
-    this gate a case like PYFA's 2026-08-13/26 pair (r1=42.4, r2=40.2 -- an
-    already-weak trend, not a healthy one taking a shallow dip) would
-    incorrectly pass just because r2 < r1.
+    Verified directly against the same real example used to validate the
+    old version, so the fix doesn't regress it: BEST 2026-08-13 (RSI 56.8,
+    close 109) -> 2026-08-26 (RSI 54.2, close 117) -- price Higher Low +
+    RSI Lower Low, confirmed on 26 Aug with this literal-port logic exactly
+    as before. (r1/r2 read differently from the very first version of this
+    docstring's 51.8/47.5 because those were rsi_ema values from before
+    the earlier Wilder-RSI fix; 56.8/54.2 is Wilder's own numbers for the
+    same two calendar pivots.)
 
-    Candidates are filtered to the 50-70 band FIRST, then clustered
-    (representative = lowest RSI among the already-in-band bars in that
-    cluster) -- clustering before the band filter instead (cluster all raw
-    swing lows, then band-test only each cluster's single deepest point,
-    IDX_Screener.py's own order for its single-threshold <30/>70 gates)
-    silently drops genuinely in-band bars whenever a nearby deeper,
-    out-of-band dip chains onto the same cluster and becomes its
-    representative. Confirmed live: with band-filter-after-clustering and
-    the reference's own cluster_gap=6, BEST's 13 Aug bar (RSI 51.8, in-band)
-    chained into a 24-bar cluster (13 Jul-13 Aug) whose deepest point (29
-    Jul, RSI 30) is NOT in-band, so the whole cluster -- 13 Aug included --
-    got dropped and this signal's original validation case disappeared.
-    Filtering to the band before clustering can't lose an individually
-    valid bar that way.
+    No RSI-band gate on the earlier pivot (unlike the old version) means a
+    case like PYFA's own 2026-08-26 pivot (r1 in the low 40s -- an
+    already-weak trend, not a "healthy" one taking a shallow dip) now also
+    qualifies. That's intentional: TradingView's real algorithm has no
+    RSI-value gate on either divergence type, so excluding PYFA was this
+    function's own invented heuristic, not part of the actual pattern --
+    the same lesson regular_bullish_divergence()'s fix already established
+    for the oversold-gate it used to have.
 
-    max_pivot_gap is much tighter than regular_bullish_divergence()'s (20
-    bars, ~4 weeks, vs 60): once 13 Aug is excluded as PYFA's anchor by the
-    band gate above, the candidate search falls back to the next-eligible
-    swing low, which for PYFA is 2026-07-20 -- 25 bars back, a 5-week
-    reach that isn't a "shallow" pullback by any reasonable reading of the
-    term. Capping the gap at 20 bars excludes that fallback while still
-    comfortably covering BEST's real 7-bar case."""
+    i2 is the most recent CONFIRMED pivot (needing swing_window bars after
+    it), not forced to today -- same reasoning as
+    regular_bullish_divergence(): the marker sits at the pivot bar itself
+    (TradingView's offset=-lookbackRight), necessarily swing_window bars
+    before whatever bar the pattern was actually confirmed on."""
     if hist is None or hist.empty or len(hist) < 25:
         return None
     df = hist.tail(lookback)
     close = df["Close"].astype(float).values
     r = rsi_wilder(df["Close"].astype(float), 10).values
-    i2 = len(df) - 1
-    if np.isnan(r[i2]):
-        return None
 
-    band_pos = [i for i in _swing_low_positions(r, swing_window) if not np.isnan(r[i]) and rsi_band_lo < r[i] < rsi_band_hi]
-    if not band_pos:
+    pivots = _swing_low_positions(r, swing_window)
+    if len(pivots) < 2:
         return None
-    last_cluster = _cluster_positions(band_pos, cluster_gap)[-1]
-    i1 = min(last_cluster, key=lambda i: r[i])
-    if (i2 - i1) > max_pivot_gap:
+    i1, i2 = pivots[-2], pivots[-1]
+    if (i2 - i1) < min_separation or (i2 - i1) > max_pivot_gap or (len(df) - 1 - i2) > max_last_swing_age:
         return None
     p1, p2 = float(close[i1]), float(close[i2])
     r1, r2 = float(r[i1]), float(r[i2])
     if any(np.isnan(x) for x in (p1, p2, r1, r2)):
         return None
-    price_higher_low = p2 > p1 + abs(p1) * price_tol
-    rsi_lower_low = r2 < r1 - rsi_tol
-    if not (price_higher_low and rsi_lower_low):
+    if not (p2 > p1 and r2 < r1):
         return None
-    return {"i1": i1, "ref1_date": df.index[i1].strftime("%d %b '%y"), "p1": p1, "p2": p2, "r1": r1, "r2": r2}
+    return {"i2": i2, "ref2_date": df.index[i2].strftime("%d %b '%y"), "p1": p1, "p2": p2, "r1": r1, "r2": r2}
 
 
 def hidden_bullish_divergence_today(hist: pd.DataFrame) -> tuple[bool, str | None]:
     """Hidden bullish divergence newly confirmed today -- same "confirmed
-    today" diff-vs-yesterday / i1-changed approach as
+    today" diff-vs-yesterday / ref2_date-changed approach as
     regular_bullish_divergence_today(); see its docstring. Returns
-    (confirmed_today, pivot_date) -- pivot_date is i1, the earlier reference
-    low (not today, which is implied)."""
+    (confirmed_today, pivot_date) -- pivot_date is i2, the more recent of
+    the two pivots (not today itself: confirmation lags the pivot by
+    swing_window bars, same as the regular signal)."""
     today = hidden_bullish_divergence(hist)
     if today is None:
         return False, None
     yday = hidden_bullish_divergence(hist.iloc[:-1])
-    newly_confirmed = yday is None or yday["i1"] != today["i1"]
+    newly_confirmed = yday is None or yday["ref2_date"] != today["ref2_date"]
     if not newly_confirmed:
         return False, None
-    return True, today["ref1_date"]
+    return True, today["ref2_date"]
 
 
 def stoch_rsi_golden_cross_today(hist: pd.DataFrame) -> bool:
