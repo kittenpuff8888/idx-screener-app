@@ -287,7 +287,7 @@ export const SETUPS: SetupDef[] = [
     label: "RSI Bullish Divergence",
     icon: "⤢",
     hasBear: false,
-    req: "Regular bullish RSI(10, EMA-smoothed) divergence confirmed today — price lower low, RSI higher low, both pivots at a genuine RSI<30 oversold extreme, no more than ~60 bars apart",
+    req: "Regular bullish RSI(10, Wilder-smoothed) divergence confirmed today — a literal port of TradingView's own built-in RSI divergence logic: price makes a lower low while RSI makes a higher low, comparing the two most recent confirmed 5-bar RSI pivots, 5–60 bars apart, no RSI-value threshold",
     bull: (r) => r.rsiDivBullish,
   },
   {
@@ -295,7 +295,7 @@ export const SETUPS: SetupDef[] = [
     label: "RSI Hidden Bullish Divergence",
     icon: "⤢",
     hasBear: false,
-    req: "Hidden bullish RSI(10, EMA-smoothed) divergence confirmed today — price higher low, RSI lower low, starting from a healthy 50–70 RSI band no more than ~4 weeks back (a genuinely shallow pullback within an established uptrend, not an already-weak or long-since-past one)",
+    req: "Hidden bullish RSI(10, Wilder-smoothed) divergence confirmed today — the exact mirror of Regular above: price makes a higher low while RSI makes a lower low, same 5-bar confirmed-pivot logic and 5–60 bar gap, no RSI-value threshold",
     bull: (r) => r.rsiDivHiddenBullish,
   },
   {

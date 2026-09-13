@@ -561,14 +561,12 @@ export function ScreenerPage() {
                   <div style={{ padding: "9px 12px", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
                     {r.setupsMatched.map((k) => {
                       const label = setupDisplayLabel(k);
-                      // Pivot date shown != "today" for both setups, but for
-                      // different reasons: Regular Bullish's pivot still needs
-                      // swing_window confirming bars after it (a reversal
-                      // pivot, so confirmation genuinely lags by that many
-                      // sessions), while Hidden Bullish's pivot is the EARLIER
-                      // reference point the pullback is measured against --
-                      // that one confirms same-day, the pivot date is just the
-                      // other end of the comparison, not a lag.
+                      // Pivot date shown != "today" for both setups, same
+                      // reason for each: both are reversal-style confirmed-
+                      // swing-low pivots (mirrors of each other -- Regular
+                      // compares Low+RSI Higher Low, Hidden compares Close+RSI
+                      // Lower Low), so confirmation genuinely lags the more
+                      // recent pivot by swing_window bars.
                       const pivot = k === "rsi10_div_bullish" ? r.rsiDivBullishPivotDate : k === "rsi10_div_hidden_bullish" ? r.rsiDivHiddenBullishPivotDate : null;
                       const tip = pivot ? `${label} · pivot ${pivot} · confirmed today` : label;
                       return <span key={k} title={tip} style={{ fontSize: 9, fontWeight: 700, color: "var(--up)", background: "var(--upSoft)", borderRadius: 5, padding: "2px 6px", whiteSpace: "nowrap" }}>{label}{pivot ? <span style={{ opacity: 0.7, fontWeight: 600 }}> · piv {pivot}</span> : null}</span>;
