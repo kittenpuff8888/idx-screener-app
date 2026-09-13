@@ -96,7 +96,18 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/sync_data_to_r2.mjs
 
+      # continue-on-error: this is bookkeeping (so the next run's R2 diff-sync
+      # has an accurate baseline), not a prerequisite for the deploy below --
+      # the built `out/` artifact and the R2 data sync (previous step) don't
+      # depend on this commit landing. Without it, any transient failure here
+      # (observed live: GitHub's push endpoint intermittently erroring with
+      # "fatal error in commit_refs", a server-side ref-update fault, not a
+      # conflict) skips "Deploy to Cloudflare Pages" entirely by GitHub
+      # Actions' default same-job step semantics -- silently blocking every
+      # real deploy behind an unrelated git push. Worst case now: the
+      # manifest lags by one run's worth of diffs, caught by the next commit.
       - name: Commit updated R2 sync manifest
+        continue-on-error: true
         run: |
           if ! git diff --quiet -- data-manifest.json; then
             git config user.name "idx-data-bot"
