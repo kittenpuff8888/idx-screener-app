@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { loadStudies, saveStudies, subscribeStudies, resolveStudy, STUDIES, MAX_STUDIES } from "@/lib/data/chartStudies";
+import { loadStudies, saveStudies, subscribeStudies, resolveStudy, embedStudyIds, STUDIES, MAX_STUDIES } from "@/lib/data/chartStudies";
 
 type Props = {
   symbol?: string;
@@ -13,11 +13,14 @@ type Props = {
 const CURRENT_THEME = (): "light" | "dark" =>
   (typeof document !== "undefined" && document.documentElement.dataset.theme === "dark") ? "dark" : "light";
 
-/** ƒx picker — TradingView built-in studies only (toggle, no length input;
-    see chartStudies.ts for why). Custom overlays (IBH/IBL, Anchored VWAP)
-    are drawn on the companion chart for every ticker, always on — this
-    picker doesn't control them; TradingView's embed is the only chart this
-    picker's studies are fetched into. Site-wide, saved, synced across tabs. */
+/** ƒx picker — TradingView built-in studies (toggle, no length input; see
+    chartStudies.ts for why) PLUS two custom-overlay-only entries (IBH/IBL,
+    Anchored VWAP) that draw on the site's own "Custom Overlay" companion
+    chart instead of the embed (which can't run custom Pine at all) --
+    embedStudyIds() strips those two out before they ever reach the embed's
+    `studies` array, and they don't count against MAX_STUDIES since that cap
+    is specifically the embed's own crash threshold. Site-wide, saved,
+    synced across tabs and both charts. */
 export function ChartIndicatorPicker() {
   const [studies, setStudies] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
@@ -36,7 +39,8 @@ export function ChartIndicatorPicker() {
     setStudies(next);
     saveStudies(next);
   }
-  const groups = [["overlay", "Overlays"], ["oscillator", "Oscillators"], ["volume", "Volume"], ["technical-other", "Technical Others"]] as const;
+  const embedCount = embedStudyIds(studies).length;
+  const groups = [["overlay", "Overlays"], ["oscillator", "Oscillators"], ["volume", "Volume"], ["technical-other", "Technical Others"], ["custom-overlay", "Custom Overlay Chart"]] as const;
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button type="button" onClick={() => setOpen((v) => !v)}
@@ -50,7 +54,8 @@ export function ChartIndicatorPicker() {
               <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: ".08em", color: "var(--faint)", padding: "4px 8px 2px" }}>{label.toUpperCase()}</div>
               {STUDIES.filter((s) => s.group === g).map((s) => {
                 const on = studies.includes(s.id);
-                const atCap = !on && studies.length >= MAX_STUDIES;
+                const isEmbed = g !== "custom-overlay";
+                const atCap = isEmbed && !on && embedCount >= MAX_STUDIES;
                 return (
                   <button key={s.id} type="button" disabled={atCap} onClick={() => toggleStudy(s.id)}
                     title={atCap ? `Max ${MAX_STUDIES} at once — this embed breaks entirely past that. Remove one first.` : undefined}
@@ -62,7 +67,7 @@ export function ChartIndicatorPicker() {
               })}
             </div>
           ))}
-          <div style={{ fontSize: 8.5, color: "var(--faint)", padding: "4px 8px 2px", lineHeight: 1.4, borderTop: "1px solid var(--hair)", marginTop: 2 }}>Saved for every TradingView chart on the site. Max {MAX_STUDIES} at once — this embed breaks entirely past that. IBH/IBL and Anchored VWAP are always shown separately below the chart, for every ticker.</div>
+          <div style={{ fontSize: 8.5, color: "var(--faint)", padding: "4px 8px 2px", lineHeight: 1.4, borderTop: "1px solid var(--hair)", marginTop: 2 }}>Overlays/Oscillators/Volume/Technical Others are saved for every TradingView chart on the site (max {MAX_STUDIES} at once — this embed breaks entirely past that). Custom Overlay Chart entries only affect the site's own chart below, which has no such limit.</div>
         </div>
       ) : null}
     </div>
@@ -137,7 +142,7 @@ export function TradingViewChart({ symbol = "IDX:COMPOSITE", interval = "1D", mi
         // this embed's IDX symbols breaks the whole chart (all-zero OHLC).
         // Documented behavior isn't always the real behavior for this symbol
         // set; verify live before trusting the docs again.
-        studies: studies.map(resolveStudy),
+        studies: embedStudyIds(studies).map(resolveStudy),
         backgroundColor: dark ? "#11151b" : "#ffffff",
         gridColor: dark ? "rgba(255,255,255,0.06)" : "rgba(11,14,20,0.06)",
         support_host: "https://www.tradingview.com",

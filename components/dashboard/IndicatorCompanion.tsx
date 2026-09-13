@@ -16,6 +16,7 @@ import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor, type A
 import { ema, sma, rsiWilder, stochOf } from "@/lib/indicators/oscillators";
 import { formatPrice, formatCompact, formatPercent } from "@/lib/format/number";
 import { DrawingTool } from "@/lib/charting/DrawingTool";
+import { BandFill } from "@/lib/charting/drawings/BandFill";
 import { ChartToolbar } from "@/components/dashboard/ChartToolbar";
 
 // The site's own chart -- built on TradingView's open-source lightweight-charts
@@ -48,7 +49,7 @@ const VWAP_CYAN = "#0891B2";
 const EMA25_COLOR = "#2962FF";
 const EMA50_COLOR = "#FF5050";
 const SMA200_COLOR = "#FF9800";
-const RSI_COLOR = "#7E57C2";
+const RSI_COLOR = "#2962FF"; // matches TradingView's own built-in RSI script exactly
 const STOCH_K_COLOR = "#2962FF";
 const STOCH_D_COLOR = "#FF5050";
 const STOCH_BAND_COLOR = "#dbdbdb";
@@ -58,10 +59,11 @@ const STOCH_BAND_COLOR = "#dbdbdb";
 const OSC_PANE_HEIGHT = 110;
 
 // Caps series count for very long histories under a fine anchor (e.g. weekly
-// VWAP over years, or IB bands over many years) — keeps the chart responsive
-// without silently truncating the visible-by-default window.
+// VWAP over years) — keeps the chart responsive without silently truncating
+// the visible-by-default window. Initial Balance no longer needs an
+// equivalent cap: it's one continuous series covering all bars now, not one
+// series per month.
 const MAX_VWAP_SEGMENTS = 60;
-const MAX_IB_BANDS = 48;
 
 // Picker ids from chartStudies.ts -- kept local rather than re-exported
 // there, since this chart's mapping from an id to "what series to draw" is
@@ -69,6 +71,14 @@ const MAX_IB_BANDS = 48;
 // `resolveStudy`.
 const ID_EMA25 = "ema25", ID_EMA50 = "ema50", ID_SMA200 = "sma200";
 const ID_VOLUME = "Volume@tv-basicstudies", ID_RSI = "RSI@tv-basicstudies", ID_STOCH = "stochRsi10_3_3";
+const ID_IBH_IBL = "ibhIbl", ID_VWAP = "anchoredVwap";
+// RSI reference-line + background colors, matching TradingView's own
+// built-in RSI script exactly (color=#2962FF line; hline() 70/50/30 at
+// these greys; fill() 70-30 at this navy tint).
+const RSI_UPPER_LOWER_COLOR = "rgba(74,74,74,.30)";
+const RSI_MID_COLOR = "rgba(120,123,134,.50)";
+const RSI_BAND_FILL = "rgba(28,45,98,.10)";
+const STOCH_BAND_FILL = "rgba(219,219,219,.12)";
 
 const RANGE_BUTTONS = [
   { id: "1M", n: 22 }, { id: "3M", n: 66 }, { id: "6M", n: 130 }, { id: "1Y", n: 252 }, { id: "All", n: null },
@@ -158,6 +168,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
   const active = useMemo(() => new Set(studies), [studies]);
   const showEma25 = active.has(ID_EMA25), showEma50 = active.has(ID_EMA50), showSma200 = active.has(ID_SMA200);
   const showVolume = active.has(ID_VOLUME), showRsi = active.has(ID_RSI), showStochRsi = active.has(ID_STOCH);
+  const showIbhIbl = active.has(ID_IBH_IBL), showVwap = active.has(ID_VWAP);
   const oscCount = (showRsi ? 1 : 0) + (showStochRsi ? 1 : 0);
   const totalHeight = priceHeight + OSC_PANE_HEIGHT * oscCount;
   // Corner-label offsets inside the chart wrapper -- price pane's own corner
@@ -194,7 +205,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     const chart = createChart(el, {
       autoSize: true,
       layout: { background: { color: colors.bg }, textColor: colors.muted, panes: { separatorColor: colors.hair, separatorHoverColor: colors.border } },
-      grid: { vertLines: { color: colors.hair }, horzLines: { color: colors.hair } },
+      grid: { vertLines: { visible: false }, horzLines: { visible: false } }, // TradingView's own chart draws no grid
       rightPriceScale: { borderColor: colors.border },
       timeScale: { borderColor: colors.border, rightOffset: 3 },
       crosshair: {
@@ -217,12 +228,6 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     const drawing = new DrawingTool(chart, candles, symbol || "");
     setDrawingTool(drawing);
 
-    if (showVolume) {
-      const volume = chart.addSeries(HistogramSeries, { priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
-      volume.priceScale().applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
-      volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? "rgba(22,163,74,.35)" : "rgba(220,38,38,.35)" })));
-    }
-
     // ── EMA 25 / EMA 50 / SMA 200 -- same 3 overlay studies (and math) as
     //    the TradingView chart above; `lineData` drops the NaN warm-up tail
     //    (e.g. SMA 200 needs 200 bars) rather than plotting a fabricated value. ──
@@ -234,6 +239,17 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     const stochRsiBase = rsiWilder(closes, 10);
     const stoch = stochOf(stochRsiBase, 10, 3, 3);
     const lineData = (vals: number[]) => rows.map((r, i) => ({ time: r.date as Time, value: vals[i] })).filter((p) => !Number.isNaN(p.value));
+
+    if (showVolume) {
+      // Grey monochrome bars (not green/red) + a 20-bar volume MA line --
+      // matches TradingView's own default "Volume" study look, not a
+      // custom colored variant.
+      const volume = chart.addSeries(HistogramSeries, { priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
+      volume.priceScale().applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
+      volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? "rgba(180,184,193,.55)" : "rgba(120,124,134,.55)" })));
+      const volMa = chart.addSeries(LineSeries, { color: VWAP_BLUE, lineWidth: 1, priceScaleId: "vol", crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "Volume MA" });
+      volMa.setData(lineData(sma(rows.map((r) => r.volume || 0), 20)));
+    }
 
     if (showEma25) {
       const ema25Line = chart.addSeries(LineSeries, { color: EMA25_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: "EMA 25" });
@@ -248,75 +264,98 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       sma200Line.setData(lineData(sma200Arr));
     }
 
-    // ── Initial Balance bands — one short 2-point step line per month so
-    //    each period's band draws independently (no cross-month connector). ──
-    const bands: IbBand[] = computeInitialBalance(rows, 2).slice(-MAX_IB_BANDS);
-    bands.forEach((b, bi) => {
-      const start = rows[b.startIdx]?.date, end = rows[Math.min(b.endIdx, rows.length - 1)]?.date;
-      if (!start || !end) return;
-      const isLast = bi === bands.length - 1;
-      const color = isLast ? GOLD : "rgba(214,161,0,.5)";
-      const hi = chart.addSeries(LineSeries, { color, lineWidth: isLast ? 2 : 1, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: isLast, title: isLast ? "IBH" : "" });
-      const lo = chart.addSeries(LineSeries, { color, lineWidth: isLast ? 2 : 1, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: isLast, title: isLast ? "IBL" : "" });
-      hi.setData([{ time: start as Time, value: b.ibHigh }, { time: end as Time, value: b.ibHigh }]);
-      lo.setData([{ time: start as Time, value: b.ibLow }, { time: end as Time, value: b.ibLow }]);
-      if (isLast) {
-        hi.createPriceLine({ price: b.ibHigh, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle("Monthly IBH ~ IBL:IB High", b.ibHigh, close), axisLabelVisible: true });
-        lo.createPriceLine({ price: b.ibLow, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle("Monthly IBH ~ IBL:IB Low", b.ibLow, close), axisLabelVisible: true });
+    // ── Initial Balance -- ONE continuous step-line per edge (not one
+    //    disconnected 2-point segment per month) so consecutive months
+    //    connect into the staircase the reference Pine script
+    //    ("Monthly IBH ~ IBL", box + vTop/hTop/vBot/hBot connector lines at
+    //    each new-month boundary) draws -- LineType.WithSteps holds each
+    //    bar's own month's IB value flat, then jumps vertically exactly at
+    //    the first bar of the next month, which is that same connector
+    //    shape. Single yellow throughout (the Pine script uses one
+    //    color.yellow for everything, no past/current distinction). ──
+    const bands: IbBand[] = computeInitialBalance(rows, 2);
+    if (showIbhIbl) {
+      const hiVals = new Array(rows.length), loVals = new Array(rows.length);
+      let bi = 0;
+      for (let i = 0; i < rows.length; i++) {
+        while (bi < bands.length - 1 && i > bands[bi].endIdx) bi++;
+        hiVals[i] = bands[bi].ibHigh;
+        loVals[i] = bands[bi].ibLow;
       }
-    });
+      const hi = chart.addSeries(LineSeries, { color: GOLD, lineWidth: 2, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: "IBH" });
+      const lo = chart.addSeries(LineSeries, { color: GOLD, lineWidth: 2, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: "IBL" });
+      hi.setData(rows.map((r, i) => ({ time: r.date as Time, value: hiVals[i] })));
+      lo.setData(rows.map((r, i) => ({ time: r.date as Time, value: loVals[i] })));
+      const lastBand = bands[bands.length - 1];
+      hi.createPriceLine({ price: lastBand.ibHigh, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle("Monthly IBH ~ IBL:IB High", lastBand.ibHigh, close), axisLabelVisible: true });
+      lo.createPriceLine({ price: lastBand.ibLow, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle("Monthly IBH ~ IBL:IB Low", lastBand.ibLow, close), axisLabelVisible: true });
+    }
 
     // ── Anchored VWAP — one center-line series per anchor period (breaks
     //    naturally at resets); current period gets ±1σ/±2σ price-line labels,
     //    the previous period gets center + ±1σ (matching a classic AVWAP
     //    reference layout: QVWAP/±1σ/±2σ for "now", PQVWAP/P±1σ for "prior"). ──
     const vw = computeAnchoredVwap(rows, anchor as VwapAnchor);
-    const segs: Array<{ key: string; idxs: number[] }> = [];
-    vw.points.forEach((p, i) => {
-      if (!p) return;
-      const last = segs[segs.length - 1];
-      if (!last || last.key !== p.key) segs.push({ key: p.key, idxs: [i] });
-      else last.idxs.push(i);
-    });
-    const visSegs = segs.slice(-MAX_VWAP_SEGMENTS);
-    visSegs.forEach((seg, si) => {
-      const isCurrent = si === visSegs.length - 1;
-      const isPrevious = si === visSegs.length - 2;
-      const center = chart.addSeries(LineSeries, {
-        color: isCurrent ? VWAP_BLUE : "rgba(41,98,255,.4)", lineWidth: isCurrent ? 2 : 1,
-        crosshairMarkerVisible: isCurrent, lastValueVisible: isCurrent, priceLineVisible: false, title: isCurrent ? "VWAP" : "",
+    if (showVwap) {
+      const segs: Array<{ key: string; idxs: number[] }> = [];
+      vw.points.forEach((p, i) => {
+        if (!p) return;
+        const last = segs[segs.length - 1];
+        if (!last || last.key !== p.key) segs.push({ key: p.key, idxs: [i] });
+        else last.idxs.push(i);
       });
-      center.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).vwap })));
-      const lastPt = vw.points[seg.idxs[seg.idxs.length - 1]] as AvwapPoint;
-      const periodLbl = periodLabel(seg.key, anchor as VwapAnchor);
-      if (isCurrent) {
-        center.createPriceLine({ price: lastPt.vwap, color: VWAP_BLUE, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("QVWAP", lastPt.vwap, close), axisLabelVisible: true });
-        const band = (color: string, price: number, title: string) => {
-          const s = chart.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: LineStyle.Dashed, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
-          s.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint)[title.includes("+1") ? "u1" : title.includes("−1") ? "l1" : title.includes("+2") ? "u2" : "l2"] })));
-          s.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle(title, price, close), axisLabelVisible: true });
-        };
-        band(VWAP_GREEN, lastPt.u1, "+1σ"); band(VWAP_GREEN, lastPt.l1, "−1σ");
-        band(VWAP_CYAN, lastPt.u2, "+2σ"); band(VWAP_CYAN, lastPt.l2, "−2σ");
-      } else if (isPrevious) {
-        center.createPriceLine({ price: lastPt.vwap, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle(`P${periodLbl || "Q"}VWAP`, lastPt.vwap, close), axisLabelVisible: true });
-        center.createPriceLine({ price: lastPt.u1, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("P +1σ", lastPt.u1, close), axisLabelVisible: true });
-        center.createPriceLine({ price: lastPt.l1, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("P −1σ", lastPt.l1, close), axisLabelVisible: true });
-      }
-    });
+      const visSegs = segs.slice(-MAX_VWAP_SEGMENTS);
+      visSegs.forEach((seg, si) => {
+        const isCurrent = si === visSegs.length - 1;
+        const isPrevious = si === visSegs.length - 2;
+        const center = chart.addSeries(LineSeries, {
+          color: isCurrent ? VWAP_BLUE : "rgba(41,98,255,.4)", lineWidth: isCurrent ? 2 : 1,
+          crosshairMarkerVisible: isCurrent, lastValueVisible: isCurrent, priceLineVisible: false, title: isCurrent ? "VWAP" : "",
+        });
+        center.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).vwap })));
+        const lastPt = vw.points[seg.idxs[seg.idxs.length - 1]] as AvwapPoint;
+        const periodLbl = periodLabel(seg.key, anchor as VwapAnchor);
+        if (isCurrent) {
+          center.createPriceLine({ price: lastPt.vwap, color: VWAP_BLUE, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("QVWAP", lastPt.vwap, close), axisLabelVisible: true });
+          const band = (color: string, price: number, title: string) => {
+            const s = chart.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: LineStyle.Dashed, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
+            s.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint)[title.includes("+1") ? "u1" : title.includes("−1") ? "l1" : title.includes("+2") ? "u2" : "l2"] })));
+            s.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle(title, price, close), axisLabelVisible: true });
+          };
+          band(VWAP_GREEN, lastPt.u1, "+1σ"); band(VWAP_GREEN, lastPt.l1, "−1σ");
+          band(VWAP_CYAN, lastPt.u2, "+2σ"); band(VWAP_CYAN, lastPt.l2, "−2σ");
+        } else if (isPrevious) {
+          center.createPriceLine({ price: lastPt.vwap, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle(`P${periodLbl || "Q"}VWAP`, lastPt.vwap, close), axisLabelVisible: true });
+          center.createPriceLine({ price: lastPt.u1, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("P +1σ", lastPt.u1, close), axisLabelVisible: true });
+          center.createPriceLine({ price: lastPt.l1, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("P −1σ", lastPt.l1, close), axisLabelVisible: true });
+        }
+      });
+    }
 
     // ── RSI(14) -- own pane below price/volume, same math as the TradingView
     //    chart's RSI study and the Screener's own RSI reads. Fixed 0-100
-    //    scale, with 70/30 reference lines (TradingView's own RSI defaults). ──
+    //    scale. Reference lines, band fill, and the line's own color (blue)
+    //    match TradingView's actual built-in RSI script line-for-line (hline
+    //    70/50/30 at these exact greys, fill() between 70-30 at this exact
+    //    navy tint) -- the one thing that script does that this doesn't is
+    //    the dynamic overbought/oversold gradient glow clipped to the
+    //    70-100/0-30 zones specifically (a fill between the RSI plot and the
+    //    50 baseline, clipped vertically) -- that needs a bespoke canvas
+    //    gradient primitive lightweight-charts has no built-in equivalent
+    //    for; skipped for now as a real scoping call, not an oversight. ──
     let nextPane = 1;
     if (showRsi) {
+      const rsiPane = nextPane++;
+      const rsiBand = new BandFill(70, 30, RSI_BAND_FILL);
       const rsiLine = chart.addSeries(LineSeries, {
         color: RSI_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI 14",
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
-      }, nextPane++);
+      }, rsiPane);
       rsiLine.setData(lineData(rsiArr));
-      rsiLine.createPriceLine({ price: 70, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "70" });
-      rsiLine.createPriceLine({ price: 30, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "30" });
+      rsiLine.attachPrimitive(rsiBand);
+      rsiLine.createPriceLine({ price: 70, color: RSI_UPPER_LOWER_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "70" });
+      rsiLine.createPriceLine({ price: 50, color: RSI_MID_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: false, title: "50" });
+      rsiLine.createPriceLine({ price: 30, color: RSI_UPPER_LOWER_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "30" });
     }
 
     // ── Stochastic RSI (10,10,3,3) -- own pane, same math as the TradingView
@@ -325,6 +364,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     //    80/20). ──
     if (showStochRsi) {
       const stochPane = nextPane++;
+      const stochBand = new BandFill(80, 20, STOCH_BAND_FILL);
       const stochD = chart.addSeries(LineSeries, { color: STOCH_D_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI D" }, stochPane);
       stochD.setData(lineData(stoch.d));
       const stochK = chart.addSeries(LineSeries, {
@@ -332,6 +372,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, stochPane);
       stochK.setData(lineData(stoch.k));
+      stochK.attachPrimitive(stochBand);
       stochK.createPriceLine({ price: 80, color: STOCH_BAND_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "Upper Band" });
       stochK.createPriceLine({ price: 20, color: STOCH_BAND_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "Lower Band" });
     }
@@ -380,7 +421,7 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       chart.remove();
       chartRef.current = null;
     };
-  }, [anchor, rows, sessions, themeTick, showEma25, showEma50, showSma200, showVolume, showRsi, showStochRsi, symbol]);
+  }, [anchor, rows, sessions, themeTick, showEma25, showEma50, showSma200, showVolume, showRsi, showStochRsi, showIbhIbl, showVwap, symbol]);
 
   if (!rows || rows.length < 2) {
     return (
@@ -417,15 +458,23 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
         <div style={{ fontFamily: MONO, fontSize: 10, color: "var(--faint)", marginBottom: 8 }}>Volume {formatCompact(legend.vol)}</div>
       ) : <div style={{ marginBottom: 8 }} />}
 
+      {/* No permanently-visible IBH/IBL or VWAP chips -- both are toggles in
+          the ƒx Indicators picker now (Custom Overlay Chart group), same as
+          every other study; a chart with everything off should look as
+          clean as TradingView's own default, not carry fixed chrome for
+          overlays that might be switched off. */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-        <span style={chip("IBH / IBL", GOLD)}>IBH / IBL</span>
-        <span style={chip("VWAP", VWAP_BLUE)}>A-VWAP{vwapKeyLabel ? ` · ${vwapKeyLabel}` : ""}</span>
-        <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
-          {VWAP_ANCHORS.map((a) => (
-            <button key={a.id} type="button" title={`Anchor VWAP ${a.label}`} onClick={() => { setAnchor(a.id); saveVwapAnchor(a.id); }}
-              style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: anchor === a.id ? VWAP_BLUE : "transparent", color: anchor === a.id ? "#fff" : "var(--muted)" }}>{a.short}</button>
-          ))}
-        </div>
+        {showVwap ? (
+          <>
+            <span style={chip("VWAP", VWAP_BLUE)}>A-VWAP{vwapKeyLabel ? ` · ${vwapKeyLabel}` : ""}</span>
+            <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
+              {VWAP_ANCHORS.map((a) => (
+                <button key={a.id} type="button" title={`Anchor VWAP ${a.label}`} onClick={() => { setAnchor(a.id); saveVwapAnchor(a.id); }}
+                  style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: anchor === a.id ? VWAP_BLUE : "transparent", color: anchor === a.id ? "#fff" : "var(--muted)" }}>{a.short}</button>
+              ))}
+            </div>
+          </>
+        ) : null}
         <div style={{ flex: 1 }} />
         <ChartIndicatorPicker />
         <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
@@ -439,10 +488,10 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       {/* Live legend — IBH/IBL and Anchored VWAP detail; EMA/RSI/Stoch RSI show
           in their own pane's corner overlay below instead, matching how
           TradingView's own chart labels each pane. */}
-      {legend ? (
+      {legend && (showIbhIbl || showVwap) ? (
         <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 14px", fontFamily: MONO, fontSize: 11, marginBottom: 8, color: "var(--muted)" }}>
-          {legend.ib ? <span style={{ color: GOLD }}>IBH {formatPrice(legend.ib.ibHigh)} IBL {formatPrice(legend.ib.ibLow)}</span> : null}
-          {legend.vwap ? (
+          {showIbhIbl && legend.ib ? <span style={{ color: GOLD }}>IBH {formatPrice(legend.ib.ibHigh)} IBL {formatPrice(legend.ib.ibLow)}</span> : null}
+          {showVwap && legend.vwap ? (
             <span>
               <span style={{ color: VWAP_BLUE }}>VWAP {formatPrice(legend.vwap.vwap)}</span>{" "}
               <span style={{ color: VWAP_GREEN }}>±1σ {formatPrice(legend.vwap.l1)}–{formatPrice(legend.vwap.u1)}</span>{" "}
@@ -482,9 +531,10 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       </div>
 
       <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
-        Initial Balance = the high–low range of each month&apos;s first 2 trading sessions, held for the rest of the month (bright gold = current month). Anchored VWAP on hlc3·volume, reset each {({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (each period is its own line, breaking cleanly at the reset), with ±1σ/±2σ bands for the current period and center/±1σ for the previous one — every label shows price and % from the latest close.
-        EMA/SMA/RSI/Stoch RSI above come from the ƒx Indicators picker (top right) — the same picker and saved selection as the TradingView chart above.
-        Left toolbar: Trend Line and Fib Retracement take two clicks (start, then end), Horizontal Line takes one; Erase removes whatever drawing you click on next; CLR removes all of them. Drawings save per ticker in this browser only.
+        Every overlay/oscillator above — EMA/SMA/RSI/Stoch RSI/Volume, plus Monthly IBH~IBL and Anchored VWAP — comes from the ƒx Indicators picker (top right); the same picker and saved selection as the TradingView chart above, so a study switched off there stays off here too.
+        {showIbhIbl ? " Initial Balance = the high–low range of each month's first 2 trading sessions, held for the rest of the month, one continuous staircase across months (matches the “Monthly IBH ~ IBL” Pine script's box + connector lines)." : ""}
+        {showVwap ? ` Anchored VWAP on hlc3·volume, reset each ${({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (each period is its own line, breaking cleanly at the reset), with ±1σ/±2σ bands for the current period and center/±1σ for the previous one — every label shows price and % from the latest close.` : ""}
+        Left toolbar: Trend Line, Rectangle, and Fib Retracement take two clicks (start, then end), Horizontal Line takes one; Erase removes whatever drawing you click on next; CLR removes all of them. Drawings save per ticker in this browser only.
         Computed from our published daily EOD bars, {rows.length} sessions total — drag to pan, scroll/pinch to zoom, hover for the readout above.
       </div>
     </div>

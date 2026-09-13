@@ -53,7 +53,7 @@ export type StudyDef = {
       note on why that's safe where a live-typed input wasn't. */
   inputs?: Record<string, number | string>;
   label: string;
-  group: "overlay" | "oscillator" | "volume" | "technical-other";
+  group: "overlay" | "oscillator" | "volume" | "technical-other" | "custom-overlay";
 };
 
 // Deliberately pared down to exactly these 6 -- MAX_STUDIES below is also 6,
@@ -74,6 +74,16 @@ export const STUDIES: StudyDef[] = [
     inputs: { K: 3, D: 3, "RSI Length": 10, "Stochastic Length": 10 },
     label: "Stoch RSI (10, 10, 3, 3)", group: "technical-other",
   },
+  // Custom-overlay-only entries -- these draw on the site's own lightweight-
+  // charts "Custom Overlay" companion chart (IndicatorCompanion.tsx), which
+  // can render anything; the TradingView embed above it can't run custom
+  // Pine at all, so these are meaningless there and MUST be filtered out
+  // before reaching the embed's `studies` array (see embedStudyIds() below)
+  // -- an unrecognized id breaks the whole embed, same as any other invalid
+  // one. Not counted against MAX_STUDIES either: that cap is specifically
+  // the embed's own crash threshold, which these never reach.
+  { id: "ibhIbl", label: "Monthly IBH / IBL", group: "custom-overlay" },
+  { id: "anchoredVwap", label: "Anchored VWAP", group: "custom-overlay" },
 ];
 
 // Ids individually tested against the live embed and confirmed INVALID --
@@ -118,6 +128,14 @@ export function resolveStudy(pickerId: string): string | { id: string; inputs: R
   if (!def) return pickerId;
   if (!def.inputs) return def.tvId ?? def.id;
   return { id: def.tvId ?? def.id, inputs: def.inputs };
+}
+
+/** Saved ids that are real TradingView studies -- excludes "custom-overlay"
+    entries (IBH/IBL, Anchored VWAP), which the embed can't run and would
+    break it entirely if passed through to `resolveStudy`. Use this (not the
+    raw saved array) wherever ids are about to be sent to the TV embed. */
+export function embedStudyIds(ids: string[]): string[] {
+  return ids.filter((id) => STUDY_BY_ID[id]?.group !== "custom-overlay");
 }
 
 /** Ids from before the `ema25`/`ema50`/`sma200`/`stochRsi10_3_3` rename
