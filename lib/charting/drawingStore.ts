@@ -6,7 +6,8 @@ export type StoredPoint = { time: string; price: number };
 export type StoredDrawing =
   | { id: string; type: "trend"; a: StoredPoint; b: StoredPoint }
   | { id: string; type: "hline"; price: number }
-  | { id: string; type: "fib"; a: StoredPoint; b: StoredPoint };
+  | { id: string; type: "fib"; a: StoredPoint; b: StoredPoint }
+  | { id: string; type: "rect"; a: StoredPoint; b: StoredPoint };
 
 const KEY_PREFIX = "idxr:drawings:";
 

@@ -18,13 +18,18 @@ import type { IChartApi, ISeriesApi, MouseEventParams, SeriesType, Time } from "
 import { TrendLine } from "./drawings/TrendLine";
 import { HorizontalLine } from "./drawings/HorizontalLine";
 import { FibRetracement } from "./drawings/FibRetracement";
+import { Rectangle } from "./drawings/Rectangle";
 import { loadDrawings, saveDrawings, type StoredDrawing } from "./drawingStore";
 
-export type ToolKind = "cursor" | "trend" | "hline" | "fib" | "erase";
+export type ToolKind = "cursor" | "trend" | "hline" | "fib" | "rect" | "erase";
 export const TOOL_COLOR = "#2962FF";
 
-type Placed = { id: string; stored: StoredDrawing; primitive: TrendLine | HorizontalLine | FibRetracement };
+type TwoPointPrimitive = TrendLine | FibRetracement | Rectangle;
+type Placed = { id: string; stored: StoredDrawing; primitive: TrendLine | HorizontalLine | FibRetracement | Rectangle };
 type DrawPoint = { time: Time; price: number };
+/** Tool kinds that place via two clicks (start, then end) rather than one. */
+type TwoPointType = "trend" | "fib" | "rect";
+const TWO_POINT: Partial<Record<ToolKind, TwoPointType>> = { trend: "trend", fib: "fib", rect: "rect" };
 
 function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1, dy = y2 - y1;
@@ -37,7 +42,7 @@ export class DrawingTool {
   private tool: ToolKind = "cursor";
   private placed: Placed[] = [];
   private pending: DrawPoint | null = null;
-  private preview: TrendLine | FibRetracement | null = null;
+  private preview: TwoPointPrimitive | null = null;
   private listeners = new Set<() => void>();
 
   constructor(private chart: IChartApi, private series: ISeriesApi<SeriesType>, private symbol: string) {
@@ -83,9 +88,10 @@ export class DrawingTool {
   }
 
   private place(stored: StoredDrawing) {
-    let primitive: TrendLine | HorizontalLine | FibRetracement;
+    let primitive: Placed["primitive"];
     if (stored.type === "trend") primitive = new TrendLine({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
     else if (stored.type === "fib") primitive = new FibRetracement({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
+    else if (stored.type === "rect") primitive = new Rectangle({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
     else primitive = new HorizontalLine(stored.price, TOOL_COLOR);
     this.series.attachPrimitive(primitive);
     this.placed.push({ id: stored.id, stored, primitive });
@@ -108,18 +114,17 @@ export class DrawingTool {
       this.setTool("cursor");
       return;
     }
-    if (this.tool === "trend" || this.tool === "fib") {
+    const twoPointType = TWO_POINT[this.tool];
+    if (twoPointType) {
       if (!this.pending) {
         this.pending = point;
-        this.preview = this.tool === "trend"
-          ? new TrendLine(point, point, TOOL_COLOR)
-          : new FibRetracement(point, point, TOOL_COLOR);
+        this.preview = twoPointType === "trend" ? new TrendLine(point, point, TOOL_COLOR)
+          : twoPointType === "fib" ? new FibRetracement(point, point, TOOL_COLOR)
+          : new Rectangle(point, point, TOOL_COLOR);
         this.series.attachPrimitive(this.preview);
       } else {
-        const id = `${this.tool}-${Date.now()}`;
-        this.place(this.tool === "trend"
-          ? { id, type: "trend", a: { time: String(this.pending.time), price: this.pending.price }, b: { time: String(point.time), price: point.price } }
-          : { id, type: "fib", a: { time: String(this.pending.time), price: this.pending.price }, b: { time: String(point.time), price: point.price } });
+        const id = `${twoPointType}-${Date.now()}`;
+        this.place({ id, type: twoPointType, a: { time: String(this.pending.time), price: this.pending.price }, b: { time: String(point.time), price: point.price } });
         this.persist();
         this.pending = null;
         this.clearPreview();
@@ -151,6 +156,10 @@ export class DrawingTool {
       const x2 = ts.timeToCoordinate(stored.b.time as Time), y2 = this.series.priceToCoordinate(stored.b.price);
       if (x1 == null || y1 == null || x2 == null || y2 == null) return false;
       if (stored.type === "trend") return distToSegment(px, py, x1, y1, x2, y2) <= TOL;
+      if (stored.type === "rect") {
+        return px >= Math.min(x1, x2) - TOL && px <= Math.max(x1, x2) + TOL
+          && py >= Math.min(y1, y2) - TOL && py <= Math.max(y1, y2) + TOL;
+      }
       // fib: hit if within the anchors' x-span and near any of the 7 levels
       if (px < Math.min(x1, x2) - TOL || px > Math.max(x1, x2) + TOL) return false;
       const span = stored.b.price - stored.a.price;

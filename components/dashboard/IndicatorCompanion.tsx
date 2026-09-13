@@ -74,16 +74,19 @@ const RANGE_BUTTONS = [
   { id: "1M", n: 22 }, { id: "3M", n: 66 }, { id: "6M", n: 130 }, { id: "1Y", n: 252 }, { id: "All", n: null },
 ] as const;
 
-// Pane-corner overlay labels sit on a solid card, not just a text shadow --
-// some existing price-line labels (Monthly IBH/IBL, Anchored VWAP) carry
+// Pane-corner overlay labels sit on a solid backing, not just a text shadow
+// -- some existing price-line labels (Monthly IBH/IBL, Anchored VWAP) carry
 // long titles and render wide near the top of the price pane, right where
-// these corner labels also live; a card behind the text keeps it legible
+// these corner labels also live; a solid backing keeps text legible
 // regardless of what's drawn on the canvas underneath. `zIndex` makes that
 // explicit rather than relying on DOM order against the chart's own
-// absolutely-positioned canvases.
+// absolutely-positioned canvases. Laid out as a single inline row (not
+// stacked lines in a bordered card) -- TradingView's own pane-corner
+// convention, and visually lighter than a boxed panel.
 const CORNER_LABEL: CSSProperties = {
-  position: "absolute", left: 8, zIndex: 5, pointerEvents: "none", fontFamily: MONO, fontSize: 10.5,
-  background: "var(--panel)", borderRadius: 6, padding: "3px 7px", border: "1px solid var(--hair)",
+  position: "absolute", left: 8, top: 6, zIndex: 5, pointerEvents: "none", fontFamily: MONO, fontSize: 11,
+  display: "flex", alignItems: "baseline", gap: 10, color: "var(--muted)",
+  background: "var(--panel)", borderRadius: 5, padding: "2px 6px",
 };
 
 function chip(label: string, color: string): CSSProperties {
@@ -456,11 +459,11 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
           {/* Pane-corner overlays -- TradingView-style "{study} {source} {value}"
               labels pinned to each pane's own top-left corner, updating with the
               crosshair; pointer-events:none so they never block chart interaction. */}
-          {legend ? (
-            <div style={{ ...CORNER_LABEL, top: 6, lineHeight: 1.7 }}>
-              {showEma25 && legend.ema25 != null ? <div>EMA 25 close <b style={{ color: EMA25_COLOR }}>{formatPrice(legend.ema25)}</b></div> : null}
-              {showEma50 && legend.ema50 != null ? <div>EMA 50 close <b style={{ color: EMA50_COLOR }}>{formatPrice(legend.ema50)}</b></div> : null}
-              {showSma200 && legend.sma200 != null ? <div>SMA 200 close <b style={{ color: SMA200_COLOR }}>{formatPrice(legend.sma200)}</b></div> : null}
+          {legend && (showEma25 || showEma50 || showSma200) ? (
+            <div style={{ ...CORNER_LABEL, top: 6 }}>
+              {showEma25 && legend.ema25 != null ? <span>EMA 25 <b style={{ color: EMA25_COLOR }}>{formatPrice(legend.ema25)}</b></span> : null}
+              {showEma50 && legend.ema50 != null ? <span>EMA 50 <b style={{ color: EMA50_COLOR }}>{formatPrice(legend.ema50)}</b></span> : null}
+              {showSma200 && legend.sma200 != null ? <span>SMA 200 <b style={{ color: SMA200_COLOR }}>{formatPrice(legend.sma200)}</b></span> : null}
             </div>
           ) : null}
           {showRsi && legend?.rsi != null ? (
