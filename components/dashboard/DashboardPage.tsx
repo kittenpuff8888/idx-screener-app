@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import type { OhlcvPayload } from "@/lib/domain/types";
 import { useApp } from "@/components/providers/AppProvider";
 import { SkeletonCard } from "@/components/shared/SkeletonCard";
 import { IndexCompareSection, type CompareEntry } from "./IndexCompare";
 import { SectorRotationSection } from "./SectorRotation";
-import { TradingViewChart, ChartIndicatorPicker } from "./TradingViewChart";
+import { IndicatorCompanion } from "./IndicatorCompanion";
+import { loadOhlcv } from "@/lib/data/ticker";
 import { MarketBreadthPanel } from "./MarketBreadthPanel";
 import { MarketsCarousel } from "./MarketsCarousel";
 import { BreadthTiles } from "./BreadthTiles";
@@ -46,6 +48,17 @@ export function DashboardPage() {
 
   const overview = (bundle?.overview?.overview || {}) as JsonRecord;
   const summary = (bundle?.overview?.summary || {}) as JsonRecord;
+
+  // IHSG's own real OHLCV (scripts/fetch_market_context.py writes it
+  // alongside the close-only market-context series) drives the same
+  // TradingView-style chart every ticker page uses, replacing the old
+  // TradingView embed here.
+  const [ihsgOhlcv, setIhsgOhlcv] = useState<OhlcvPayload | null>(null);
+  useEffect(() => {
+    let cancel = false; setIhsgOhlcv(null);
+    if (marketDate) loadOhlcv(marketDate, "COMPOSITE", manifest?.latestMarketDate).then((p) => { if (!cancel) setIhsgOhlcv(p); });
+    return () => { cancel = true; };
+  }, [marketDate, manifest?.latestMarketDate]);
 
   // ---- Market breadth & regime (IDX-breadth study): % above 200-day/50-day MA,
   //      sector breadth, and the cap-vs-equal gap. Descriptive context, not a
@@ -176,20 +189,13 @@ export function DashboardPage() {
       {/* BREADTH — four tiles (prototype: breadth before the cross-asset row) */}
       <BreadthTiles />
 
-      {/* HERO — IHSG live chart | Market Risk. Equal-size columns; heights
-          match via align-items:stretch. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14, marginBottom: 14, alignItems: "stretch" }}>
-        <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ ...KICKER, fontSize: 10.5 }}>IHSG · LIVE CHART</div>
-            <div style={{ flex: 1 }} />
-            <ChartIndicatorPicker />
-            <a href="https://www.tradingview.com/chart/?symbol=IDX%3ACOMPOSITE" target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 10.5, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "4px 9px", textDecoration: "none" }}>TradingView ↗</a>
-          </div>
-          <div style={{ flex: "1 1 auto", minHeight: 620, borderRadius: 12, overflow: "hidden" }}>
-            <TradingViewChart symbol="IDX:COMPOSITE" range="YTD" minHeight={620} />
-          </div>
-        </div>
+      {/* HERO — IHSG live chart | Market Risk. IndicatorCompanion carries
+          its own card chrome (border/padding), so this cell is a plain
+          wrapper, not another nested CARD -- the chart's own fixed height
+          (price + oscillator panes) no longer needs align-items:stretch
+          height-matching against the Market Risk panel either. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 14, marginBottom: 14, alignItems: "start" }}>
+        <IndicatorCompanion ohlcv={ihsgOhlcv} symbol="COMPOSITE" companyName="IHSG (Jakarta Composite Index)" />
         <div style={{ ...CARD, padding: "18px 20px", display: "flex", flexDirection: "column" }}>
           <MarketBreadthPanel data={marketBreadth} asOf={marketDate || "—"} />
         </div>

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { useApp } from "@/components/providers/AppProvider";
-import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
 import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
 import { loadOhlcv } from "@/lib/data/ticker";
 import type { OhlcvPayload } from "@/lib/domain/types";
@@ -290,24 +289,17 @@ export function WatchlistPage() {
             </div>
           </div>
 
-          {/* selected chart */}
+          {/* selected chart -- the app's own TradingView-style chart (own
+              drawing tools, per-indicator settings); the TradingView embed
+              this used to sit below is retired sitewide. */}
           {selected ? (
-            <div style={{ ...CARD, padding: 0, overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderBottom: "1px solid var(--border)" }}>
-                <span style={{ fontFamily: MONO, fontSize: 14, fontWeight: 800 }}>{selected}</span>
-                <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--warning, var(--warn))", background: "var(--warnSoft, var(--soft))", borderRadius: 6, padding: "3px 8px" }}>1-day candles · EOD</span>
-                <div style={{ flex: 1 }} />
-                <ChartIndicatorPicker />
-                <button type="button" onClick={() => openTicker(selected)} style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>Detail →</button>
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <button type="button" onClick={() => openTicker(selected)} style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "var(--accentSoft)", border: "1px solid var(--accent-border)", borderRadius: 8, padding: "5px 11px", cursor: "pointer" }}>{selected} detail →</button>
               </div>
-              <TradingViewChart symbol={`IDX:${selected}`} interval="1D" minHeight={460} />
-            </div>
+              <IndicatorCompanion ohlcv={selOhlcv} symbol={selected} />
+            </>
           ) : null}
-
-          {/* The app's own TradingView-style chart, with its own drawing
-              tools and per-indicator settings (unlike the plain embed
-              above it, which stays for a lightweight secondary preview). */}
-          {selected ? <IndicatorCompanion ohlcv={selOhlcv} symbol={selected} /> : null}
         </div>
       )}
 
