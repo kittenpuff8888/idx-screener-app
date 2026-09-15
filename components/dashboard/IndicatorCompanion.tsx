@@ -413,7 +413,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
       const volume = chart.addSeries(HistogramSeries, { priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
       volume.priceScale().applyOptions({ scaleMargins: { top: 0.86, bottom: 0 }, visible: false });
       volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? hexA(s.volUpColor, 0.38) : hexA(s.volDnColor, 0.38) })));
-      const volMa = chart.addSeries(LineSeries, { color: s.volMaColor, lineWidth: 1, priceScaleId: "vol", crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
+      const volMa = chart.addSeries(LineSeries, { color: s.volMaColor, lineWidth: lw(s.volMaWidth), priceScaleId: "vol", crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
       volMa.setData(lineData(sma(rows.map((r) => r.volume || 0), s.volMaLen)));
     }
 
@@ -436,9 +436,9 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     //    on/off no longer changes how big the candles themselves look --
     //    caught from a direct report that SMA/VWAP visibly compressed them. ──
     if (!hidden.ribbon) {
-      const line1 = chart.addSeries(LineSeries, { color: s.ribbonColor, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon1Len}`, autoscaleInfoProvider: () => null });
+      const line1 = chart.addSeries(LineSeries, { color: s.ribbonColor, lineWidth: lw(s.ribbonWidth), crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon1Len}`, autoscaleInfoProvider: () => null });
       line1.setData(lineData(ema(closes, s.ribbon1Len)));
-      const line2 = chart.addSeries(LineSeries, { color: hexA(s.ribbonColor, 0.55), lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon2Len}`, autoscaleInfoProvider: () => null });
+      const line2 = chart.addSeries(LineSeries, { color: hexA(s.ribbonColor, 0.55), lineWidth: lw(s.ribbonWidth), crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon2Len}`, autoscaleInfoProvider: () => null });
       line2.setData(lineData(ema(closes, s.ribbon2Len)));
     }
 
@@ -457,7 +457,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     //    most recent closed periods get margin-label text (labelling all of
     //    them would be unreadable noise; forward lines still draw for
     //    every one within the cap). ──
-    const vw = computeAnchoredVwap(rows, s.vwapAnchor as VwapAnchor, 1, 2, 3, s.vwapSource as VwapSource);
+    const vw = computeAnchoredVwap(rows, s.vwapAnchor as VwapAnchor, s.vwapMult1, s.vwapMult2, s.vwapMult2 + 1, s.vwapSource as VwapSource);
     if (!hidden.vwap) {
       const segs: Array<{ key: string; idxs: number[] }> = [];
       vw.points.forEach((p, i) => {
@@ -530,17 +530,17 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     let nextPane = 1;
     if (!hidden.rsi) {
       const pane = nextPane++;
-      const band = new BandFill(60, 20, c.oscFill);
+      const band = new BandFill(s.rsiUpper, s.rsiLower, c.oscFill);
       const rsiLine = chart.addSeries(LineSeries, {
-        color: s.rsiColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `RSI ${s.rsiLen}`,
+        color: s.rsiColor, lineWidth: lw(s.rsiWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `RSI ${s.rsiLen}`,
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, pane);
       rsiLine.setData(lineData(rsiArr));
       if (s.rsiFill) rsiLine.attachPrimitive(band);
-      const rsiMaLine = chart.addSeries(LineSeries, { color: s.rsiMaColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI-based MA" }, pane);
+      const rsiMaLine = chart.addSeries(LineSeries, { color: s.rsiMaColor, lineWidth: lw(s.rsiMaWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI-based MA" }, pane);
       rsiMaLine.setData(lineData(rsiMaArr));
-      rsiLine.createPriceLine({ price: 60, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "60" });
-      rsiLine.createPriceLine({ price: 20, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "20" });
+      rsiLine.createPriceLine({ price: s.rsiUpper, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: String(s.rsiUpper) });
+      rsiLine.createPriceLine({ price: s.rsiLower, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: String(s.rsiLower) });
     }
 
     // ── MACD 4C Smooth -- EMA(fast)-EMA(slow) (optionally re-smoothed),
@@ -560,9 +560,9 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
       });
       const hist = chart.addSeries(HistogramSeries, { lastValueVisible: true, priceLineVisible: false, title: "Histogram" }, pane);
       hist.setData(histData);
-      const macdLine = chart.addSeries(LineSeries, { color: s.macdColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "MACD" }, pane);
+      const macdLine = chart.addSeries(LineSeries, { color: s.macdColor, lineWidth: lw(s.macdWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "MACD" }, pane);
       macdLine.setData(lineData(macdResult.macd));
-      const signalLine = chart.addSeries(LineSeries, { color: s.macdSignalColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Signal" }, pane);
+      const signalLine = chart.addSeries(LineSeries, { color: s.macdSignalColor, lineWidth: lw(s.macdSignalWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Signal" }, pane);
       signalLine.setData(lineData(macdResult.signal));
     }
 
@@ -570,16 +570,17 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     //    stochSmoothK/D. Band 80-20, dashed guides at 20/40/60/80. ──
     if (!hidden.stoch) {
       const pane = nextPane++;
-      const band = new BandFill(80, 20, c.oscFill);
-      const stochD = chart.addSeries(LineSeries, { color: s.stochDColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI D" }, pane);
+      const band = new BandFill(s.stochUpper, s.stochLower, c.oscFill);
+      const stochD = chart.addSeries(LineSeries, { color: s.stochDColor, lineWidth: lw(s.stochDWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI D" }, pane);
       stochD.setData(lineData(stoch.d));
       const stochK = chart.addSeries(LineSeries, {
-        color: s.stochKColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI K",
+        color: s.stochKColor, lineWidth: lw(s.stochKWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI K",
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
       }, pane);
       stochK.setData(lineData(stoch.k));
       if (s.stochFill) stochK.attachPrimitive(band);
-      [80, 60, 40, 20].forEach((lvl) => stochK.createPriceLine({ price: lvl, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: lvl === 80 || lvl === 20, title: lvl === 80 || lvl === 20 ? String(lvl) : "" }));
+      const stochStep = (s.stochUpper - s.stochLower) / 3;
+      [s.stochUpper, s.stochUpper - stochStep, s.stochLower + stochStep, s.stochLower].forEach((lvl) => stochK.createPriceLine({ price: lvl, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: lvl === s.stochUpper || lvl === s.stochLower, title: lvl === s.stochUpper || lvl === s.stochLower ? String(Math.round(lvl)) : "" }));
     }
 
     // Price pane keeps the majority of the height; each active oscillator
@@ -727,14 +728,14 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
               <EyeButton hidden={hidden.volume} onClick={() => toggleHidden("volume")} />
               <GearButton onClick={() => setOpenGear(openGear === "volume" ? null : "volume")} />
             </div>
-            {gearRow("volume", "Volume", [{ kind: "number", key: "volMaLen", label: "MA Length", min: 1, max: 200 }], [{ kind: "color", key: "volUpColor", label: "Up Color" }, { kind: "color", key: "volDnColor", label: "Down Color" }, { kind: "color", key: "volMaColor", label: "MA Color" }], 30)}
+            {gearRow("volume", "Volume", [{ kind: "number", key: "volMaLen", label: "MA Length", min: 1, max: 200 }], [{ kind: "color", key: "volUpColor", label: "Up Color" }, { kind: "color", key: "volDnColor", label: "Down Color" }, { kind: "color", key: "volMaColor", label: "MA Color" }, { kind: "number", key: "volMaWidth", label: "MA Width", min: 1, max: 4 }], 30)}
 
             <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.vwap ? 0.45 : 1 }}>
               <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>VWAP Suite v2.0 <span style={{ color: "var(--faint)" }}>{periodLabel(vwapCurrentKey(rows, settings), settings.vwapAnchor as VwapAnchor)}</span></span>
               <EyeButton hidden={hidden.vwap} onClick={() => toggleHidden("vwap")} />
               <GearButton onClick={() => setOpenGear(openGear === "vwap" ? null : "vwap")} />
             </div>
-            {gearRow("vwap", "VWAP Suite", [{ kind: "select", key: "vwapAnchor", label: "Anchor", options: ["week", "month", "quarter", "year"] }, { kind: "select", key: "vwapSource", label: "Source", options: Object.keys(VWAP_SOURCE_FN) }], [{ kind: "color", key: "vwapColor", label: "Line Color" }, { kind: "number", key: "vwapWidth", label: "Width", min: 1, max: 4 }, { kind: "check", key: "vwapBands", label: "Band Fill" }, { kind: "check", key: "vwapLines", label: "Forward Lines" }, { kind: "check", key: "vwapText", label: "Margin Text" }], 54)}
+            {gearRow("vwap", "VWAP Suite", [{ kind: "select", key: "vwapAnchor", label: "Anchor", options: ["week", "month", "quarter", "year"] }, { kind: "select", key: "vwapSource", label: "Source", options: Object.keys(VWAP_SOURCE_FN) }, { kind: "number", key: "vwapMult1", label: "Band 1 σ", min: 1, max: 4 }, { kind: "number", key: "vwapMult2", label: "Band 2 σ", min: 1, max: 5 }], [{ kind: "color", key: "vwapColor", label: "Line Color" }, { kind: "number", key: "vwapWidth", label: "Width", min: 1, max: 4 }, { kind: "check", key: "vwapBands", label: "Band Fill" }, { kind: "check", key: "vwapLines", label: "Forward Lines" }, { kind: "check", key: "vwapText", label: "Margin Text" }], 54)}
 
             <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.ib ? 0.45 : 1 }}>
               <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>Monthly IBH ~ IBL <span style={{ color: "var(--faint)" }}>{settings.ibDays}</span></span>
@@ -751,7 +752,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
               <EyeButton hidden={hidden.ribbon} onClick={() => toggleHidden("ribbon")} />
               <GearButton onClick={() => setOpenGear(openGear === "ribbon" ? null : "ribbon")} />
             </div>
-            {gearRow("ribbon", "EMA Ribbon", [{ kind: "number", key: "ribbon1Len", label: "EMA 1 Length", min: 2, max: 200 }, { kind: "number", key: "ribbon2Len", label: "EMA 2 Length", min: 2, max: 200 }], [{ kind: "color", key: "ribbonColor", label: "Color" }], 102)}
+            {gearRow("ribbon", "EMA Ribbon", [{ kind: "number", key: "ribbon1Len", label: "EMA 1 Length", min: 2, max: 200 }, { kind: "number", key: "ribbon2Len", label: "EMA 2 Length", min: 2, max: 200 }], [{ kind: "color", key: "ribbonColor", label: "Color" }, { kind: "number", key: "ribbonWidth", label: "Width", min: 1, max: 4 }], 102)}
 
             <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.sma200 ? 0.45 : 1 }}>
               <span style={{ color: "var(--muted)" }}>SMA <span style={{ color: "var(--faint)" }}>{settings.sma200Len} close</span></span>
@@ -773,7 +774,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
               {legend?.rsiMa != null ? <b style={{ color: settings.rsiMaColor, fontWeight: 500 }}>{fmtOsc(legend.rsiMa)}</b> : null}
               <EyeButton hidden={false} onClick={() => toggleHidden("rsi")} />
               <GearButton onClick={() => setOpenGear(openGear === "rsi" ? null : "rsi")} />
-              {gearRow("rsi", "RSI", [{ kind: "number", key: "rsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "rsiMaLen", label: "RSI-based MA Length", min: 1, max: 100 }], [{ kind: "color", key: "rsiColor", label: "RSI Color" }, { kind: "color", key: "rsiMaColor", label: "MA Color" }, { kind: "check", key: "rsiFill", label: "Band Fill" }], rsiTop + 24)}
+              {gearRow("rsi", "RSI", [{ kind: "number", key: "rsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "rsiMaLen", label: "RSI-based MA Length", min: 1, max: 100 }, { kind: "number", key: "rsiUpper", label: "Upper Band", min: 51, max: 99 }, { kind: "number", key: "rsiLower", label: "Lower Band", min: 1, max: 49 }], [{ kind: "color", key: "rsiColor", label: "RSI Color" }, { kind: "number", key: "rsiWidth", label: "RSI Width", min: 1, max: 4 }, { kind: "color", key: "rsiMaColor", label: "MA Color" }, { kind: "number", key: "rsiMaWidth", label: "MA Width", min: 1, max: 4 }, { kind: "check", key: "rsiFill", label: "Band Fill" }], rsiTop + 24)}
             </div>
           ) : null}
           {!hidden.macd ? (
@@ -784,7 +785,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
               {legend?.macdSignal != null ? <b style={{ color: settings.macdSignalColor, fontWeight: 500 }}>{legend.macdSignal.toFixed(0)}</b> : null}
               <EyeButton hidden={false} onClick={() => toggleHidden("macd")} />
               <GearButton onClick={() => setOpenGear(openGear === "macd" ? null : "macd")} />
-              {gearRow("macd", "MACD 4C Smooth", [{ kind: "number", key: "macdFast", label: "Fast Length", min: 1, max: 100 }, { kind: "number", key: "macdSlow", label: "Slow Length", min: 1, max: 200 }, { kind: "number", key: "macdSignal", label: "Signal Length", min: 1, max: 100 }, { kind: "number", key: "macdSmooth", label: "Smoothing", min: 1, max: 50 }], [{ kind: "color", key: "macdColor", label: "MACD Color" }, { kind: "color", key: "macdSignalColor", label: "Signal Color" }, { kind: "color", key: "macdHistUp", label: "Hist Up" }, { kind: "color", key: "macdHistDn", label: "Hist Down" }], macdTop + 24)}
+              {gearRow("macd", "MACD 4C Smooth", [{ kind: "number", key: "macdFast", label: "Fast Length", min: 1, max: 100 }, { kind: "number", key: "macdSlow", label: "Slow Length", min: 1, max: 200 }, { kind: "number", key: "macdSignal", label: "Signal Length", min: 1, max: 100 }, { kind: "number", key: "macdSmooth", label: "Smoothing", min: 1, max: 50 }], [{ kind: "color", key: "macdColor", label: "MACD Color" }, { kind: "number", key: "macdWidth", label: "MACD Width", min: 1, max: 4 }, { kind: "color", key: "macdSignalColor", label: "Signal Color" }, { kind: "number", key: "macdSignalWidth", label: "Signal Width", min: 1, max: 4 }, { kind: "color", key: "macdHistUp", label: "Hist Up" }, { kind: "color", key: "macdHistDn", label: "Hist Down" }], macdTop + 24)}
             </div>
           ) : null}
           {!hidden.stoch ? (
@@ -794,7 +795,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
               {legend?.stochD != null ? <b style={{ color: settings.stochDColor, fontWeight: 500 }}>{fmtOsc(legend.stochD)}</b> : null}
               <EyeButton hidden={false} onClick={() => toggleHidden("stoch")} />
               <GearButton onClick={() => setOpenGear(openGear === "stoch" ? null : "stoch")} />
-              {gearRow("stoch", "Stoch RSI", [{ kind: "number", key: "stochSmoothK", label: "Smooth K", min: 1, max: 50 }, { kind: "number", key: "stochSmoothD", label: "Smooth D", min: 1, max: 50 }, { kind: "number", key: "stochRsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "stochLen", label: "Stochastic Length", min: 2, max: 100 }], [{ kind: "color", key: "stochKColor", label: "K Color" }, { kind: "color", key: "stochDColor", label: "D Color" }, { kind: "check", key: "stochFill", label: "Band Fill" }], stochTop + 24)}
+              {gearRow("stoch", "Stoch RSI", [{ kind: "number", key: "stochSmoothK", label: "Smooth K", min: 1, max: 50 }, { kind: "number", key: "stochSmoothD", label: "Smooth D", min: 1, max: 50 }, { kind: "number", key: "stochRsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "stochLen", label: "Stochastic Length", min: 2, max: 100 }, { kind: "number", key: "stochUpper", label: "Upper Band", min: 51, max: 99 }, { kind: "number", key: "stochLower", label: "Lower Band", min: 1, max: 49 }], [{ kind: "color", key: "stochKColor", label: "K Color" }, { kind: "number", key: "stochKWidth", label: "K Width", min: 1, max: 4 }, { kind: "color", key: "stochDColor", label: "D Color" }, { kind: "number", key: "stochDWidth", label: "D Width", min: 1, max: 4 }, { kind: "check", key: "stochFill", label: "Band Fill" }], stochTop + 24)}
             </div>
           ) : null}
 

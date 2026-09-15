@@ -18,12 +18,16 @@
 
 export type StudySettings = {
   volMaLen: number;
+  volMaWidth: number;
   ibDays: number;
   sma200Len: number;
   rsiLen: number;
   rsiMaLen: number;
+  rsiUpper: number;
+  rsiLower: number;
   ribbon1Len: number;
   ribbon2Len: number;
+  ribbonWidth: number;
   macdFast: number;
   macdSlow: number;
   macdSignal: number;
@@ -32,10 +36,14 @@ export type StudySettings = {
   stochSmoothD: number;
   stochRsiLen: number;
   stochLen: number;
+  stochUpper: number;
+  stochLower: number;
   vwapAnchor: "week" | "month" | "quarter" | "year";
   vwapSource: "(H+L+C)/3" | "(H+L)/2" | "(O+H+L+C)/4" | "Close";
   vwapColor: string;
   vwapWidth: number;
+  vwapMult1: number;
+  vwapMult2: number;
   vwapBands: boolean;
   vwapLines: boolean;
   vwapText: boolean;
@@ -50,30 +58,38 @@ export type StudySettings = {
   smaWidth: number;
   rsiColor: string;
   rsiMaColor: string;
+  rsiWidth: number;
+  rsiMaWidth: number;
   rsiFill: boolean;
   macdColor: string;
   macdSignalColor: string;
+  macdWidth: number;
+  macdSignalWidth: number;
   macdHistUp: string;
   macdHistDn: string;
   stochKColor: string;
   stochDColor: string;
+  stochKWidth: number;
+  stochDWidth: number;
   stochFill: boolean;
 };
 
 export const DEFAULT_STUDY_SETTINGS: StudySettings = {
-  volMaLen: 20, ibDays: 2, sma200Len: 200, rsiLen: 10, rsiMaLen: 14,
-  ribbon1Len: 25, ribbon2Len: 50,
+  volMaLen: 20, volMaWidth: 1, ibDays: 2, sma200Len: 200,
+  rsiLen: 10, rsiMaLen: 14, rsiUpper: 60, rsiLower: 20,
+  ribbon1Len: 25, ribbon2Len: 50, ribbonWidth: 1,
   macdFast: 12, macdSlow: 26, macdSignal: 9, macdSmooth: 3,
-  stochSmoothK: 3, stochSmoothD: 3, stochRsiLen: 10, stochLen: 10,
+  stochSmoothK: 3, stochSmoothD: 3, stochRsiLen: 10, stochLen: 10, stochUpper: 80, stochLower: 20,
   vwapAnchor: "quarter", vwapSource: "(H+L+C)/3", vwapColor: "#787b86", vwapWidth: 2,
+  vwapMult1: 1, vwapMult2: 2,
   vwapBands: true, vwapLines: true, vwapText: true,
   ibColor: "#D6A100", ibFill: true, ibWidth: 1,
   volUpColor: "#2962FF", volDnColor: "#969ba5", volMaColor: "#2962FF",
   ribbonColor: "#2962FF", smaColor: "#FF9800", smaWidth: 2,
-  rsiColor: "#2962FF", rsiMaColor: "#FF5050", rsiFill: true,
-  macdColor: "#2962FF", macdSignalColor: "#FF5050",
+  rsiColor: "#2962FF", rsiMaColor: "#FF5050", rsiWidth: 1, rsiMaWidth: 1, rsiFill: true,
+  macdColor: "#2962FF", macdSignalColor: "#FF5050", macdWidth: 1, macdSignalWidth: 1,
   macdHistUp: "#2962FF", macdHistDn: "#FF5050",
-  stochKColor: "#2962FF", stochDColor: "#FF9800", stochFill: true,
+  stochKColor: "#2962FF", stochDColor: "#FF9800", stochKWidth: 1, stochDWidth: 1, stochFill: true,
 };
 
 const KEY = "idxr:chart:studySettings";
