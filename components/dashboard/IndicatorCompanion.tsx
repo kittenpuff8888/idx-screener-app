@@ -45,15 +45,58 @@ import {
 
 const MONO = "var(--font-mono)";
 const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r, 16px)", padding: "12px 14px 14px", marginBottom: 14 };
-const OSC_H = 150;
+const OSC_H = 130;
 const OSC_H_HIDDEN = 26;
-const PRICE_H = 520;
-const LEGEND_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 5, height: 18, padding: "0 5px", borderRadius: 5, pointerEvents: "auto" };
-const EYE_BTN: CSSProperties = { width: 16, height: 16, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 3, cursor: "pointer", background: "transparent" };
+const PRICE_H = 420;
+// `pointer-events: none` on the row itself (only the eye/gear buttons opt
+// back in with their own `auto`) -- a legend row's text/background must
+// never intercept a mouse-drag meant to pan the chart underneath it. An
+// earlier version set `auto` on the whole row, which silently ate any
+// drag-to-pan gesture starting anywhere near a legend pill, not just on
+// its buttons -- caught via a direct report that panning didn't work.
+const LEGEND_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 5, height: 18, padding: "0 5px", borderRadius: 5, pointerEvents: "none" };
+const EYE_BTN: CSSProperties = { width: 16, height: 16, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 3, cursor: "pointer", background: "transparent", pointerEvents: "auto" };
 
 const RANGE_BUTTONS = [
   { id: "1M", n: 22 }, { id: "3M", n: 66 }, { id: "6M", n: 130 }, { id: "1Y", n: 252 }, { id: "All", n: null },
 ] as const;
+
+// Right-margin space reserved for the VWAP Suite's own price/%% readouts
+// (MarginLabels.ts, drawn past the last bar) -- kept in PIXELS, not a fixed
+// bar count: `rightOffset` (lightweight-charts' own margin unit) is bars,
+// so at a fixed bar count the pixel gap balloons at high zoom and vanishes
+// at low zoom, either stranding the labels far from the last candle or
+// squeezing them into no room at all. Recomputed from the CURRENT
+// barSpacing (see applyMarginOffset below) whenever the visible range
+// changes -- zoom, pan, or a range button -- so the gap the labels sit in
+// stays this same width on screen regardless of zoom level.
+const MARGIN_PX = 92;
+
+/** Recomputes `rightOffset` (bars) from the CURRENT barSpacing so the VWAP
+    margin stays ~MARGIN_PX wide on screen. Guarded against its own
+    feedback (`adjustingRef`): applying a new rightOffset itself fires
+    another visible-range-change event, which would otherwise recurse
+    forever chasing a moving target as barSpacing keeps shifting slightly
+    in response to its own correction. A 1-bar tolerance also skips
+    corrections too small to be worth another chart update. */
+function makeMarginOffsetTracker(chart: IChartApi) {
+  const adjustingRef = { current: false };
+  const apply = () => {
+    if (adjustingRef.current) return;
+    const bs = chart.timeScale().options().barSpacing;
+    if (!bs) return;
+    const wanted = Math.max(2, Math.round(MARGIN_PX / bs));
+    const current = chart.timeScale().options().rightOffset;
+    if (Math.abs(current - wanted) < 1) return;
+    adjustingRef.current = true;
+    chart.timeScale().applyOptions({ rightOffset: wanted });
+    // Cleared on a timeout rather than immediately after the call above --
+    // protects against the resulting range-change event firing on a
+    // microtask/next tick rather than synchronously within applyOptions.
+    setTimeout(() => { adjustingRef.current = false; }, 0);
+  };
+  return apply;
+}
 
 // IDX's own published tick-size schedule (price bands -> minimum price
 // increment) -- a real exchange rule, not a guess, used for the candle
@@ -254,7 +297,7 @@ type Legend = {
   date: string; o: number; h: number; l: number; c: number; vol: number;
   chg: number | null; chgPct: number | null;
   ib: { ibHigh: number; ibLow: number } | null; vwap: AvwapPoint | null;
-  ribbon: number | null; sma200: number | null;
+  ribbon1: number | null; ribbon2: number | null; sma200: number | null;
   rsi: number | null; rsiMa: number | null;
   macd: number | null; macdSignal: number | null; macdHist: number | null;
   stochK: number | null; stochD: number | null;
@@ -369,15 +412,14 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
       candles.attachPrimitive(box);
     }
 
-    // ── EMA Ribbon -- 8 lines stepping from ribbonBase by ribbonStep,
-    //    fading opacity across the set; hidden by default. ──
+    // ── EMA Ribbon -- exactly two EMAs (25/50 by default), matching
+    //    TradingView's own simplest "EMA Cross" convention rather than the
+    //    original 8-line fanned-ribbon design. ──
     if (!hidden.ribbon) {
-      for (let i = 0; i < 8; i++) {
-        const len = s.ribbonBase + i * s.ribbonStep;
-        const alpha = 0.85 - (0.5 * i) / 7;
-        const line = chart.addSeries(LineSeries, { color: hexA(s.ribbonColor, alpha), lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: i === 7, priceLineVisible: false, title: i === 7 ? `EMA Ribbon ${s.ribbonBase}` : "" });
-        line.setData(lineData(ema(closes, len)));
-      }
+      const line1 = chart.addSeries(LineSeries, { color: s.ribbonColor, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon1Len}` });
+      line1.setData(lineData(ema(closes, s.ribbon1Len)));
+      const line2 = chart.addSeries(LineSeries, { color: hexA(s.ribbonColor, 0.55), lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon2Len}` });
+      line2.setData(lineData(ema(closes, s.ribbon2Len)));
     }
 
     // ── SMA -- single line, hidden by default. ──
@@ -527,6 +569,12 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     const fromIdx = Math.max(0, rows.length - initialSessions);
     chart.timeScale().setVisibleRange({ from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time });
 
+    // Keeps the VWAP margin ~MARGIN_PX wide on screen through pans/zooms,
+    // not just at whatever bar-count the chart happened to open on.
+    const trackMarginOffset = makeMarginOffsetTracker(chart);
+    trackMarginOffset();
+    chart.timeScale().subscribeVisibleLogicalRangeChange(trackMarginOffset);
+
     const legendAt = (idx: number): Legend => {
       const r = rows[idx];
       const prevClose = idx > 0 ? rows[idx - 1].close : null;
@@ -536,7 +584,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
       return {
         date: r.date, o: r.open, h: r.high, l: r.low, c: r.close, vol: r.volume, chg, chgPct,
         ib: ib ? { ibHigh: ib.ibHigh, ibLow: ib.ibLow } : null, vwap: vw.points[idx] ?? null,
-        ribbon: nz(ema(closes, s.ribbonBase)[idx]), sma200: nz(sma(closes, s.sma200Len)[idx]),
+        ribbon1: nz(ema(closes, s.ribbon1Len)[idx]), ribbon2: nz(ema(closes, s.ribbon2Len)[idx]), sma200: nz(sma(closes, s.sma200Len)[idx]),
         rsi: nz(rsiArr[idx]), rsiMa: nz(rsiMaArr[idx]),
         macd: nz(macdResult.macd[idx]), macdSignal: nz(macdResult.signal[idx]), macdHist: nz(macdResult.hist[idx]),
         stochK: nz(stoch.k[idx]), stochD: nz(stoch.d[idx]),
@@ -575,9 +623,6 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
   const chgUp = legend ? (legend.chgPct ?? 0) >= 0 : true;
   const priceCol = chgUp ? "var(--up)" : "var(--down)";
   const last = rows[rows.length - 1];
-  const prev = rows.length > 1 ? rows[rows.length - 2] : null;
-  const chg = prev ? last.close - prev.close : null;
-  const chgPct = prev && prev.close ? (chg ?? 0) / prev.close : null;
 
   const gearRow = (id: StudyId, title: string, inputs: GearField[], style: GearField[], top: number) => openGear === id ? (
     <GearPanel id={id} title={title} top={top} inputs={inputs} style={style} values={settings} hidden={hidden[id]}
@@ -587,25 +632,10 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
 
   return (
     <div style={CARD}>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: MONO, fontSize: 22, fontWeight: 700, letterSpacing: "-.01em" }}>{symbol}</span>
-            {companyName ? <span style={{ fontSize: 13, color: "var(--muted)" }}>{companyName}</span> : null}
-            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>IDX · 1D · EOD</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700, letterSpacing: "-.02em", color: priceCol }}>{formatPrice(last.close)}</span>
-            {chg != null ? (
-              <span style={{ whiteSpace: "nowrap", fontSize: 11.5, fontWeight: 700, fontFamily: MONO, padding: "3px 8px", borderRadius: 7, background: chg >= 0 ? "var(--upSoft, rgba(37,99,235,.1))" : "var(--downSoft, rgba(229,72,77,.1))", color: priceCol }}>
-                {chg >= 0 ? "+" : ""}{formatPrice(chg)} ({formatPercent(chgPct)})
-              </span>
-            ) : null}
-            <span style={{ fontSize: 10.5, color: "var(--faint)" }}>as of {last.date} · {rows.length} sessions</span>
-          </div>
-        </div>
-      </div>
-
+      {/* No instrument header here (ticker/company/price/change/as-of) --
+          the ticker page's own header above this card already shows all of
+          it; repeating it here was a straight duplicate. Watchlist's own
+          selected-ticker header plays the same role there. */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "0 2px 10px" }}>
         <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>{legend?.date ?? last.date}</span>
         <div style={{ flex: "1 1 12px" }} />
@@ -659,11 +689,13 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
             {gearRow("ib", "Monthly IBH ~ IBL", [{ kind: "number", key: "ibDays", label: "IB Sessions", min: 1, max: 10 }], [{ kind: "color", key: "ibColor", label: "Box Color" }, { kind: "check", key: "ibFill", label: "Fill" }, { kind: "number", key: "ibWidth", label: "Border Width", min: 1, max: 4 }], 78)}
 
             <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.ribbon ? 0.45 : 1 }}>
-              <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>EMA Ribbon <span style={{ color: "var(--faint)" }}>{Array.from({ length: 8 }, (_, i) => settings.ribbonBase + i * settings.ribbonStep).join(" ")} close</span></span>
+              <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>EMA Ribbon <span style={{ color: "var(--faint)" }}>{settings.ribbon1Len} {settings.ribbon2Len} close</span></span>
+              {legend?.ribbon1 != null ? <b style={{ color: settings.ribbonColor, fontWeight: 500 }}>{formatPrice(legend.ribbon1)}</b> : null}
+              {legend?.ribbon2 != null ? <b style={{ color: hexA(settings.ribbonColor, 0.55), fontWeight: 500 }}>{formatPrice(legend.ribbon2)}</b> : null}
               <EyeButton hidden={hidden.ribbon} onClick={() => toggleHidden("ribbon")} />
               <GearButton onClick={() => setOpenGear(openGear === "ribbon" ? null : "ribbon")} />
             </div>
-            {gearRow("ribbon", "EMA Ribbon", [{ kind: "number", key: "ribbonBase", label: "Base Length", min: 2, max: 200 }, { kind: "number", key: "ribbonStep", label: "Step", min: 1, max: 50 }], [{ kind: "color", key: "ribbonColor", label: "Color" }], 102)}
+            {gearRow("ribbon", "EMA Ribbon", [{ kind: "number", key: "ribbon1Len", label: "EMA 1 Length", min: 2, max: 200 }, { kind: "number", key: "ribbon2Len", label: "EMA 2 Length", min: 2, max: 200 }], [{ kind: "color", key: "ribbonColor", label: "Color" }], 102)}
 
             <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.sma200 ? 0.45 : 1 }}>
               <span style={{ color: "var(--muted)" }}>SMA <span style={{ color: "var(--faint)" }}>{settings.sma200Len} close</span></span>
@@ -679,7 +711,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
               when hidden, collapsed to a short static row below everything
               so its eye toggle stays reachable without taking real height. */}
           {!hidden.rsi ? (
-            <div style={{ position: "absolute", left: 9, top: rsiTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag, pointerEvents: "auto" }}>
+            <div style={{ position: "absolute", left: 9, top: rsiTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag }}>
               <span style={{ color: "var(--muted)" }}>RSI <span style={{ color: "var(--faint)" }}>{settings.rsiLen} close</span></span>
               {legend?.rsi != null ? <b style={{ color: settings.rsiColor, fontWeight: 500 }}>{fmtOsc(legend.rsi)}</b> : null}
               {legend?.rsiMa != null ? <b style={{ color: settings.rsiMaColor, fontWeight: 500 }}>{fmtOsc(legend.rsiMa)}</b> : null}
@@ -689,7 +721,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
             </div>
           ) : null}
           {!hidden.macd ? (
-            <div style={{ position: "absolute", left: 9, top: macdTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag, pointerEvents: "auto" }}>
+            <div style={{ position: "absolute", left: 9, top: macdTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag }}>
               <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>MACD 4C Smooth <span style={{ color: "var(--faint)" }}>{settings.macdFast} {settings.macdSlow} {settings.macdSignal} {settings.macdSmooth} close</span></span>
               {legend?.macdHist != null ? <b style={{ color: "var(--text)", fontWeight: 500 }}>{legend.macdHist.toFixed(0)}</b> : null}
               {legend?.macd != null ? <b style={{ color: settings.macdColor, fontWeight: 500 }}>{legend.macd.toFixed(0)}</b> : null}
@@ -700,7 +732,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
             </div>
           ) : null}
           {!hidden.stoch ? (
-            <div style={{ position: "absolute", left: 9, top: stochTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag, pointerEvents: "auto" }}>
+            <div style={{ position: "absolute", left: 9, top: stochTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag }}>
               <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>Stoch RSI <span style={{ color: "var(--faint)" }}>{settings.stochSmoothK} {settings.stochSmoothD} {settings.stochRsiLen} {settings.stochLen} close</span></span>
               {legend?.stochK != null ? <b style={{ color: settings.stochKColor, fontWeight: 500 }}>{fmtOsc(legend.stochK)}</b> : null}
               {legend?.stochD != null ? <b style={{ color: settings.stochDColor, fontWeight: 500 }}>{fmtOsc(legend.stochD)}</b> : null}

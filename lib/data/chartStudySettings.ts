@@ -22,8 +22,8 @@ export type StudySettings = {
   sma200Len: number;
   rsiLen: number;
   rsiMaLen: number;
-  ribbonBase: number;
-  ribbonStep: number;
+  ribbon1Len: number;
+  ribbon2Len: number;
   macdFast: number;
   macdSlow: number;
   macdSignal: number;
@@ -62,7 +62,7 @@ export type StudySettings = {
 
 export const DEFAULT_STUDY_SETTINGS: StudySettings = {
   volMaLen: 20, ibDays: 2, sma200Len: 200, rsiLen: 10, rsiMaLen: 14,
-  ribbonBase: 25, ribbonStep: 5,
+  ribbon1Len: 25, ribbon2Len: 50,
   macdFast: 12, macdSlow: 26, macdSignal: 9, macdSmooth: 3,
   stochSmoothK: 3, stochSmoothD: 3, stochRsiLen: 10, stochLen: 10,
   vwapAnchor: "quarter", vwapSource: "(H+L+C)/3", vwapColor: "#787b86", vwapWidth: 2,
