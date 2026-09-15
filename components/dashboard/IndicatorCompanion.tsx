@@ -13,6 +13,7 @@ import { computeAnchoredVwap, periodLabel, VWAP_SOURCE_FN, type AvwapPoint, type
 import { ema, sma, rsiWilder, stochOf, macdOf } from "@/lib/indicators/oscillators";
 import { formatPrice, formatCompact, formatPercent } from "@/lib/format/number";
 import { DrawingTool, type SelectionInfo } from "@/lib/charting/DrawingTool";
+import { loadViewRange, saveViewRange } from "@/lib/charting/viewRangeStore";
 import { BandFill } from "@/lib/charting/drawings/BandFill";
 import { IbBoxes } from "@/lib/charting/drawings/IbBoxes";
 import { VwapFill } from "@/lib/charting/drawings/VwapFill";
@@ -65,27 +66,38 @@ const RANGE_BUTTONS = [
 // (MarginLabels.ts, drawn past the last bar) -- kept in PIXELS, not a fixed
 // bar count: `rightOffset` (lightweight-charts' own margin unit) is bars,
 // so at a fixed bar count the pixel gap balloons at high zoom and vanishes
-// at low zoom, either stranding the labels far from the last candle or
-// squeezing them into no room at all. Recomputed from the CURRENT
-// barSpacing (see applyMarginOffset below) whenever the visible range
-// changes -- zoom, pan, or a range button -- so the gap the labels sit in
-// stays this same width on screen regardless of zoom level.
-const MARGIN_PX = 92;
+// at low zoom. Deliberately modest -- "close to the last candle", not a
+// wide TradingView-style reading column.
+const MARGIN_PX = 56;
 
-/** Recomputes `rightOffset` (bars) from the CURRENT barSpacing so the VWAP
-    margin stays ~MARGIN_PX wide on screen. Guarded against its own
-    feedback (`adjustingRef`): applying a new rightOffset itself fires
-    another visible-range-change event, which would otherwise recurse
-    forever chasing a moving target as barSpacing keeps shifting slightly
-    in response to its own correction. A 1-bar tolerance also skips
-    corrections too small to be worth another chart update. */
-function makeMarginOffsetTracker(chart: IChartApi) {
+/** Recomputes `rightOffset` (bars) so the VWAP margin stays ~MARGIN_PX wide
+    on screen through pans/zooms/range changes. Solved in closed form
+    rather than iterating `rightOffset = MARGIN_PX / currentBarSpacing`: that
+    naive version reads back a barSpacing the offset itself already
+    shrank (more phantom bars packed into the same pixel width lowers
+    every bar's width, real candles included), so each correction demands
+    a bigger correction next time -- a genuine unbounded feedback loop,
+    not just jitter, caught from a direct report that the margin kept
+    growing and candles kept visibly compressing. Deriving barSpacing =
+    plotWidth / (visibleRealBars + rightOffset) and solving
+    rightOffset*barSpacing = MARGIN_PX for rightOffset directly (algebra
+    below) has no such circularity: it depends only on the REAL bar count
+    in view, never on a barSpacing the previous correction already
+    distorted.
+      barSpacing = plotWidth / (visibleRealBars + rightOffset)
+      rightOffset * barSpacing = MARGIN_PX
+      => rightOffset = MARGIN_PX * visibleRealBars / (plotWidth - MARGIN_PX) */
+function makeMarginOffsetTracker(chart: IChartApi, lastBarIndex: number) {
   const adjustingRef = { current: false };
   const apply = () => {
     if (adjustingRef.current) return;
-    const bs = chart.timeScale().options().barSpacing;
-    if (!bs) return;
-    const wanted = Math.max(2, Math.round(MARGIN_PX / bs));
+    const plotWidth = chart.timeScale().width();
+    const lr = chart.timeScale().getVisibleLogicalRange();
+    if (!plotWidth || plotWidth <= MARGIN_PX || !lr) return;
+    const realFrom = Math.max(0, lr.from);
+    const realTo = Math.min(lastBarIndex, lr.to);
+    const visibleRealBars = Math.max(1, realTo - realFrom);
+    const wanted = Math.max(2, Math.round((MARGIN_PX * visibleRealBars) / (plotWidth - MARGIN_PX)));
     const current = chart.timeScale().options().rightOffset;
     if (Math.abs(current - wanted) < 1) return;
     adjustingRef.current = true;
@@ -414,17 +426,25 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
 
     // ── EMA Ribbon -- exactly two EMAs (25/50 by default), matching
     //    TradingView's own simplest "EMA Cross" convention rather than the
-    //    original 8-line fanned-ribbon design. ──
+    //    original 8-line fanned-ribbon design. `autoscaleInfoProvider: null`
+    //    on every overlay below (Ribbon, SMA, VWAP) -- same reasoning as the
+    //    VWAP σ-band exclusion: a long-period MA can sit far from the
+    //    recent candle range (a 200-day average lags hard after a big move),
+    //    and letting that drive the visible price range squashes the
+    //    candles vertically the moment that overlay is switched on. The
+    //    candlesticks alone own the price scale now; toggling any overlay
+    //    on/off no longer changes how big the candles themselves look --
+    //    caught from a direct report that SMA/VWAP visibly compressed them. ──
     if (!hidden.ribbon) {
-      const line1 = chart.addSeries(LineSeries, { color: s.ribbonColor, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon1Len}` });
+      const line1 = chart.addSeries(LineSeries, { color: s.ribbonColor, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon1Len}`, autoscaleInfoProvider: () => null });
       line1.setData(lineData(ema(closes, s.ribbon1Len)));
-      const line2 = chart.addSeries(LineSeries, { color: hexA(s.ribbonColor, 0.55), lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon2Len}` });
+      const line2 = chart.addSeries(LineSeries, { color: hexA(s.ribbonColor, 0.55), lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${s.ribbon2Len}`, autoscaleInfoProvider: () => null });
       line2.setData(lineData(ema(closes, s.ribbon2Len)));
     }
 
     // ── SMA -- single line, hidden by default. ──
     if (!hidden.sma200) {
-      const smaLine = chart.addSeries(LineSeries, { color: s.smaColor, lineWidth: lw(s.smaWidth), crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `SMA ${s.sma200Len}` });
+      const smaLine = chart.addSeries(LineSeries, { color: s.smaColor, lineWidth: lw(s.smaWidth), crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `SMA ${s.sma200Len}`, autoscaleInfoProvider: () => null });
       smaLine.setData(lineData(sma(closes, s.sma200Len)));
     }
 
@@ -453,7 +473,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
         const lastPt = vw.points[seg.idxs[seg.idxs.length - 1]] as AvwapPoint;
         const pLabel = periodLabel(seg.key, s.vwapAnchor as VwapAnchor);
         if (isCurrent) {
-          const center = chart.addSeries(LineSeries, { color: s.vwapColor, lineWidth: lw(s.vwapWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `VWAP Suite v2.0 ${pLabel}` });
+          const center = chart.addSeries(LineSeries, { color: s.vwapColor, lineWidth: lw(s.vwapWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `VWAP Suite v2.0 ${pLabel}`, autoscaleInfoProvider: () => null });
           center.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).vwap })));
           if (s.vwapText) {
             marginItems.push({ text: `${pLabel}VWAP • ${formatPrice(lastPt.vwap)} • ${pct(lastPt.vwap, close)}`, price: lastPt.vwap, col: 0 });
@@ -482,7 +502,12 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
             fillBot.attachPrimitive(new VwapFill(seg.idxs.map((i) => rows[i].date as Time), seg.idxs.map((i) => (vw.points[i] as AvwapPoint).l1), seg.idxs.map((i) => (vw.points[i] as AvwapPoint).l2), hexA(s.vwapColor, 0.1)));
           }
         } else if (s.vwapLines) {
-          const forward = chart.addSeries(LineSeries, { color: c.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
+          // Excluded from autoscale too -- an old closed period's VWAP can
+          // sit far outside the recent candle range (this ticker may simply
+          // have traded much higher or lower back then), and forwarding
+          // that as a flat reference line is meant to show that distance,
+          // not to also drag the whole price scale out to reach it.
+          const forward = chart.addSeries(LineSeries, { color: c.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
           forward.setData([{ time: rows[seg.idxs[0]].date as Time, value: lastPt.vwap }, { time: rows[rows.length - 1].date as Time, value: lastPt.vwap }]);
           if (si === visSegs.length - 2 && s.vwapText) {
             marginItems.push({ text: `P${pLabel}VWAP • ${formatPrice(lastPt.vwap)} • ${pct(lastPt.vwap, close)}`, price: lastPt.vwap, col: 1 });
@@ -565,15 +590,44 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     panes[0]?.setStretchFactor(PRICE_H);
     for (let i = 1; i < panes.length; i++) panes[i]?.setStretchFactor(OSC_H);
 
+    // Restores wherever this ticker's own chart was last zoomed/panned to
+    // (viewRangeStore.ts), falling back to the 3M default only the first
+    // time a symbol is ever opened (or if the saved range no longer lines
+    // up with this ticker's actual bar range, e.g. after new sessions have
+    // been published since it was saved).
+    const savedRange = loadViewRange(symbol || "");
+    const dateSet = new Set(rows.map((r) => r.date));
     const initialSessions = RANGE_BUTTONS.find((r) => r.id === "3M")?.n ?? rows.length;
     const fromIdx = Math.max(0, rows.length - initialSessions);
-    chart.timeScale().setVisibleRange({ from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time });
+    const defaultRange = { from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time };
+    const restored = savedRange && dateSet.has(savedRange.from) && dateSet.has(savedRange.to) ? savedRange : null;
+    chart.timeScale().setVisibleRange(restored ? { from: restored.from as Time, to: restored.to as Time } : defaultRange);
+    setActiveRangeId(restored ? matchRangeButton(rows, restored) : "3M");
 
-    // Keeps the VWAP margin ~MARGIN_PX wide on screen through pans/zooms,
-    // not just at whatever bar-count the chart happened to open on.
-    const trackMarginOffset = makeMarginOffsetTracker(chart);
-    trackMarginOffset();
-    chart.timeScale().subscribeVisibleLogicalRangeChange(trackMarginOffset);
+    // Persists the visible range on every pan/zoom/range-button change (not
+    // just on unmount -- a tab close or crash shouldn't lose it), and keeps
+    // the range-button row honest about whether the current view still
+    // matches one of the presets. Debounced: a live drag or scroll-wheel
+    // zoom fires this many times a second, and only the settled end state
+    // needs to hit localStorage.
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    const onTimeRangeChange = (r: { from: Time; to: Time } | null) => {
+      if (!r) return;
+      setActiveRangeId(matchRangeButton(rows, { from: String(r.from), to: String(r.to) }));
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveViewRange(symbol || "", { from: String(r.from), to: String(r.to) }), 400);
+    };
+    chart.timeScale().subscribeVisibleTimeRangeChange(onTimeRangeChange);
+
+    // The extra right-margin is only for the VWAP margin labels -- with
+    // VWAP off there's nothing to make room for, so every other indicator
+    // (SMA, RSI, MACD, ...) keeps the plain small default and toggling any
+    // of them never nudges the candles' own bar spacing either way.
+    if (!hidden.vwap) {
+      const trackMarginOffset = makeMarginOffsetTracker(chart, rows.length - 1);
+      trackMarginOffset();
+      chart.timeScale().subscribeVisibleLogicalRangeChange(trackMarginOffset);
+    }
 
     const legendAt = (idx: number): Legend => {
       const r = rows[idx];
@@ -599,6 +653,8 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
 
     return () => {
       chart.unsubscribeCrosshairMove(onMove);
+      chart.timeScale().unsubscribeVisibleTimeRangeChange(onTimeRangeChange);
+      if (saveTimer) clearTimeout(saveTimer);
       drawing.destroy();
       setDrawingTool(null);
       chart.remove();
@@ -776,6 +832,18 @@ function hexA(hex: string, alpha: number): string {
   const n = parseInt(hex.replace("#", ""), 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
+/** Which range button (if any) a restored {from,to} view corresponds to --
+    "" when the viewer left it zoomed/panned somewhere that isn't exactly
+    one of the presets, so none of the buttons should read as active. */
+function matchRangeButton(rows: OhlcvRow[], range: { from: string; to: string }): string {
+  const toIdx = rows.findIndex((r) => r.date === range.to);
+  const fromIdx = rows.findIndex((r) => r.date === range.from);
+  if (toIdx !== rows.length - 1 || fromIdx === -1) return "";
+  const span = toIdx - fromIdx;
+  const hit = RANGE_BUTTONS.find((r) => r.n != null && Math.abs(r.n - span) <= 1);
+  return hit ? hit.id : fromIdx === 0 ? "All" : "";
+}
+
 function pct(v: number, close: number): string {
   const p = close ? ((v - close) / close) * 100 : 0;
   return `${p >= 0 ? "+" : ""}${p.toFixed(2)}%`;

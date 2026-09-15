@@ -99,3 +99,29 @@ export function computeAnchoredVwap(rows: OhlcvRow[], anchor: VwapAnchor = "quar
   }
   return { points, currentKey: curKey, prevFinalVwap: prevFinal, prevFinalPoint };
 }
+
+/**
+ * VWAP anchored at an arbitrary bar index (the "Anchored VWAP" drawing
+ * tool, not the periodic VWAP Suite indicator above -- TradingView's own
+ * version of this tool lets you click any one bar and get a running VWAP
+ * from exactly that point forward, no period boundary involved). Same
+ * cumulative hlc3(or `source`)*volume math as computeAnchoredVwap, just
+ * never resets. Returns one point per bar from `anchorIdx` to the end of
+ * `rows` (nothing before the anchor).
+ */
+export function computeVwapFromAnchor(rows: OhlcvRow[], anchorIdx: number, source: VwapSource = "(H+L+C)/3", mult1 = 1, mult2 = 2): Array<{ idx: number; vwap: number; u1: number; l1: number; u2: number; l2: number }> {
+  const srcFn = VWAP_SOURCE_FN[source];
+  const out: Array<{ idx: number; vwap: number; u1: number; l1: number; u2: number; l2: number }> = [];
+  let cumPV = 0, cumV = 0, cumPV2 = 0;
+  for (let i = anchorIdx; i < rows.length; i++) {
+    const r = rows[i];
+    const src = srcFn(r);
+    const vol = r.volume || 0;
+    cumPV += src * vol; cumV += vol; cumPV2 += src * src * vol;
+    if (cumV <= 0) continue;
+    const vwap = cumPV / cumV;
+    const sd = Math.sqrt(Math.max(0, cumPV2 / cumV - vwap * vwap));
+    out.push({ idx: i, vwap, u1: vwap + mult1 * sd, l1: vwap - mult1 * sd, u2: vwap + mult2 * sd, l2: vwap - mult2 * sd });
+  }
+  return out;
+}

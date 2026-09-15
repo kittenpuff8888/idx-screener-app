@@ -23,7 +23,7 @@
 // to the clicked bar's nearest O/H/L/C; Lock mode forces click-to-select
 // only, no new placements; hideDrawings toggles visibility without
 // discarding anything (distinct from clearAll).
-import type { IChartApi, ISeriesApi, MouseEventParams, SeriesType, Time } from "lightweight-charts";
+import { LineSeries, LineStyle, type IChartApi, type ISeriesApi, type MouseEventParams, type SeriesType, type Time } from "lightweight-charts";
 import type { OhlcvRow } from "@/lib/domain/types";
 import { TrendLine } from "./drawings/TrendLine";
 import { HorizontalLine } from "./drawings/HorizontalLine";
@@ -34,6 +34,7 @@ import { TextAnnotation } from "./drawings/TextAnnotation";
 import { VLine } from "./drawings/VLine";
 import { PositionZone } from "./drawings/PositionZone";
 import { loadDrawings, saveDrawings, type StoredRecord, type RangeVariant } from "./drawingStore";
+import { computeVwapFromAnchor } from "@/lib/indicators/anchoredVwap";
 
 export type ToolKind =
   | "cursor"
@@ -54,9 +55,12 @@ const HIT_TOLERANCE = 9;
 
 // Tools that place with a single click (hline handled separately; text-ish
 // prompts inline; everything else here is anchor-only, drawn as a vertical
-// line -- Anchored VWAP/volume-profile/forecast/ghost/sector/fib-time tools
-// have no distinct geometry in the source design either, so they share it).
-const VERTICAL = new Set<ToolKind>(["vline", "crossline", "avwap", "frvp", "avp", "barspat", "ghost", "posfc", "fibtime", "fibtrendtime", "sector"]);
+// line -- volume-profile/forecast/ghost/sector/fib-time tools have no
+// distinct geometry in the source design either, so they share it. Anchored
+// VWAP is pulled OUT of this bucket below: unlike those, it's a real,
+// well-defined TradingView tool (a genuine running VWAP from the clicked
+// bar forward), not a placeholder marker, so it gets its own real math.
+const VERTICAL = new Set<ToolKind>(["vline", "crossline", "frvp", "avp", "barspat", "ghost", "posfc", "fibtime", "fibtrendtime", "sector"]);
 const TEXTISH = new Set<ToolKind>(["text", "anchoredtext", "note", "callout", "pricelabel", "flag"]);
 const FIBISH = new Set<ToolKind>(["fib", "fibext", "fibch", "fan", "circles", "spiral", "arcs", "wedge", "pitchfan", "gannbox", "gannsqf", "gannsq", "gannfan"]);
 const RECTISH = new Set<ToolKind>(["rect", "rrect", "ellipse", "circle"]);
@@ -64,8 +68,18 @@ const POSITION = new Set<ToolKind>(["long", "short"]);
 const RANGE_VARIANT: Partial<Record<ToolKind, RangeVariant>> = { measure: "measure", prange: "price", drange: "date", dprange: "dateprice", info: "price" };
 
 type AnyPrimitive = TrendLine | HorizontalLine | FibRetracement | Rectangle | Measure | TextAnnotation | VLine | PositionZone;
-type Placed = { id: string; stored: StoredRecord; primitive: AnyPrimitive };
+// Anchored VWAP is real chart series (a center line + two σ-band lines,
+// same as the VWAP Suite indicator), not a primitive on the candle series
+// like everything else here -- `series` carries those instead of
+// `primitive` for that one drawing type; exactly one of the two is set.
+type Placed = { id: string; stored: StoredRecord; primitive?: AnyPrimitive; series?: ISeriesApi<SeriesType>[] };
 type DrawPointT = { time: Time; price: number };
+
+function hexAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.replace("#", "").slice(0, 6), 16);
+  if (Number.isNaN(n)) return hex;
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
 
 function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1, dy = y2 - y1;
@@ -97,11 +111,22 @@ export class DrawingTool {
     this.restore();
   }
 
+  /** A `Placed` is either a primitive on the candle series or a standalone
+      set of chart series (Anchored VWAP) -- exactly one branch runs. */
+  private detachPlaced(p: Placed) {
+    if (p.primitive) this.series.detachPrimitive(p.primitive);
+    else p.series?.forEach((s) => { try { this.chart.removeSeries(s); } catch { /* already gone with the chart */ } });
+  }
+  private stylePlaced(p: Placed, color: string, width: number, style: "solid" | "dashed" | "dotted") {
+    if (p.primitive) { p.primitive.setStyle(color, width, style); return; }
+    p.series?.forEach((s, i) => s.applyOptions({ color: i === 0 ? color : hexAlpha(color, 0.5), lineWidth: (Math.min(4, Math.max(1, width)) as 1 | 2 | 3 | 4) }));
+  }
+
   destroy() {
     this.chart.unsubscribeClick(this.onClick);
     this.chart.unsubscribeCrosshairMove(this.onMove);
     this.clearPreview();
-    this.placed.forEach((p) => this.series.detachPrimitive(p.primitive));
+    this.placed.forEach((p) => this.detachPlaced(p));
     this.placed = [];
     this.listeners.clear();
     this.selectionListeners.clear();
@@ -129,12 +154,15 @@ export class DrawingTool {
   toggleLock() { this.lockedOn = !this.lockedOn; this.emit(); }
   toggleHideAll() {
     this.hideAll = !this.hideAll;
-    this.placed.forEach((p) => { if (this.hideAll) this.series.detachPrimitive(p.primitive); else this.series.attachPrimitive(p.primitive); });
+    this.placed.forEach((p) => {
+      if (p.primitive) { if (this.hideAll) this.series.detachPrimitive(p.primitive); else this.series.attachPrimitive(p.primitive); }
+      else p.series?.forEach((s) => s.applyOptions({ visible: !this.hideAll }));
+    });
     this.emit();
   }
 
   clearAll() {
-    this.placed.forEach((p) => this.series.detachPrimitive(p.primitive));
+    this.placed.forEach((p) => this.detachPlaced(p));
     this.placed = [];
     this.selectedId = null;
     this.persist();
@@ -147,7 +175,7 @@ export class DrawingTool {
     const idx = this.placed.findIndex((p) => p.id === this.selectedId);
     if (idx === -1) return;
     const [hit] = this.placed.splice(idx, 1);
-    this.series.detachPrimitive(hit.primitive);
+    this.detachPlaced(hit);
     this.selectedId = null;
     this.persist();
     this.emit();
@@ -157,7 +185,7 @@ export class DrawingTool {
   restyleSelected(color: string, width: number, style: "solid" | "dashed" | "dotted") {
     const p = this.placed.find((x) => x.id === this.selectedId);
     if (!p) return;
-    p.primitive.setStyle(color, width, style);
+    this.stylePlaced(p, color, width, style);
     p.stored = { ...p.stored, color, width, style };
     this.persist();
     this.emitSelection({ id: p.id, title: labelFor(p.stored.type), color, width, style, x: this.selectedX, y: this.selectedY });
@@ -175,6 +203,27 @@ export class DrawingTool {
     const color = stored.color ?? (stored.type === "fib" ? FIB_COLOR : TOOL_COLOR);
     const width = stored.width ?? 2;
     const style = stored.style ?? "solid";
+    if (stored.type === "avwap") {
+      const anchorIdx = this.rows.findIndex((r) => r.date === stored.at.time);
+      if (anchorIdx === -1) return;
+      const points = computeVwapFromAnchor(this.rows, anchorIdx);
+      const mk = (values: (p: (typeof points)[number]) => number, w: number, dashed: boolean, col: string) => {
+        const s = this.chart.addSeries(LineSeries, {
+          color: col, lineWidth: w as 1 | 2 | 3 | 4, lineStyle: dashed ? LineStyle.Dashed : LineStyle.Solid,
+          crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, visible: !this.hideAll,
+          autoscaleInfoProvider: () => null,
+        });
+        s.setData(points.map((p) => ({ time: this.rows[p.idx].date as Time, value: values(p) })));
+        return s;
+      };
+      const series = [
+        mk((p) => p.vwap, width, style !== "solid", color),
+        mk((p) => p.u1, 1, true, hexAlpha(color, 0.5)),
+        mk((p) => p.l1, 1, true, hexAlpha(color, 0.5)),
+      ];
+      this.placed.push({ id: stored.id, stored, series });
+      return;
+    }
     let primitive: AnyPrimitive;
     if (stored.type === "trend" || stored.type === "ray" || stored.type === "extended") {
       primitive = new TrendLine({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, color, width, style);
@@ -251,6 +300,11 @@ export class DrawingTool {
     }
     if (VERTICAL.has(this.tool)) {
       this.commit({ id: `${this.tool}-${Date.now()}`, type: this.tool === "crossline" ? "crossline" : "vline", at: { time: String(point.time), price: point.price } });
+      this.setTool("cursor");
+      return;
+    }
+    if (this.tool === "avwap") {
+      this.commit({ id: `avwap-${Date.now()}`, type: "avwap", at: { time: String(point.time), price: point.price } });
       this.setTool("cursor");
       return;
     }
@@ -357,6 +411,15 @@ export class DrawingTool {
         return px >= Math.min(x1, x2) - HIT_TOLERANCE && px <= Math.max(x1, x2) + HIT_TOLERANCE
           && py >= Math.min(...ys) - HIT_TOLERANCE && py <= Math.max(...ys) + HIT_TOLERANCE;
       }
+      if (stored.type === "avwap") {
+        const anchorIdx = this.rows.findIndex((r) => r.date === stored.at.time);
+        if (anchorIdx === -1) return false;
+        const points = computeVwapFromAnchor(this.rows, anchorIdx);
+        return points.some((p) => {
+          const x = ts.timeToCoordinate(this.rows[p.idx].date as Time), y = this.series.priceToCoordinate(p.vwap);
+          return x != null && y != null && Math.abs(px - x) <= HIT_TOLERANCE && Math.abs(py - y) <= HIT_TOLERANCE;
+        });
+      }
       const x1 = ts.timeToCoordinate(stored.a.time as Time), y1 = this.series.priceToCoordinate(stored.a.price);
       const x2 = ts.timeToCoordinate(stored.b.time as Time), y2 = this.series.priceToCoordinate(stored.b.price);
       if (x1 == null || y1 == null || x2 == null || y2 == null) return false;
@@ -383,7 +446,7 @@ function labelFor(type: StoredRecord["type"]): string {
   const names: Record<StoredRecord["type"], string> = {
     trend: "Trend Line", ray: "Ray", extended: "Extended Line", hline: "Horizontal Line",
     vline: "Vertical Line", crossline: "Crossline", fib: "Fib Retracement", rect: "Rectangle",
-    range: "Range", position: "Position", text: "Text",
+    range: "Range", position: "Position", avwap: "Anchored VWAP", text: "Text",
   };
   return names[type] ?? "Drawing";
 }

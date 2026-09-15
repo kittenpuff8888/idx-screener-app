@@ -24,6 +24,7 @@ export type StoredDrawing =
   | { id: string; type: "rect"; a: StoredPoint; b: StoredPoint }
   | { id: string; type: "range"; variant: RangeVariant; a: StoredPoint; b: StoredPoint; barCount: number }
   | { id: string; type: "position"; dir: 1 | -1; a: StoredPoint; b: StoredPoint; entry: number; target: number; stop: number }
+  | { id: string; type: "avwap"; at: StoredPoint }
   | { id: string; type: "text"; at: StoredPoint; text: string };
 
 // Common styling every stored drawing carries once selectable/restylable
