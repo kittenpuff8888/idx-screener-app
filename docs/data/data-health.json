@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "generatedAt": "2026-09-15T22:39:30.298628+07:00",
+ "generatedAt": "2026-09-16T01:43:58.208416+07:00",
  "marketDate": "2026-09-15",
  "universe": {
   "size": 962,
@@ -15,15 +15,9 @@
    "delistedCount": 0
   },
   "liveIdxRosterDiffReason": "IDX roster diff not yet computed this run",
-  "auditedAt": "2026-09-15T22:39:15.242940+07:00"
+  "auditedAt": "2026-09-16T01:43:42.744336+07:00"
  },
  "runLog": [
-  {
-   "timestamp": "2026-09-11T23:48:28.941153+07:00",
-   "marketDate": "2026-09-11",
-   "status": "NO_CHANGE",
-   "message": "Dataset already published; last successful snapshot preserved."
-  },
   {
    "timestamp": "2026-09-12T00:48:41.306774+07:00",
    "marketDate": "2026-09-11",
@@ -65,6 +59,12 @@
    "marketDate": "2026-09-15",
    "status": "SUCCESS",
    "message": "Created and validated a new dated snapshot."
+  },
+  {
+   "timestamp": "2026-09-16T01:42:09.852157+07:00",
+   "marketDate": "2026-09-15",
+   "status": "NO_CHANGE",
+   "message": "Dataset already published; last successful snapshot preserved."
   }
  ],
  "qaSummary": {
@@ -93,7 +93,7 @@
  "parity": {
   "status": "OK",
   "method": "Dual-source agreement (cached vs fresh yfinance; Investing.com adapter available in rebuild_backend/providers). True TradingView data needs a paid feed.",
-  "lastChecked": "2026-09-15T22:39:17.661493+07:00",
+  "lastChecked": "2026-09-16T01:43:45.530764+07:00",
   "checked": 15,
   "failures": [],
   "results": [
@@ -110,10 +110,6 @@
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "ASSA",
-    "status": "ERROR: TypeError"
-   },
-   {
     "ticker": "BBCA",
     "status": "ERROR: TypeError"
    },
@@ -122,23 +118,27 @@
     "status": "ERROR: TypeError"
    },
    {
+    "ticker": "BSML",
+    "status": "ERROR: TypeError"
+   },
+   {
     "ticker": "CINT",
     "status": "ERROR: TypeError"
    },
    {
-    "ticker": "CYBR",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "EMTK",
-    "status": "ERROR: TypeError"
-   },
-   {
-    "ticker": "GPRA",
+    "ticker": "CMRY",
     "status": "ERROR: TypeError"
    },
    {
     "ticker": "MNCN",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "PBSA",
+    "status": "ERROR: TypeError"
+   },
+   {
+    "ticker": "PGEO",
     "status": "ERROR: TypeError"
    },
    {
