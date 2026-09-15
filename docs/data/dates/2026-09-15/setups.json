@@ -1,0 +1,398 @@
+{
+ "schemaVersion": 1,
+ "marketDate": "2026-09-15",
+ "generatedAt": "2026-09-15T22:39:30.201470+07:00",
+ "config": {
+  "minMedianValueTraded": 1000000000,
+  "minScore": 55,
+  "cvdLookback": 20,
+  "divergenceLookback": 30,
+  "sweepLookback": 20,
+  "recentIpoMaxBars": 90,
+  "weights": {
+   "location": 25,
+   "structure": 25,
+   "orderflow": 25,
+   "ownership": 15,
+   "liquidity": 10
+  }
+ },
+ "methodology": "CVD is approximated from candle structure + volume (labelled 'approx.'); KSEI is monthly-lagged context; outputs are screening analytics, not trade advice.",
+ "count": 5,
+ "setups": [
+  {
+   "ticker": "PGEO",
+   "name": "Pertamina Geothermal Energy Tb",
+   "sector": "Others",
+   "close": 1055.0,
+   "score": 75,
+   "components": {
+    "location": 25,
+    "structure": 25,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 1051,
+   "invalidation": 1034,
+   "target": 1085,
+   "medianValueTraded20": 11375732000,
+   "rvol": 2.276348743164377,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -3926739233,
+    -3926739233,
+    -3937722033,
+    -3914288987,
+    -3914288987,
+    -3928670187,
+    -3953311187,
+    -3940716187,
+    -3956188187,
+    -3937753765,
+    -3942841565,
+    -3969788165,
+    -3957989565,
+    -3964538015,
+    -3960254148,
+    -3997718242,
+    -3987219442,
+    -3989438042,
+    -3989438042,
+    -3992706075,
+    -3997449889,
+    -3994111423,
+    -4000790923,
+    -4005616523,
+    -4011368423,
+    -4008178656,
+    -4017979956,
+    -4009081356,
+    -4004348042,
+    -3989937678
+   ],
+   "dataSource": "yfinance",
+   "why": "at POI SMA200; bullish CHoCH (Swing Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 10,
+    "hitRate": 0.8,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3APGEO"
+  },
+  {
+   "ticker": "CMRY",
+   "name": "Cisarua Mountain Dairy Tbk.",
+   "sector": "Others",
+   "close": 4550.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 4444,
+   "invalidation": 4356.0,
+   "target": 4620,
+   "medianValueTraded20": 13326066000,
+   "rvol": 1.007438072258072,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    48807055,
+    48525999,
+    50541549,
+    48496949,
+    49402249,
+    48411149,
+    48303385,
+    48499710,
+    50677425,
+    51968875,
+    51968875,
+    50316421,
+    52186721,
+    52872565,
+    51564293,
+    49400243,
+    48867198,
+    42337198,
+    51205398,
+    53248898,
+    48463858,
+    51273935,
+    48231482,
+    48624239,
+    52894839,
+    50652139,
+    49985699,
+    48316319,
+    48701199,
+    50664742
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 10,
+    "hitRate": 0.3,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ACMRY"
+  },
+  {
+   "ticker": "MNCN",
+   "name": "Media Nusantara Citra Tbk.",
+   "sector": "Others",
+   "close": 202.0,
+   "score": 60,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 197,
+   "invalidation": 193.05,
+   "target": 204,
+   "medianValueTraded20": 9701595400,
+   "rvol": 2.514643351055964,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    -583122922,
+    -583122922,
+    -556686222,
+    -524115222,
+    -535289888,
+    -541746655,
+    -541746655,
+    -513444055,
+    -524141488,
+    -470587788,
+    -518615488,
+    -477639588,
+    -425364188,
+    -440146788,
+    -440146788,
+    -475102588,
+    -445279188,
+    -463277955,
+    -434681055,
+    -390063055,
+    -399215355,
+    -387513915,
+    -419039315,
+    -376788415,
+    -382831369,
+    -382831369,
+    -427017003,
+    -416697723,
+    -387137608,
+    -476721823
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 18,
+    "hitRate": 0.67,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3AMNCN"
+  },
+  {
+   "ticker": "BSML",
+   "name": "Bintang Samudera Mandiri Lines",
+   "sector": "Others",
+   "close": 550.0,
+   "score": 55,
+   "components": {
+    "location": 0,
+    "structure": 25,
+    "orderflow": 20,
+    "ownership": 0,
+    "liquidity": 10
+   },
+   "entryZone": 575,
+   "invalidation": 524,
+   "target": 621,
+   "medianValueTraded20": 6673267000,
+   "rvol": 1.065438291917166,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    2005360515,
+    2000899148,
+    2006641448,
+    1998972748,
+    2005191248,
+    2001887419,
+    1992897219,
+    2006416819,
+    2006416819,
+    1987221719,
+    2002410819,
+    2002410819,
+    2000099319,
+    2012316519,
+    2010169319,
+    2013471053,
+    2013471053,
+    2006858653,
+    2006858653,
+    1992225353,
+    1986425953,
+    1983280186,
+    1989514586,
+    1986166466,
+    1986166466,
+    1993464516,
+    1987007316,
+    2006239516,
+    2013969076,
+    2018321276
+   ],
+   "dataSource": "yfinance",
+   "why": "bullish CHoCH (Swing Bullish CHoCH); CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 8,
+    "hitRate": 0.88,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3ABSML"
+  },
+  {
+   "ticker": "PBSA",
+   "name": "Paramita Bangun Sarana Tbk.",
+   "sector": "Others",
+   "close": 745.0,
+   "score": 55,
+   "components": {
+    "location": 15,
+    "structure": 20,
+    "orderflow": 15,
+    "ownership": 0,
+    "liquidity": 5
+   },
+   "entryZone": 722,
+   "invalidation": 707.85,
+   "target": 820,
+   "medianValueTraded20": 1067131000,
+   "rvol": 1.633458847729524,
+   "isRecentIpo": false,
+   "kseiFootprint": {
+    "available": true,
+    "asOf": "2026-08-31",
+    "netDeltaPP": 0.0,
+    "accumulation": false,
+    "changes": []
+   },
+   "cvdSpark": [
+    13346444,
+    13395169,
+    13395169,
+    15009544,
+    14550604,
+    14479038,
+    14159138,
+    14056318,
+    23456736,
+    24599505,
+    24729264,
+    24164889,
+    24057118,
+    24136391,
+    22321391,
+    22500203,
+    22831753,
+    22199611,
+    22199611,
+    22456751,
+    21924465,
+    21924465,
+    21674165,
+    22103165,
+    20274865,
+    21545365,
+    20583915,
+    19589915,
+    20905748,
+    20260366
+   ],
+   "dataSource": "yfinance",
+   "why": "basing at 20-day low band; failed breakdown: low swept and reclaimed; CVD(approx.) bullish divergence at lows",
+   "history": {
+    "signals": 11,
+    "hitRate": 0.55,
+    "note": "price-only core signal history for this ticker; small sample"
+   },
+   "tradingView": "https://www.tradingview.com/chart/?symbol=IDX%3APBSA"
+  }
+ ],
+ "quarantined": [
+  {
+   "ticker": "BNBR",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-05-15->2026-05-18 (175.0->111.68468475341797)"
+   ]
+  },
+  {
+   "ticker": "COCO",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-09-29->2025-09-30 (500.0->158.6904754638672)",
+    "move beyond ARA/ARB bound 2026-06-26->2026-06-29 (170.0->83.19244384765625)"
+   ]
+  },
+  {
+   "ticker": "FISH",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-08-29->2025-09-01 (10350.0->1035.0)"
+   ]
+  },
+  {
+   "ticker": "INET",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2025-12-24->2025-12-29 (750.0->454.43414306640625)"
+   ]
+  },
+  {
+   "ticker": "PACK",
+   "quarantined": true,
+   "issues": [
+    "move beyond ARA/ARB bound 2026-01-09->2026-01-12 (3280.0->272.0)"
+   ]
+  }
+ ],
+ "scanned": 962
+}

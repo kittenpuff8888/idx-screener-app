@@ -1,6 +1,6 @@
 {
  "schemaVersion": 1,
- "asOf": "2026-09-14",
+ "asOf": "2026-09-15",
  "entries": [
   {
    "date": "2026-07-10",
@@ -670,7 +670,7 @@
    "target": 1625,
    "invalidation": 1504.8,
    "outcome": "invalidated",
-   "barsObserved": 4
+   "barsObserved": 5
   },
   {
    "date": "2026-09-09",
@@ -680,7 +680,7 @@
    "target": 336,
    "invalidation": 225.4,
    "outcome": "invalidated",
-   "barsObserved": 3
+   "barsObserved": 4
   },
   {
    "date": "2026-09-09",
@@ -690,7 +690,7 @@
    "target": 7562,
    "invalidation": 7053.75,
    "outcome": "invalidated",
-   "barsObserved": 3
+   "barsObserved": 4
   },
   {
    "date": "2026-09-11",
@@ -700,7 +700,7 @@
    "target": 575,
    "invalidation": 507,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-09-11",
@@ -710,7 +710,7 @@
    "target": 5020,
    "invalidation": 4643.1,
    "outcome": "invalidated",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-09-11",
@@ -720,7 +720,7 @@
    "target": 642,
    "invalidation": 594.0,
    "outcome": "invalidated",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-09-11",
@@ -730,7 +730,7 @@
    "target": 550,
    "invalidation": 504.9,
    "outcome": "open",
-   "barsObserved": 1
+   "barsObserved": 2
   },
   {
    "date": "2026-09-11",
@@ -740,14 +740,104 @@
    "target": 108,
    "invalidation": 99.99,
    "outcome": "open",
+   "barsObserved": 2
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "EMTK",
+   "score": 65,
+   "close": 496.0,
+   "target": 526,
+   "invalidation": 483.12,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "MNCN",
+   "score": 65,
+   "close": 200.0,
+   "target": 204,
+   "invalidation": 193.05,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "ASSA",
+   "score": 60,
+   "close": 605.0,
+   "target": 638,
+   "invalidation": 584.1,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "CYBR",
+   "score": 60,
+   "close": 525.0,
+   "target": 542,
+   "invalidation": 504.9,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "GPRA",
+   "score": 60,
+   "close": 106.0,
+   "target": 108,
+   "invalidation": 99.99,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "SCMA",
+   "score": 60,
+   "close": 199.0,
+   "target": 209,
+   "invalidation": 192.06,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "TSPC",
+   "score": 60,
+   "close": 2750.0,
+   "target": 2745,
+   "invalidation": 2626.4,
+   "outcome": "target",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "BSML",
+   "score": 55,
+   "close": 550.0,
+   "target": 621,
+   "invalidation": 522,
+   "outcome": "open",
+   "barsObserved": 1
+  },
+  {
+   "date": "2026-09-14",
+   "ticker": "PBSA",
+   "score": 55,
+   "close": 750.0,
+   "target": 820,
+   "invalidation": 707.85,
+   "outcome": "open",
    "barsObserved": 1
   }
  ],
  "summary": {
-  "total": 74,
-  "decided": 55,
-  "targetFirst": 20,
-  "hitRate": 0.364
+  "total": 83,
+  "decided": 57,
+  "targetFirst": 22,
+  "hitRate": 0.386
  },
  "note": "Forward outcomes of published setups (5 bars). Small samples early on; analytics, not advice."
 }
