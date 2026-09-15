@@ -1,264 +1,297 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   createChart, CandlestickSeries, HistogramSeries, LineSeries,
-  LineStyle, LineType, CrosshairMode,
-  type IChartApi, type Time, type MouseEventParams,
+  LineStyle, CrosshairMode,
+  type IChartApi, type Time, type MouseEventParams, type LineWidth,
 } from "lightweight-charts";
-import type { OhlcvPayload } from "@/lib/domain/types";
-import { loadVwapAnchor, saveVwapAnchor, subscribeVwapAnchor } from "@/lib/data/chartOverlays";
-import { loadStudies, subscribeStudies } from "@/lib/data/chartStudies";
-import { loadStudySettings, saveStudySettings, subscribeStudySettings, type StudySettings } from "@/lib/data/chartStudySettings";
-import { ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
-import { computeInitialBalance, type IbBand } from "@/lib/indicators/initialBalance";
-import { computeAnchoredVwap, periodLabel, VWAP_ANCHORS, type VwapAnchor, type AvwapPoint } from "@/lib/indicators/anchoredVwap";
-import { ema, sma, rsiWilder, stochOf } from "@/lib/indicators/oscillators";
+import type { OhlcvPayload, OhlcvRow } from "@/lib/domain/types";
+import { computeInitialBalance } from "@/lib/indicators/initialBalance";
+import { computeAnchoredVwap, periodLabel, VWAP_SOURCE_FN, type AvwapPoint, type VwapAnchor, type VwapSource } from "@/lib/indicators/anchoredVwap";
+import { ema, sma, rsiWilder, stochOf, macdOf } from "@/lib/indicators/oscillators";
 import { formatPrice, formatCompact, formatPercent } from "@/lib/format/number";
-import { DrawingTool } from "@/lib/charting/DrawingTool";
+import { DrawingTool, type SelectionInfo } from "@/lib/charting/DrawingTool";
 import { BandFill } from "@/lib/charting/drawings/BandFill";
-import { RsiGradientFill } from "@/lib/charting/drawings/RsiGradientFill";
+import { IbBoxes } from "@/lib/charting/drawings/IbBoxes";
+import { VwapFill } from "@/lib/charting/drawings/VwapFill";
+import { MarginLabels, type MarginLabelItem } from "@/lib/charting/drawings/MarginLabels";
 import { ChartToolbar } from "@/components/dashboard/ChartToolbar";
+import {
+  loadStudySettings, saveStudySettings, subscribeStudySettings, type StudySettings,
+  loadHiddenMap, saveHiddenMap, subscribeHiddenMap, type HiddenMap, type StudyId,
+} from "@/lib/data/chartStudySettings";
 
-// The site's own chart -- built on TradingView's open-source lightweight-charts
-// engine (not the restricted embed above it), so it's the one place both
-// custom overlays (monthly Initial Balance, Anchored VWAP -- Pine-only,
-// can't run in an embedded iframe) and the 6 built-in studies
-// (`lib/data/chartStudies.ts` -- EMA 25, EMA 50, SMA 200, Volume, RSI, Stoch
-// RSI 10/10/3/3) can render together with full styling control (the embed
-// can't set per-study colors at all). The ƒx Indicators picker is the SAME
-// site-wide picker/state the embed above uses (`chartStudies.ts`) -- toggling
-// a study here also affects the embed, and vice versa; that state is meant to
-// carry over cleanly once the embed above is eventually retired and this
-// chart is the only one left. Indicator math lives in
-// `lib/indicators/oscillators.ts`, mirroring the Python backend's own
-// rsi_wilder/stoch_of exactly, so this chart, the embed, and the Screener's
-// own signals all read the same numbers for the same ticker/day. Honest
-// about gaps: no bars ⇒ an explicit note, never a fabricated series.
+// The ticker page's ONLY chart -- built on TradingView's own open-source
+// lightweight-charts engine, replacing the old TradingView-embed-above +
+// simpler-companion-below layout entirely (the redesign that drove this
+// rewrite retires the embed: it can't run Pine, can't take per-study
+// colors, and can't expose per-study settings reliably -- this chart is
+// our own code, so all three are fully real here). One multi-pane chart
+// instance (price + RSI + MACD + Stoch RSI as `chart.addSeries(def, opts,
+// paneIndex)` panes, not four separate synced chart instances the way the
+// design prototype's own sandbox was forced to) -- this repo already has a
+// proven working pane-resize/multi-pane setup, which is the approach the
+// redesign's own handoff doc says to prefer when available.
+//
+// Per-indicator visibility (`hidden`, an eye toggle on each legend row) and
+// settings (`settings`, a gear opening a 3-tab Inputs/Style/Visibility
+// panel) both live in lib/data/chartStudySettings.ts -- global per-viewer
+// preferences, not per-ticker facts, same as the old chartStudies.ts
+// picker this component no longer reads from (it's fully self-contained
+// now; that picker still serves the Dashboard/Watchlist pages' own
+// TradingView embeds unchanged).
 
 const MONO = "var(--font-mono)";
-const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r, 12px)", boxShadow: "var(--sh, var(--shadow))", padding: "14px 16px", marginBottom: 14 };
-const KICKER: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" };
-const GOLD = "#D6A100";
-const VWAP_BLUE = "#2962FF";
-const VWAP_GREEN = "#16A34A";
-const VWAP_CYAN = "#0891B2";
-// Same colors requested for the TradingView embed's EMA/SMA/Stoch RSI studies
-// (not achievable there -- per-study color is not overridable on that embed,
-// see the note in chartStudies.ts) applied here instead, where full control
-// is possible.
-const EMA25_COLOR = "#2962FF";
-const EMA50_COLOR = "#FF5050";
-const SMA200_COLOR = "#FF9800";
-const RSI_COLOR = "#2962FF"; // matches TradingView's own built-in RSI script exactly
-const STOCH_K_COLOR = "#2962FF";
-const STOCH_D_COLOR = "#FF5050";
-const STOCH_BAND_COLOR = "#dbdbdb";
-// Fixed pixel height for each oscillator sub-pane (RSI, Stoch RSI) that's
-// currently active; the price pane above keeps `priceHeight` and the total
-// container height grows/shrinks with however many oscillator panes are on.
-// Both sized up from an earlier, much shorter version per explicit feedback
-// that the chart needed real height -- TradingView's own chart gives the
-// price pane the majority of a full-height view, not a couple hundred
-// pixels. These are just the STARTING sizes: `layout.panes.enableResize`
-// (lightweight-charts' default) lets a viewer drag the divider between any
-// two panes to resize them, same as dragging a pane boundary on tradingview.com.
-const PRICE_HEIGHT_DEFAULT = 520;
-const OSC_PANE_HEIGHT = 140;
-
-// Caps series count for very long histories under a fine anchor (e.g. weekly
-// VWAP over years) — keeps the chart responsive without silently truncating
-// the visible-by-default window. Initial Balance no longer needs an
-// equivalent cap: it's one continuous series covering all bars now, not one
-// series per month.
-const MAX_VWAP_SEGMENTS = 60;
-
-// Picker ids from chartStudies.ts -- kept local rather than re-exported
-// there, since this chart's mapping from an id to "what series to draw" is
-// specific to this lightweight-charts build, not to the TradingView embed's
-// `resolveStudy`.
-const ID_EMA25 = "ema25", ID_EMA50 = "ema50", ID_SMA200 = "sma200";
-const ID_VOLUME = "Volume@tv-basicstudies", ID_RSI = "RSI@tv-basicstudies", ID_STOCH = "stochRsi10_3_3";
-const ID_IBH_IBL = "ibhIbl", ID_VWAP = "anchoredVwap";
-// RSI reference-line + background colors, matching TradingView's own
-// built-in RSI script exactly (color=#2962FF line; hline() 70/50/30 at
-// these greys; fill() 70-30 at this navy tint).
-const RSI_UPPER_LOWER_COLOR = "rgba(74,74,74,.30)";
-const RSI_MID_COLOR = "rgba(120,123,134,.50)";
-const RSI_BAND_FILL = "rgba(28,45,98,.10)";
-const STOCH_BAND_FILL = "rgba(219,219,219,.12)";
+const CARD: CSSProperties = { background: "var(--panel)", border: "1px solid var(--border)", borderRadius: "var(--r, 16px)", padding: "12px 14px 14px", marginBottom: 14 };
+const OSC_H = 150;
+const OSC_H_HIDDEN = 26;
+const PRICE_H = 520;
+const LEGEND_ROW: CSSProperties = { display: "flex", alignItems: "center", gap: 5, height: 18, padding: "0 5px", borderRadius: 5, pointerEvents: "auto" };
+const EYE_BTN: CSSProperties = { width: 16, height: 16, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 3, cursor: "pointer", background: "transparent" };
 
 const RANGE_BUTTONS = [
   { id: "1M", n: 22 }, { id: "3M", n: 66 }, { id: "6M", n: 130 }, { id: "1Y", n: 252 }, { id: "All", n: null },
 ] as const;
 
-// Pane-corner overlay labels sit on a solid backing, not just a text shadow
-// -- some existing price-line labels (Monthly IBH/IBL, Anchored VWAP) carry
-// long titles and render wide near the top of the price pane, right where
-// these corner labels also live; a solid backing keeps text legible
-// regardless of what's drawn on the canvas underneath. `zIndex` makes that
-// explicit rather than relying on DOM order against the chart's own
-// absolutely-positioned canvases. Laid out as a single inline row (not
-// stacked lines in a bordered card) -- TradingView's own pane-corner
-// convention, and visually lighter than a boxed panel.
-const CORNER_LABEL: CSSProperties = {
-  position: "absolute", left: 8, top: 6, zIndex: 5, pointerEvents: "none", fontFamily: MONO, fontSize: 11,
-  display: "flex", alignItems: "baseline", gap: 10, color: "var(--muted)",
-  background: "var(--panel)", borderRadius: 5, padding: "2px 6px",
-};
-
-function chip(label: string, color: string): CSSProperties {
-  return { fontSize: 8.5, fontWeight: 800, letterSpacing: ".06em", color, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" };
+// IDX's own published tick-size schedule (price bands -> minimum price
+// increment) -- a real exchange rule, not a guess, used for the candle
+// series' own price formatter/minMove so the axis rounds the way the
+// exchange itself quotes this ticker, rather than hardcoding one band's
+// tick (25, right for AADI's own price level) for every ticker.
+function idxTickSize(price: number): number {
+  if (price < 200) return 1;
+  if (price < 500) return 2;
+  if (price < 2000) return 5;
+  if (price < 5000) return 10;
+  return 25;
 }
 
-// A study's own "Settings" dialog, TradingView-style -- a gear next to the
-// study's label opens a small popover of its numeric inputs (length/
-// smoothing). Native <details>/<summary> rather than hand-rolled open state
-// + an outside-click listener: it's one dropdown per indicator (five of
-// them), all sharing `name="study-settings"` so opening one closes any
-// other already open (native browser behavior for same-named <details>),
-// with no extra JS to wire up or tear down. `pointer-events:auto` overrides
-// the CORNER_LABEL parent's own `none` (needed so the label text never
-// steals clicks meant for the chart) for just the gear + its popover.
-function StudyGear({ fields, values, onChange }: {
-  fields: Array<{ key: keyof StudySettings; label: string; min: number; max: number }>;
-  values: StudySettings;
-  onChange: (patch: Partial<StudySettings>) => void;
-}) {
-  return (
-    <details name="study-settings" style={{ position: "relative", pointerEvents: "auto", display: "inline-block" }}>
-      <summary
-        title="Settings"
-        style={{ listStyle: "none", cursor: "pointer", display: "inline-flex", width: 14, height: 14, verticalAlign: "-2px", color: "var(--faint)" }}
-      >
-        <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
-        </svg>
-      </summary>
-      <div style={{
-        position: "absolute", top: 18, left: 0, zIndex: 20, minWidth: 148,
-        background: "var(--panel)", border: "1px solid var(--border)", borderRadius: 8,
-        boxShadow: "var(--sh, var(--shadow))", padding: 10, display: "flex", flexDirection: "column", gap: 6,
-      }}>
-        {fields.map((f) => (
-          <label key={String(f.key)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, fontSize: 10.5, color: "var(--muted)" }}>
-            <span>{f.label}</span>
-            <input
-              type="number" min={f.min} max={f.max} value={values[f.key]}
-              onChange={(e) => {
-                const n = Math.round(Number(e.target.value));
-                if (Number.isNaN(n)) return;
-                onChange({ [f.key]: Math.min(f.max, Math.max(f.min, n)) } as Partial<StudySettings>);
-              }}
-              style={{ width: 52, fontFamily: MONO, fontSize: 11, background: "var(--soft)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 5px" }}
-            />
-          </label>
-        ))}
-      </div>
-    </details>
-  );
-}
-
-// Canvas rendering needs literal colors, not CSS var() references — resolve
-// the site's theme tokens once per (re)build so the chart matches light/dark.
 function themeColors() {
   const cs = typeof document !== "undefined" ? getComputedStyle(document.documentElement) : null;
   const v = (name: string, fallback: string) => (cs?.getPropertyValue(name).trim() || fallback);
   const dark = typeof document !== "undefined" && document.documentElement.dataset.theme === "dark";
   return {
-    bg: v("--panel", dark ? "#11151b" : "#ffffff"),
-    text: v("--text", dark ? "#e6e9ef" : "#0b0e14"),
-    muted: v("--muted", dark ? "#9aa4b2" : "#5b6472"),
-    faint: v("--faint", "#94a3b8"),
-    border: v("--border", "rgba(148,163,184,.24)"),
-    hair: v("--hair", "rgba(148,163,184,.16)"),
-    up: v("--up", "#16a34a"),
-    down: v("--down", "#dc2626"),
+    dark,
+    panel: v("--panel", dark ? "#0c0f14" : "#ffffff"),
+    border: v("--border", dark ? "#1e222d" : "#e7e9ee"),
+    hair: v("--hair", dark ? "#191e27" : "#eff1f4"),
+    soft: v("--soft", dark ? "#161b24" : "#f4f6f9"),
+    text: v("--text", dark ? "#d9dde5" : "#0b0e14"),
+    muted: v("--muted", dark ? "#a3a9b5" : "#5b6472"),
+    faint: v("--faint", dark ? "#6b7280" : "#9aa1ad"),
+    accent: v("--accent", dark ? "#5b8cff" : "#2563eb"),
+    shadow: v("--shadow", dark ? "rgba(0,0,0,.55)" : "rgba(8,10,13,.20)"),
+    // Redesign-specific tokens with no CSS-var home yet -- chart-canvas-only
+    // values, kept local per the file's existing themeColors() precedent.
+    paneTag: dark ? "rgba(12,15,20,.82)" : "rgba(255,255,255,.88)",
+    oscFill: dark ? "rgba(28,45,98,.32)" : "rgba(41,98,255,.07)",
+    // Candle up/down deliberately split from the UI accent in dark mode
+    // (TradingView's own dark candle blue is more saturated than this
+    // site's dark UI accent) -- down candles are hollow (white body,
+    // colored border), matching TradingView's own default look.
+    candleUp: dark ? "#2962FF" : "#2563eb",
+    candleDown: "#ffffff",
+    candleBorderDown: dark ? "#ffffff" : "#5b6472",
   };
 }
 
-// "{label} · {price} · {±pct}% from close" — matches every price-line title
-// on the companion chart (IBH/IBL, current + previous VWAP bands).
-function lineTitle(label: string, price: number, close: number | null): string {
-  if (close == null || close === 0) return `${label} · ${formatPrice(price)}`;
-  const pct = ((price - close) / close) * 100;
-  return `${label} · ${formatPrice(price)} · ${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+function chip(label: string, color: string): CSSProperties {
+  return { fontSize: 8.5, fontWeight: 800, letterSpacing: ".06em", color, background: "var(--soft)", border: "1px solid var(--border)", borderRadius: 5, padding: "2px 6px" };
 }
 
-// RSI/Stoch RSI are bounded [0,100] by definition; floating-point rounding in
-// the underlying series (e.g. price exactly at the trailing low) can land a
-// hair on the wrong side of 0 or 100 -- clamp for display only, the same
-// value either way.
-function fmtOsc(v: number): string {
-  return Math.min(100, Math.max(0, v)).toFixed(1);
+function nz(v: number | undefined): number | null { return v == null || Number.isNaN(v) ? null : v; }
+function lw(n: number): LineWidth { return Math.min(4, Math.max(1, Math.round(n))) as LineWidth; }
+function fmtOsc(v: number): string { return Math.min(100, Math.max(0, v)).toFixed(1); }
+
+// ---- Eye / gear icon buttons on each legend row --------------------------
+
+function EyeButton({ hidden, onClick }: { hidden: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} title={hidden ? "Show" : "Hide"} style={{ ...EYE_BTN, color: "var(--faint)" }}>
+      <svg style={{ flex: "none" }} viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.7}>
+        <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z" />
+        <circle cx="12" cy="12" r="2.5" />
+        {hidden ? <path d="M4 20 20 4" /> : null}
+      </svg>
+    </button>
+  );
+}
+
+function GearButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button type="button" onClick={onClick} title="Settings" style={{ ...EYE_BTN, color: "var(--faint)" }}>
+      <svg style={{ flex: "none" }} viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.7}>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4" />
+      </svg>
+    </button>
+  );
+}
+
+// ---- 3-tab Settings panel (Inputs / Style / Visibility) -------------------
+
+type NumField = { kind: "number"; key: keyof StudySettings; label: string; min: number; max: number };
+type ColorField = { kind: "color"; key: keyof StudySettings; label: string };
+type SelectField = { kind: "select"; key: keyof StudySettings; label: string; options: string[] };
+type CheckField = { kind: "check"; key: keyof StudySettings; label: string };
+type GearField = NumField | ColorField | SelectField | CheckField;
+
+const SWATCHES = ["#2962FF", "#FF5050", "#D6A100", "#16A34A", "#FF9800", "#787b86"];
+
+function GearPanel({ title, top, inputs, style, id, values, hidden, onChange, onToggleHidden, onClose, onReset }: {
+  title: string; top: number; id: StudyId;
+  inputs: GearField[]; style: GearField[];
+  values: StudySettings; hidden: boolean;
+  onChange: (patch: Partial<StudySettings>) => void;
+  onToggleHidden: () => void;
+  onClose: () => void; onReset: () => void;
+}) {
+  const [tab, setTab] = useState<"Inputs" | "Style" | "Visibility">("Inputs");
+  const fields = tab === "Inputs" ? inputs : tab === "Style" ? style : [];
+
+  return (
+    <div style={{ position: "absolute", left: 20, top, zIndex: 30, width: 300, maxHeight: 480, display: "flex", flexDirection: "column", borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", background: "var(--panel)", boxShadow: "0 22px 52px var(--shadow)", pointerEvents: "auto" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px 7px" }}>
+        <span style={{ flex: "1 1 auto", minWidth: 0, fontSize: 13, fontWeight: 700 }}>{title}</span>
+        <button type="button" onClick={onClose} style={{ width: 20, height: 20, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 5, cursor: "pointer", background: "transparent", color: "var(--faint)" }}>
+          <svg style={{ flex: "none" }} viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 14, padding: "0 13px", borderBottom: "1px solid var(--hair)" }}>
+        {(["Inputs", "Style", "Visibility"] as const).map((t) => (
+          <button key={t} type="button" onClick={() => setTab(t)} style={{ padding: "5px 0 7px", fontSize: 11.5, fontWeight: 600, border: "none", borderBottom: `2px solid ${tab === t ? "var(--accent)" : "transparent"}`, cursor: "pointer", background: "transparent", color: tab === t ? "var(--text)" : "var(--muted)" }}>{t}</button>
+        ))}
+      </div>
+      <div style={{ flex: "1 1 auto", minHeight: 0, overflow: "auto", display: "flex", flexDirection: "column", gap: 4, padding: "8px 13px 11px" }}>
+        {tab === "Visibility" ? (
+          <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minHeight: 28, fontSize: 11.5, color: "var(--muted)" }}>
+            <span>Visible on chart</span>
+            <input type="checkbox" checked={!hidden} onChange={onToggleHidden} style={{ width: 15, height: 15 }} />
+          </label>
+        ) : fields.map((f) => (
+          <div key={String(f.key)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, minHeight: 28 }}>
+            <span style={{ flex: "0 1 auto", minWidth: 0, fontSize: 11.5, color: "var(--muted)" }}>{f.label}</span>
+            {f.kind === "number" ? (
+              <input type="number" min={f.min} max={f.max} value={values[f.key] as number}
+                onChange={(e) => {
+                  const n = Math.round(Number(e.target.value));
+                  if (Number.isNaN(n)) return;
+                  onChange({ [f.key]: Math.min(f.max, Math.max(f.min, n)) } as Partial<StudySettings>);
+                }}
+                style={{ width: 72, flex: "none", fontFamily: MONO, fontSize: 11.5, textAlign: "right", background: "var(--soft)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 6, padding: "5px 7px" }} />
+            ) : f.kind === "color" ? (
+              <div style={{ display: "flex", gap: 3, flex: "none" }}>
+                {SWATCHES.map((c) => (
+                  <button key={c} type="button" onClick={() => onChange({ [f.key]: c } as Partial<StudySettings>)}
+                    style={{ width: 17, height: 17, borderRadius: 5, cursor: "pointer", background: c, border: `2px solid ${values[f.key] === c ? "var(--text)" : "transparent"}` }} />
+                ))}
+              </div>
+            ) : f.kind === "select" ? (
+              <div style={{ display: "flex", gap: 2, padding: 2, flex: "none", borderRadius: 7, background: "var(--soft)" }}>
+                {f.options.map((opt) => (
+                  <button key={opt} type="button" onClick={() => onChange({ [f.key]: opt } as Partial<StudySettings>)}
+                    style={{ padding: "4px 8px", fontSize: 10, fontWeight: 700, border: "none", borderRadius: 5, cursor: "pointer", background: values[f.key] === opt ? "var(--accent)" : "transparent", color: values[f.key] === opt ? "#fff" : "var(--muted)" }}>{opt}</button>
+                ))}
+              </div>
+            ) : (
+              <button type="button" onClick={() => onChange({ [f.key]: !values[f.key] } as Partial<StudySettings>)}
+                style={{ width: 17, height: 17, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", background: values[f.key] ? "var(--accent)" : "transparent" }}>
+                {values[f.key] ? <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7" /></svg> : null}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 13px", borderTop: "1px solid var(--hair)" }}>
+        <button type="button" onClick={onReset} style={{ height: 27, padding: "0 11px", fontSize: 11, fontWeight: 600, border: "1px solid var(--border)", borderRadius: 7, cursor: "pointer", background: "transparent", color: "var(--muted)" }}>Defaults</button>
+        <div style={{ flex: "1 1 8px" }} />
+        <button type="button" onClick={onClose} style={{ height: 27, padding: "0 13px", fontSize: 11, fontWeight: 700, border: "none", borderRadius: 7, cursor: "pointer", background: "var(--accent)", color: "#fff" }}>Ok</button>
+      </div>
+    </div>
+  );
+}
+
+// ---- Drawing-selection restyle toolbar ------------------------------------
+
+function SelectionToolbar({ sel, onRestyle, onDelete, onClose }: {
+  sel: NonNullable<SelectionInfo>;
+  onRestyle: (color: string, width: number, style: "solid" | "dashed" | "dotted") => void;
+  onDelete: () => void; onClose: () => void;
+}) {
+  return (
+    <div style={{ position: "absolute", left: Math.max(8, sel.x + 12), top: Math.max(8, sel.y + 12), zIndex: 36, display: "flex", alignItems: "center", gap: 8, padding: "6px 8px", borderRadius: 9, border: "1px solid var(--border)", background: "var(--panel)", boxShadow: "0 14px 34px var(--shadow)" }}>
+      <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>{sel.title}</span>
+      <span style={{ width: 1, height: 16, background: "var(--hair)" }} />
+      <div style={{ display: "flex", gap: 3 }}>
+        {SWATCHES.map((c) => (
+          <button key={c} type="button" onClick={() => onRestyle(c, sel.width, sel.style)} style={{ width: 16, height: 16, borderRadius: 5, cursor: "pointer", background: c, border: `2px solid ${sel.color === c ? "var(--text)" : "transparent"}` }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 2 }}>
+        {[1, 2, 3].map((w) => (
+          <button key={w} type="button" onClick={() => onRestyle(sel.color, w, sel.style)} style={{ minWidth: 20, height: 20, fontSize: 10, fontWeight: 700, border: "none", borderRadius: 5, cursor: "pointer", background: sel.width === w ? "var(--accent)" : "var(--soft)", color: sel.width === w ? "#fff" : "var(--muted)" }}>{w}</button>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 2 }}>
+        {(["solid", "dashed", "dotted"] as const).map((s) => (
+          <button key={s} type="button" onClick={() => onRestyle(sel.color, sel.width, s)} style={{ height: 20, padding: "0 7px", fontSize: 10, fontWeight: 600, border: "none", borderRadius: 5, cursor: "pointer", background: sel.style === s ? "var(--accent)" : "var(--soft)", color: sel.style === s ? "#fff" : "var(--muted)" }}>{s}</button>
+        ))}
+      </div>
+      <span style={{ width: 1, height: 16, background: "var(--hair)" }} />
+      <button type="button" onClick={onDelete} title="Delete drawing" style={{ width: 22, height: 22, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 5, cursor: "pointer", background: "transparent", color: "var(--faint)" }}>
+        <svg style={{ flex: "none" }} viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round"><path d="M4 7h16M9 7V5h6v2m-9 0 1 13h8l1-13" /></svg>
+      </button>
+      <button type="button" onClick={onClose} style={{ width: 22, height: 22, flex: "none", display: "flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 5, cursor: "pointer", background: "transparent", color: "var(--faint)" }}>
+        <svg style={{ flex: "none" }} viewBox="0 0 24 24" width={13} height={13} fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M6 6l12 12M18 6 6 18" /></svg>
+      </button>
+    </div>
+  );
 }
 
 type Legend = {
   date: string; o: number; h: number; l: number; c: number; vol: number;
   chg: number | null; chgPct: number | null;
-  ib: IbBand | null; vwap: AvwapPoint | null;
-  ema25: number | null; ema50: number | null; sma200: number | null;
-  rsi: number | null; stochK: number | null; stochD: number | null;
+  ib: { ibHigh: number; ibLow: number } | null; vwap: AvwapPoint | null;
+  ribbon: number | null; sma200: number | null;
+  rsi: number | null; rsiMa: number | null;
+  macd: number | null; macdSignal: number | null; macdHist: number | null;
+  stochK: number | null; stochD: number | null;
 };
 
-export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: OhlcvPayload | null; symbol?: string; sessions?: number }) {
-  const [anchor, setAnchor] = useState<string>("quarter");
-  const [studies, setStudies] = useState<string[]>(() => loadStudies());
+export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: OhlcvPayload | null; symbol?: string; companyName?: string }) {
   const [settings, setSettings] = useState<StudySettings>(() => loadStudySettings());
+  const [hidden, setHidden] = useState<HiddenMap>(() => loadHiddenMap());
   const [legend, setLegend] = useState<Legend | null>(null);
   const [themeTick, setThemeTick] = useState(0);
   const [drawingTool, setDrawingTool] = useState<DrawingTool | null>(null);
+  const [selection, setSelection] = useState<SelectionInfo>(null);
+  const [openGear, setOpenGear] = useState<StudyId | null>(null);
+  const [activeRangeId, setActiveRangeId] = useState<string>("3M");
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
-  useEffect(() => { setAnchor(loadVwapAnchor()); return subscribeVwapAnchor(setAnchor); }, []);
-  useEffect(() => subscribeStudies(setStudies), []);
   useEffect(() => subscribeStudySettings(setSettings), []);
-  function updateSettings(patch: Partial<StudySettings>) {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      saveStudySettings(next);
-      return next;
-    });
-  }
+  useEffect(() => subscribeHiddenMap(setHidden), []);
   useEffect(() => {
     const obs = new MutationObserver(() => setThemeTick((t) => t + 1));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    if (typeof document !== "undefined") obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => obs.disconnect();
   }, []);
+  useEffect(() => {
+    if (!drawingTool) return;
+    return drawingTool.onSelectionChange(setSelection);
+  }, [drawingTool]);
+
+  function updateSettings(patch: Partial<StudySettings>) {
+    setSettings((prev) => { const next = { ...prev, ...patch }; saveStudySettings(next); return next; });
+  }
+  function toggleHidden(id: StudyId) {
+    setHidden((prev) => { const next = { ...prev, [id]: !prev[id] }; saveHiddenMap(next); return next; });
+  }
 
   const rows = ohlcv?.rows;
-  const priceHeight = PRICE_HEIGHT_DEFAULT;
-
-  const active = useMemo(() => new Set(studies), [studies]);
-  const showEma25 = active.has(ID_EMA25), showEma50 = active.has(ID_EMA50), showSma200 = active.has(ID_SMA200);
-  const showVolume = active.has(ID_VOLUME), showRsi = active.has(ID_RSI), showStochRsi = active.has(ID_STOCH);
-  const showIbhIbl = active.has(ID_IBH_IBL), showVwap = active.has(ID_VWAP);
-  const oscCount = (showRsi ? 1 : 0) + (showStochRsi ? 1 : 0);
-  const totalHeight = priceHeight + OSC_PANE_HEIGHT * oscCount;
-  // Corner-label offsets inside the chart wrapper -- price pane's own corner
-  // is always at the top, each active oscillator pane's corner stacks below
-  // the ones before it (an oscillator that's off contributes no gap).
-  const rsiTop = priceHeight;
-  const stochTop = priceHeight + (showRsi ? OSC_PANE_HEIGHT : 0);
-
-  // Always defaults to 3M regardless of the `sessions` prop or whatever
-  // range the TradingView embed above happens to be on -- explicit
-  // feedback that the chart looked inconsistent across screenshots taken
-  // on different days because it silently inherited whatever range state
-  // the page's shared range picker (which also drives the embed) was
-  // last left on. This chart picks its own default and stays on it until
-  // a viewer clicks a different range button here.
-  const [activeRangeId, setActiveRangeId] = useState<string>("3M");
-
-  // Label-only metadata for the header badge — cheap to recompute separately
-  // from the imperative chart build below, which needs the same call anyway.
-  const vwapKeyLabel = useMemo(() => {
-    if (!rows || rows.length < 5) return "";
-    return periodLabel(computeAnchoredVwap(rows, anchor as VwapAnchor).currentKey, anchor as VwapAnchor);
-  }, [rows, anchor]);
 
   function applyRange(id: string) {
     setActiveRangeId(id);
@@ -269,107 +302,101 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
     chartRef.current.timeScale().setVisibleRange({ from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time });
   }
 
+  const oscCount = (hidden.rsi ? 0 : 1) + (hidden.macd ? 0 : 1) + (hidden.stoch ? 0 : 1);
+  const oscStripCount = (hidden.rsi ? 1 : 0) + (hidden.macd ? 1 : 0) + (hidden.stoch ? 1 : 0);
+  const chartHeight = PRICE_H + OSC_H * oscCount;
+  const totalHeight = chartHeight + OSC_H_HIDDEN * oscStripCount;
+  // Corner-label offsets for whichever oscillator panes are actually live --
+  // an oscillator that's hidden contributes no gap to the ones after it.
+  const rsiTop = PRICE_H;
+  const macdTop = PRICE_H + (hidden.rsi ? 0 : OSC_H);
+  const stochTop = PRICE_H + (hidden.rsi ? 0 : OSC_H) + (hidden.macd ? 0 : OSC_H);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el || !rows || rows.length < 2) { setLegend(null); return; }
 
-    const colors = themeColors();
+    const c = themeColors();
+    const s = settings;
     const close = rows[rows.length - 1].close;
     const chart = createChart(el, {
       autoSize: true,
-      layout: { background: { color: colors.bg }, textColor: colors.muted, panes: { separatorColor: colors.hair, separatorHoverColor: colors.border } },
-      grid: { vertLines: { visible: false }, horzLines: { visible: false } }, // TradingView's own chart draws no grid
-      rightPriceScale: { borderColor: colors.border },
-      timeScale: { borderColor: colors.border, rightOffset: 3 },
+      layout: { background: { color: c.panel }, textColor: c.muted, fontFamily: MONO, panes: { separatorColor: c.hair, separatorHoverColor: c.border, enableResize: true } },
+      grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+      rightPriceScale: { borderColor: c.border, minimumWidth: 74 },
+      timeScale: { borderColor: c.border, rightOffset: 3 },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: colors.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: colors.muted },
-        horzLine: { color: colors.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: colors.muted },
+        vertLine: { color: c.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: c.muted },
+        horzLine: { color: c.faint, width: 1, style: LineStyle.Dashed, labelBackgroundColor: c.muted },
       },
     });
     chartRef.current = chart;
 
+    const tick = idxTickSize(close);
     const candles = chart.addSeries(CandlestickSeries, {
-      upColor: colors.up, downColor: colors.down, borderVisible: false, wickUpColor: colors.up, wickDownColor: colors.down,
+      upColor: c.candleUp, downColor: c.candleDown, borderVisible: true, borderUpColor: c.candleUp, borderDownColor: c.candleBorderDown,
+      wickUpColor: c.candleUp, wickDownColor: c.candleBorderDown,
+      priceFormat: { type: "custom", formatter: (p: number) => formatPrice(p), minMove: tick },
     });
     candles.setData(rows.map((r) => ({ time: r.date as Time, open: r.open, high: r.high, low: r.low, close: r.close })));
 
-    // Drawings persist per ticker (localStorage) -- a fresh DrawingTool per
-    // chart build (this effect re-runs on theme/study/anchor changes, which
-    // tear down and recreate the whole chart+series) just reloads the same
-    // saved drawings onto the new series, indistinguishably to the user.
-    const drawing = new DrawingTool(chart, candles, symbol || "");
+    const drawing = new DrawingTool(chart, candles, symbol || "", rows);
     setDrawingTool(drawing);
 
-    // ── EMA 25 / EMA 50 / SMA 200 -- same 3 overlay studies (and math) as
-    //    the TradingView chart above; `lineData` drops the NaN warm-up tail
-    //    (e.g. SMA 200 needs 200 bars) rather than plotting a fabricated value. ──
     const closes = rows.map((r) => r.close);
-    const ema25Arr = ema(closes, settings.ema25Len);
-    const ema50Arr = ema(closes, settings.ema50Len);
-    const sma200Arr = sma(closes, settings.sma200Len);
-    const rsiArr = rsiWilder(closes, settings.rsiLen);
-    const stochRsiBase = rsiWilder(closes, settings.stochRsiLen);
-    const stoch = stochOf(stochRsiBase, settings.stochLen, settings.stochSmoothK, settings.stochSmoothD);
+    const rsiArr = rsiWilder(closes, s.rsiLen);
+    const rsiMaArr = sma(rsiArr, s.rsiMaLen);
+    const macdResult = macdOf(closes, s.macdFast, s.macdSlow, s.macdSignal, s.macdSmooth);
+    const stochBase = rsiWilder(closes, s.stochRsiLen);
+    const stoch = stochOf(stochBase, s.stochLen, s.stochSmoothK, s.stochSmoothD);
     const lineData = (vals: number[]) => rows.map((r, i) => ({ time: r.date as Time, value: vals[i] })).filter((p) => !Number.isNaN(p.value));
 
-    if (showVolume) {
-      // Grey monochrome bars (not green/red) + a 20-bar volume MA line --
-      // matches TradingView's own default "Volume" study look, not a
-      // custom colored variant.
+    // ── Volume -- overlaid on the price pane via a hidden scale, up/down
+    //    tinted at low alpha per the redesign, + an MA line. ──
+    if (!hidden.volume) {
       const volume = chart.addSeries(HistogramSeries, { priceScaleId: "vol", lastValueVisible: false, priceLineVisible: false });
-      volume.priceScale().applyOptions({ scaleMargins: { top: 0.84, bottom: 0 }, visible: false });
-      volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? "rgba(180,184,193,.55)" : "rgba(120,124,134,.55)" })));
-      const volMa = chart.addSeries(LineSeries, { color: VWAP_BLUE, lineWidth: 1, priceScaleId: "vol", crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, title: "Volume MA" });
-      volMa.setData(lineData(sma(rows.map((r) => r.volume || 0), settings.volMaLen)));
+      volume.priceScale().applyOptions({ scaleMargins: { top: 0.86, bottom: 0 }, visible: false });
+      volume.setData(rows.map((r) => ({ time: r.date as Time, value: r.volume || 0, color: r.close >= r.open ? hexA(s.volUpColor, 0.38) : hexA(s.volDnColor, 0.38) })));
+      const volMa = chart.addSeries(LineSeries, { color: s.volMaColor, lineWidth: 1, priceScaleId: "vol", crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
+      volMa.setData(lineData(sma(rows.map((r) => r.volume || 0), s.volMaLen)));
     }
 
-    if (showEma25) {
-      const ema25Line = chart.addSeries(LineSeries, { color: EMA25_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${settings.ema25Len}` });
-      ema25Line.setData(lineData(ema25Arr));
-    }
-    if (showEma50) {
-      const ema50Line = chart.addSeries(LineSeries, { color: EMA50_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `EMA ${settings.ema50Len}` });
-      ema50Line.setData(lineData(ema50Arr));
-    }
-    if (showSma200) {
-      const sma200Line = chart.addSeries(LineSeries, { color: SMA200_COLOR, lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `SMA ${settings.sma200Len}` });
-      sma200Line.setData(lineData(sma200Arr));
+    // ── Monthly Initial Balance -- one stroked+filled box per month. ──
+    const bands = computeInitialBalance(rows, s.ibDays);
+    if (!hidden.ib) {
+      const box = new IbBoxes(bands, rows, s.ibColor, s.ibFill ? hexA(s.ibColor, 0.05) : "rgba(0,0,0,0)", s.ibWidth);
+      candles.attachPrimitive(box);
     }
 
-    // ── Initial Balance -- ONE continuous step-line per edge (not one
-    //    disconnected 2-point segment per month) so consecutive months
-    //    connect into the staircase the reference Pine script
-    //    ("Monthly IBH ~ IBL", box + vTop/hTop/vBot/hBot connector lines at
-    //    each new-month boundary) draws -- LineType.WithSteps holds each
-    //    bar's own month's IB value flat, then jumps vertically exactly at
-    //    the first bar of the next month, which is that same connector
-    //    shape. Single yellow throughout (the Pine script uses one
-    //    color.yellow for everything, no past/current distinction). ──
-    const bands: IbBand[] = computeInitialBalance(rows, settings.ibDays);
-    if (showIbhIbl) {
-      const hiVals = new Array(rows.length), loVals = new Array(rows.length);
-      let bi = 0;
-      for (let i = 0; i < rows.length; i++) {
-        while (bi < bands.length - 1 && i > bands[bi].endIdx) bi++;
-        hiVals[i] = bands[bi].ibHigh;
-        loVals[i] = bands[bi].ibLow;
+    // ── EMA Ribbon -- 8 lines stepping from ribbonBase by ribbonStep,
+    //    fading opacity across the set; hidden by default. ──
+    if (!hidden.ribbon) {
+      for (let i = 0; i < 8; i++) {
+        const len = s.ribbonBase + i * s.ribbonStep;
+        const alpha = 0.85 - (0.5 * i) / 7;
+        const line = chart.addSeries(LineSeries, { color: hexA(s.ribbonColor, alpha), lineWidth: 1, crosshairMarkerVisible: false, lastValueVisible: i === 7, priceLineVisible: false, title: i === 7 ? `EMA Ribbon ${s.ribbonBase}` : "" });
+        line.setData(lineData(ema(closes, len)));
       }
-      const hi = chart.addSeries(LineSeries, { color: GOLD, lineWidth: 2, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: "IBH" });
-      const lo = chart.addSeries(LineSeries, { color: GOLD, lineWidth: 2, lineType: LineType.WithSteps, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false, title: "IBL" });
-      hi.setData(rows.map((r, i) => ({ time: r.date as Time, value: hiVals[i] })));
-      lo.setData(rows.map((r, i) => ({ time: r.date as Time, value: loVals[i] })));
-      const lastBand = bands[bands.length - 1];
-      hi.createPriceLine({ price: lastBand.ibHigh, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle("Monthly IBH ~ IBL:IB High", lastBand.ibHigh, close), axisLabelVisible: true });
-      lo.createPriceLine({ price: lastBand.ibLow, color: GOLD, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle("Monthly IBH ~ IBL:IB Low", lastBand.ibLow, close), axisLabelVisible: true });
     }
 
-    // ── Anchored VWAP — one center-line series per anchor period (breaks
-    //    naturally at resets); current period gets ±1σ/±2σ price-line labels,
-    //    the previous period gets center + ±1σ (matching a classic AVWAP
-    //    reference layout: QVWAP/±1σ/±2σ for "now", PQVWAP/P±1σ for "prior"). ──
-    const vw = computeAnchoredVwap(rows, anchor as VwapAnchor);
-    if (showVwap) {
+    // ── SMA -- single line, hidden by default. ──
+    if (!hidden.sma200) {
+      const smaLine = chart.addSeries(LineSeries, { color: s.smaColor, lineWidth: lw(s.smaWidth), crosshairMarkerVisible: false, lastValueVisible: true, priceLineVisible: false, title: `SMA ${s.sma200Len}` });
+      smaLine.setData(lineData(sma(closes, s.sma200Len)));
+    }
+
+    // ── VWAP Suite v2 -- one center line per anchor period (breaking
+    //    cleanly at each reset); the live period gets ±1σ/±2σ envelope
+    //    fills + full margin labels, every CLOSED period forwards its own
+    //    final VWAP as a dotted line to the last bar (capped at 60 periods,
+    //    matching the old MAX_VWAP_SEGMENTS cap, so a fine anchor over a
+    //    long history doesn't create hundreds of series), and only the ~4
+    //    most recent closed periods get margin-label text (labelling all of
+    //    them would be unreadable noise; forward lines still draw for
+    //    every one within the cap). ──
+    const vw = computeAnchoredVwap(rows, s.vwapAnchor as VwapAnchor, 1, 2, 3, s.vwapSource as VwapSource);
+    if (!hidden.vwap) {
       const segs: Array<{ key: string; idxs: number[] }> = [];
       vw.points.forEach((p, i) => {
         if (!p) return;
@@ -377,100 +404,129 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
         if (!last || last.key !== p.key) segs.push({ key: p.key, idxs: [i] });
         else last.idxs.push(i);
       });
-      const visSegs = segs.slice(-MAX_VWAP_SEGMENTS);
+      const visSegs = segs.slice(-60);
+      const marginItems: MarginLabelItem[] = [];
       visSegs.forEach((seg, si) => {
         const isCurrent = si === visSegs.length - 1;
-        const isPrevious = si === visSegs.length - 2;
-        const center = chart.addSeries(LineSeries, {
-          color: isCurrent ? VWAP_BLUE : "rgba(41,98,255,.4)", lineWidth: isCurrent ? 2 : 1,
-          crosshairMarkerVisible: isCurrent, lastValueVisible: isCurrent, priceLineVisible: false, title: isCurrent ? "VWAP" : "",
-        });
-        center.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).vwap })));
         const lastPt = vw.points[seg.idxs[seg.idxs.length - 1]] as AvwapPoint;
-        const periodLbl = periodLabel(seg.key, anchor as VwapAnchor);
+        const pLabel = periodLabel(seg.key, s.vwapAnchor as VwapAnchor);
         if (isCurrent) {
-          center.createPriceLine({ price: lastPt.vwap, color: VWAP_BLUE, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("QVWAP", lastPt.vwap, close), axisLabelVisible: true });
-          const band = (color: string, price: number, title: string) => {
-            const s = chart.addSeries(LineSeries, { color, lineWidth: 1, lineStyle: LineStyle.Dashed, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
-            s.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint)[title.includes("+1") ? "u1" : title.includes("−1") ? "l1" : title.includes("+2") ? "u2" : "l2"] })));
-            s.createPriceLine({ price, color, lineWidth: 1, lineStyle: LineStyle.Dashed, title: lineTitle(title, price, close), axisLabelVisible: true });
-          };
-          band(VWAP_GREEN, lastPt.u1, "+1σ"); band(VWAP_GREEN, lastPt.l1, "−1σ");
-          band(VWAP_CYAN, lastPt.u2, "+2σ"); band(VWAP_CYAN, lastPt.l2, "−2σ");
-        } else if (isPrevious) {
-          center.createPriceLine({ price: lastPt.vwap, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle(`P${periodLbl || "Q"}VWAP`, lastPt.vwap, close), axisLabelVisible: true });
-          center.createPriceLine({ price: lastPt.u1, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("P +1σ", lastPt.u1, close), axisLabelVisible: true });
-          center.createPriceLine({ price: lastPt.l1, color: colors.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, title: lineTitle("P −1σ", lastPt.l1, close), axisLabelVisible: true });
+          const center = chart.addSeries(LineSeries, { color: s.vwapColor, lineWidth: lw(s.vwapWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `VWAP Suite v2.0 ${pLabel}` });
+          center.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).vwap })));
+          if (s.vwapText) {
+            marginItems.push({ text: `${pLabel}VWAP • ${formatPrice(lastPt.vwap)} • ${pct(lastPt.vwap, close)}`, price: lastPt.vwap, col: 0 });
+          }
+          if (s.vwapBands) {
+            // Excluded from autoscale (null autoscaleInfoProvider): a fresh
+            // period's first bar or two has almost no volume sampled yet, so
+            // its volume-weighted variance -- and therefore ±2σ -- can spike
+            // absurdly wide before settling; letting that drive the visible
+            // price range would squash the actual candles into a sliver.
+            // The bands still render at whatever value they carry, same as
+            // TradingView's own anchored VWAP does through that same
+            // early-period wobble.
+            const bandLine = (vals: (p: AvwapPoint) => number, label: string) => {
+              const bs = chart.addSeries(LineSeries, { color: s.vwapColor, lineWidth: 1, lineStyle: LineStyle.Dashed, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false, autoscaleInfoProvider: () => null });
+              bs.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: vals(vw.points[i] as AvwapPoint) })));
+              if (s.vwapText) marginItems.push({ text: `${label} • ${formatPrice(vals(lastPt))} • ${pct(vals(lastPt), close)}`, price: vals(lastPt), col: 0 });
+            };
+            bandLine((p) => p.u1, "+1σ"); bandLine((p) => p.l1, "−1σ");
+            bandLine((p) => p.u2, "+2σ"); bandLine((p) => p.l2, "−2σ");
+            const fillTop = chart.addSeries(LineSeries, { color: "rgba(0,0,0,0)", lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
+            fillTop.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).u2 })));
+            fillTop.attachPrimitive(new VwapFill(seg.idxs.map((i) => rows[i].date as Time), seg.idxs.map((i) => (vw.points[i] as AvwapPoint).u2), seg.idxs.map((i) => (vw.points[i] as AvwapPoint).u1), hexA(s.vwapColor, 0.07)));
+            const fillBot = chart.addSeries(LineSeries, { color: "rgba(0,0,0,0)", lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, autoscaleInfoProvider: () => null });
+            fillBot.setData(seg.idxs.map((i) => ({ time: rows[i].date as Time, value: (vw.points[i] as AvwapPoint).l1 })));
+            fillBot.attachPrimitive(new VwapFill(seg.idxs.map((i) => rows[i].date as Time), seg.idxs.map((i) => (vw.points[i] as AvwapPoint).l1), seg.idxs.map((i) => (vw.points[i] as AvwapPoint).l2), hexA(s.vwapColor, 0.1)));
+          }
+        } else if (s.vwapLines) {
+          const forward = chart.addSeries(LineSeries, { color: c.faint, lineWidth: 1, lineStyle: LineStyle.Dotted, crosshairMarkerVisible: false, lastValueVisible: false, priceLineVisible: false });
+          forward.setData([{ time: rows[seg.idxs[0]].date as Time, value: lastPt.vwap }, { time: rows[rows.length - 1].date as Time, value: lastPt.vwap }]);
+          if (si === visSegs.length - 2 && s.vwapText) {
+            marginItems.push({ text: `P${pLabel}VWAP • ${formatPrice(lastPt.vwap)} • ${pct(lastPt.vwap, close)}`, price: lastPt.vwap, col: 1 });
+            marginItems.push({ text: `P +1σ • ${formatPrice(lastPt.u1)} • ${pct(lastPt.u1, close)}`, price: lastPt.u1, col: 1 });
+            marginItems.push({ text: `P −1σ • ${formatPrice(lastPt.l1)} • ${pct(lastPt.l1, close)}`, price: lastPt.l1, col: 1 });
+          } else if (si >= visSegs.length - 4 && s.vwapText) {
+            marginItems.push({ text: `${pLabel} • ${formatPrice(lastPt.vwap)} • ${pct(lastPt.vwap, close)}`, price: lastPt.vwap, col: 1 });
+          }
         }
       });
+      if (marginItems.length) {
+        const host = chart.addSeries(LineSeries, { color: "rgba(0,0,0,0)", lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false });
+        host.setData(rows.map((r) => ({ time: r.date as Time, value: r.close })));
+        host.attachPrimitive(new MarginLabels(marginItems, rows[rows.length - 1].date as Time, c.muted, `10.5px ${MONO}, ui-monospace, monospace`));
+      }
     }
 
-    // ── RSI(14) -- own pane below price/volume, same math as the TradingView
-    //    chart's RSI study and the Screener's own RSI reads. Fixed 0-100
-    //    scale. Reference lines, band fill, the line's own color (blue), AND
-    //    the dynamic overbought/oversold gradient glow (RsiGradientFill --
-    //    a per-bar vertical gradient between the RSI value and the 70/30
-    //    threshold, opacity increasing deeper into each zone) all match
-    //    TradingView's actual built-in RSI script line-for-line now. ──
+    // ── RSI -- length rsiLen (Wilder), + a "RSI-based MA" companion line.
+    //    Band fill between 60 and 20, dashed guides at those two levels. ──
     let nextPane = 1;
-    if (showRsi) {
-      const rsiPane = nextPane++;
-      const rsiBand = new BandFill(70, 30, RSI_BAND_FILL);
-      const rsiGradient = new RsiGradientFill(rows.map((r) => r.date as Time), rsiArr);
+    if (!hidden.rsi) {
+      const pane = nextPane++;
+      const band = new BandFill(60, 20, c.oscFill);
       const rsiLine = chart.addSeries(LineSeries, {
-        color: RSI_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `RSI ${settings.rsiLen}`,
+        color: s.rsiColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `RSI ${s.rsiLen}`,
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
-      }, rsiPane);
+      }, pane);
       rsiLine.setData(lineData(rsiArr));
-      rsiLine.attachPrimitive(rsiBand);
-      rsiLine.attachPrimitive(rsiGradient);
-      rsiLine.createPriceLine({ price: 70, color: RSI_UPPER_LOWER_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "70" });
-      rsiLine.createPriceLine({ price: 50, color: RSI_MID_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: false, title: "50" });
-      rsiLine.createPriceLine({ price: 30, color: RSI_UPPER_LOWER_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "30" });
+      if (s.rsiFill) rsiLine.attachPrimitive(band);
+      const rsiMaLine = chart.addSeries(LineSeries, { color: s.rsiMaColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI-based MA" }, pane);
+      rsiMaLine.setData(lineData(rsiMaArr));
+      rsiLine.createPriceLine({ price: 60, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "60" });
+      rsiLine.createPriceLine({ price: 20, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: "20" });
     }
 
-    // ── Stochastic RSI (10,10,3,3) -- own pane, same math as the TradingView
-    //    chart's Stoch RSI study: %K/%D over an RSI(10) base. Upper/Lower
-    //    Band mirror TradingView's own Stoch RSI style dialog (flat lines at
-    //    80/20). ──
-    if (showStochRsi) {
-      const stochPane = nextPane++;
-      const stochBand = new BandFill(80, 20, STOCH_BAND_FILL);
-      const stochD = chart.addSeries(LineSeries, { color: STOCH_D_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `Stoch RSI D${settings.stochSmoothD}` }, stochPane);
+    // ── MACD 4C Smooth -- EMA(fast)-EMA(slow) (optionally re-smoothed),
+    //    signal = EMA of that, 4-color histogram (up/down zone x
+    //    rising/falling alpha). ──
+    if (!hidden.macd) {
+      const pane = nextPane++;
+      const histUpFull = s.macdHistUp, histUpWeak = hexA(s.macdHistUp, 0.4);
+      const histDnFull = s.macdHistDn, histDnWeak = hexA(s.macdHistDn, 0.4);
+      const histData = rows.map((r, i) => {
+        const v = macdResult.hist[i];
+        if (Number.isNaN(v)) return { time: r.date as Time, value: 0, color: "rgba(0,0,0,0)" };
+        const prev = macdResult.hist[i - 1];
+        const rising = !Number.isNaN(prev) && v > prev;
+        const color = v >= 0 ? (rising ? histUpFull : histUpWeak) : (rising ? histDnWeak : histDnFull);
+        return { time: r.date as Time, value: v, color };
+      });
+      const hist = chart.addSeries(HistogramSeries, { lastValueVisible: true, priceLineVisible: false, title: "Histogram" }, pane);
+      hist.setData(histData);
+      const macdLine = chart.addSeries(LineSeries, { color: s.macdColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "MACD" }, pane);
+      macdLine.setData(lineData(macdResult.macd));
+      const signalLine = chart.addSeries(LineSeries, { color: s.macdSignalColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Signal" }, pane);
+      signalLine.setData(lineData(macdResult.signal));
+    }
+
+    // ── Stoch RSI -- K/D over an RSI(stochRsiLen) base, smoothed by
+    //    stochSmoothK/D. Band 80-20, dashed guides at 20/40/60/80. ──
+    if (!hidden.stoch) {
+      const pane = nextPane++;
+      const band = new BandFill(80, 20, c.oscFill);
+      const stochD = chart.addSeries(LineSeries, { color: s.stochDColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI D" }, pane);
       stochD.setData(lineData(stoch.d));
       const stochK = chart.addSeries(LineSeries, {
-        color: STOCH_K_COLOR, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: `Stoch RSI K${settings.stochSmoothK}`,
+        color: s.stochKColor, lineWidth: 1, crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "Stoch RSI K",
         autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }),
-      }, stochPane);
+      }, pane);
       stochK.setData(lineData(stoch.k));
-      stochK.attachPrimitive(stochBand);
-      stochK.createPriceLine({ price: 80, color: STOCH_BAND_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "Upper Band" });
-      stochK.createPriceLine({ price: 20, color: STOCH_BAND_COLOR, lineWidth: 1, lineStyle: LineStyle.Solid, axisLabelVisible: true, title: "Lower Band" });
+      if (s.stochFill) stochK.attachPrimitive(band);
+      [80, 60, 40, 20].forEach((lvl) => stochK.createPriceLine({ price: lvl, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: lvl === 80 || lvl === 20, title: lvl === 80 || lvl === 20 ? String(lvl) : "" }));
     }
 
-    // Price pane keeps roughly `priceHeight`, each active oscillator pane
-    // roughly `OSC_PANE_HEIGHT`, by weighting stretch factors with those same
-    // pixel numbers (relative, not absolute) -- `setHeight` looked equivalent
-    // but its fixed-pixel push gets silently overwritten by the chart's own
-    // initial layout pass right after pane creation; stretch factors are
-    // what that layout pass itself honors on every resize.
+    // Price pane keeps the majority of the height; each active oscillator
+    // pane gets an equal, smaller share -- see the file-level note on why
+    // stretch factors (not setHeight) are what survives the chart's own
+    // layout pass.
     const panes = chart.panes();
-    panes[0]?.setStretchFactor(priceHeight);
-    for (let i = 1; i < panes.length; i++) panes[i]?.setStretchFactor(OSC_PANE_HEIGHT);
+    panes[0]?.setStretchFactor(PRICE_H);
+    for (let i = 1; i < panes.length; i++) panes[i]?.setStretchFactor(OSC_H);
 
-    // ── Initial view: always the 3M range button's own window (66 bars),
-    //    ignoring the `sessions` prop -- see activeRangeId's own comment on
-    //    why this chart no longer inherits its initial zoom from whatever
-    //    range the page's shared picker (and the embed above) happen to be
-    //    on. Fully pannable/zoomable beyond it regardless. ──
-    const initialSessions = RANGE_BUTTONS.find((r) => r.id === "3M")?.n ?? sessions;
+    const initialSessions = RANGE_BUTTONS.find((r) => r.id === "3M")?.n ?? rows.length;
     const fromIdx = Math.max(0, rows.length - initialSessions);
-    const initialRange = { from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time };
-    chart.timeScale().setVisibleRange(initialRange);
+    chart.timeScale().setVisibleRange({ from: rows[fromIdx].date as Time, to: rows[rows.length - 1].date as Time });
 
-    // ── Live hover legend — TradingView-style readout that updates with the
-    //    crosshair; defaults to the last bar when the pointer isn't over the chart. ──
-    const nz = (v: number | undefined) => (v == null || Number.isNaN(v) ? null : v);
     const legendAt = (idx: number): Legend => {
       const r = rows[idx];
       const prevClose = idx > 0 ? rows[idx - 1].close : null;
@@ -478,9 +534,12 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       const chgPct = prevClose ? chg! / prevClose : null;
       const ib = bands.find((b) => idx >= b.startIdx && idx <= Math.min(b.endIdx, rows.length - 1)) ?? null;
       return {
-        date: r.date, o: r.open, h: r.high, l: r.low, c: r.close, vol: r.volume, chg, chgPct, ib, vwap: vw.points[idx] ?? null,
-        ema25: nz(ema25Arr[idx]), ema50: nz(ema50Arr[idx]), sma200: nz(sma200Arr[idx]),
-        rsi: nz(rsiArr[idx]), stochK: nz(stoch.k[idx]), stochD: nz(stoch.d[idx]),
+        date: r.date, o: r.open, h: r.high, l: r.low, c: r.close, vol: r.volume, chg, chgPct,
+        ib: ib ? { ibHigh: ib.ibHigh, ibLow: ib.ibLow } : null, vwap: vw.points[idx] ?? null,
+        ribbon: nz(ema(closes, s.ribbonBase)[idx]), sma200: nz(sma(closes, s.sma200Len)[idx]),
+        rsi: nz(rsiArr[idx]), rsiMa: nz(rsiMaArr[idx]),
+        macd: nz(macdResult.macd[idx]), macdSignal: nz(macdResult.signal[idx]), macdHist: nz(macdResult.hist[idx]),
+        stochK: nz(stoch.k[idx]), stochD: nz(stoch.d[idx]),
       };
     };
     setLegend(legendAt(rows.length - 1));
@@ -497,157 +556,199 @@ export function IndicatorCompanion({ ohlcv, symbol, sessions = 140 }: { ohlcv: O
       chart.remove();
       chartRef.current = null;
     };
-  }, [anchor, rows, sessions, themeTick, showEma25, showEma50, showSma200, showVolume, showRsi, showStochRsi, showIbhIbl, showVwap, symbol, settings]);
+  }, [rows, symbol, themeTick, settings, hidden]);
+
+  // Plain call, not memoized -- cheap (a handful of getComputedStyle reads)
+  // and needs to reflect the CURRENT theme on every render, including the
+  // one where themeTick just flipped but the effect above hasn't rebuilt
+  // the chart yet.
+  const paneColors = themeColors();
 
   if (!rows || rows.length < 2) {
     return (
       <div style={CARD}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span style={KICKER}>CHART</span>
-          <span style={chip("CUSTOM", GOLD)}>CUSTOM</span>
-        </div>
-        <p style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5, margin: 0 }}>
-          No local OHLCV history for {symbol || "this symbol"} to draw IBH/IBL and Anchored VWAP.
-        </p>
+        <p style={{ fontSize: 11.5, color: "var(--faint)", lineHeight: 1.5, margin: 0 }}>No local OHLCV history for {symbol || "this symbol"}.</p>
       </div>
     );
   }
 
   const chgUp = legend ? (legend.chgPct ?? 0) >= 0 : true;
   const priceCol = chgUp ? "var(--up)" : "var(--down)";
+  const last = rows[rows.length - 1];
+  const prev = rows.length > 1 ? rows[rows.length - 2] : null;
+  const chg = prev ? last.close - prev.close : null;
+  const chgPct = prev && prev.close ? (chg ?? 0) / prev.close : null;
+
+  const gearRow = (id: StudyId, title: string, inputs: GearField[], style: GearField[], top: number) => openGear === id ? (
+    <GearPanel id={id} title={title} top={top} inputs={inputs} style={style} values={settings} hidden={hidden[id]}
+      onChange={updateSettings} onToggleHidden={() => toggleHidden(id)} onClose={() => setOpenGear(null)}
+      onReset={() => saveStudySettings(loadStudySettings())} />
+  ) : null;
 
   return (
     <div style={CARD}>
-      {/* Ticker/OHLC header row — mirrors the TradingView chart's own inline readout. */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-        <span style={KICKER}>CHART</span>
-        <span style={{ fontFamily: MONO, fontWeight: 800, fontSize: 13 }}>{symbol}</span>
-        <span style={{ fontSize: 10.5, color: "var(--faint)" }}>· 1D · IDX</span>
-        {legend ? (
-          <span style={{ fontFamily: MONO, fontSize: 11, color: priceCol }}>
-            O {formatPrice(legend.o)} H {formatPrice(legend.h)} L {formatPrice(legend.l)} C {formatPrice(legend.c)}
-            {legend.chg != null ? ` ${legend.chg >= 0 ? "+" : ""}${formatPrice(legend.chg)} (${formatPercent(legend.chgPct)})` : ""}
-          </span>
-        ) : null}
-      </div>
-      {legend && showVolume ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: MONO, fontSize: 10, color: "var(--faint)", marginBottom: 8 }}>
-          <span>Volume {formatCompact(legend.vol)} · MA {settings.volMaLen}</span>
-          <StudyGear
-            values={settings} onChange={updateSettings}
-            fields={[{ key: "volMaLen", label: "MA Length", min: 1, max: 200 }]}
-          />
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 9, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: MONO, fontSize: 22, fontWeight: 700, letterSpacing: "-.01em" }}>{symbol}</span>
+            {companyName ? <span style={{ fontSize: 13, color: "var(--muted)" }}>{companyName}</span> : null}
+            <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>IDX · 1D · EOD</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <span style={{ fontFamily: MONO, fontSize: 26, fontWeight: 700, letterSpacing: "-.02em", color: priceCol }}>{formatPrice(last.close)}</span>
+            {chg != null ? (
+              <span style={{ whiteSpace: "nowrap", fontSize: 11.5, fontWeight: 700, fontFamily: MONO, padding: "3px 8px", borderRadius: 7, background: chg >= 0 ? "var(--upSoft, rgba(37,99,235,.1))" : "var(--downSoft, rgba(229,72,77,.1))", color: priceCol }}>
+                {chg >= 0 ? "+" : ""}{formatPrice(chg)} ({formatPercent(chgPct)})
+              </span>
+            ) : null}
+            <span style={{ fontSize: 10.5, color: "var(--faint)" }}>as of {last.date} · {rows.length} sessions</span>
+          </div>
         </div>
-      ) : <div style={{ marginBottom: 8 }} />}
+      </div>
 
-      {/* No permanently-visible IBH/IBL or VWAP chips -- both are toggles in
-          the ƒx Indicators picker now (Custom Overlay Chart group), same as
-          every other study; a chart with everything off should look as
-          clean as TradingView's own default, not carry fixed chrome for
-          overlays that might be switched off. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-        {showVwap ? (
-          <>
-            <span style={chip("VWAP", VWAP_BLUE)}>A-VWAP{vwapKeyLabel ? ` · ${vwapKeyLabel}` : ""}</span>
-            <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
-              {VWAP_ANCHORS.map((a) => (
-                <button key={a.id} type="button" title={`Anchor VWAP ${a.label}`} onClick={() => { setAnchor(a.id); saveVwapAnchor(a.id); }}
-                  style={{ fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 5, border: "none", cursor: "pointer", background: anchor === a.id ? VWAP_BLUE : "transparent", color: anchor === a.id ? "#fff" : "var(--muted)" }}>{a.short}</button>
-              ))}
-            </div>
-          </>
-        ) : null}
-        <div style={{ flex: 1 }} />
-        <ChartIndicatorPicker />
-        <div style={{ display: "flex", gap: 2, background: "var(--soft)", borderRadius: 7, padding: 2 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "0 2px 10px" }}>
+        <span style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: ".12em", color: "var(--faint)" }}>{legend?.date ?? last.date}</span>
+        <div style={{ flex: "1 1 12px" }} />
+        <div style={{ display: "flex", gap: 2, padding: 2, borderRadius: 9, background: "var(--soft)" }}>
           {RANGE_BUTTONS.map((r) => (
-            <button key={r.id} type="button" onClick={() => applyRange(r.id)}
-              style={{ fontSize: 10, fontWeight: 800, padding: "3px 9px", borderRadius: 5, border: "none", cursor: "pointer", background: activeRangeId === r.id ? "var(--accent)" : "transparent", color: activeRangeId === r.id ? "#fff" : "var(--muted)" }}>{r.id}</button>
+            <button key={r.id} type="button" onClick={() => applyRange(r.id)} style={{ fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: activeRangeId === r.id ? "var(--accent)" : "transparent", color: activeRangeId === r.id ? "#fff" : "var(--muted)" }}>{r.id}</button>
           ))}
         </div>
       </div>
 
-      {/* Live legend — IBH/IBL and Anchored VWAP detail; EMA/RSI/Stoch RSI show
-          in their own pane's corner overlay below instead, matching how
-          TradingView's own chart labels each pane. */}
-      {legend && (showIbhIbl || showVwap) ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "3px 14px", fontFamily: MONO, fontSize: 11, marginBottom: 8, color: "var(--muted)" }}>
-          {showIbhIbl && legend.ib ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: GOLD }}>IBH {formatPrice(legend.ib.ibHigh)} IBL {formatPrice(legend.ib.ibLow)}</span>
-              <StudyGear
-                values={settings} onChange={updateSettings}
-                fields={[{ key: "ibDays", label: "Initial Balance Days", min: 1, max: 10 }]}
-              />
-            </span>
-          ) : null}
-          {showVwap && legend.vwap ? (
-            <span>
-              <span style={{ color: VWAP_BLUE }}>VWAP {formatPrice(legend.vwap.vwap)}</span>{" "}
-              <span style={{ color: VWAP_GREEN }}>±1σ {formatPrice(legend.vwap.l1)}–{formatPrice(legend.vwap.u1)}</span>{" "}
-              <span style={{ color: VWAP_CYAN }}>±2σ {formatPrice(legend.vwap.l2)}–{formatPrice(legend.vwap.u2)}</span>
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-
       <div style={{ display: "flex", alignItems: "stretch" }}>
-        <ChartToolbar tool={drawingTool} height={totalHeight} />
+        <ChartToolbar tool={drawingTool} height={chartHeight} />
         <div style={{ position: "relative", flex: "1 1 auto", minWidth: 0 }}>
-          <div ref={containerRef} style={{ width: "100%", height: totalHeight, borderRadius: 8, overflow: "hidden" }} />
-          {/* Pane-corner overlays -- TradingView-style "{study} {source} {value}"
-              labels pinned to each pane's own top-left corner, updating with the
-              crosshair; pointer-events:none so they never block chart interaction. */}
-          {legend && (showEma25 || showEma50 || showSma200) ? (
-            <div style={{ ...CORNER_LABEL, top: 6 }}>
-              {showEma25 && legend.ema25 != null ? <span>EMA {settings.ema25Len} <b style={{ color: EMA25_COLOR }}>{formatPrice(legend.ema25)}</b></span> : null}
-              {showEma50 && legend.ema50 != null ? <span>EMA {settings.ema50Len} <b style={{ color: EMA50_COLOR }}>{formatPrice(legend.ema50)}</b></span> : null}
-              {showSma200 && legend.sma200 != null ? <span>SMA {settings.sma200Len} <b style={{ color: SMA200_COLOR }}>{formatPrice(legend.sma200)}</b></span> : null}
-              <StudyGear
-                values={settings} onChange={updateSettings}
-                fields={[
-                  ...(showEma25 ? [{ key: "ema25Len" as const, label: "EMA (blue) Length", min: 1, max: 500 }] : []),
-                  ...(showEma50 ? [{ key: "ema50Len" as const, label: "EMA (red) Length", min: 1, max: 500 }] : []),
-                  ...(showSma200 ? [{ key: "sma200Len" as const, label: "SMA (orange) Length", min: 1, max: 500 }] : []),
-                ]}
-              />
+          <div ref={containerRef} style={{ width: "100%", height: chartHeight, borderRadius: 8, overflow: "hidden" }} />
+
+          {/* Price-pane legend stack -- symbol/OHLC row + one row per overlay study. */}
+          <div style={{ position: "absolute", left: 9, top: 6, maxWidth: "88%", zIndex: 5, pointerEvents: "none", display: "flex", flexDirection: "column", gap: 1, fontFamily: MONO, fontSize: 11.5, lineHeight: 1.3 }}>
+            <div style={{ ...LEGEND_ROW, flexWrap: "wrap", background: paneColors.paneTag }}>
+              <span style={{ fontFamily: "var(--font-sans, sans-serif)", fontSize: 12, fontWeight: 600, color: "var(--text)" }}>{companyName || symbol}</span>
+              <span style={{ color: "var(--muted)" }}>· 1D · IDX</span>
+              {legend ? (<>
+                <span style={{ color: "var(--faint)" }}>O</span><span style={{ color: priceCol }}>{formatPrice(legend.o)}</span>
+                <span style={{ color: "var(--faint)" }}>H</span><span style={{ color: priceCol }}>{formatPrice(legend.h)}</span>
+                <span style={{ color: "var(--faint)" }}>L</span><span style={{ color: priceCol }}>{formatPrice(legend.l)}</span>
+                <span style={{ color: "var(--faint)" }}>C</span><span style={{ color: priceCol }}>{formatPrice(legend.c)}</span>
+                {legend.chg != null ? <span style={{ color: priceCol }}>{legend.chg >= 0 ? "+" : ""}{formatPrice(legend.chg)} ({formatPercent(legend.chgPct)})</span> : null}
+              </>) : null}
+            </div>
+
+            <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.volume ? 0.45 : 1 }}>
+              <span style={{ color: "var(--muted)" }}>Vol <span style={{ color: "var(--faint)" }}>{settings.volMaLen}</span></span>
+              {legend ? (<><b style={{ color: "var(--text)", fontWeight: 500 }}>{formatCompact(legend.vol)}</b><span style={{ color: settings.volMaColor }}>{formatCompact(0)}</span></>) : null}
+              <EyeButton hidden={hidden.volume} onClick={() => toggleHidden("volume")} />
+              <GearButton onClick={() => setOpenGear(openGear === "volume" ? null : "volume")} />
+            </div>
+            {gearRow("volume", "Volume", [{ kind: "number", key: "volMaLen", label: "MA Length", min: 1, max: 200 }], [{ kind: "color", key: "volUpColor", label: "Up Color" }, { kind: "color", key: "volDnColor", label: "Down Color" }, { kind: "color", key: "volMaColor", label: "MA Color" }], 30)}
+
+            <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.vwap ? 0.45 : 1 }}>
+              <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>VWAP Suite v2.0 <span style={{ color: "var(--faint)" }}>{periodLabel(vwapCurrentKey(rows, settings), settings.vwapAnchor as VwapAnchor)}</span></span>
+              <EyeButton hidden={hidden.vwap} onClick={() => toggleHidden("vwap")} />
+              <GearButton onClick={() => setOpenGear(openGear === "vwap" ? null : "vwap")} />
+            </div>
+            {gearRow("vwap", "VWAP Suite", [{ kind: "select", key: "vwapAnchor", label: "Anchor", options: ["week", "month", "quarter", "year"] }, { kind: "select", key: "vwapSource", label: "Source", options: Object.keys(VWAP_SOURCE_FN) }], [{ kind: "color", key: "vwapColor", label: "Line Color" }, { kind: "number", key: "vwapWidth", label: "Width", min: 1, max: 4 }, { kind: "check", key: "vwapBands", label: "Band Fill" }, { kind: "check", key: "vwapLines", label: "Forward Lines" }, { kind: "check", key: "vwapText", label: "Margin Text" }], 54)}
+
+            <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.ib ? 0.45 : 1 }}>
+              <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>Monthly IBH ~ IBL <span style={{ color: "var(--faint)" }}>{settings.ibDays}</span></span>
+              {legend?.ib ? <b style={{ color: settings.ibColor, fontWeight: 500 }}>{formatPrice(legend.ib.ibHigh)} ~ {formatPrice(legend.ib.ibLow)}</b> : null}
+              <EyeButton hidden={hidden.ib} onClick={() => toggleHidden("ib")} />
+              <GearButton onClick={() => setOpenGear(openGear === "ib" ? null : "ib")} />
+            </div>
+            {gearRow("ib", "Monthly IBH ~ IBL", [{ kind: "number", key: "ibDays", label: "IB Sessions", min: 1, max: 10 }], [{ kind: "color", key: "ibColor", label: "Box Color" }, { kind: "check", key: "ibFill", label: "Fill" }, { kind: "number", key: "ibWidth", label: "Border Width", min: 1, max: 4 }], 78)}
+
+            <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.ribbon ? 0.45 : 1 }}>
+              <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>EMA Ribbon <span style={{ color: "var(--faint)" }}>{Array.from({ length: 8 }, (_, i) => settings.ribbonBase + i * settings.ribbonStep).join(" ")} close</span></span>
+              <EyeButton hidden={hidden.ribbon} onClick={() => toggleHidden("ribbon")} />
+              <GearButton onClick={() => setOpenGear(openGear === "ribbon" ? null : "ribbon")} />
+            </div>
+            {gearRow("ribbon", "EMA Ribbon", [{ kind: "number", key: "ribbonBase", label: "Base Length", min: 2, max: 200 }, { kind: "number", key: "ribbonStep", label: "Step", min: 1, max: 50 }], [{ kind: "color", key: "ribbonColor", label: "Color" }], 102)}
+
+            <div style={{ ...LEGEND_ROW, background: paneColors.paneTag, opacity: hidden.sma200 ? 0.45 : 1 }}>
+              <span style={{ color: "var(--muted)" }}>SMA <span style={{ color: "var(--faint)" }}>{settings.sma200Len} close</span></span>
+              {legend?.sma200 != null ? <b style={{ color: "var(--text)", fontWeight: 500 }}>{formatPrice(legend.sma200)}</b> : null}
+              <EyeButton hidden={hidden.sma200} onClick={() => toggleHidden("sma200")} />
+              <GearButton onClick={() => setOpenGear(openGear === "sma200" ? null : "sma200")} />
+            </div>
+            {gearRow("sma200", "SMA", [{ kind: "number", key: "sma200Len", label: "Length", min: 1, max: 500 }], [{ kind: "color", key: "smaColor", label: "Color" }, { kind: "number", key: "smaWidth", label: "Width", min: 1, max: 4 }], 126)}
+          </div>
+
+          {/* Oscillator panes -- each shown live (overlay legend on its own
+              canvas pane, matching the price-pane corner labels above) or,
+              when hidden, collapsed to a short static row below everything
+              so its eye toggle stays reachable without taking real height. */}
+          {!hidden.rsi ? (
+            <div style={{ position: "absolute", left: 9, top: rsiTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag, pointerEvents: "auto" }}>
+              <span style={{ color: "var(--muted)" }}>RSI <span style={{ color: "var(--faint)" }}>{settings.rsiLen} close</span></span>
+              {legend?.rsi != null ? <b style={{ color: settings.rsiColor, fontWeight: 500 }}>{fmtOsc(legend.rsi)}</b> : null}
+              {legend?.rsiMa != null ? <b style={{ color: settings.rsiMaColor, fontWeight: 500 }}>{fmtOsc(legend.rsiMa)}</b> : null}
+              <EyeButton hidden={false} onClick={() => toggleHidden("rsi")} />
+              <GearButton onClick={() => setOpenGear(openGear === "rsi" ? null : "rsi")} />
+              {gearRow("rsi", "RSI", [{ kind: "number", key: "rsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "rsiMaLen", label: "RSI-based MA Length", min: 1, max: 100 }], [{ kind: "color", key: "rsiColor", label: "RSI Color" }, { kind: "color", key: "rsiMaColor", label: "MA Color" }, { kind: "check", key: "rsiFill", label: "Band Fill" }], rsiTop + 24)}
             </div>
           ) : null}
-          {showRsi && legend?.rsi != null ? (
-            <div style={{ ...CORNER_LABEL, top: rsiTop + 6 }}>
-              RSI {settings.rsiLen} close <b style={{ color: RSI_COLOR }}>{fmtOsc(legend.rsi)}</b>
-              <StudyGear
-                values={settings} onChange={updateSettings}
-                fields={[{ key: "rsiLen", label: "RSI Length", min: 2, max: 100 }]}
-              />
+          {!hidden.macd ? (
+            <div style={{ position: "absolute", left: 9, top: macdTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag, pointerEvents: "auto" }}>
+              <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>MACD 4C Smooth <span style={{ color: "var(--faint)" }}>{settings.macdFast} {settings.macdSlow} {settings.macdSignal} {settings.macdSmooth} close</span></span>
+              {legend?.macdHist != null ? <b style={{ color: "var(--text)", fontWeight: 500 }}>{legend.macdHist.toFixed(0)}</b> : null}
+              {legend?.macd != null ? <b style={{ color: settings.macdColor, fontWeight: 500 }}>{legend.macd.toFixed(0)}</b> : null}
+              {legend?.macdSignal != null ? <b style={{ color: settings.macdSignalColor, fontWeight: 500 }}>{legend.macdSignal.toFixed(0)}</b> : null}
+              <EyeButton hidden={false} onClick={() => toggleHidden("macd")} />
+              <GearButton onClick={() => setOpenGear(openGear === "macd" ? null : "macd")} />
+              {gearRow("macd", "MACD 4C Smooth", [{ kind: "number", key: "macdFast", label: "Fast Length", min: 1, max: 100 }, { kind: "number", key: "macdSlow", label: "Slow Length", min: 1, max: 200 }, { kind: "number", key: "macdSignal", label: "Signal Length", min: 1, max: 100 }, { kind: "number", key: "macdSmooth", label: "Smoothing", min: 1, max: 50 }], [{ kind: "color", key: "macdColor", label: "MACD Color" }, { kind: "color", key: "macdSignalColor", label: "Signal Color" }, { kind: "color", key: "macdHistUp", label: "Hist Up" }, { kind: "color", key: "macdHistDn", label: "Hist Down" }], macdTop + 24)}
             </div>
           ) : null}
-          {showStochRsi && (legend?.stochK != null || legend?.stochD != null) ? (
-            <div style={{ ...CORNER_LABEL, top: stochTop + 6 }}>
-              Stoch RSI {settings.stochSmoothK} {settings.stochSmoothD} {settings.stochRsiLen} {settings.stochLen} close{" "}
-              {legend?.stochK != null ? <b style={{ color: STOCH_K_COLOR }}>{fmtOsc(legend.stochK)}</b> : null}{" "}
-              {legend?.stochD != null ? <b style={{ color: STOCH_D_COLOR }}>{fmtOsc(legend.stochD)}</b> : null}
-              <StudyGear
-                values={settings} onChange={updateSettings}
-                fields={[
-                  { key: "stochRsiLen", label: "RSI Length", min: 2, max: 100 },
-                  { key: "stochLen", label: "Stochastic Length", min: 2, max: 100 },
-                  { key: "stochSmoothK", label: "Smooth K", min: 1, max: 50 },
-                  { key: "stochSmoothD", label: "Smooth D", min: 1, max: 50 },
-                ]}
-              />
+          {!hidden.stoch ? (
+            <div style={{ position: "absolute", left: 9, top: stochTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag, pointerEvents: "auto" }}>
+              <span style={{ whiteSpace: "nowrap", color: "var(--muted)" }}>Stoch RSI <span style={{ color: "var(--faint)" }}>{settings.stochSmoothK} {settings.stochSmoothD} {settings.stochRsiLen} {settings.stochLen} close</span></span>
+              {legend?.stochK != null ? <b style={{ color: settings.stochKColor, fontWeight: 500 }}>{fmtOsc(legend.stochK)}</b> : null}
+              {legend?.stochD != null ? <b style={{ color: settings.stochDColor, fontWeight: 500 }}>{fmtOsc(legend.stochD)}</b> : null}
+              <EyeButton hidden={false} onClick={() => toggleHidden("stoch")} />
+              <GearButton onClick={() => setOpenGear(openGear === "stoch" ? null : "stoch")} />
+              {gearRow("stoch", "Stoch RSI", [{ kind: "number", key: "stochSmoothK", label: "Smooth K", min: 1, max: 50 }, { kind: "number", key: "stochSmoothD", label: "Smooth D", min: 1, max: 50 }, { kind: "number", key: "stochRsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "stochLen", label: "Stochastic Length", min: 2, max: 100 }], [{ kind: "color", key: "stochKColor", label: "K Color" }, { kind: "color", key: "stochDColor", label: "D Color" }, { kind: "check", key: "stochFill", label: "Band Fill" }], stochTop + 24)}
             </div>
+          ) : null}
+
+          {selection ? (
+            <SelectionToolbar sel={selection}
+              onRestyle={(color, width, style) => drawingTool?.restyleSelected(color, width, style)}
+              onDelete={() => drawingTool?.deleteSelected()}
+              onClose={() => setSelection(null)} />
           ) : null}
         </div>
       </div>
 
-      <div style={{ fontSize: 10, color: "var(--faint)", marginTop: 10, lineHeight: 1.5 }}>
-        Every overlay/oscillator above — EMA/SMA/RSI/Stoch RSI/Volume, plus Monthly IBH~IBL and Anchored VWAP — comes from the ƒx Indicators picker (top right); the same picker and saved selection as the TradingView chart above, so a study switched off there stays off here too. Each active study's own gear icon opens its Settings (length/smoothing), same as TradingView's own per-study dialog.
-        {showIbhIbl ? ` Initial Balance = the high–low range of each month's first ${settings.ibDays} trading session${settings.ibDays === 1 ? "" : "s"}, held for the rest of the month, one continuous staircase across months (matches the “Monthly IBH ~ IBL” Pine script's box + connector lines).` : ""}
-        {showVwap ? ` Anchored VWAP on hlc3·volume, reset each ${({ week: "week", month: "month", quarter: "quarter", year: "year" } as Record<string, string>)[anchor] || "period"} (each period is its own line, breaking cleanly at the reset), with ±1σ/±2σ bands for the current period and center/±1σ for the previous one — every label shows price and % from the latest close.` : ""}
-        Left toolbar: Trend Line, Rectangle, and Fib Retracement take two clicks (start, then end), Horizontal Line takes one; Erase removes whatever drawing you click on next; CLR removes all of them. Drawings save per ticker in this browser only.
-        Computed from our published daily EOD bars, {rows.length} sessions total — drag to pan, scroll/pinch to zoom, hover for the readout above.
+      {/* Collapsed strips for hidden oscillators -- kept mounted (not just
+          removed) so the eye toggle to bring one back stays reachable. */}
+      {(["rsi", "macd", "stoch"] as const).filter((id) => hidden[id]).map((id) => (
+        <div key={id} style={{ display: "flex", alignItems: "center", gap: 6, height: OSC_H_HIDDEN, paddingLeft: 9, borderTop: "1px solid var(--hair)", fontFamily: MONO, fontSize: 11, color: "var(--faint)" }}>
+          <span>{id === "rsi" ? `RSI ${settings.rsiLen}` : id === "macd" ? "MACD 4C Smooth" : "Stoch RSI"}</span>
+          <EyeButton hidden onClick={() => toggleHidden(id)} />
+        </div>
+      ))}
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "baseline", fontSize: 10, lineHeight: 1.55, color: "var(--faint)", marginTop: 12, padding: "10px 2px 0", borderTop: "1px solid var(--hair)" }}>
+        <span style={{ flex: "1 1 320px", minWidth: 0 }}>
+          Monthly IBH ~ IBL draws each month&apos;s first {settings.ibDays}-session range as a box held to month end. VWAP Suite anchors on {settings.vwapSource}·volume per {settings.vwapAnchor}, labelling ±1σ/±2σ of the live period and ±1σ of the previous one with price and distance from close.
+        </span>
+        <span style={{ flex: "1 1 220px", minWidth: 0 }}>
+          Panes: RSI {settings.rsiLen} with its RSI-based MA, MACD 4C Smooth {settings.macdFast} {settings.macdSlow} {settings.macdSignal} {settings.macdSmooth}, Stoch RSI {settings.stochSmoothK} {settings.stochSmoothD} {settings.stochRsiLen} {settings.stochLen}. Daily EOD bars — {rows.length} sessions to {last.date}, source yfinance EOD.
+        </span>
       </div>
     </div>
   );
+}
+
+function hexA(hex: string, alpha: number): string {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+function pct(v: number, close: number): string {
+  const p = close ? ((v - close) / close) * 100 : 0;
+  return `${p >= 0 ? "+" : ""}${p.toFixed(2)}%`;
+}
+function vwapCurrentKey(rows: OhlcvRow[], s: StudySettings): string | null {
+  if (!rows.length) return null;
+  return computeAnchoredVwap(rows, s.vwapAnchor as VwapAnchor, 1, 2, 3, s.vwapSource as VwapSource).currentKey;
 }

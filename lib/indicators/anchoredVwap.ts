@@ -51,13 +51,24 @@ export function periodLabel(key: string | null, anchor: VwapAnchor): string {
   return `${mon} ${yy}`;
 }
 
+export type VwapSource = "(H+L+C)/3" | "(H+L)/2" | "(O+H+L+C)/4" | "Close";
+
+export const VWAP_SOURCE_FN: Record<VwapSource, (r: OhlcvRow) => number> = {
+  "(H+L+C)/3": (r) => (r.high + r.low + r.close) / 3,
+  "(H+L)/2": (r) => (r.high + r.low) / 2,
+  "(O+H+L+C)/4": (r) => (r.open + r.high + r.low + r.close) / 4,
+  "Close": (r) => r.close,
+};
+
 /**
  * Anchored VWAP with standard-deviation bands, mirroring TradingView's built-in
- * "Volume Weighted Average Price" (Pine v6): src = hlc3, cumulation resets each
+ * "Volume Weighted Average Price" (Pine v6): src defaults to hlc3 (overridable
+ * via `source`, the VWAP Suite's own source setting), cumulation resets each
  * anchor period, σ is the volume-weighted stdev of src about the VWAP, and bands
  * are vwap ± mult·σ. Rows must be ascending by date.
  */
-export function computeAnchoredVwap(rows: OhlcvRow[], anchor: VwapAnchor = "quarter", mult1 = 1, mult2 = 2, mult3 = 3): AnchoredVwapResult {
+export function computeAnchoredVwap(rows: OhlcvRow[], anchor: VwapAnchor = "quarter", mult1 = 1, mult2 = 2, mult3 = 3, source: VwapSource = "(H+L+C)/3"): AnchoredVwapResult {
+  const srcFn = VWAP_SOURCE_FN[source];
   const points: (AvwapPoint | null)[] = [];
   let curKey: string | null = null;
   let cumPV = 0, cumV = 0, cumPV2 = 0;
@@ -72,7 +83,7 @@ export function computeAnchoredVwap(rows: OhlcvRow[], anchor: VwapAnchor = "quar
       curKey = key;
       cumPV = 0; cumV = 0; cumPV2 = 0;
     }
-    const src = (r.high + r.low + r.close) / 3;
+    const src = srcFn(r);
     const vol = r.volume || 0;
     cumPV += src * vol; cumV += vol; cumPV2 += src * src * vol;
     if (cumV > 0) {

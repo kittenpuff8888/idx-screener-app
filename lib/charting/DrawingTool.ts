@@ -3,38 +3,69 @@
 // TradingView's own RectangleDrawingTool plugin example), attaching/
 // detaching primitives on the price series, and localStorage persistence
 // per ticker. One instance per chart build -- IndicatorCompanion.tsx creates
-// a fresh one inside the same effect that (re)builds the chart, so a
-// dependency change that rebuilds the chart also rebuilds this from the same
-// saved drawings, indistinguishably to the user.
+// a fresh one inside the same effect that (re)builds the chart.
 //
-// v1 scope, deliberately: click-to-place only, no post-hoc dragging of an
-// existing drawing's endpoints (matching the official rectangle-drawing-tool
-// example's own scope) -- delete and redraw is the edit workflow. Erase is a
-// manual hit-test against each drawing's current pixel geometry (distance to
-// a line segment, or to a horizontal/fib level) rather than the primitive
-// hitTest()/hoveredObjectId wiring, since we already need that geometry for
-// rendering and it's simpler to keep in one place.
+// Tool taxonomy: the redesign's rail lists ~60 named tools across six
+// groups (matching TradingView's own drawing-tool menus), but -- following
+// the reference design prototype's own `onChartClick`, which does the same
+// thing -- they collapse onto a much smaller set of shared placement
+// behaviors. Exotic entries with no bespoke geometry in the source design
+// either (Gann squares, Elliott waves, XABCD/harmonic patterns, brushes,
+// arrows, most shapes) fall back to a plain two-point segment, same as
+// Trend Line -- the rail's job is to expose TradingView's real taxonomy for
+// muscle-memory and menu completeness, not to reimplement 60 distinct
+// drawing engines the reference itself never built either.
+//
+// Selection (new this redesign): with "cursor" active, clicking within
+// HIT_TOLERANCE of a placed drawing's geometry selects it (hitTest) instead
+// of doing nothing -- the caller (ChartToolbar's selection toolbar) then
+// drives restyle()/deleteSelected(). Magnet mode snaps a placement's price
+// to the clicked bar's nearest O/H/L/C; Lock mode forces click-to-select
+// only, no new placements; hideDrawings toggles visibility without
+// discarding anything (distinct from clearAll).
 import type { IChartApi, ISeriesApi, MouseEventParams, SeriesType, Time } from "lightweight-charts";
+import type { OhlcvRow } from "@/lib/domain/types";
 import { TrendLine } from "./drawings/TrendLine";
 import { HorizontalLine } from "./drawings/HorizontalLine";
 import { FibRetracement } from "./drawings/FibRetracement";
 import { Rectangle } from "./drawings/Rectangle";
 import { Measure } from "./drawings/Measure";
 import { TextAnnotation } from "./drawings/TextAnnotation";
-import { loadDrawings, saveDrawings, type StoredDrawing } from "./drawingStore";
+import { VLine } from "./drawings/VLine";
+import { PositionZone } from "./drawings/PositionZone";
+import { loadDrawings, saveDrawings, type StoredRecord, type RangeVariant } from "./drawingStore";
 
-export type ToolKind = "cursor" | "trend" | "hline" | "fib" | "rect" | "measure" | "text" | "erase";
+export type ToolKind =
+  | "cursor"
+  | "trend" | "ray" | "info" | "ext" | "angle" | "hline" | "hray" | "vline" | "crossline"
+  | "fib" | "fibext" | "fibch" | "fibtime" | "fan" | "fibtrendtime" | "circles" | "spiral" | "arcs" | "wedge" | "pitchfan"
+  | "gannbox" | "gannsqf" | "gannsq" | "gannfan"
+  | "xabcd" | "cypher" | "hns" | "abcd" | "tripat" | "drives" | "ellimp" | "ellcorr" | "elltri"
+  | "long" | "short" | "posfc" | "barspat" | "ghost" | "sector"
+  | "avwap" | "frvp" | "avp"
+  | "prange" | "drange" | "dprange" | "measure"
+  | "brush" | "highlight" | "arrowmark" | "arrow" | "arrowup" | "arrowdown"
+  | "rect" | "rrect" | "path" | "circle" | "ellipse" | "poly" | "tri" | "arc" | "curve" | "dcurve"
+  | "text" | "anchoredtext" | "note" | "callout" | "pricelabel" | "flag";
+
 export const TOOL_COLOR = "#2962FF";
+export const FIB_COLOR = "#D6A100";
+const HIT_TOLERANCE = 9;
 
-type TwoPointPrimitive = TrendLine | FibRetracement | Rectangle | Measure;
-type Placed = { id: string; stored: StoredDrawing; primitive: TrendLine | HorizontalLine | FibRetracement | Rectangle | Measure | TextAnnotation };
-type DrawPoint = { time: Time; price: number };
-/** Tool kinds that place via two clicks (start, then end) rather than one;
-    "measure" is handled alongside these but separately, since it also
-    needs a live bar-count tracked from `param.logical`, not just the two
-    endpoints the others use. */
-type TwoPointType = "trend" | "fib" | "rect";
-const TWO_POINT: Partial<Record<ToolKind, TwoPointType>> = { trend: "trend", fib: "fib", rect: "rect" };
+// Tools that place with a single click (hline handled separately; text-ish
+// prompts inline; everything else here is anchor-only, drawn as a vertical
+// line -- Anchored VWAP/volume-profile/forecast/ghost/sector/fib-time tools
+// have no distinct geometry in the source design either, so they share it).
+const VERTICAL = new Set<ToolKind>(["vline", "crossline", "avwap", "frvp", "avp", "barspat", "ghost", "posfc", "fibtime", "fibtrendtime", "sector"]);
+const TEXTISH = new Set<ToolKind>(["text", "anchoredtext", "note", "callout", "pricelabel", "flag"]);
+const FIBISH = new Set<ToolKind>(["fib", "fibext", "fibch", "fan", "circles", "spiral", "arcs", "wedge", "pitchfan", "gannbox", "gannsqf", "gannsq", "gannfan"]);
+const RECTISH = new Set<ToolKind>(["rect", "rrect", "ellipse", "circle"]);
+const POSITION = new Set<ToolKind>(["long", "short"]);
+const RANGE_VARIANT: Partial<Record<ToolKind, RangeVariant>> = { measure: "measure", prange: "price", drange: "date", dprange: "dateprice", info: "price" };
+
+type AnyPrimitive = TrendLine | HorizontalLine | FibRetracement | Rectangle | Measure | TextAnnotation | VLine | PositionZone;
+type Placed = { id: string; stored: StoredRecord; primitive: AnyPrimitive };
+type DrawPointT = { time: Time; price: number };
 
 function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
   const dx = x2 - x1, dy = y2 - y1;
@@ -43,15 +74,24 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
+export type SelectionInfo = { id: string; title: string; color: string; width: number; style: "solid" | "dashed" | "dotted"; x: number; y: number } | null;
+
 export class DrawingTool {
   private tool: ToolKind = "cursor";
   private placed: Placed[] = [];
-  private pending: DrawPoint | null = null;
+  private pending: DrawPointT | null = null;
   private pendingLogical: number | null = null;
-  private preview: TwoPointPrimitive | null = null;
+  private preview: TrendLine | FibRetracement | Rectangle | Measure | null = null;
   private listeners = new Set<() => void>();
+  private selectionListeners = new Set<(sel: SelectionInfo) => void>();
+  private selectedId: string | null = null;
+  private selectedX = 0;
+  private selectedY = 0;
+  private magnetOn = false;
+  private lockedOn = false;
+  private hideAll = false;
 
-  constructor(private chart: IChartApi, private series: ISeriesApi<SeriesType>, private symbol: string) {
+  constructor(private chart: IChartApi, private series: ISeriesApi<SeriesType>, private symbol: string, private rows: OhlcvRow[]) {
     this.chart.subscribeClick(this.onClick);
     this.chart.subscribeCrosshairMove(this.onMove);
     this.restore();
@@ -64,12 +104,18 @@ export class DrawingTool {
     this.placed.forEach((p) => this.series.detachPrimitive(p.primitive));
     this.placed = [];
     this.listeners.clear();
+    this.selectionListeners.clear();
   }
 
   getTool(): ToolKind { return this.tool; }
+  isMagnet(): boolean { return this.magnetOn; }
+  isLocked(): boolean { return this.lockedOn; }
+  isHideAll(): boolean { return this.hideAll; }
   hasDrawings(): boolean { return this.placed.length > 0; }
   onChange(cb: () => void): () => void { this.listeners.add(cb); return () => this.listeners.delete(cb); }
+  onSelectionChange(cb: (sel: SelectionInfo) => void): () => void { this.selectionListeners.add(cb); return () => this.selectionListeners.delete(cb); }
   private emit() { this.listeners.forEach((cb) => cb()); }
+  private emitSelection(sel: SelectionInfo) { this.selectionListeners.forEach((cb) => cb(sel)); }
 
   setTool(kind: ToolKind) {
     this.tool = kind;
@@ -79,11 +125,42 @@ export class DrawingTool {
     this.emit();
   }
 
+  toggleMagnet() { this.magnetOn = !this.magnetOn; this.emit(); }
+  toggleLock() { this.lockedOn = !this.lockedOn; this.emit(); }
+  toggleHideAll() {
+    this.hideAll = !this.hideAll;
+    this.placed.forEach((p) => { if (this.hideAll) this.series.detachPrimitive(p.primitive); else this.series.attachPrimitive(p.primitive); });
+    this.emit();
+  }
+
   clearAll() {
     this.placed.forEach((p) => this.series.detachPrimitive(p.primitive));
     this.placed = [];
+    this.selectedId = null;
     this.persist();
     this.emit();
+    this.emitSelection(null);
+  }
+
+  deleteSelected() {
+    if (!this.selectedId) return;
+    const idx = this.placed.findIndex((p) => p.id === this.selectedId);
+    if (idx === -1) return;
+    const [hit] = this.placed.splice(idx, 1);
+    this.series.detachPrimitive(hit.primitive);
+    this.selectedId = null;
+    this.persist();
+    this.emit();
+    this.emitSelection(null);
+  }
+
+  restyleSelected(color: string, width: number, style: "solid" | "dashed" | "dotted") {
+    const p = this.placed.find((x) => x.id === this.selectedId);
+    if (!p) return;
+    p.primitive.setStyle(color, width, style);
+    p.stored = { ...p.stored, color, width, style };
+    this.persist();
+    this.emitSelection({ id: p.id, title: labelFor(p.stored.type), color, width, style, x: this.selectedX, y: this.selectedY });
   }
 
   private restore() {
@@ -94,15 +171,32 @@ export class DrawingTool {
     saveDrawings(this.symbol, this.placed.map((p) => p.stored));
   }
 
-  private place(stored: StoredDrawing) {
-    let primitive: Placed["primitive"];
-    if (stored.type === "trend") primitive = new TrendLine({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
-    else if (stored.type === "fib") primitive = new FibRetracement({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
-    else if (stored.type === "rect") primitive = new Rectangle({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, TOOL_COLOR);
-    else if (stored.type === "measure") primitive = new Measure({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, stored.barCount, TOOL_COLOR);
-    else if (stored.type === "text") primitive = new TextAnnotation({ time: stored.at.time as Time, price: stored.at.price }, stored.text, TOOL_COLOR);
-    else primitive = new HorizontalLine(stored.price, TOOL_COLOR);
-    this.series.attachPrimitive(primitive);
+  private place(stored: StoredRecord) {
+    const color = stored.color ?? (stored.type === "fib" ? FIB_COLOR : TOOL_COLOR);
+    const width = stored.width ?? 2;
+    const style = stored.style ?? "solid";
+    let primitive: AnyPrimitive;
+    if (stored.type === "trend" || stored.type === "ray" || stored.type === "extended") {
+      primitive = new TrendLine({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, color, width, style);
+    } else if (stored.type === "fib") {
+      primitive = new FibRetracement({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, color);
+    } else if (stored.type === "rect") {
+      primitive = new Rectangle({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, color, width, style);
+    } else if (stored.type === "range") {
+      primitive = new Measure({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, stored.barCount, color, stored.variant);
+    } else if (stored.type === "position") {
+      primitive = new PositionZone({
+        t1: stored.a.time as Time, t2: stored.b.time as Time, entry: stored.entry, target: stored.target, stop: stored.stop,
+        fillUp: "rgba(22,163,74,.18)", fillDn: "rgba(229,72,77,.18)", stroke: color,
+      });
+    } else if (stored.type === "text") {
+      primitive = new TextAnnotation({ time: stored.at.time as Time, price: stored.at.price }, stored.text, color);
+    } else if (stored.type === "vline" || stored.type === "crossline") {
+      primitive = new VLine(stored.at.time as Time, color, stored.type === "crossline");
+    } else {
+      primitive = new HorizontalLine(stored.price, color);
+    }
+    if (!this.hideAll) this.series.attachPrimitive(primitive);
     this.placed.push({ id: stored.id, stored, primitive });
   }
 
@@ -110,69 +204,123 @@ export class DrawingTool {
     if (this.preview) { this.series.detachPrimitive(this.preview); this.preview = null; }
   }
 
+  /** Snap a clicked price to the nearest O/H/L/C of that bar, when magnet mode is on. */
+  private snap(price: number, logical: number | null): number {
+    if (!this.magnetOn || logical == null) return price;
+    const idx = Math.max(0, Math.min(this.rows.length - 1, Math.round(logical)));
+    const r = this.rows[idx];
+    const candidates = [r.open, r.high, r.low, r.close];
+    return candidates.reduce((best, v) => (Math.abs(v - price) < Math.abs(best - price) ? v : best), candidates[0]);
+  }
+
+  private lastDate(): Time { return this.rows[this.rows.length - 1].date as Time; }
+  private firstDate(): Time { return this.rows[0].date as Time; }
+  private indexOf(t: Time): number { return this.rows.findIndex((r) => r.date === t); }
+
   private onClick = (param: MouseEventParams) => {
     if (!param.point || param.time == null) return;
-    const price = this.series.coordinateToPrice(param.point.y);
-    if (price == null) return;
-    const point: DrawPoint = { time: param.time, price };
+    const rawPrice = this.series.coordinateToPrice(param.point.y);
+    if (rawPrice == null) return;
+    const price = this.snap(rawPrice, param.logical ?? null);
+    const point: DrawPointT = { time: param.time, price };
+
+    if (this.tool === "cursor" || this.lockedOn) {
+      const hit = this.hitTest(param.point.x, param.point.y);
+      this.selectedId = hit;
+      this.selectedX = param.point.x;
+      this.selectedY = param.point.y;
+      if (hit) {
+        const p = this.placed.find((x) => x.id === hit)!;
+        this.emitSelection({ id: hit, title: labelFor(p.stored.type), color: p.stored.color ?? TOOL_COLOR, width: p.stored.width ?? 2, style: p.stored.style ?? "solid", x: this.selectedX, y: this.selectedY });
+      } else {
+        this.emitSelection(null);
+      }
+      return;
+    }
 
     if (this.tool === "hline") {
-      const id = `hline-${Date.now()}`;
-      this.place({ id, type: "hline", price });
-      this.persist();
+      this.commit({ id: `hline-${Date.now()}`, type: "hline", price });
       this.setTool("cursor");
       return;
     }
-    if (this.tool === "text") {
+    if (TEXTISH.has(this.tool)) {
       const text = typeof window !== "undefined" ? window.prompt("Annotation text:") : null;
-      if (text && text.trim()) {
-        const id = `text-${Date.now()}`;
-        this.place({ id, type: "text", at: { time: String(point.time), price: point.price }, text: text.trim() });
-        this.persist();
-      }
+      if (text && text.trim()) this.commit({ id: `${this.tool}-${Date.now()}`, type: "text", at: { time: String(point.time), price: point.price }, text: text.trim() });
       this.setTool("cursor");
       return;
     }
-    if (this.tool === "measure") {
-      if (!this.pending) {
-        this.pending = point;
-        this.pendingLogical = param.logical ?? null;
-        this.preview = new Measure(point, point, 0, TOOL_COLOR);
-        this.series.attachPrimitive(this.preview);
-      } else {
-        const barCount = this.pendingLogical != null && param.logical != null ? Math.round(Math.abs(param.logical - this.pendingLogical)) : 0;
-        const id = `measure-${Date.now()}`;
-        this.place({ id, type: "measure", a: { time: String(this.pending.time), price: this.pending.price }, b: { time: String(point.time), price: point.price }, barCount });
-        this.persist();
-        this.pending = null;
-        this.pendingLogical = null;
-        this.clearPreview();
-        this.setTool("cursor");
-      }
+    if (VERTICAL.has(this.tool)) {
+      this.commit({ id: `${this.tool}-${Date.now()}`, type: this.tool === "crossline" ? "crossline" : "vline", at: { time: String(point.time), price: point.price } });
+      this.setTool("cursor");
       return;
     }
-    const twoPointType = TWO_POINT[this.tool];
-    if (twoPointType) {
-      if (!this.pending) {
-        this.pending = point;
-        this.preview = twoPointType === "trend" ? new TrendLine(point, point, TOOL_COLOR)
-          : twoPointType === "fib" ? new FibRetracement(point, point, TOOL_COLOR)
-          : new Rectangle(point, point, TOOL_COLOR);
-        this.series.attachPrimitive(this.preview);
-      } else {
-        const id = `${twoPointType}-${Date.now()}`;
-        this.place({ id, type: twoPointType, a: { time: String(this.pending.time), price: this.pending.price }, b: { time: String(point.time), price: point.price } });
-        this.persist();
-        this.pending = null;
-        this.clearPreview();
-        this.setTool("cursor");
-      }
+    if (this.tool === "hray") {
+      this.commit({ id: `hray-${Date.now()}`, type: "ray", a: { time: String(point.time), price: point.price }, b: { time: String(this.lastDate()), price: point.price } });
+      this.setTool("cursor");
       return;
     }
-    if (this.tool === "erase") {
-      this.eraseNear(param.point.x, param.point.y);
+
+    // Everything remaining is a two-point tool: first click arms a preview, second commits.
+    if (!this.pending) {
+      this.pending = point;
+      this.pendingLogical = param.logical ?? null;
+      this.preview = FIBISH.has(this.tool) ? new FibRetracement(point, point, FIB_COLOR)
+        : RECTISH.has(this.tool) ? new Rectangle(point, point, TOOL_COLOR)
+        : RANGE_VARIANT[this.tool] ? new Measure(point, point, 0, TOOL_COLOR, RANGE_VARIANT[this.tool])
+        : new TrendLine(point, point, TOOL_COLOR);
+      this.series.attachPrimitive(this.preview);
+      return;
     }
+    const a = this.pending, b = point;
+    const barCount = this.pendingLogical != null && param.logical != null ? Math.round(Math.abs(param.logical - this.pendingLogical)) : 0;
+    this.pending = null;
+    this.pendingLogical = null;
+    this.clearPreview();
+    this.commitTwoPoint(this.tool, a, b, barCount);
+    this.setTool("cursor");
   };
+
+  private commitTwoPoint(tool: ToolKind, a: DrawPointT, b: DrawPointT, barCount: number) {
+    const id = `${tool}-${Date.now()}`;
+    const sa = { time: String(a.time), price: a.price }, sb = { time: String(b.time), price: b.price };
+    if (FIBISH.has(tool)) { this.commit({ id, type: "fib", a: sa, b: sb }); return; }
+    if (RECTISH.has(tool)) { this.commit({ id, type: "rect", a: sa, b: sb }); return; }
+    if (RANGE_VARIANT[tool]) { this.commit({ id, type: "range", variant: RANGE_VARIANT[tool]!, a: sa, b: sb, barCount }); return; }
+    if (POSITION.has(tool)) {
+      const dir: 1 | -1 = tool === "long" ? 1 : -1;
+      const risk = Math.abs(b.price - a.price) || Math.max(1, a.price * 0.01);
+      this.commit({ id, type: "position", dir, a: sa, b: sb, entry: a.price, target: a.price + dir * risk * 2, stop: a.price - dir * risk });
+      return;
+    }
+    if (tool === "ray") {
+      const i1 = this.indexOf(a.time), i2 = this.indexOf(b.time);
+      const slope = i2 === i1 ? 0 : (b.price - a.price) / (i2 - i1);
+      const lastIdx = this.rows.length - 1;
+      this.commit({ id, type: "ray", a: sa, b: { time: String(this.lastDate()), price: a.price + slope * (lastIdx - i1) } });
+      return;
+    }
+    if (tool === "ext" || tool === "angle") {
+      const i1 = this.indexOf(a.time), i2 = this.indexOf(b.time);
+      const slope = i2 === i1 ? 0 : (b.price - a.price) / (i2 - i1);
+      const lastIdx = this.rows.length - 1;
+      this.commit({
+        id, type: "extended",
+        a: { time: String(this.firstDate()), price: a.price - slope * i1 },
+        b: { time: String(this.lastDate()), price: a.price + slope * (lastIdx - i1) },
+      });
+      return;
+    }
+    // Fallback: a plain two-point segment -- Trend Line itself, and every
+    // brush/arrow/shape/pattern/Elliott/XABCD entry with no bespoke
+    // geometry (same fallback the source design's own onChartClick uses).
+    this.commit({ id, type: "trend", a: sa, b: sb });
+  }
+
+  private commit(stored: StoredRecord) {
+    this.place(stored);
+    this.persist();
+    this.emit();
+  }
 
   private onMove = (param: MouseEventParams) => {
     if (!this.pending || !this.preview || !param.point || param.time == null) return;
@@ -186,38 +334,56 @@ export class DrawingTool {
     }
   };
 
-  private eraseNear(px: number, py: number) {
-    const TOL = 6;
+  private hitTest(px: number, py: number): string | null {
     const ts = this.chart.timeScale();
-    const hitIdx = this.placed.findIndex(({ stored }) => {
+    const found = this.placed.find(({ stored }) => {
       if (stored.type === "hline") {
         const y = this.series.priceToCoordinate(stored.price);
-        return y != null && Math.abs(py - y) <= TOL;
+        return y != null && Math.abs(py - y) <= HIT_TOLERANCE;
+      }
+      if (stored.type === "vline" || stored.type === "crossline") {
+        const x = ts.timeToCoordinate(stored.at.time as Time);
+        return x != null && Math.abs(px - x) <= HIT_TOLERANCE;
       }
       if (stored.type === "text") {
         const x = ts.timeToCoordinate(stored.at.time as Time), y = this.series.priceToCoordinate(stored.at.price);
-        return x != null && y != null && Math.abs(px - x) <= 40 && py <= y + TOL && py >= y - 20;
+        return x != null && y != null && Math.abs(px - x) <= 40 && py <= y + HIT_TOLERANCE && py >= y - 20;
+      }
+      if (stored.type === "position") {
+        const x1 = ts.timeToCoordinate(stored.a.time as Time), x2 = ts.timeToCoordinate(stored.b.time as Time);
+        const yE = this.series.priceToCoordinate(stored.entry), yT = this.series.priceToCoordinate(stored.target), yS = this.series.priceToCoordinate(stored.stop);
+        if (x1 == null || x2 == null || yE == null || yT == null || yS == null) return false;
+        const ys = [yE, yT, yS];
+        return px >= Math.min(x1, x2) - HIT_TOLERANCE && px <= Math.max(x1, x2) + HIT_TOLERANCE
+          && py >= Math.min(...ys) - HIT_TOLERANCE && py <= Math.max(...ys) + HIT_TOLERANCE;
       }
       const x1 = ts.timeToCoordinate(stored.a.time as Time), y1 = this.series.priceToCoordinate(stored.a.price);
       const x2 = ts.timeToCoordinate(stored.b.time as Time), y2 = this.series.priceToCoordinate(stored.b.price);
       if (x1 == null || y1 == null || x2 == null || y2 == null) return false;
-      if (stored.type === "trend" || stored.type === "measure") return distToSegment(px, py, x1, y1, x2, y2) <= TOL;
+      if (stored.type === "trend" || stored.type === "ray" || stored.type === "extended" || stored.type === "range") {
+        return distToSegment(px, py, x1, y1, x2, y2) <= HIT_TOLERANCE;
+      }
       if (stored.type === "rect") {
-        return px >= Math.min(x1, x2) - TOL && px <= Math.max(x1, x2) + TOL
-          && py >= Math.min(y1, y2) - TOL && py <= Math.max(y1, y2) + TOL;
+        return px >= Math.min(x1, x2) - HIT_TOLERANCE && px <= Math.max(x1, x2) + HIT_TOLERANCE
+          && py >= Math.min(y1, y2) - HIT_TOLERANCE && py <= Math.max(y1, y2) + HIT_TOLERANCE;
       }
       // fib: hit if within the anchors' x-span and near any of the 7 levels
-      if (px < Math.min(x1, x2) - TOL || px > Math.max(x1, x2) + TOL) return false;
+      if (px < Math.min(x1, x2) - HIT_TOLERANCE || px > Math.max(x1, x2) + HIT_TOLERANCE) return false;
       const span = stored.b.price - stored.a.price;
       return [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1].some((r) => {
         const y = this.series.priceToCoordinate(stored.a.price + span * r);
-        return y != null && Math.abs(py - y) <= TOL;
+        return y != null && Math.abs(py - y) <= HIT_TOLERANCE;
       });
     });
-    if (hitIdx === -1) return;
-    const [hit] = this.placed.splice(hitIdx, 1);
-    this.series.detachPrimitive(hit.primitive);
-    this.persist();
-    this.emit();
+    return found?.id ?? null;
   }
+}
+
+function labelFor(type: StoredRecord["type"]): string {
+  const names: Record<StoredRecord["type"], string> = {
+    trend: "Trend Line", ray: "Ray", extended: "Extended Line", hline: "Horizontal Line",
+    vline: "Vertical Line", crossline: "Crossline", fib: "Fib Retracement", rect: "Rectangle",
+    range: "Range", position: "Position", text: "Text",
+  };
+  return names[type] ?? "Drawing";
 }

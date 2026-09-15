@@ -116,3 +116,17 @@ export function stochOf(series: number[], length = 10, kSmooth = 3, dSmooth = 3)
   const d = sma(k.map((v) => (Number.isNaN(v) ? NaN : v)), dSmooth).map((v, i) => (Number.isNaN(k[i]) ? NaN : v));
   return { k, d };
 }
+
+/** MACD "4C Smooth": EMA(fast) - EMA(slow), optionally re-smoothed by EMA
+    over `smooth` bars before the signal line is taken from it (a "4C" --
+    four-color histogram -- variant rather than the classic unsmoothed MACD;
+    `smooth <= 1` skips that extra step, reducing to the classic form).
+    Histogram = macd - signal. All three outputs aligned 1:1 with `closes`. */
+export function macdOf(closes: number[], fast = 12, slow = 26, signalLen = 9, smooth = 3): { macd: number[]; signal: number[]; hist: number[] } {
+  const f = ema(closes, fast), sl = ema(closes, slow);
+  const raw = closes.map((_, i) => (Number.isNaN(f[i]) || Number.isNaN(sl[i]) ? NaN : f[i] - sl[i]));
+  const macd = smooth > 1 ? ema(raw, smooth) : raw;
+  const signal = ema(macd, signalLen);
+  const hist = macd.map((m, i) => (Number.isNaN(m) || Number.isNaN(signal[i]) ? NaN : m - signal[i]));
+  return { macd, signal, hist };
+}

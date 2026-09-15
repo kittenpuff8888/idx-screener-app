@@ -9,20 +9,24 @@ import { PluginBase, type PaneRendererTarget } from "../lwcToolkitHelpers";
 export type DrawPoint = { time: Time; price: number };
 type ViewPoint = { x: Coordinate | null; y: Coordinate | null };
 
+const DASH: Record<string, number[]> = { solid: [], dashed: [6, 4], dotted: [1.5, 3] };
+
 class TrendLineRenderer implements IPrimitivePaneRenderer {
-  constructor(private p1: ViewPoint, private p2: ViewPoint, private color: string) {}
+  constructor(private p1: ViewPoint, private p2: ViewPoint, private color: string, private width: number, private style: string) {}
   draw(target: PaneRendererTarget) {
     target.useBitmapCoordinateSpace((scope) => {
       if (this.p1.x == null || this.p1.y == null || this.p2.x == null || this.p2.y == null) return;
       const ctx = scope.context;
       const x1 = Math.round(this.p1.x * scope.horizontalPixelRatio), y1 = Math.round(this.p1.y * scope.verticalPixelRatio);
       const x2 = Math.round(this.p2.x * scope.horizontalPixelRatio), y2 = Math.round(this.p2.y * scope.verticalPixelRatio);
-      ctx.lineWidth = 2;
+      ctx.lineWidth = this.width * scope.horizontalPixelRatio;
       ctx.strokeStyle = this.color;
+      ctx.setLineDash((DASH[this.style] ?? []).map((d) => d * scope.horizontalPixelRatio));
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
       ctx.stroke();
+      ctx.setLineDash([]);
       [{ x: x1, y: y1 }, { x: x2, y: y2 }].forEach((p) => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, 3 * scope.horizontalPixelRatio, 0, Math.PI * 2);
@@ -42,16 +46,18 @@ class TrendLineView implements IPrimitivePaneView {
     this.p1 = { x: s.chart.timeScale().timeToCoordinate(s.a.time), y: s.series.priceToCoordinate(s.a.price) };
     this.p2 = { x: s.chart.timeScale().timeToCoordinate(s.b.time), y: s.series.priceToCoordinate(s.b.price) };
   }
-  renderer() { return new TrendLineRenderer(this.p1, this.p2, this.source.color); }
+  renderer() { return new TrendLineRenderer(this.p1, this.p2, this.source.color, this.source.width, this.source.style); }
 }
 
 export class TrendLine extends PluginBase {
   private view = new TrendLineView(this);
-  constructor(public a: DrawPoint, public b: DrawPoint, public color: string) { super(); }
+  constructor(public a: DrawPoint, public b: DrawPoint, public color: string, public width = 2, public style: "solid" | "dashed" | "dotted" = "solid") { super(); }
   updateAllViews() { this.view.update(); }
   paneViews() { return [this.view]; }
   /** Live-drag the second anchor while previewing (before the second click
       commits it) -- mutating `.b` directly wouldn't repaint on its own since
       `requestUpdate` is only reachable from inside this class hierarchy. */
   setEndPoint(b: DrawPoint) { this.b = b; this.view.update(); this.requestUpdate(); }
+  /** Post-hoc restyle from the drawing-selection toolbar. */
+  setStyle(color: string, width: number, style: "solid" | "dashed" | "dotted") { this.color = color; this.width = width; this.style = style; this.requestUpdate(); }
 }

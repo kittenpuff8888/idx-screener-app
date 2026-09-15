@@ -39,4 +39,5 @@ export class HorizontalLine extends PluginBase {
   constructor(public price: number, public color: string) { super(); }
   updateAllViews() { this.view.update(); }
   paneViews() { return [this.view]; }
+  setStyle(color: string, _width: number, _style: "solid" | "dashed" | "dotted") { this.color = color; this.requestUpdate(); }
 }

@@ -304,8 +304,10 @@ export function WatchlistPage() {
             </div>
           ) : null}
 
-          {/* Custom-overlay companion (renders only when a ƒx CUSTOM overlay is on) */}
-          {selected ? <IndicatorCompanion ohlcv={selOhlcv} symbol={selected} sessions={130} /> : null}
+          {/* The app's own TradingView-style chart, with its own drawing
+              tools and per-indicator settings (unlike the plain embed
+              above it, which stays for a lightweight secondary preview). */}
+          {selected ? <IndicatorCompanion ohlcv={selOhlcv} symbol={selected} /> : null}
         </div>
       )}
 

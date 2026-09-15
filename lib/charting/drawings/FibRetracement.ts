@@ -65,4 +65,5 @@ export class FibRetracement extends PluginBase {
   paneViews() { return [this.view]; }
   /** Live-drag the second anchor while previewing -- see TrendLine.setEndPoint. */
   setEndPoint(b: DrawPoint) { this.b = b; this.view.update(); this.requestUpdate(); }
+  setStyle(color: string, _width: number, _style: "solid" | "dashed" | "dotted") { this.color = color; this.requestUpdate(); }
 }

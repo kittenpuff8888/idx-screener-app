@@ -36,4 +36,5 @@ export class TextAnnotation extends PluginBase {
   constructor(public at: DrawPoint, public text: string, public color: string) { super(); }
   updateAllViews() { this.view.update(); }
   paneViews() { return [this.view]; }
+  setStyle(color: string, _width: number, _style: "solid" | "dashed" | "dotted") { this.color = color; this.requestUpdate(); }
 }

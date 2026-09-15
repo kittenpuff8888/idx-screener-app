@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/shared/EmptyState";
 import { fetchJson } from "@/lib/data/client";
 import { loadOhlcv } from "@/lib/data/ticker";
 import type { JsonRecord, OhlcvPayload, TechnicalRecord } from "@/lib/domain/types";
-import { TradingViewChart, ChartIndicatorPicker } from "@/components/dashboard/TradingViewChart";
 import { IndicatorCompanion } from "@/components/dashboard/IndicatorCompanion";
 import { DcfPanel } from "@/components/ticker/DcfPanel";
 import { computeSetupVerdict, type SetupVerdict } from "@/lib/valuation/setupVerdict";
@@ -66,7 +65,6 @@ export function TickerResearch() {
   const [ohlcv, setOhlcv] = useState<OhlcvPayload | null>(null);
   const [setups, setSetups] = useState<Setup[] | null>(null);
   const [hist, setHist] = useState<HistEntry[]>([]);
-  const [range, setRange] = useState<"1M" | "3M" | "6M" | "1Y">("3M");
 
   const stock = ticker ? bundle?.technical.get(ticker) : undefined;
   const fund = ticker ? bundle?.fundamentals.get(ticker) : undefined;
@@ -255,21 +253,12 @@ export function TickerResearch() {
         </div>
       </div>
 
-      {/* ── PRICE CHART (full width, design/00) ─────────────────── */}
-      <div style={{ ...CARD, marginBottom: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={KICKER}>CHART</span>
-          <div style={{ flex: 1 }} />
-          <ChartIndicatorPicker />
-          <div style={{ display: "flex", gap: 3, background: "var(--soft)", borderRadius: 8, padding: 3 }}>
-            {(["1M", "3M", "6M", "1Y"] as const).map((r) => <button key={r} type="button" onClick={() => setRange(r)} style={{ fontSize: 10.5, fontWeight: 700, padding: "4px 10px", borderRadius: 6, border: "none", cursor: "pointer", background: range === r ? "var(--accent)" : "transparent", color: range === r ? "#fff" : "var(--muted)" }}>{r}</button>)}
-          </div>
-        </div>
-        <TradingViewChart symbol={`IDX:${ticker}`} range={range === "1Y" ? "12M" : range} interval="1D" minHeight={460} />
-      </div>
-
-      {/* Custom-overlay companion (renders only when a ƒx CUSTOM overlay is on) */}
-      <IndicatorCompanion ohlcv={ohlcv} symbol={ticker} sessions={{ "1M": 22, "3M": 66, "6M": 130, "1Y": 252 }[range] ?? 140} />
+      {/* ── PRICE CHART -- the app's own TradingView-style chart, the
+          ticker page's only chart now (the TradingView embed this section
+          used to carry above it is retired here: it can't run Pine, can't
+          take per-study colors, and can't expose real per-study settings --
+          this component is our own code, so all three are). ─────────── */}
+      <IndicatorCompanion ohlcv={ohlcv} symbol={ticker} companyName={name} />
 
       {/* ── DCF VALUATION ──────────────────────────────────────── */}
       <DcfPanel ticker={ticker} stock={stock} fund={fund} marketDate={marketDate} />

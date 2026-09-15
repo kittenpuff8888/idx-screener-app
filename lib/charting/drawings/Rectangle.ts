@@ -13,8 +13,10 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
 
+const DASH: Record<string, number[]> = { solid: [], dashed: [6, 4], dotted: [1.5, 3] };
+
 class RectangleRenderer implements IPrimitivePaneRenderer {
-  constructor(private p1: ViewPoint, private p2: ViewPoint, private color: string) {}
+  constructor(private p1: ViewPoint, private p2: ViewPoint, private color: string, private width: number, private style: string) {}
   draw(target: PaneRendererTarget) {
     target.useBitmapCoordinateSpace((scope) => {
       if (this.p1.x == null || this.p1.y == null || this.p2.x == null || this.p2.y == null) return;
@@ -24,8 +26,10 @@ class RectangleRenderer implements IPrimitivePaneRenderer {
       ctx.fillStyle = hexToRgba(this.color, 0.15);
       ctx.fillRect(h.position, v.position, h.length, v.length);
       ctx.strokeStyle = this.color;
-      ctx.lineWidth = 1.5 * scope.horizontalPixelRatio;
+      ctx.lineWidth = this.width * scope.horizontalPixelRatio;
+      ctx.setLineDash((DASH[this.style] ?? []).map((d) => d * scope.horizontalPixelRatio));
       ctx.strokeRect(h.position, v.position, h.length, v.length);
+      ctx.setLineDash([]);
     });
   }
 }
@@ -39,13 +43,14 @@ class RectangleView implements IPrimitivePaneView {
     this.p1 = { x: s.chart.timeScale().timeToCoordinate(s.a.time), y: s.series.priceToCoordinate(s.a.price) };
     this.p2 = { x: s.chart.timeScale().timeToCoordinate(s.b.time), y: s.series.priceToCoordinate(s.b.price) };
   }
-  renderer() { return new RectangleRenderer(this.p1, this.p2, this.source.color); }
+  renderer() { return new RectangleRenderer(this.p1, this.p2, this.source.color, this.source.width, this.source.style); }
 }
 
 export class Rectangle extends PluginBase {
   private view = new RectangleView(this);
-  constructor(public a: DrawPoint, public b: DrawPoint, public color: string) { super(); }
+  constructor(public a: DrawPoint, public b: DrawPoint, public color: string, public width = 1.5, public style: "solid" | "dashed" | "dotted" = "solid") { super(); }
   updateAllViews() { this.view.update(); }
   paneViews() { return [this.view]; }
   setEndPoint(b: DrawPoint) { this.b = b; this.view.update(); this.requestUpdate(); }
+  setStyle(color: string, width: number, style: "solid" | "dashed" | "dotted") { this.color = color; this.width = width; this.style = style; this.requestUpdate(); }
 }
