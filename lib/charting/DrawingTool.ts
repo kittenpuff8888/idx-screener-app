@@ -33,6 +33,8 @@ import { Measure } from "./drawings/Measure";
 import { TextAnnotation } from "./drawings/TextAnnotation";
 import { VLine } from "./drawings/VLine";
 import { PositionZone } from "./drawings/PositionZone";
+import { LevelLines, type Seg } from "./drawings/LevelLines";
+import { GannBox } from "./drawings/GannBox";
 import { loadDrawings, saveDrawings, type StoredRecord, type RangeVariant } from "./drawingStore";
 import { computeVwapFromAnchor } from "@/lib/indicators/anchoredVwap";
 
@@ -62,12 +64,23 @@ const HIT_TOLERANCE = 9;
 // bar forward), not a placeholder marker, so it gets its own real math.
 const VERTICAL = new Set<ToolKind>(["vline", "crossline", "frvp", "avp", "barspat", "ghost", "posfc", "fibtime", "fibtrendtime", "sector"]);
 const TEXTISH = new Set<ToolKind>(["text", "anchoredtext", "note", "callout", "pricelabel", "flag"]);
-const FIBISH = new Set<ToolKind>(["fib", "fibext", "fibch", "fan", "circles", "spiral", "arcs", "wedge", "pitchfan", "gannbox", "gannsqf", "gannsq", "gannfan"]);
+// fibext/fibch (real 3-point math, see fibExtSegs/fibChSegs below) and
+// gannfan/gannbox-family (real angle-fan / grid-box math) are pulled OUT of
+// this generic fib-retracement-clone bucket -- they get their own geometry
+// now instead of sharing FibRetracement's.
+const FIBISH = new Set<ToolKind>(["fib", "fan", "circles", "spiral", "arcs", "wedge", "pitchfan"]);
 const RECTISH = new Set<ToolKind>(["rect", "rrect", "ellipse", "circle"]);
 const POSITION = new Set<ToolKind>(["long", "short"]);
+// Gann Box, Gann Square (Fixed) and plain Gann Square all render the same
+// price/time box + 1/4-1/2-3/4 grid (see GannBox.ts) -- TradingView's own
+// versions differ mainly in anchoring convenience, not drawn geometry.
+const GANNBOX_LIKE = new Set<ToolKind>(["gannbox", "gannsqf", "gannsq"]);
+// Trend-based Fib Extension and Fib Channel are 3-click tools (anchor,
+// swing, projection point) -- everything else on the rail is 1 or 2 clicks.
+const THREE_POINT = new Set<ToolKind>(["fibext", "fibch"]);
 const RANGE_VARIANT: Partial<Record<ToolKind, RangeVariant>> = { measure: "measure", prange: "price", drange: "date", dprange: "dateprice", info: "price" };
 
-type AnyPrimitive = TrendLine | HorizontalLine | FibRetracement | Rectangle | Measure | TextAnnotation | VLine | PositionZone;
+type AnyPrimitive = TrendLine | HorizontalLine | FibRetracement | Rectangle | Measure | TextAnnotation | VLine | PositionZone | LevelLines | GannBox;
 // Anchored VWAP is real chart series (a center line + two σ-band lines,
 // same as the VWAP Suite indicator), not a primitive on the candle series
 // like everything else here -- `series` carries those instead of
@@ -94,6 +107,7 @@ export class DrawingTool {
   private tool: ToolKind = "cursor";
   private placed: Placed[] = [];
   private pending: DrawPointT | null = null;
+  private pending2: DrawPointT | null = null;
   private pendingLogical: number | null = null;
   private preview: TrendLine | FibRetracement | Rectangle | Measure | null = null;
   private listeners = new Set<() => void>();
@@ -242,6 +256,17 @@ export class DrawingTool {
       primitive = new TextAnnotation({ time: stored.at.time as Time, price: stored.at.price }, stored.text, color);
     } else if (stored.type === "vline" || stored.type === "crossline") {
       primitive = new VLine(stored.at.time as Time, color, stored.type === "crossline");
+    } else if (stored.type === "fibext") {
+      const a = { time: stored.a.time as Time, price: stored.a.price }, b = { time: stored.b.time as Time, price: stored.b.price }, c = { time: stored.c.time as Time, price: stored.c.price };
+      primitive = new LevelLines(this.fibExtSegs(a, b, c), color);
+    } else if (stored.type === "fibch") {
+      const a = { time: stored.a.time as Time, price: stored.a.price }, b = { time: stored.b.time as Time, price: stored.b.price }, c = { time: stored.c.time as Time, price: stored.c.price };
+      primitive = new LevelLines(this.fibChSegs(a, b, c), color);
+    } else if (stored.type === "gannfan") {
+      const a = { time: stored.a.time as Time, price: stored.a.price }, b = { time: stored.b.time as Time, price: stored.b.price };
+      primitive = new LevelLines(this.gannFanSegs(a, b), color);
+    } else if (stored.type === "gannbox") {
+      primitive = new GannBox({ time: stored.a.time as Time, price: stored.a.price }, { time: stored.b.time as Time, price: stored.b.price }, color, width, style);
     } else {
       primitive = new HorizontalLine(stored.price, color);
     }
@@ -265,6 +290,51 @@ export class DrawingTool {
   private lastDate(): Time { return this.rows[this.rows.length - 1].date as Time; }
   private firstDate(): Time { return this.rows[0].date as Time; }
   private indexOf(t: Time): number { return this.rows.findIndex((r) => r.date === t); }
+
+  // ── Real geometry for Fib Extension / Fib Channel / Gann Fan -- shared by
+  //    place() (to build the drawn primitive) and hitTest() (to test click
+  //    proximity against the same lines), so the two never drift apart.
+  //    Levels project forward to the dataset's last bar, matching this
+  //    file's existing convention for Ray/Extended Line (baked at commit
+  //    time, not dynamically re-extended as new bars arrive). ──
+  private static readonly FIBEXT_LEVELS = [0, 0.382, 0.618, 1, 1.272, 1.618, 2, 2.618];
+  private static readonly FIBCH_LEVELS = [0, 0.382, 0.618, 1, 1.618];
+  private static readonly GANN_RATIOS: Array<[number, string]> = [
+    [1 / 8, "1x8"], [1 / 4, "1x4"], [1 / 3, "1x3"], [1 / 2, "1x2"], [1, "1x1"], [2, "2x1"], [3, "3x1"], [4, "4x1"], [8, "8x1"],
+  ];
+
+  private fibExtSegs(a: DrawPointT | { time: Time; price: number }, b: { time: Time; price: number }, c: { time: Time; price: number }): Seg[] {
+    const move = b.price - a.price;
+    const segs: Seg[] = DrawingTool.FIBEXT_LEVELS.map((r) => ({
+      a: { time: c.time, price: c.price + r * move }, b: { time: this.lastDate(), price: c.price + r * move },
+      label: `${(r * 100).toFixed(1)}%`, emphasis: r === 0 || r === 1,
+    }));
+    segs.push({ a, b, label: "", dashed: true });
+    segs.push({ a: b, b: c, label: "", dashed: true });
+    return segs;
+  }
+
+  private fibChSegs(a: { time: Time; price: number }, b: { time: Time; price: number }, c: { time: Time; price: number }): Seg[] {
+    const ia = this.indexOf(a.time), ib = this.indexOf(b.time), ic = this.indexOf(c.time), lastIdx = this.rows.length - 1;
+    if (ia === -1 || ib === -1 || ic === -1) return [];
+    const slope = ib === ia ? 0 : (b.price - a.price) / (ib - ia);
+    const offsetAtC = c.price - (a.price + slope * (ic - ia));
+    const priceAt = (idx: number, r: number) => a.price + slope * (idx - ia) + r * offsetAtC;
+    return DrawingTool.FIBCH_LEVELS.map((r) => ({
+      a: { time: a.time, price: priceAt(ia, r) }, b: { time: this.lastDate(), price: priceAt(lastIdx, r) },
+      label: `${(r * 100).toFixed(1)}%`, emphasis: r === 0 || r === 1,
+    }));
+  }
+
+  private gannFanSegs(a: { time: Time; price: number }, b: { time: Time; price: number }): Seg[] {
+    const ia = this.indexOf(a.time), ib = this.indexOf(b.time), lastIdx = this.rows.length - 1;
+    if (ia === -1 || ib === -1) return [];
+    const unitSlope = ib === ia ? 0 : (b.price - a.price) / (ib - ia);
+    return DrawingTool.GANN_RATIOS.map(([k, label]) => ({
+      a, b: { time: this.lastDate(), price: a.price + k * unitSlope * (lastIdx - ia) },
+      label, emphasis: k === 1,
+    }));
+  }
 
   private onClick = (param: MouseEventParams) => {
     if (!param.point || param.time == null) return;
@@ -313,13 +383,35 @@ export class DrawingTool {
       this.setTool("cursor");
       return;
     }
+    if (THREE_POINT.has(this.tool)) {
+      if (!this.pending) {
+        this.pending = point;
+        this.preview = new TrendLine(point, point, TOOL_COLOR);
+        this.series.attachPrimitive(this.preview);
+        return;
+      }
+      if (!this.pending2) {
+        this.pending2 = point;
+        this.clearPreview();
+        this.preview = new TrendLine(point, point, TOOL_COLOR);
+        this.series.attachPrimitive(this.preview);
+        return;
+      }
+      const a = this.pending, b = this.pending2, c = point;
+      this.pending = null;
+      this.pending2 = null;
+      this.clearPreview();
+      this.commitThreePoint(this.tool, a, b, c);
+      this.setTool("cursor");
+      return;
+    }
 
     // Everything remaining is a two-point tool: first click arms a preview, second commits.
     if (!this.pending) {
       this.pending = point;
       this.pendingLogical = param.logical ?? null;
       this.preview = FIBISH.has(this.tool) ? new FibRetracement(point, point, FIB_COLOR)
-        : RECTISH.has(this.tool) ? new Rectangle(point, point, TOOL_COLOR)
+        : RECTISH.has(this.tool) || GANNBOX_LIKE.has(this.tool) ? new Rectangle(point, point, TOOL_COLOR)
         : RANGE_VARIANT[this.tool] ? new Measure(point, point, 0, TOOL_COLOR, RANGE_VARIANT[this.tool])
         : new TrendLine(point, point, TOOL_COLOR);
       this.series.attachPrimitive(this.preview);
@@ -334,10 +426,19 @@ export class DrawingTool {
     this.setTool("cursor");
   };
 
+  private commitThreePoint(tool: ToolKind, a: DrawPointT, b: DrawPointT, c: DrawPointT) {
+    const id = `${tool}-${Date.now()}`;
+    const sa = { time: String(a.time), price: a.price }, sb = { time: String(b.time), price: b.price }, sc = { time: String(c.time), price: c.price };
+    if (tool === "fibext") { this.commit({ id, type: "fibext", a: sa, b: sb, c: sc }); return; }
+    if (tool === "fibch") { this.commit({ id, type: "fibch", a: sa, b: sb, c: sc }); return; }
+  }
+
   private commitTwoPoint(tool: ToolKind, a: DrawPointT, b: DrawPointT, barCount: number) {
     const id = `${tool}-${Date.now()}`;
     const sa = { time: String(a.time), price: a.price }, sb = { time: String(b.time), price: b.price };
     if (FIBISH.has(tool)) { this.commit({ id, type: "fib", a: sa, b: sb }); return; }
+    if (GANNBOX_LIKE.has(tool)) { this.commit({ id, type: "gannbox", a: sa, b: sb }); return; }
+    if (tool === "gannfan") { this.commit({ id, type: "gannfan", a: sa, b: sb }); return; }
     if (RECTISH.has(tool)) { this.commit({ id, type: "rect", a: sa, b: sb }); return; }
     if (RANGE_VARIANT[tool]) { this.commit({ id, type: "range", variant: RANGE_VARIANT[tool]!, a: sa, b: sb, barCount }); return; }
     if (POSITION.has(tool)) {
@@ -390,7 +491,24 @@ export class DrawingTool {
 
   private hitTest(px: number, py: number): string | null {
     const ts = this.chart.timeScale();
+    const nearAnySeg = (segs: Seg[]) => segs.some((s) => {
+      const x1 = ts.timeToCoordinate(s.a.time), y1 = this.series.priceToCoordinate(s.a.price);
+      const x2 = ts.timeToCoordinate(s.b.time), y2 = this.series.priceToCoordinate(s.b.price);
+      return x1 != null && y1 != null && x2 != null && y2 != null && distToSegment(px, py, x1, y1, x2, y2) <= HIT_TOLERANCE;
+    });
     const found = this.placed.find(({ stored }) => {
+      if (stored.type === "fibext") {
+        const a = { time: stored.a.time as Time, price: stored.a.price }, b = { time: stored.b.time as Time, price: stored.b.price }, c = { time: stored.c.time as Time, price: stored.c.price };
+        return nearAnySeg(this.fibExtSegs(a, b, c));
+      }
+      if (stored.type === "fibch") {
+        const a = { time: stored.a.time as Time, price: stored.a.price }, b = { time: stored.b.time as Time, price: stored.b.price }, c = { time: stored.c.time as Time, price: stored.c.price };
+        return nearAnySeg(this.fibChSegs(a, b, c));
+      }
+      if (stored.type === "gannfan") {
+        const a = { time: stored.a.time as Time, price: stored.a.price }, b = { time: stored.b.time as Time, price: stored.b.price };
+        return nearAnySeg(this.gannFanSegs(a, b));
+      }
       if (stored.type === "hline") {
         const y = this.series.priceToCoordinate(stored.price);
         return y != null && Math.abs(py - y) <= HIT_TOLERANCE;
@@ -426,7 +544,7 @@ export class DrawingTool {
       if (stored.type === "trend" || stored.type === "ray" || stored.type === "extended" || stored.type === "range") {
         return distToSegment(px, py, x1, y1, x2, y2) <= HIT_TOLERANCE;
       }
-      if (stored.type === "rect") {
+      if (stored.type === "rect" || stored.type === "gannbox") {
         return px >= Math.min(x1, x2) - HIT_TOLERANCE && px <= Math.max(x1, x2) + HIT_TOLERANCE
           && py >= Math.min(y1, y2) - HIT_TOLERANCE && py <= Math.max(y1, y2) + HIT_TOLERANCE;
       }
@@ -447,6 +565,7 @@ function labelFor(type: StoredRecord["type"]): string {
     trend: "Trend Line", ray: "Ray", extended: "Extended Line", hline: "Horizontal Line",
     vline: "Vertical Line", crossline: "Crossline", fib: "Fib Retracement", rect: "Rectangle",
     range: "Range", position: "Position", avwap: "Anchored VWAP", text: "Text",
+    fibext: "Fib Extension", fibch: "Fib Channel", gannfan: "Gann Fan", gannbox: "Gann Box",
   };
   return names[type] ?? "Drawing";
 }

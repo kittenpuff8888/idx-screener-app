@@ -25,7 +25,11 @@ export type StoredDrawing =
   | { id: string; type: "range"; variant: RangeVariant; a: StoredPoint; b: StoredPoint; barCount: number }
   | { id: string; type: "position"; dir: 1 | -1; a: StoredPoint; b: StoredPoint; entry: number; target: number; stop: number }
   | { id: string; type: "avwap"; at: StoredPoint }
-  | { id: string; type: "text"; at: StoredPoint; text: string };
+  | { id: string; type: "text"; at: StoredPoint; text: string }
+  | { id: string; type: "fibext"; a: StoredPoint; b: StoredPoint; c: StoredPoint }
+  | { id: string; type: "fibch"; a: StoredPoint; b: StoredPoint; c: StoredPoint }
+  | { id: string; type: "gannfan"; a: StoredPoint; b: StoredPoint }
+  | { id: string; type: "gannbox"; a: StoredPoint; b: StoredPoint };
 
 // Common styling every stored drawing carries once selectable/restylable
 // (color/width/style), stored alongside the geometry above rather than
