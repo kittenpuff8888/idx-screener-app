@@ -620,15 +620,17 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     };
     chart.timeScale().subscribeVisibleTimeRangeChange(onTimeRangeChange);
 
-    // The extra right-margin is only for the VWAP margin labels -- with
-    // VWAP off there's nothing to make room for, so every other indicator
-    // (SMA, RSI, MACD, ...) keeps the plain small default and toggling any
-    // of them never nudges the candles' own bar spacing either way.
-    if (!hidden.vwap) {
-      const trackMarginOffset = makeMarginOffsetTracker(chart, rows.length - 1);
-      trackMarginOffset();
-      chart.timeScale().subscribeVisibleLogicalRangeChange(trackMarginOffset);
-    }
+    // Always on, regardless of which indicators are visible -- gating this
+    // behind `!hidden.vwap` (the margin only exists to make room for VWAP's
+    // margin labels) meant toggling VWAP itself changed rightOffset, which
+    // changes barSpacing for every bar including real candles: exactly the
+    // "candles move when I hide/unhide an indicator" bug this is fixing.
+    // Keeping the same fixed margin active at all times, VWAP on or off,
+    // means the candles' own size is a function of (plotWidth, bar count,
+    // MARGIN_PX) alone -- never of which indicators happen to be showing.
+    const trackMarginOffset = makeMarginOffsetTracker(chart, rows.length - 1);
+    trackMarginOffset();
+    chart.timeScale().subscribeVisibleLogicalRangeChange(trackMarginOffset);
 
     const legendAt = (idx: number): Legend => {
       const r = rows[idx];
