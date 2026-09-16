@@ -10,7 +10,7 @@ ticker:
                          mid-band (real published field, technical.json's
                          marketProfile.ibh/ibl -- IDX_Screener.py's existing
                          monthly-IB computation, not re-derived here).
-  rsiDivBullish       -- RSI(10, Wilder-smoothed -- TradingView's own RSI
+  rsiDivBullish       -- RSI(14, Wilder-smoothed -- TradingView's own RSI
                          is always RMA-based at its core, EMA is only ever
                          an optional secondary smoothing line on top, never
                          the base) regular bullish divergence: a literal
@@ -32,7 +32,7 @@ ticker:
                          be confirmed swing lows, so confirmation lags the
                          more recent pivot by swing_window bars (pivot date
                          shown is that more recent pivot, not today).
-  rsiDivHiddenBullish -- same RSI, same pivot scan, same shared 5-60 bar
+  rsiDivHiddenBullish -- same RSI(14), same pivot scan, same shared 5-60 bar
                          gate as rsiDivBullish above (TradingView uses one
                          shared pivot-range config for every divergence
                          type) -- the exact mirror of it: CLOSE makes a
@@ -208,11 +208,14 @@ def ib_break(hist: pd.DataFrame, ibh: float | None, ibl: float | None) -> bool:
 
 
 def regular_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5, min_separation=5, max_pivot_gap=60, max_last_swing_age=20) -> dict | None:
-    """Regular Bullish RSI(10, Wilder) divergence -- a literal port of
-    TradingView's own built-in "RSI" indicator's divergence logic
-    (calculateDivergence=true path: `ta.pivotlow(rsi, 5, 5)`, compare the
-    two most recent confirmed pivots, LOW makes a lower low while RSI
-    makes a higher low, gap 5-60 bars, no RSI-value gate at all).
+    """Regular Bullish RSI(14, Wilder) divergence -- a literal port of a
+    user-supplied Pine Script v6 divergence indicator (rsiLen=14, pivot
+    left/right=5/5, strict HH/LL comparison): `ta.pivotlow(rsi, 5, 5)`,
+    compare the two most recent confirmed pivots, LOW makes a lower low
+    while RSI makes a higher low, gap 5-60 bars, no RSI-value gate at all.
+    Length bumped from 10 to 14 to match that script's own `rsiLen` input
+    exactly (previously matched TradingView's built-in "RSI" study, whose
+    own default is also 14 -- so this restores parity with both).
 
     Two corrections from an earlier version of this function, both found
     by directly reproducing a real, exact mismatch the user reported
@@ -225,7 +228,7 @@ def regular_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5,
        the base line itself; EMA is only ever an optional secondary
        *smoothing* line drawn on top, never the RSI values TradingView's
        divergence logic (or its plotted RSI value) is computed from.
-       Switched to rsi_wilder(10) -- confirmed this alone starts
+       Switched to rsi_wilder() -- confirmed this alone starts
        reproducing TradingView's real pivot dates.
     2. Pivot window was 2 bars each side with an RSI<30 oversold gate and
        a lifecycle-clustering step -- none of that exists in TradingView's
@@ -238,10 +241,13 @@ def regular_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5,
        below 30; requiring that was this function's own invention, not
        part of the actual pattern.
 
-    Verified directly against TradingView's live chart for BUKK
-    (2026-09-11): this reproduces the exact 29 Jul -> 14 Aug pivot pair,
+    RSI(10) was verified directly against TradingView's live chart for
+    BUKK (2026-09-11): reproduced the exact 29 Jul -> 14 Aug pivot pair,
     the same one TradingView itself draws, with nothing newer confirmed
-    since -- matching "none today" exactly.
+    since. The length-14 pivot dates from this later change have not been
+    independently re-checked against a live TradingView chart -- the pivot
+    *method* is identical, only which bars qualify as pivots can shift with
+    a longer RSI length, so treat this claim as carried over, not re-proven.
 
     i2 is the most recent CONFIRMED pivot (needing swing_window bars after
     it, same as i1) -- not forced to today, matching TradingView's own
@@ -252,7 +258,7 @@ def regular_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5,
         return None
     df = hist.tail(lookback)
     low = df["Low"].astype(float).values
-    r = rsi_wilder(df["Close"].astype(float), 10).values
+    r = rsi_wilder(df["Close"].astype(float), 14).values
 
     pivots = _swing_low_positions(r, swing_window)
     if len(pivots) < 2:
@@ -303,7 +309,7 @@ def _swing_low_positions(vals: np.ndarray, w: int) -> list[int]:
 
 
 def hidden_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5, min_separation=5, max_pivot_gap=60, max_last_swing_age=20) -> dict | None:
-    """Hidden Bullish RSI(10, Wilder) divergence -- the exact mirror of
+    """Hidden Bullish RSI(14, Wilder) divergence -- the exact mirror of
     regular_bullish_divergence(): same `ta.pivotlow(rsi, 5, 5)` pivot scan,
     same "compare the two most recent confirmed pivots" logic, same shared
     pivot-range gate (5-60 bars apart, last pivot confirmed within the last
@@ -325,14 +331,13 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5, 
     true") even after regular_bullish_divergence() was fixed, because it
     had never been rewritten to match.
 
-    Verified directly against the same real example used to validate the
-    old version, so the fix doesn't regress it: BEST 2026-08-13 (RSI 56.8,
-    close 109) -> 2026-08-26 (RSI 54.2, close 117) -- price Higher Low +
-    RSI Lower Low, confirmed on 26 Aug with this literal-port logic exactly
-    as before. (r1/r2 read differently from the very first version of this
-    docstring's 51.8/47.5 because those were rsi_ema values from before
-    the earlier Wilder-RSI fix; 56.8/54.2 is Wilder's own numbers for the
-    same two calendar pivots.)
+    RSI(10) was verified directly against the same real example used to
+    validate the old version: BEST 2026-08-13 (RSI 56.8, close 109) ->
+    2026-08-26 (RSI 54.2, close 117) -- price Higher Low + RSI Lower Low,
+    confirmed on 26 Aug with this literal-port logic. Length bumped to 14
+    afterward to match the user-supplied Pine script's `rsiLen` input (see
+    regular_bullish_divergence()'s docstring); the RSI(10) numbers above are
+    carried over from that earlier check, not re-verified at length 14.
 
     No RSI-band gate on the earlier pivot (unlike the old version) means a
     case like PYFA's own 2026-08-26 pivot (r1 in the low 40s -- an
@@ -352,7 +357,7 @@ def hidden_bullish_divergence(hist: pd.DataFrame, lookback=150, swing_window=5, 
         return None
     df = hist.tail(lookback)
     close = df["Close"].astype(float).values
-    r = rsi_wilder(df["Close"].astype(float), 10).values
+    r = rsi_wilder(df["Close"].astype(float), 14).values
 
     pivots = _swing_low_positions(r, swing_window)
     if len(pivots) < 2:

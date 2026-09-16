@@ -11,12 +11,12 @@ import type { IPrimitivePaneRenderer, IPrimitivePaneView, Time } from "lightweig
 import { PluginBase, type PaneRendererTarget } from "../lwcToolkitHelpers";
 
 export type DrawPoint = { time: Time; price: number };
-export type Seg = { a: DrawPoint; b: DrawPoint; label: string; dashed?: boolean; emphasis?: boolean };
+export type Seg = { a: DrawPoint; b: DrawPoint; label: string; dashed?: boolean; emphasis?: boolean; color?: string };
 
-type ViewSeg = { x1: number | null; y1: number | null; x2: number | null; y2: number | null; label: string; dashed?: boolean; emphasis?: boolean };
+type ViewSeg = { x1: number | null; y1: number | null; x2: number | null; y2: number | null; label: string; dashed?: boolean; emphasis?: boolean; color?: string };
 
 class LevelLinesRenderer implements IPrimitivePaneRenderer {
-  constructor(private segs: ViewSeg[], private color: string) {}
+  constructor(private segs: ViewSeg[], private color: string, private width: number) {}
   draw(target: PaneRendererTarget) {
     target.useBitmapCoordinateSpace((scope) => {
       const ctx = scope.context;
@@ -24,9 +24,9 @@ class LevelLinesRenderer implements IPrimitivePaneRenderer {
         if (s.x1 == null || s.y1 == null || s.x2 == null || s.y2 == null) return;
         const x1 = s.x1 * scope.horizontalPixelRatio, y1 = s.y1 * scope.verticalPixelRatio;
         const x2 = s.x2 * scope.horizontalPixelRatio, y2 = s.y2 * scope.verticalPixelRatio;
-        ctx.strokeStyle = this.color;
+        ctx.strokeStyle = s.color ?? this.color;
         ctx.globalAlpha = s.emphasis ? 1 : 0.65;
-        ctx.lineWidth = (s.emphasis ? 1.5 : 1) * scope.horizontalPixelRatio;
+        ctx.lineWidth = (s.emphasis ? this.width : Math.max(1, this.width - 1)) * scope.horizontalPixelRatio;
         ctx.setLineDash(s.dashed ? [5, 4].map((d) => d * scope.horizontalPixelRatio) : []);
         ctx.beginPath();
         ctx.moveTo(x1, y1);
@@ -36,7 +36,7 @@ class LevelLinesRenderer implements IPrimitivePaneRenderer {
         ctx.globalAlpha = 1;
         if (s.label) {
           ctx.font = `${Math.round(10.5 * scope.verticalPixelRatio)}px var(--font-mono, monospace)`;
-          ctx.fillStyle = this.color;
+          ctx.fillStyle = s.color ?? this.color;
           ctx.textBaseline = "middle";
           ctx.fillText(s.label, x2 + 4 * scope.horizontalPixelRatio, y2);
         }
@@ -54,16 +54,16 @@ class LevelLinesView implements IPrimitivePaneView {
     this.segs = s.segs.map((seg) => ({
       x1: ts.timeToCoordinate(seg.a.time), y1: s.series.priceToCoordinate(seg.a.price),
       x2: ts.timeToCoordinate(seg.b.time), y2: s.series.priceToCoordinate(seg.b.price),
-      label: seg.label, dashed: seg.dashed, emphasis: seg.emphasis,
+      label: seg.label, dashed: seg.dashed, emphasis: seg.emphasis, color: seg.color,
     }));
   }
-  renderer() { return new LevelLinesRenderer(this.segs, this.source.color); }
+  renderer() { return new LevelLinesRenderer(this.segs, this.source.color, this.source.width); }
 }
 
 export class LevelLines extends PluginBase {
   private view = new LevelLinesView(this);
-  constructor(public segs: Seg[], public color: string) { super(); }
+  constructor(public segs: Seg[], public color: string, public width = 1.5) { super(); }
   updateAllViews() { this.view.update(); }
   paneViews() { return [this.view]; }
-  setStyle(color: string, _width: number, _style: "solid" | "dashed" | "dotted") { this.color = color; this.requestUpdate(); }
+  setStyle(color: string, width: number, _style: "solid" | "dashed" | "dotted") { this.color = color; this.width = width; this.requestUpdate(); }
 }

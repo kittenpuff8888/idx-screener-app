@@ -61,6 +61,20 @@ export type StudySettings = {
   rsiWidth: number;
   rsiMaWidth: number;
   rsiFill: boolean;
+  rsiUseDmiFilter: boolean;
+  rsiDmiLen: number;
+  rsiAdxSmoothing: number;
+  rsiMaBullColor: string;
+  rsiMaBearColor: string;
+  rsiDivLeft: number;
+  rsiDivRight: number;
+  rsiDivStrict: boolean;
+  rsiDivWidth: number;
+  rsiDivShowLabels: boolean;
+  rsiDivBullColor: string;
+  rsiDivHiddenBullColor: string;
+  rsiDivBearColor: string;
+  rsiDivHiddenBearColor: string;
   macdColor: string;
   macdSignalColor: string;
   macdWidth: number;
@@ -76,7 +90,7 @@ export type StudySettings = {
 
 export const DEFAULT_STUDY_SETTINGS: StudySettings = {
   volMaLen: 20, volMaWidth: 1, ibDays: 2, sma200Len: 200,
-  rsiLen: 10, rsiMaLen: 14, rsiUpper: 60, rsiLower: 20,
+  rsiLen: 14, rsiMaLen: 9, rsiUpper: 60, rsiLower: 20,
   ribbon1Len: 25, ribbon2Len: 50, ribbonWidth: 1,
   macdFast: 12, macdSlow: 26, macdSignal: 9, macdSmooth: 3,
   stochSmoothK: 3, stochSmoothD: 3, stochRsiLen: 10, stochLen: 10, stochUpper: 80, stochLower: 20,
@@ -86,7 +100,11 @@ export const DEFAULT_STUDY_SETTINGS: StudySettings = {
   ibColor: "#D6A100", ibFill: true, ibWidth: 1,
   volUpColor: "#2962FF", volDnColor: "#969ba5", volMaColor: "#2962FF",
   ribbonColor: "#2962FF", smaColor: "#FF9800", smaWidth: 2,
-  rsiColor: "#2962FF", rsiMaColor: "#FF5050", rsiWidth: 1, rsiMaWidth: 1, rsiFill: true,
+  rsiColor: "#2962FF", rsiMaColor: "#FF5050", rsiWidth: 1, rsiMaWidth: 2, rsiFill: true,
+  rsiUseDmiFilter: true, rsiDmiLen: 14, rsiAdxSmoothing: 14,
+  rsiMaBullColor: "#00E676", rsiMaBearColor: "#B216F0",
+  rsiDivLeft: 5, rsiDivRight: 5, rsiDivStrict: true, rsiDivWidth: 2, rsiDivShowLabels: true,
+  rsiDivBullColor: "#00E676", rsiDivHiddenBullColor: "#00BFA5", rsiDivBearColor: "#FF5050", rsiDivHiddenBearColor: "#FF9800",
   macdColor: "#2962FF", macdSignalColor: "#FF5050", macdWidth: 1, macdSignalWidth: 1,
   macdHistUp: "#2962FF", macdHistDn: "#FF5050",
   stochKColor: "#2962FF", stochDColor: "#FF9800", stochKWidth: 1, stochDWidth: 1, stochFill: true,
@@ -124,10 +142,15 @@ export function subscribeStudySettings(cb: (settings: StudySettings) => void): (
 // ---- Per-indicator visibility (the legend row's own eye toggle) ----------
 
 export type StudyId = "volume" | "vwap" | "ib" | "ribbon" | "sma200" | "rsi" | "macd" | "stoch";
-export type HiddenMap = Record<StudyId, boolean>;
+// rsiDivBull/rsiDivBear aren't their own legend row (no gear panel) -- they're
+// the RSI row's own "Bull"/"Bear" toggle buttons, reusing this same
+// generic hidden-map mechanism since it's already the right shape (a
+// persisted, synced, per-viewer boolean).
+export type HiddenMap = Record<StudyId, boolean> & { rsiDivBull: boolean; rsiDivBear: boolean };
 
 export const DEFAULT_HIDDEN: HiddenMap = {
   volume: false, vwap: false, ib: false, ribbon: true, sma200: true, rsi: false, macd: false, stoch: false,
+  rsiDivBull: false, rsiDivBear: false,
 };
 
 const HIDDEN_KEY = "idxr:chart:studyHidden";

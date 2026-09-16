@@ -10,7 +10,8 @@ import {
 import type { OhlcvPayload, OhlcvRow } from "@/lib/domain/types";
 import { computeInitialBalance } from "@/lib/indicators/initialBalance";
 import { computeAnchoredVwap, periodLabel, VWAP_SOURCE_FN, type AvwapPoint, type VwapAnchor, type VwapSource } from "@/lib/indicators/anchoredVwap";
-import { ema, sma, rsiWilder, stochOf, macdOf } from "@/lib/indicators/oscillators";
+import { ema, sma, rsiWilder, stochOf, macdOf, dmi } from "@/lib/indicators/oscillators";
+import { computeDivergences, type DivergenceType } from "@/lib/indicators/divergence";
 import { formatPrice, formatCompact, formatPercent } from "@/lib/format/number";
 import { DrawingTool, type SelectionInfo } from "@/lib/charting/DrawingTool";
 import { loadViewRange, saveViewRange } from "@/lib/charting/viewRangeStore";
@@ -18,6 +19,7 @@ import { BandFill } from "@/lib/charting/drawings/BandFill";
 import { IbBoxes } from "@/lib/charting/drawings/IbBoxes";
 import { VwapFill } from "@/lib/charting/drawings/VwapFill";
 import { MarginLabels, type MarginLabelItem } from "@/lib/charting/drawings/MarginLabels";
+import { LevelLines, type Seg } from "@/lib/charting/drawings/LevelLines";
 import { ChartToolbar } from "@/components/dashboard/ChartToolbar";
 import {
   loadStudySettings, saveStudySettings, subscribeStudySettings, type StudySettings,
@@ -185,6 +187,19 @@ function GearButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
   );
 }
 
+/** RSI legend row's own "Bull"/"Bear" divergence toggle -- independent of
+    the row's Hide/Settings pair, same idea as VWAP's per-period on/off but
+    surfaced as a direct pill (not buried in the gear panel) since the user
+    asked for a one-click show/hide for each divergence direction. */
+function DivToggleButton({ label, active, color, onClick }: { label: string; active: boolean; color: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} title={`${active ? "Hide" : "Show"} ${label} divergences`}
+      style={{ flex: "none", pointerEvents: "auto", fontSize: 9.5, fontWeight: 700, padding: "1px 6px", borderRadius: 5, border: `1px solid ${active ? color : "var(--border)"}`, cursor: "pointer", background: active ? hexA(color, 0.14) : "transparent", color: active ? color : "var(--faint)" }}>
+      {label}
+    </button>
+  );
+}
+
 // ---- 3-tab Settings panel (Inputs / Style / Visibility) -------------------
 
 type NumField = { kind: "number"; key: keyof StudySettings; label: string; min: number; max: number };
@@ -310,7 +325,7 @@ type Legend = {
   chg: number | null; chgPct: number | null;
   ib: { ibHigh: number; ibLow: number } | null; vwap: AvwapPoint | null;
   ribbon1: number | null; ribbon2: number | null; sma200: number | null;
-  rsi: number | null; rsiMa: number | null;
+  rsi: number | null; rsiMa: number | null; rsiMaBull: boolean | null;
   macd: number | null; macdSignal: number | null; macdHist: number | null;
   stochK: number | null; stochD: number | null;
 };
@@ -342,7 +357,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
   function updateSettings(patch: Partial<StudySettings>) {
     setSettings((prev) => { const next = { ...prev, ...patch }; saveStudySettings(next); return next; });
   }
-  function toggleHidden(id: StudyId) {
+  function toggleHidden(id: StudyId | "rsiDivBull" | "rsiDivBear") {
     setHidden((prev) => { const next = { ...prev, [id]: !prev[id] }; saveHiddenMap(next); return next; });
   }
 
@@ -400,8 +415,20 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
     setDrawingTool(drawing);
 
     const closes = rows.map((r) => r.close);
+    const highs = rows.map((r) => r.high);
+    const lows = rows.map((r) => r.low);
     const rsiArr = rsiWilder(closes, s.rsiLen);
-    const rsiMaArr = sma(rsiArr, s.rsiMaLen);
+    const rsiMaArr = ema(rsiArr, s.rsiMaLen);
+    // Momentum state behind the EMA-of-RSI line's bull/bear coloring --
+    // computed here (not inside the RSI pane's own `if` block below) so the
+    // hover legend can also read it, even for the bar under the crosshair.
+    const dmiResult = dmi(highs, lows, closes, s.rsiDmiLen, s.rsiAdxSmoothing);
+    const emaBull = rsiMaArr.map((v, i) => {
+      if (i === 0 || Number.isNaN(v) || Number.isNaN(rsiMaArr[i - 1])) return true;
+      const rising = v > rsiMaArr[i - 1];
+      if (!s.rsiUseDmiFilter) return rising;
+      return rising && dmiResult.diPlus[i] >= dmiResult.diMinus[i];
+    });
     const macdResult = macdOf(closes, s.macdFast, s.macdSlow, s.macdSignal, s.macdSmooth);
     const stochBase = rsiWilder(closes, s.stochRsiLen);
     const stoch = stochOf(stochBase, s.stochLen, s.stochSmoothK, s.stochSmoothD);
@@ -525,8 +552,18 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
       }
     }
 
-    // ── RSI -- length rsiLen (Wilder), + a "RSI-based MA" companion line.
-    //    Band fill between 60 and 20, dashed guides at those two levels. ──
+    // ── RSI -- length rsiLen (Wilder, default 14) + an EMA-of-RSI companion
+    //    line (default length 9), both matching a user-supplied Pine Script
+    //    v6 divergence indicator. The companion line's color reflects
+    //    current momentum exactly like that script's `emaColor`: bullish
+    //    (rising, and -- when the DMI filter is on -- +DI >= -DI) draws in
+    //    rsiMaBullColor, everything else in rsiMaBearColor; rendered as one
+    //    short LineSeries per contiguous same-color run (same technique as
+    //    VWAP Suite's per-period segments below) since lightweight-charts
+    //    has no native per-point line color. Divergence lines/labels (all
+    //    four Pine types) are computed from the SAME rsiArr the base RSI
+    //    line plots, drawn as LevelLines primitives on this pane, and
+    //    independently toggle-able via the "Bull"/"Bear" legend buttons. ──
     let nextPane = 1;
     if (!hidden.rsi) {
       const pane = nextPane++;
@@ -537,10 +574,57 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
       }, pane);
       rsiLine.setData(lineData(rsiArr));
       if (s.rsiFill) rsiLine.attachPrimitive(band);
-      const rsiMaLine = chart.addSeries(LineSeries, { color: s.rsiMaColor, lineWidth: lw(s.rsiMaWidth), crosshairMarkerVisible: true, lastValueVisible: true, priceLineVisible: false, title: "RSI-based MA" }, pane);
-      rsiMaLine.setData(lineData(rsiMaArr));
+
+      let segStart = -1, segBull = true, havePrevSeg = false;
+      for (let i = 0; i <= rsiMaArr.length; i++) {
+        const atEnd = i === rsiMaArr.length;
+        const nan = !atEnd && Number.isNaN(rsiMaArr[i]);
+        if (segStart === -1) { if (!nan && !atEnd) { segStart = i; segBull = emaBull[i]; } continue; }
+        if (atEnd || nan || emaBull[i] !== segBull) {
+          // Overlap the start back by 1 bar so this segment's line visually
+          // connects to the previous one with no gap -- only valid when a
+          // previous segment actually plotted that bar (never for the very
+          // first segment, where one bar back is still the NaN warm-up
+          // prefix, not a real value).
+          const dataStart = havePrevSeg ? segStart - 1 : segStart;
+          const dataEnd = i - 1;
+          const isLastSeg = atEnd || nan;
+          const seg = chart.addSeries(LineSeries, {
+            color: segBull ? s.rsiMaBullColor : s.rsiMaBearColor, lineWidth: lw(s.rsiMaWidth),
+            crosshairMarkerVisible: true, lastValueVisible: isLastSeg, priceLineVisible: false,
+            title: isLastSeg ? "EMA of RSI" : "",
+          }, pane);
+          seg.setData(rows.slice(dataStart, dataEnd + 1).map((r, k) => ({ time: r.date as Time, value: rsiMaArr[dataStart + k] })));
+          havePrevSeg = true;
+          if (!nan && !atEnd) { segStart = i; segBull = emaBull[i]; } else segStart = -1;
+        }
+      }
+
       rsiLine.createPriceLine({ price: s.rsiUpper, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: String(s.rsiUpper) });
       rsiLine.createPriceLine({ price: s.rsiLower, color: c.muted, lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: String(s.rsiLower) });
+
+      if (!hidden.rsiDivBull || !hidden.rsiDivBear) {
+        const divs = computeDivergences(highs, lows, rsiArr, s.rsiDivLeft, s.rsiDivRight, s.rsiDivStrict);
+        const mkSeg = (d: { a: { idx: number; rsi: number }; b: { idx: number; rsi: number } }, label: string): Seg => ({
+          a: { time: rows[d.a.idx].date as Time, price: d.a.rsi },
+          b: { time: rows[d.b.idx].date as Time, price: d.b.rsi },
+          label: s.rsiDivShowLabels ? label : "",
+          emphasis: true,
+        });
+        const byType = (t: DivergenceType) => divs.filter((d) => d.type === t);
+        const drawType = (t: DivergenceType, color: string, label: string) => {
+          const segs = byType(t).map((d) => mkSeg(d, label));
+          if (segs.length) rsiLine.attachPrimitive(new LevelLines(segs, color, s.rsiDivWidth));
+        };
+        if (!hidden.rsiDivBull) {
+          drawType("regularBull", s.rsiDivBullColor, "Bull Div");
+          drawType("hiddenBull", s.rsiDivHiddenBullColor, "Hidden Bull");
+        }
+        if (!hidden.rsiDivBear) {
+          drawType("regularBear", s.rsiDivBearColor, "Bear Div");
+          drawType("hiddenBear", s.rsiDivHiddenBearColor, "Hidden Bear");
+        }
+      }
     }
 
     // ── MACD 4C Smooth -- EMA(fast)-EMA(slow) (optionally re-smoothed),
@@ -642,7 +726,7 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
         date: r.date, o: r.open, h: r.high, l: r.low, c: r.close, vol: r.volume, chg, chgPct,
         ib: ib ? { ibHigh: ib.ibHigh, ibLow: ib.ibLow } : null, vwap: vw.points[idx] ?? null,
         ribbon1: nz(ema(closes, s.ribbon1Len)[idx]), ribbon2: nz(ema(closes, s.ribbon2Len)[idx]), sma200: nz(sma(closes, s.sma200Len)[idx]),
-        rsi: nz(rsiArr[idx]), rsiMa: nz(rsiMaArr[idx]),
+        rsi: nz(rsiArr[idx]), rsiMa: nz(rsiMaArr[idx]), rsiMaBull: Number.isNaN(rsiMaArr[idx]) ? null : emaBull[idx],
         macd: nz(macdResult.macd[idx]), macdSignal: nz(macdResult.signal[idx]), macdHist: nz(macdResult.hist[idx]),
         stochK: nz(stoch.k[idx]), stochD: nz(stoch.d[idx]),
       };
@@ -773,10 +857,25 @@ export function IndicatorCompanion({ ohlcv, symbol, companyName }: { ohlcv: Ohlc
             <div style={{ position: "absolute", left: 9, top: rsiTop + 5, zIndex: 5, ...LEGEND_ROW, fontFamily: MONO, fontSize: 11.5, background: paneColors.paneTag }}>
               <span style={{ color: "var(--muted)" }}>RSI <span style={{ color: "var(--faint)" }}>{settings.rsiLen} close</span></span>
               {legend?.rsi != null ? <b style={{ color: settings.rsiColor, fontWeight: 500 }}>{fmtOsc(legend.rsi)}</b> : null}
-              {legend?.rsiMa != null ? <b style={{ color: settings.rsiMaColor, fontWeight: 500 }}>{fmtOsc(legend.rsiMa)}</b> : null}
+              {legend?.rsiMa != null ? <b style={{ color: legend.rsiMaBull ? settings.rsiMaBullColor : settings.rsiMaBearColor, fontWeight: 500 }}>{fmtOsc(legend.rsiMa)}</b> : null}
+              <DivToggleButton label="Bull" active={!hidden.rsiDivBull} color={settings.rsiDivBullColor} onClick={() => toggleHidden("rsiDivBull")} />
+              <DivToggleButton label="Bear" active={!hidden.rsiDivBear} color={settings.rsiDivBearColor} onClick={() => toggleHidden("rsiDivBear")} />
               <EyeButton hidden={false} onClick={() => toggleHidden("rsi")} />
               <GearButton onClick={() => setOpenGear(openGear === "rsi" ? null : "rsi")} />
-              {gearRow("rsi", "RSI", [{ kind: "number", key: "rsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "rsiMaLen", label: "RSI-based MA Length", min: 1, max: 100 }, { kind: "number", key: "rsiUpper", label: "Upper Band", min: 51, max: 99 }, { kind: "number", key: "rsiLower", label: "Lower Band", min: 1, max: 49 }], [{ kind: "color", key: "rsiColor", label: "RSI Color" }, { kind: "number", key: "rsiWidth", label: "RSI Width", min: 1, max: 4 }, { kind: "color", key: "rsiMaColor", label: "MA Color" }, { kind: "number", key: "rsiMaWidth", label: "MA Width", min: 1, max: 4 }, { kind: "check", key: "rsiFill", label: "Band Fill" }], rsiTop + 24)}
+              {gearRow("rsi", "RSI", [
+                { kind: "number", key: "rsiLen", label: "RSI Length", min: 2, max: 100 }, { kind: "number", key: "rsiMaLen", label: "EMA of RSI Length", min: 1, max: 100 },
+                { kind: "number", key: "rsiUpper", label: "Upper Band", min: 51, max: 99 }, { kind: "number", key: "rsiLower", label: "Lower Band", min: 1, max: 49 },
+                { kind: "check", key: "rsiUseDmiFilter", label: "Use DMI Filter For EMA Color" }, { kind: "number", key: "rsiDmiLen", label: "DMI Length", min: 1, max: 100 }, { kind: "number", key: "rsiAdxSmoothing", label: "ADX Smoothing", min: 1, max: 100 },
+                { kind: "number", key: "rsiDivLeft", label: "Divergence Pivot Left", min: 1, max: 50 }, { kind: "number", key: "rsiDivRight", label: "Divergence Pivot Right", min: 1, max: 50 },
+                { kind: "check", key: "rsiDivStrict", label: "Strict HH/LL Comparison" }, { kind: "check", key: "rsiDivShowLabels", label: "Show Divergence Labels" },
+              ], [
+                { kind: "color", key: "rsiColor", label: "RSI Color" }, { kind: "number", key: "rsiWidth", label: "RSI Width", min: 1, max: 4 },
+                { kind: "color", key: "rsiMaBullColor", label: "EMA Bullish Color" }, { kind: "color", key: "rsiMaBearColor", label: "EMA Bearish Color" }, { kind: "number", key: "rsiMaWidth", label: "EMA Width", min: 1, max: 4 },
+                { kind: "check", key: "rsiFill", label: "Band Fill" },
+                { kind: "color", key: "rsiDivBullColor", label: "Regular Bullish" }, { kind: "color", key: "rsiDivHiddenBullColor", label: "Hidden Bullish" },
+                { kind: "color", key: "rsiDivBearColor", label: "Regular Bearish" }, { kind: "color", key: "rsiDivHiddenBearColor", label: "Hidden Bearish" },
+                { kind: "number", key: "rsiDivWidth", label: "Divergence Line Width", min: 1, max: 5 },
+              ], rsiTop + 24)}
             </div>
           ) : null}
           {!hidden.macd ? (
